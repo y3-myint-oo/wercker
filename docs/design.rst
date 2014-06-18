@@ -170,6 +170,104 @@ needed by it passed into the environment via the systemd file.
 TODO(termie): Add a template for the systemd job file.
 
 
+Diagram
+-------
+
+::
+
+   core-01
+                                                         ---> container-12331
+  +----------------------------------------------------+
+  |     BUILD_ID=foo  \                                |
+  |     BUILD_DIR=/tmp/build/$BUILD_ID  \              |
+  |     codefetcher github.com/owner/project  \        |
+  +     && sentcli build owner/project                 +
+
+
+
+
+
+
+                                                         +------------------+
+                /tmp/build/$BUILD_ID/                    | src/...          |
+                                                         | README           |
+                                     source +----------> | wercker.yml      |
+                                                         +------------------+
+
+         (sentcli fetches step) +-----------+
+                                            |
+                                            |
+                                            |            +------------------+
+                                            |            | README           |
+                                            v            | ...              |
+                                                         | wercker-step.yml |
+                                     bundle-install +--> | run.sh           |
+                                                         +------------------+
+
+
+                                                         +------------------+
+                                                         |                  |
+                                     output <----------+ |project-0.15.0.gem|
+                                                         |                  |
+                                       +                 +------------------+
+                                       |
+                                       |
+                                       |
+                                       |
+   s3://build-results/$BUILD_ID  <-----+
+
+
+
+
+
+                       container-12331
+ <--- core-01
+                      +---------------------------------------------------+
+                      |     export BUILD_ID=foo                           |
+                      |     export BUILD_DIR=/tmp/build/$BUILD_ID         |
+                      |     export WERCKER_DIR=/mnt/wercker               |
+                      +     export GIT_URL=github.com/owner/project       +
+                            export OUTPUT_DIR=/tmp/build_output
+                            cp -r /mnt/wercker/source $BUILD_DIR/
+                            cd $BUILD_DIR/source
+                            exec /mnt/wercker/bundle-install/run.sh
+                            cp dist/project-0.15.0.gem $OUTPUT_DIR
+
+ +------------------+
+ | src/...          |       /mnt/wercker/
+ | README           |
+ | wercker.yml      | +--------------->  source
+ +------------------+
+
+
+
+
+ +------------------+
+ | README           |
+ | ...              |
+ | wercker-step.yml |
+ | run.sh           | +--------------->  bundle-install
+ +------------------+
+
+
+ +------------------+
+ |                  |
+ |project-0.15.0.gem| <---+ /tmp/build_output
+ |                  |
+ +------------------+
+                      +                                                   +
+                      |                                                   |
+                      |                                                   |
+                      +---------------------------------------------------+
+
+                                           +
+                                           |
+                                           |
+ docker://wercker/$BUILD_ID    <-----------+
+
+
+
+
 Database Impact
 ---------------
 
