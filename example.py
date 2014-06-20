@@ -21,9 +21,9 @@ class WerckerConfig(dict):
   def __init__(self, data):
     self.data = data
     self.box = WerckerBox(self.data.get('box'))
-    self.services = WerckerServices(self.data.get('services'))
-    self.build = WerckerBuild(self.data.get('build'))
-    self.deploy = WerckerDeploy(self.data.get('deploy'))
+    self.services = WerckerServices(self.data.get('services', []))
+    self.build = WerckerBuild(self.data.get('build', {}))
+    self.deploy = WerckerDeploy(self.data.get('deploy', {}))
 
 
 class WerckerBox(dict):
@@ -69,8 +69,18 @@ class WerckerStep(dict):
   pass
 
 
-class WerckerBuild(WerckerSteps):
+class WerckerBuild(dict):
   """Collection of build steps."""
+
+  def __init__(self, data):
+    self.data = data
+    self.steps = self._convert_steps(data.get('steps', []))
+
+  def _convert_steps(self, steps):
+    """Convert [{step_id: step_content}] to [(step_id, step_content)]."""
+    steps_out = [(d.items()[0][0], d.items()[0][1]) for d in steps]
+    steps_out.insert(0, ('wercker-init', {}))
+    return steps_out
 
   def get_env(self, options):
     return {'ci': 'True',
@@ -113,7 +123,8 @@ def maybe_pull_image(box, d=None):
 
   # If we already have the image, don't pull
   for image in images:
-    if box.name in image['RepoTags']:
+    if (box.name in image['RepoTags']
+        or '%s:latest' % box.name in image['RepoTags']):
       return image
 
   # Didn't find the image, pull it down
@@ -145,6 +156,7 @@ class Session(object):
     ws = self.d.attach_socket(self.container_id,
                               params={'stdin': 1,
                                       'stdout': 1,
+                                      'stderr': 1,
                                       'stream': 1},
                               ws=True)
     self.ws = ws
@@ -153,17 +165,47 @@ class Session(object):
     self._recv_thr = eventlet.spawn(self._start_recv)
 
   def _start_recv(self):
+    line = ''
     while True:
       data = self.ws.recv()
-      print "recv", data
-      self._recv_queue.put(data)
+      line += data
+      print 'raw', repr(data)
+      if '\n' in line:
+        parts = line.split('\n')
+        line = parts[-1]
+        for part in parts[:-1]:
+          print "recv", part
+          self._recv_queue.put(part)
 
   def send(self, commands):
     if type(commands) is type(""):
       commands = [commands]
     self._sent.append(commands)
     for cmd in commands:
+      print 'send', cmd
       self.ws.send(cmd + '\n')
+
+
+  def send_checked(self, commands):
+    rand_id = uuid.uuid4().hex
+    self.send(commands)
+    self.send('echo %s $?' % rand_id)
+
+    check = False
+    exit_code = None
+    recv = []
+    while not check:
+      line = self.recv().next()
+      if not line:
+        continue
+      line = line.strip()
+      if line.startswith('%s ' % rand_id):
+        check = True
+        exit_code = line[len('%s ' % rand_id):]
+      else:
+        recv.append(line)
+    return (exit_code, recv)
+
 
   def recv(self):
     while True:
@@ -172,6 +214,9 @@ class Session(object):
 # dev only
 PROJECT_DIR = './projects'
 BUILD_DIR = './builds'
+STEP_DIR = './steps'
+CONTAINER_MNT = '/mnt'
+CONTAINER_TMP = '/tmp'
 
 # TODO(termie): actually deal with getting code :p
 # TODO(termie): and branches and tags and commits
@@ -181,6 +226,37 @@ def checkout_project(project, branch=None, tag=None, commit=None):
 
   # NOTE: just shortcircuiting right now for testing
   return path
+
+
+# TODO(termie): actually check out the code :p
+def checkout_step(step, branch=None, tag=None, commit=None):
+  path = os.path.abspath(os.path.join(STEP_DIR, step))
+  # NOTE: just shortcircuits for now
+  return path
+
+
+def build_script_step(build_path, step):
+  new_id = uuid.uuid4().hex[:8]
+  step_path = os.path.join(build_path, new_id)
+  script_path = os.path.join(step_path, 'run.sh')
+  os.makedirs(step_path)
+
+  content = _normalize_code(step['code'])
+  with open(script_path, 'w') as fp:
+    fp.write(content)
+
+  return new_id
+
+
+def _normalize_step_id(s):
+  return s.replace('/', '_')
+
+
+def _normalize_code(s):
+  code = s.split('\n')
+  if not code[0].startswith('#!'):
+    code.insert(0, '#!/bin/bash -xe')
+  return '\n'.join(code)
 
 
 def cli_build(args):
@@ -204,11 +280,29 @@ def cli_build(args):
 
   # Download any steps we need
   # TODO(termie): download some steps and link them into build dir
+  for step_id, step in config.build.steps:
+    #pprint.pprint(step)
+    if step_id == 'script':
+      new_step_id = build_script_step(build_path, step)
+      # Add an ID so that we can find this folder later.
+      step['id'] = new_step_id
+    else:
+      step_path = checkout_step(step_id)
+      step_yml_path = os.path.join(step_path, 'wercker-step.yml')
+      step_config = None
+      if os.path.exists(step_yml_path):
+        step_config = yaml.load(open(step_yml_path))
+
+      if step_config and 'properties' in step_config:
+        step['_properties'] = step_config['properties']
+
+      shutil.copytree(step_path,
+                      os.path.join(build_path, _normalize_step_id(step_id)))
 
 
   # Build list of volumes to mount
   volume_paths = dict(
-      (os.path.join('/tmp', x), os.path.join(build_path, x))
+      (os.path.join(CONTAINER_MNT, x), os.path.join(build_path, x))
       for x in os.listdir(build_path))
   binds = dict((v, {'bind': k, 'ro': True})
                for k, v in volume_paths.iteritems())
@@ -222,7 +316,7 @@ def cli_build(args):
   d = docker.Client(base_url='tcp://127.0.0.1:4243')
   image = maybe_pull_image(config.box, d=d)
 
-  #pprint.pprint(image)
+  pprint.pprint(image)
 
   c = create_container(image, config.box, volumes=volume_paths.keys(), d=d)
   print build_id
@@ -232,15 +326,65 @@ def cli_build(args):
 
   session = Session(c['Id'], d=d)
   session.attach()
+
   #session.send(['echo hello world %s' % x for x in range(10)])
   #session.send('echo test')
 
-  #thr = eventlet.spawn(session._start_recv)
+  source_mnt = os.path.join(CONTAINER_MNT, 'source')
+  source_path = os.path.join(CONTAINER_TMP, 'source')
 
-  #i = 0
-  #for data in session.recv():
-  #  print i, data
-  #  i += 1
+  session.send(['export TERM=xterm-256color'])
+  session.send(['cp -r %s %s' % (source_mnt, source_path)])
+
+  # Copy all the steps
+  for step_id, step in config.build.steps:
+    if step_id == 'script':
+      step_id = step['id']
+
+    mnt_path = os.path.join(CONTAINER_MNT, step_id)
+    container_path = os.path.join(CONTAINER_TMP, step_id)
+    (exit_code, recv) = session.send_checked('cp -r %s %s' % (mnt_path, container_path))
+    print '%s : %s' % (exit_code, recv)
+
+
+  # Execute the steps
+  for step_id, step in config.build.steps:
+    if step_id == 'script':
+      step_id = step['id']
+
+    container_path = os.path.join(CONTAINER_TMP, step_id)
+    init_path = os.path.join(container_path, 'init.sh')
+    run_path = os.path.join(container_path, 'run.sh')
+
+    env_template = 'export WERCKER_%(step_id)s_%(key)s="%(value)s"'
+    commands = []
+    commands.append('export WERCKER_STEP_ROOT="%s"' % container_path)
+    for k, v in step.get('_properties', {}).iteritems():
+      if k in step:
+        value = step.get(k)
+      else:
+        value = v.get('default', '')
+
+      commands.append(env_template % {'step_id': step_id.upper(),
+                                      'key': k.upper(),
+                                      'value': value})
+    commands.append('cd "%s"' % source_path)
+    if os.path.exists(os.path.join(build_path, step_id, 'init.sh')):
+      commands.append('source "%s"' % init_path)
+
+    if os.path.exists(os.path.join(build_path, step_id, 'run.sh')):
+      commands.append('chmod +x "%s"' % run_path)
+      commands.append('source "%s"' % run_path)
+
+    (exit_code, recv) = session.send_checked(commands)
+    print '%s : %s' % (exit_code, recv)
+
+
+
+  i = 0
+  for data in session.recv():
+    print i, data
+    i += 1
 
 
 

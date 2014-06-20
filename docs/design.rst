@@ -176,16 +176,12 @@ Diagram
 ::
 
    core-01
-                                                         ---> container-12331
+                                                         container-12331 --->
   +----------------------------------------------------+
   |     BUILD_ID=foo  \                                |
   |     BUILD_DIR=/tmp/build/$BUILD_ID  \              |
   |     codefetcher github.com/owner/project  \        |
   +     && sentcli build owner/project                 +
-
-
-
-
 
 
                                                          +------------------+
