@@ -2,6 +2,7 @@ import eventlet
 eventlet.monkey_patch()
 
 import argparse
+import collections
 import os
 import pprint
 import shutil
@@ -9,6 +10,14 @@ import uuid
 
 import docker
 import yaml
+
+
+# dev only
+PROJECT_DIR = './projects'
+BUILD_DIR = './builds'
+STEP_DIR = './steps'
+CONTAINER_MNT = '/mnt'
+CONTAINER_TMP = '/tmp'
 
 
 class WerckerConfig(dict):
@@ -24,7 +33,7 @@ class WerckerConfig(dict):
     self.box = Box(self.data.get('box'))
     self.services = Services(self.data.get('services', []))
     self.build = Build(self.data.get('build', {}), global_options)
-    self.deploy = WerckerDeploy(self.data.get('deploy', {}))
+    #self.deploy = WerckerDeploy(self.data.get('deploy', {}))
 
 
 class Box(dict):
@@ -63,14 +72,22 @@ class Step(object):
     self.build = build
 
   def host_path(self):
-    return os.path.join(self.build.host_root, self.id)
+    return os.path.join(self.build.host_root(), self.id)
 
   def guest_path(self):
-    return os.path.join(self.build.guest_root, self.id)
+    return os.path.join(self.build.guest_root(), self.id)
+
+  def mnt_path(self):
+    return os.path.join(self.build.mnt_root(), self.id)
+
+  def cwd_path(self):
+    return self.build.wercker_root()
 
   # TODO(termie): we need to fetch the step
   def fetch_step(self):
-    pass
+    path = os.path.abspath(os.path.join(STEP_DIR, self.id))
+    shutil.copytree(path, self.host_path())
+    return self.host_path()
 
   def report_dir(self):
     return os.path.join(self.build.report_dir(), self.id)
@@ -85,8 +102,8 @@ class Step(object):
     return self.report_dir() + '/artifacts'
 
   def _get_properties(self):
-    step_yml_path = os.path.join(self.host_path(), 'wercker-step')
-    o = {}
+    step_yml_path = os.path.join(self.host_path(), 'wercker-step.yml')
+    o = collections.OrderedDict()
     if os.path.exists(step_yml_path):
       step_config = yaml.load(open(step_yml_path))
       if 'properties' in step_config:
@@ -95,11 +112,13 @@ class Step(object):
             value = self.data[k]
           else:
             value = v.get('default', '')
-          o['WERCKER_%s_%s' % (self._name.replace('-', '_'), k)] = value
+          key = 'WERCKER_%s_%s' % (self._name.replace('-', '_'), k)
+          o[key.upper()] = value
+    print o
     return o
 
-  def _env(self):
-    env = self._get_properties()
+  def env(self):
+    props = self._get_properties()
     o = {'WERCKER_STEP_ROOT': self.guest_path(),
          'WERCKER_STEP_ID': self.id,
          'WERCKER_STEP_OWNER': self._owner,
@@ -108,7 +127,13 @@ class Step(object):
          'WERCKER_REPORT_MESSAGE_FILE': self.report_message_file(),
          'WERCKER_REPORT_ARTIFACTS_DIR': self.report_artifacts_dir(),
          }
-    env.update(o)
+
+    # Sort our env variables, but leave the order of user-provided and keep
+    # them after ours (so that they can reference indirectly).
+    env = Env(sorted(o.items()))
+    for k, v in props.iteritems():
+      env[k] = v
+
     return env
 
 
@@ -125,6 +150,8 @@ class ScriptStep(Step):
     content = self._normalize_code(self.data['code'])
     with open(script_path, 'w') as fp:
       fp.write(content)
+
+    return self.host_path()
 
   def _normalize_code(self, s):
     code = s.split('\n')
@@ -151,8 +178,7 @@ class Build(object):
                 'WERCKER_APPLICATION_OWNER_NAME',
                 ]
 
-  guest_root = '/pipeline'
-
+  _id = None
 
   def __init__(self, data, global_options):
     self.data = data
@@ -161,41 +187,62 @@ class Build(object):
 
 
   def _convert_steps(self, steps):
-    """Convert [{step_id: step_content}] to WerckerSteps."""
+    """Convert [{step_id: step_content}] to a list of Steps."""
     steps_list = [(d.items()[0][0], d.items()[0][1]) for d in steps]
     steps_list.insert(0, ('wercker-init', {}))
     out = []
     for step_id, step_content in steps_list:
       if step_id == 'script':
-        out.append(ScriptStep(step_content))
+        out.append(ScriptStep(step_content, self))
       else:
-        out.append(Step(step_id, step_content))
+        out.append(Step(step_id, step_content, self))
 
     return out
 
+  def host_root(self):
+    """The root dir for this build on the host machine."""
+    return os.path.abspath('%s/%s' % (BUILD_DIR, self.id()))
+
+  def mnt_root(self):
+    """The root dir for where we mount everything on the guest read-only."""
+    return '/mnt'
+
+  def guest_root(self):
+    """The directory where we copy everything for read-write purposes."""
+    return '/pipeline'
+
   def report_dir(self):
-    return self.guest_root + '/report'
+    return self.guest_root() + '/report'
 
-  def _id(self):
-    return os.environ.get('WERCKER_BUILD_ID', uuid.uuid4().hex)
+  def wercker_root(self):
+    return self.guest_root() + '/source'
 
-  def _env(self):
-    wercker_root = self.guest_root + '/source'
+  def id(self):
+    if not self._id:
+      self._id = os.environ.get('WERCKER_BUILD_ID', uuid.uuid4().hex)
+    return self._id
+
+  def env(self):
+    wercker_root = self.wercker_root()
     env = self._get_passthru_env()
     env.update(self._get_mirror_env())
     o = {'WERCKER': 'true',
          'BUILD': 'true',
          'CI': 'true',
+         'WERCKER_BUILD_ID': self.id(),
          'WERCKER_ROOT': wercker_root,
          'WERCKER_SOURCE_DIR': os.path.join(
             wercker_root, self.global_options['source-dir']),
          'WERCKER_CACHE_DIR': '/cache',
-         'WERCKER_OUTPUT_DIR': self.guest_root + '/output',
-         'WERCKER_PIPELINE_DIR': self.guest_root,
+         'WERCKER_OUTPUT_DIR': self.guest_root() + '/output',
+         'WERCKER_PIPELINE_DIR': self.guest_root(),
          'WERCKER_REPORT_DIR': self.report_dir(),
+         'TERM': 'xterm-256color',
          }
     env.update(o)
-    return env
+
+    # Let's sort our general env alphabetically for easier debugging
+    return Env(sorted(env.items()))
 
   def _get_mirror_env(self):
     o = {}
@@ -214,69 +261,10 @@ class Build(object):
     return o
 
 
-
-
-
-
-class WerckerDeploy(WerckerSteps):
-  """Collection of deploy steps."""
-
-  # similar to above
-  # ...
-  pass
-
-
-
-def get_logger():
-  """Grab a connection to the logging/notification service."""
-  return conn
-
-
-
-# dev only
-PROJECT_DIR = './projects'
-BUILD_DIR = './builds'
-STEP_DIR = './steps'
-CONTAINER_MNT = '/mnt'
-CONTAINER_TMP = '/tmp'
-
-
-def load_config(path):
-  # ...
-  parsed_yaml = yaml.load(open(path))
-  return WerckerConfig(parsed_yaml)
-
-
-def build_environment(config, step):
-  """Build up the environment objects."""
-  pass
-
-
-def maybe_pull_image(box, d=None):
-  images = d.images()
-  #pprint.pprint(images)
-
-  # If we already have the image, don't pull
-  for image in images:
-    if (box.name in image['RepoTags']
-        or '%s:latest' % box.name in image['RepoTags']):
-      return image
-
-  # Didn't find the image, pull it down
-  image = d.pull(box.name)
-  return image
-
-
-def create_container(image, box=None, volumes=None, d=None):
-  default_params = {
-    'stdin_open': True,
-    'tty': False,
-    'command': '/bin/bash',
-    'volumes': volumes and volumes or [],
-    'name': 'wercker-build-' + uuid.uuid4().hex
-  }
-  container = d.create_container(image['Id'], **default_params)
-  return container
+class Env(collections.OrderedDict):
+  template = 'export %s="%s"'
+  def to_cmd(self):
+    return [self.template % (k, v) for k, v in self.iteritems()]
 
 
 class Session(object):
@@ -303,6 +291,9 @@ class Session(object):
     line = ''
     while True:
       data = self.ws.recv()
+      if data is None:
+        eventlet.sleep(10)
+        continue
       line += data
       print 'raw', repr(data)
       if '\n' in line:
@@ -347,46 +338,37 @@ class Session(object):
       yield self._recv_queue.get()
 
 
-
-# TODO(termie): actually deal with getting code :p
-# TODO(termie): and branches and tags and commits
-def checkout_project(project, branch=None, tag=None, commit=None):
-  owner, project = project.split('/')
-  path = os.path.abspath(os.path.join(PROJECT_DIR, owner, project))
-
-  # NOTE: just shortcircuiting right now for testing
-  return path
+def load_config(path):
+  # ...
+  parsed_yaml = yaml.load(open(path))
+  return WerckerConfig(parsed_yaml)
 
 
-# TODO(termie): actually check out the code :p
-def checkout_step(step, branch=None, tag=None, commit=None):
-  path = os.path.abspath(os.path.join(STEP_DIR, step))
-  # NOTE: just shortcircuits for now
-  return path
+def maybe_pull_image(box, d=None):
+  images = d.images()
+  #pprint.pprint(images)
+
+  # If we already have the image, don't pull
+  for image in images:
+    if (box.name in image['RepoTags']
+        or '%s:latest' % box.name in image['RepoTags']):
+      return image
+
+  # Didn't find the image, pull it down
+  image = d.pull(box.name)
+  return image
 
 
-def build_script_step(build_path, step):
-  new_id = uuid.uuid4().hex[:8]
-  step_path = os.path.join(build_path, new_id)
-  script_path = os.path.join(step_path, 'run.sh')
-  os.makedirs(step_path)
-
-  content = _normalize_code(step['code'])
-  with open(script_path, 'w') as fp:
-    fp.write(content)
-
-  return new_id
-
-
-def _normalize_step_id(s):
-  return s.replace('/', '_')
-
-
-def _normalize_code(s):
-  code = s.split('\n')
-  if not code[0].startswith('#!'):
-    code.insert(0, '#!/bin/bash -xe')
-  return '\n'.join(code)
+def create_container(image, box=None, volumes=None, d=None):
+  default_params = {
+    'stdin_open': True,
+    'tty': False,
+    'command': '/bin/bash',
+    'volumes': volumes and volumes or [],
+    'name': 'wercker-build-' + uuid.uuid4().hex
+  }
+  container = d.create_container(image['Id'], **default_params)
+  return container
 
 
 def cli_build(args):
@@ -395,6 +377,7 @@ def cli_build(args):
   # Set up our build directory, all the things we checkout or
   # supply to the build will come from here
   build_id = uuid.uuid4().hex
+  os.environ['WERCKER_BUILD_ID'] = build_id
   build_path = os.path.abspath(os.path.join(BUILD_DIR, build_id))
   os.makedirs(build_path)
 
@@ -410,24 +393,8 @@ def cli_build(args):
 
   # Download any steps we need
   # TODO(termie): download some steps and link them into build dir
-  for step_id, step in config.build.steps:
-    #pprint.pprint(step)
-    if step_id == 'script':
-      new_step_id = build_script_step(build_path, step)
-      # Add an ID so that we can find this folder later.
-      step['id'] = new_step_id
-    else:
-      step_path = checkout_step(step_id)
-      step_yml_path = os.path.join(step_path, 'wercker-step.yml')
-      step_config = None
-      if os.path.exists(step_yml_path):
-        step_config = yaml.load(open(step_yml_path))
-
-      if step_config and 'properties' in step_config:
-        step['_properties'] = step_config['properties']
-
-      shutil.copytree(step_path,
-                      os.path.join(build_path, _normalize_step_id(step_id)))
+  for step in config.build.steps:
+    print step.fetch_step()
 
 
   # Build list of volumes to mount
@@ -457,66 +424,87 @@ def cli_build(args):
   session = Session(c['Id'], d=d)
   session.attach()
 
-  #session.send(['echo hello world %s' % x for x in range(10)])
-  #session.send('echo test')
 
-  source_mnt = os.path.join(CONTAINER_MNT, 'source')
-  source_path = os.path.join(CONTAINER_TMP, 'source')
+  # General build parts, copy the source and setup the env
+  source_mnt = os.path.join(config.build.mnt_root(), 'source')
+  source_path = os.path.join(config.build.guest_root(), 'source')
 
-  session.send(['export TERM=xterm-256color'])
-  session.send(['cp -r %s %s' % (source_mnt, source_path)])
+  (exit_code, recv) = session.send_checked(
+      'mkdir "%s"' % config.build.guest_root())
+  (exit_code, recv) = session.send_checked(
+      ['cp -r %s %s' % (source_mnt, source_path)])
+
+
+  # reporter.step_started('Setup environment')
+  (exit_code, recv) = session.send_checked(config.build.env().to_cmd())
 
   # Copy all the steps
-  for step_id, step in config.build.steps:
-    if step_id == 'script':
-      step_id = step['id']
+  for step in config.build.steps:
+    # We don't want to exit on errors, we want to trap them and know about
+    # them.
+    (exit_code, recv) = session.send_checked(['set +e'])
 
-    mnt_path = os.path.join(CONTAINER_MNT, step_id)
-    container_path = os.path.join(CONTAINER_TMP, step_id)
-    (exit_code, recv) = session.send_checked('cp -r %s %s' % (mnt_path, container_path))
+    (exit_code, recv) = session.send_checked(
+        ['cp -r %s %s' % (step.mnt_path(), step.guest_path())])
     print '%s : %s' % (exit_code, recv)
+
+    (exit_code, recv) = session.send_checked('cd "%s"' % step.cwd_path())
+
+    (exit_code, recv) = session.send_checked(step.env().to_cmd())
+
+
+    if os.path.exists('%s/%s' % (step.host_path(), 'init.sh')):
+      (exit_code, recv) = session.send_checked(
+          'source "%s/%s"' % (step.guest_path(), 'init.sh'))
+      print '%s : %s' % (exit_code, recv)
+
+    if os.path.exists('%s/%s' % (step.host_path(), 'run.sh')):
+      (exit_code, recv) = session.send_checked([
+          'chmod +x "%s/%s"' % (step.guest_path(), 'run.sh'),
+          'source "%s/%s"' % (step.guest_path(), 'run.sh')
+          ])
+      print '%s : %s' % (exit_code, recv)
 
 
   # Execute the steps
-  for step_id, step in config.build.steps:
-    if step_id == 'script':
-      step_id = step['id']
+  #for step_id, step in config.build.steps:
+  #  if step_id == 'script':
+  #    step_id = step['id']
 
-    container_path = os.path.join(CONTAINER_TMP, step_id)
-    init_path = os.path.join(container_path, 'init.sh')
-    run_path = os.path.join(container_path, 'run.sh')
+  #  container_path = os.path.join(CONTAINER_TMP, step_id)
+  #  init_path = os.path.join(container_path, 'init.sh')
+  #  run_path = os.path.join(container_path, 'run.sh')
 
-    env_template = 'export WERCKER_%(step_id)s_%(key)s="%(value)s"'
-    commands = []
-    commands.append('export WERCKER_STEP_ROOT="%s"' % container_path)
-    for k, v in step.get('_properties', {}).iteritems():
-      if k in step:
-        value = step.get(k)
-      else:
-        value = v.get('default', '')
+  #  env_template = 'export WERCKER_%(step_id)s_%(key)s="%(value)s"'
+  #  commands = []
+  #  commands.append('export WERCKER_STEP_ROOT="%s"' % container_path)
+  #  for k, v in step.get('_properties', {}).iteritems():
+  #    if k in step:
+  #      value = step.get(k)
+  #    else:
+  #      value = v.get('default', '')
 
-      commands.append(env_template % {'step_id': step_id.upper(),
-                                      'key': k.upper(),
-                                      'value': value})
-    commands.append('cd "%s"' % source_path)
-    if os.path.exists(os.path.join(build_path, step_id, 'init.sh')):
-      commands.append('source "%s"' % init_path)
+  #    commands.append(env_template % {'step_id': step_id.upper(),
+  #                                    'key': k.upper(),
+  #                                    'value': value})
+  #  commands.append('cd "%s"' % source_path)
+  #  if os.path.exists(os.path.join(build_path, step_id, 'init.sh')):
+  #    commands.append('source "%s"' % init_path)
 
-    if os.path.exists(os.path.join(build_path, step_id, 'run.sh')):
-      commands.append('chmod +x "%s"' % run_path)
-      commands.append('source "%s"' % run_path)
+  #  if os.path.exists(os.path.join(build_path, step_id, 'run.sh')):
+  #    commands.append('chmod +x "%s"' % run_path)
+  #    commands.append('source "%s"' % run_path)
 
-    (exit_code, recv) = session.send_checked(commands)
-    print '%s : %s' % (exit_code, recv)
+  #  (exit_code, recv) = session.send_checked(commands)
+  #  print '%s : %s' % (exit_code, recv)
 
 
+  session.send_checked("echo foo 1>&2")
 
   i = 0
   for data in session.recv():
     print i, data
     i += 1
-
-
 
 
 def get_cli():
