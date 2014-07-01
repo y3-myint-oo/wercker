@@ -263,6 +263,92 @@ Diagram
 
 
 
+Build Flow
+----------
+
+::
+
+  - Execute bootstrap:
+    - Create temporary directory for build
+    - Download codefetcher, sentcli
+    - Fetch code through codefetcher (get code -> wercker-api)
+  - Parse wercker.yml (parse wercker.yml -> wercker-api)
+    - Validate structure
+    - Validate options
+    - Check if boxes, services and steps specified in the wercker.yml exist.
+  - Setup environment (setup environment -> wercker-api)
+    - Download boxes
+      - Download from wercker registry
+      - Download from any other docker registry (only for local development,
+        and white listed providers, ie docker's registry)
+      - Download from local docker image (only for local development)
+    - Download services
+      - Same as download boxes
+    - Download steps
+      - Download from wercker registry
+      - Download from remote server (only for local development)
+      - Download from local path (only for local development)
+    - Download wercker cache
+    - Extract steps to temporary directory
+    - Execute docker attach on main box:
+      - Mount code retrieved earlier as readonly volume
+      - Mount steps as readonly volumes
+      - Mount wercker cache as readonly volume
+      - Mount step output directories
+      - Link services through the docker link api
+  - Report detcted steps to wercker-api
+  - Set environment variables (environment variables -> wercker-api)
+    - Generic environment variables:
+      - WERCKER="true"
+      - BUILD="true"
+      - CI="true"
+      - WERCKER_BUILD_ID="..."
+      - WERCKER_BUILD_URL="..."
+      - WERCKER_MAIN_PIPELINE_STARTED="..."
+      - WERCKER_GIT_DOMAIN="..."
+      - WERCKER_GIT_OWNER="..."
+      - WERCKER_GIT_REPOSITORY="..."
+      - WERCKER_GIT_BRANCH="..."
+      - WERCKER_GIT_COMMIT="..."
+      - WERCKER_ROOT="..."
+      - WERCKER_SOURCE_DIR="..."
+      - WERCKER_OUTPUT_DIR="..."
+      - WERCKER_CACHE_DIR="..."
+      - WERCKER_PIPELINE_DIR="..."
+      - WERCKER_REPORT_DIR="..."
+      - WERCKER_STARTED_BY="..."
+      - WERCKER_APPLICATION_ID="..."
+      - WERCKER_APPLICATION_NAME="..."
+      - WERCKER_APPLICATION_OWNER_NAME="..."
+      - WERCKER_APPLICATION_URL="..."
+    - Environment variables specified in the wercker.yml
+    - Environment variables set in wercker-api
+  - Execute for each step (and after-steps):
+    - Set step environment variables:
+      - WERCKER_STEP_ROOT="..."
+      - WERCKER_STEP_ID="..."
+      - WERCKER_STEP_OWNER="..." <- new, this is handy for introspection
+      - WERCKER_STEP_NAME="..."
+      - WERCKER_REPORT_NUMBERS_FILE="..."
+      - WERCKER_REPORT_MESSAGE_FILE="..."
+      - WERCKER_REPORT_ARTIFACTS_DIR="..."
+    - source run.sh; echo $?;
+    - 'docker commit' current step <- handy to check what happened
+                                      between two steps
+    - report status to wercker-api
+  - Save build output (saving build output -> wercker-api)
+    - 'docker push' to our own registry
+      - tag with the build_id
+      - tag with latest
+      - tag with green or red (depending on the build outcome)
+    - Fetch wercker cache from container and store
+    - Fetch build artifacts from container and store
+  - Report build status to wercker-api
+  - Post build actions:
+    - Force shutdown container
+    - Delete all files related to this build
+
+
 
 Database Impact
 ---------------

@@ -13,19 +13,4 @@ Basic Process
     b. Run docker containers locally
     c. Execute scripts in docker containers
 
-
-Wercker Version
----------------
-
-  3b. Run docker containers via Mesos
-
-
-Additional Tooling
-------------------
-
- - ``check`` Check validity of wercker.yml
- - ``init`` a wercker.yml based on project (already in wercker-cli)
-
-
-
- bpH6QWgUhHJy4f
+See https://github.com/wercker/wercker-sentcli/blob/master/docs/design.rst for more.
