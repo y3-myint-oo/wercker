@@ -5,11 +5,13 @@ import (
   // "time"
   "bytes"
   "fmt"
+  "io/ioutil"
   "log"
   "os"
   // "code.google.com/p/go.net/websocket"
   "github.com/codegangsta/cli"
   "github.com/fsouza/go-dockerclient"
+  "gopkg.in/yaml.v1"
 )
 
 
@@ -46,6 +48,11 @@ func main() {
           // println("building project: ", c.Args().First())
           RunArbitrary(c)
       },
+    },
+    {
+      Name: "parse",
+      Usage: "parse the wercker.yml",
+      Action: ParseYaml,
     },
   }
   app.Run(os.Args)
@@ -237,4 +244,40 @@ func BuildProject(c *cli.Context) {
   // client.PullImage(docker.PullImageOptions{Repository: "base"},
   //                  docker.AuthConfiguration{Username:""})
   println("picture me buildin.")
+}
+
+
+func ParseYaml(c *cli.Context) {
+  file, err := ioutil.ReadFile("projects/termie/farmboy/wercker.yml")
+  if err != nil {
+    log.Fatalln(err)
+  }
+
+  m := make(map[interface{}]interface{})
+
+  err = yaml.Unmarshal(file, &m)
+
+  build := m["build"].(map[interface{}]interface{})
+  steps := build["steps"].([]interface{})
+
+  for _, v := range steps {
+    var stepId string
+    stepData := make(map[string]string)
+
+    // There is only one key in this array but can't just pop in golang
+    for id, data := range v.(map[interface{}]interface{}) {
+      stepId = id.(string)
+      for prop, value := range data.(map[interface{}]interface{}) {
+        stepData[prop.(string)] = value.(string)
+      }
+    }
+    fmt.Println(stepId, stepData)
+  }
+
+
+
+  // for k, v := range m {
+  //   fmt.Printf("k: ", k, "v: ", v, "\n")
+  // }
+
 }
