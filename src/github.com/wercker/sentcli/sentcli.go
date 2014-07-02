@@ -30,6 +30,19 @@ func (cw *ChanWriter) Write(p []byte) (n int, err error) {
 
 func main() {
   app := cli.NewApp()
+  app.Flags = []cli.Flag {
+    cli.StringFlag{"projectDir", "./projects", "path where projects live"},
+    cli.StringFlag{"stepDir", "./steps", "path where steps live"},
+    cli.StringFlag{"buildDir", "./builds", "path where builds live"},
+
+    cli.StringFlag{"dockerEndpoint", "tcp://127.0.0.1:4243", "docker api endpoint"},
+
+    // These options might be overwritten by the wercker.yml
+    cli.StringFlag{"sourceDir", "", "source path relative to checkout root"},
+    cli.IntFlag{"noResponseTimeout", 5, "timeout if no script output is received in this many minutes"},
+    cli.IntFlag{"commandTimeout", 10, "timeout if command does not complete in this many minutes"},
+  }
+
   app.Commands = []cli.Command{
     {
       Name: "build",
@@ -57,6 +70,21 @@ func main() {
   }
   app.Run(os.Args)
 }
+
+
+func BuildProject(c *cli.Context) {
+  // endpoint := "tcp://127.0.0.1:4243"
+  // client, _ := docker.NewClient(endpoint)
+
+  options, err := CreateGlobalOptions(c, os.Environ())
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println(options)
+
+}
+
+
 
 
 func RunArbitrary(c *cli.Context) {
@@ -169,85 +197,6 @@ func RunArbitrary(c *cli.Context) {
 
   // // wg.Wait()
 }
-
-
-func BuildProject(c *cli.Context) {
-  endpoint := "tcp://127.0.0.1:4243"
-  client, _ := docker.NewClient(endpoint)
-  // imgs, _ := client.ListImages(true)
-  // for _, img := range imgs {
-  //   fmt.Println("ID: ", img.ID)
-  //   fmt.Println("RepoTags: ", img.RepoTags)
-  //   fmt.Println("Tag: ", img.Tag)
-  //   fmt.Println("Repository: ", img.Repository)
-  // }
-
-  conts, _ := client.ListContainers(docker.ListContainersOptions{All: true})
-  for _, cont := range conts {
-    fmt.Println("ID: ", cont.ID)
-    fmt.Println("Image: ", cont.Image)
-    fmt.Println("Names: ", cont.Names)
-    fmt.Println("Command: ", cont.Command)
-    fmt.Println("Status: ", cont.Status)
-    // fmt.Println("Tag: ", cont.Tag)
-    // fmt.Println("Repository: ", cont.Repository)
-  }
-
-  // var imageId string = "b750fe79269d2ec9a3c593ef05b4332b1d1a02a62b4accb2c21d589ff2f5f2dc"
-
-  // testContainer, err := client.CreateContainer(
-  //   docker.CreateContainerOptions{
-  //     Name: "foo-test6",
-  //     Config: &docker.Config{
-  //       Image: imageId,
-  //       AttachStdout: true,
-  //       AttachStderr: true,
-  //       Cmd: []string{"/bin/echo", "Hello World"}}})
-
-  // if err != nil {
-  //   log.Fatalln(err)
-  // }
-  // fmt.Println("Container ID: ", testContainer.ID)
-
-  // var containerId string = "4063c8f4a5c8de342015f6f1ab8462fcd5972f1dd69a2e7ffaaa3ef5f33bb45f"
-  // var containerId string = "5a8fbd92d10cc3fba7b1802c47016ae28b084ab2411dbb84c54394eb723ff775"
-  var containerId string = "efabaf3e5f5c83f25b29fcb72f5d3e7fc502a324db65f96c3cb1dc21dda166b8"
-
-
-  var stdout, stderr bytes.Buffer
-  opts := docker.AttachToContainerOptions{
-    Container: containerId,
-    OutputStream: &stdout,
-    ErrorStream: &stderr,
-    // Stream: true,
-    Stdout: true,
-    Stderr: true,
-    Logs: true,
-  }
-
-  err := client.AttachToContainer(opts)
-  if err != nil {
-    log.Fatal(err)
-  }
-
-  err = client.StartContainer(containerId, nil)
-  if err != nil {
-    log.Fatalln(err)
-  }
-
-  fmt.Println(stdout.String())
-  // fmt.Println(stderr.String())
-
-  // version, _ := client.Version()
-  // fmt.Println("Version: ", version.Get("Version"))
-
-  // client.PullImage(docker.PullImageOptions{Repository: "base"},
-  //                  docker.AuthConfiguration{Username:""})
-  println("picture me buildin.")
-}
-
-
-type MapStringString []map[string]string
 
 
 func ParseYaml(c *cli.Context) {

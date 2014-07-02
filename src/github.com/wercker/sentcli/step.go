@@ -57,8 +57,14 @@ func CreateStep(stepId string, data RawStepData, build *Build) (*Step, error) {
   if !ok {
     displayName = name
   }
+  delete(data, "name")
 
   return &Step{id:stepId, owner:owner, name:name, data:data, displayName:displayName, build:build}, nil
+}
+
+
+func (s *Step) Fetch() (path string) {
+  return ""
 }
 
 
