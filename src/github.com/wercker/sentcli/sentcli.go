@@ -5,13 +5,13 @@ import (
   // "time"
   "bytes"
   "fmt"
-  "io/ioutil"
+  // "io/ioutil"
   "log"
   "os"
   // "code.google.com/p/go.net/websocket"
   "github.com/codegangsta/cli"
   "github.com/fsouza/go-dockerclient"
-  "gopkg.in/yaml.v1"
+  // "gopkg.in/yaml.v1"
 )
 
 
@@ -247,32 +247,41 @@ func BuildProject(c *cli.Context) {
 }
 
 
+type MapStringString []map[string]string
+
+
 func ParseYaml(c *cli.Context) {
-  file, err := ioutil.ReadFile("projects/termie/farmboy/wercker.yml")
+  config, err := ConfigFromYaml("projects/termie/farmboy/wercker.yml")
   if err != nil {
-    log.Fatalln(err)
+    panic(err)
   }
+  fmt.Println("CONFIG", config.Box)
 
-  m := make(map[interface{}]interface{})
+  // file, err := ioutil.ReadFile("projects/termie/farmboy/wercker.yml")
+  // if err != nil {
+  //   log.Fatalln(err)
+  // }
 
-  err = yaml.Unmarshal(file, &m)
+  // m := make(map[interface{}]interface{})
 
-  build := m["build"].(map[interface{}]interface{})
-  steps := build["steps"].([]interface{})
+  // err = yaml.Unmarshal(file, &m)
 
-  for _, v := range steps {
-    var stepId string
-    stepData := make(map[string]string)
+  // build := m["build"].(map[interface{}]interface{})
+  // steps := build["steps"].([]interface{})
 
-    // There is only one key in this array but can't just pop in golang
-    for id, data := range v.(map[interface{}]interface{}) {
-      stepId = id.(string)
-      for prop, value := range data.(map[interface{}]interface{}) {
-        stepData[prop.(string)] = value.(string)
-      }
-    }
-    fmt.Println(stepId, stepData)
-  }
+  // for _, v := range steps {
+  //   var stepId string
+  //   stepData := make(map[string]string)
+
+  //   // There is only one key in this array but can't just pop in golang
+  //   for id, data := range v.(map[interface{}]interface{}) {
+  //     stepId = id.(string)
+  //     for prop, value := range data.(map[interface{}]interface{}) {
+  //       stepData[prop.(string)] = value.(string)
+  //     }
+  //   }
+  //   fmt.Println(stepId, stepData)
+  // }
 
 
 
