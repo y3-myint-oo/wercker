@@ -272,6 +272,8 @@ Build Flow
     - Create temporary directory for build
     - Download codefetcher, sentcli
     - Fetch code through codefetcher (get code -> wercker-api)
+  - Check for wercker.yml
+    - If not there, possibly generate a default
   - Parse wercker.yml (parse wercker.yml -> wercker-api)
     - Validate structure
     - Validate options

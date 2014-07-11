@@ -36,6 +36,9 @@ func main() {
     cli.StringFlag{"buildDir", "./builds", "path where builds live"},
 
     cli.StringFlag{"dockerEndpoint", "tcp://127.0.0.1:4243", "docker api endpoint"},
+    cli.StringFlag{"mntRoot", "/mnt", "directory on the guest where volumes are mounted"},
+    cli.StringFlag{"guestRoot", "/pipeline", "directory on the guest where work is done"},
+    cli.StringFlag{"buildId", "", "build id"},
 
     // These options might be overwritten by the wercker.yml
     cli.StringFlag{"sourceDir", "", "source path relative to checkout root"},
@@ -51,6 +54,8 @@ func main() {
       Action: func(c *cli.Context) {
           println("building project: ", c.Args().First())
           BuildProject(c)
+      },
+      Flags: []cli.Flag {
       },
     },
     {
@@ -76,12 +81,40 @@ func BuildProject(c *cli.Context) {
   // endpoint := "tcp://127.0.0.1:4243"
   // client, _ := docker.NewClient(endpoint)
 
+  // Parse CLI and local env
   options, err := CreateGlobalOptions(c, os.Environ())
   if err != nil {
     panic(err)
   }
   fmt.Println(options)
 
+  // The project to build is the first arg
+  // NOTE(termie): For now we are expecting it to be downloaded
+  // before we start so we are just expecting it to exist in our
+  // projects directory.
+  project := c.Args().First()
+  projectDir := fmt.Sprintf("%s/%s", options.ProjectDir, project)
+
+  // Return a []byte of the yaml we find or create.
+  werckerYaml, err := ReadYaml([]string{projectDir}, false)
+  if err != nil {
+    panic(err)
+  }
+
+  // Parse that bad boy.
+  rawConfig, err := ConfigFromYaml(werckerYaml)
+  if err != nil {
+    panic(err)
+  }
+
+  // Promote the RawBuild to a real Build. We believe in you, Build!
+  build, err := rawConfig.RawBuild.ToBuild(options)
+  if err != nil {
+    panic(err)
+  }
+
+  fmt.Println("RAW STEPS", rawConfig.RawBuild.RawSteps)
+  fmt.Println("STEPS", build.Steps)
 }
 
 
@@ -141,7 +174,7 @@ func RunArbitrary(c *cli.Context) {
   //   sess.Send([]string{"date"})
   //   fmt.Println(<-sess.ch)
   // }
-  exitCode, recv, err := sess.SendChecked([]string{"date", "date", "date"})
+  exitCode, recv, err := sess.SendChecked([]string{"date", "sleep 1", "date", "sleep 1", "date"})
   fmt.Println("exit code: ", exitCode)
   for i := range recv {
     fmt.Print(recv[i])
@@ -200,11 +233,11 @@ func RunArbitrary(c *cli.Context) {
 
 
 func ParseYaml(c *cli.Context) {
-  config, err := ConfigFromYaml("projects/termie/farmboy/wercker.yml")
-  if err != nil {
-    panic(err)
-  }
-  fmt.Println("CONFIG", config.Box)
+  // config, err := ConfigFromYaml("projects/termie/farmboy/wercker.yml")
+  // if err != nil {
+  //   panic(err)
+  // }
+  // fmt.Println("CONFIG", config.Box)
 
   // file, err := ioutil.ReadFile("projects/termie/farmboy/wercker.yml")
   // if err != nil {

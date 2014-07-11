@@ -13,12 +13,12 @@ type Step struct {
   name string
   displayName string
   data RawStepData
-  build *Build
+  Build *Build
 }
 
 
 // Convert a RawStep into a Step
-func (s *RawStep) Step(build *Build) (*Step, error) {
+func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
   // There should only be one step in the internal map
   var stepId string
   var stepData RawStepData
@@ -59,7 +59,7 @@ func CreateStep(stepId string, data RawStepData, build *Build) (*Step, error) {
   }
   delete(data, "name")
 
-  return &Step{id:stepId, owner:owner, name:name, data:data, displayName:displayName, build:build}, nil
+  return &Step{id:stepId, owner:owner, name:name, data:data, displayName:displayName, Build:build}, nil
 }
 
 
