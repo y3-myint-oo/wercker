@@ -2,18 +2,23 @@ package main
 
 import (
   "fmt"
+  "io/ioutil"
+  "os"
+  "path/filepath"
   "strings"
   "code.google.com/p/go-uuid/uuid"
+  "github.com/termie/go-shutil"
 )
 
 
 type Step struct {
-  id string
-  owner string
-  name string
-  displayName string
+  Id string
+  Owner string
+  Name string
+  DisplayName string
   data RawStepData
   Build *Build
+  options *GlobalOptions
 }
 
 
@@ -28,11 +33,11 @@ func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
     stepId = id
     stepData = data
   }
-  return CreateStep(stepId, stepData, build)
+  return CreateStep(stepId, stepData, build, options)
 }
 
 
-func CreateStep(stepId string, data RawStepData, build *Build) (*Step, error) {
+func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
   var owner string
   var name string
 
@@ -59,12 +64,59 @@ func CreateStep(stepId string, data RawStepData, build *Build) (*Step, error) {
   }
   delete(data, "name")
 
-  return &Step{id:stepId, owner:owner, name:name, data:data, displayName:displayName, Build:build}, nil
+  return &Step{Id:stepId, Owner:owner, Name:name, DisplayName:displayName, data:data, Build:build, options:options}, nil
 }
 
 
-func (s *Step) Fetch() (path string) {
-  return ""
+func (s *Step) IsScript() (bool) {
+  return s.Name == "script"
+}
+
+
+func normalizeCode(code string) string {
+  if !strings.HasPrefix(code, "#!") {
+     code = strings.Join([]string{"#!/bin/bash -xe", code}, "\n")
+  }
+  return code
+}
+
+
+func (s *Step) FetchScript() (string, error) {
+  hostStepPath := s.Build.HostPath(s.Id)
+  scriptPath := s.Build.HostPath(s.Id, "run.sh")
+  content := normalizeCode(s.data["code"])
+
+  err := os.MkdirAll(hostStepPath, 0755)
+  if err != nil {
+    return "", err
+  }
+
+  err = ioutil.WriteFile(scriptPath, []byte(content), 0755)
+  if err != nil {
+    return "", err
+  }
+
+  return hostStepPath, nil
+}
+
+
+func (s *Step) Fetch() (string, error) {
+  // NOTE(termie): polymorphism based on kind, we could probably do something
+  //               with interfaces here, but this is okay for now
+  if s.IsScript() {
+    return s.FetchScript()
+  }
+
+  // TODO(termie): Actually fetch the step!
+  stepPath := filepath.Join(s.options.StepDir, s.Id)
+  hostStepPath := s.Build.HostPath(s.Id)
+
+  err := shutil.CopyTree(stepPath, hostStepPath, nil)
+  if err != nil {
+    return "", nil
+  }
+
+  return hostStepPath, nil
 }
 
 

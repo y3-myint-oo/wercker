@@ -11,6 +11,7 @@ import (
   // "code.google.com/p/go.net/websocket"
   "github.com/codegangsta/cli"
   "github.com/fsouza/go-dockerclient"
+  "github.com/termie/go-shutil"
   // "gopkg.in/yaml.v1"
 )
 
@@ -113,8 +114,50 @@ func BuildProject(c *cli.Context) {
     panic(err)
   }
 
+  // Promote RawBox to a real Box. We believe in you, Box!
+  box, err := rawConfig.RawBox.ToBox(build, options)
+  if err != nil {
+    panic(err)
+  }
+
+  fmt.Println("BOX", box.Name)
   fmt.Println("RAW STEPS", rawConfig.RawBuild.RawSteps)
   fmt.Println("STEPS", build.Steps)
+
+  // Make sure we have the box available
+  image, err := box.Fetch()
+  if err != nil {
+    panic(err)
+  }
+
+  fmt.Println("IMAGE", image.ID)
+
+
+  // TODO(termie): Services go here
+
+  // Start setting up the build dir
+  err = os.MkdirAll(build.HostPath(), 0755)
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println(projectDir)
+  fmt.Println(build.HostPath("source"))
+  err = shutil.CopyTree(projectDir, build.HostPath("source"), nil)
+  if err != nil {
+    panic(err)
+  }
+
+  // Make sure we have the steps
+  for _, step := range build.Steps {
+    path, err := step.Fetch()
+    if err != nil {
+      panic(err)
+    }
+    fmt.Println("STEP PATH", path)
+  }
+
+  // Make our list of binds for the Docker attach
+
 }
 
 

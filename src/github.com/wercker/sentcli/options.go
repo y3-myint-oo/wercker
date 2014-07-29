@@ -28,7 +28,6 @@ type GlobalOptions struct {
 
   ProjectDir string
   StepDir string
-
   BuildDir string
 
   // Build ID for this operation
