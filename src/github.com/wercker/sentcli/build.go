@@ -5,10 +5,6 @@ import (
 )
 
 
-
-
-
-
 type Build struct {
   Env *Environment
   Steps []*Step
@@ -59,4 +55,22 @@ func (b *Build) MntPath(s ...string) (string) {
     mntPath = path.Join(mntPath, v)
   }
   return mntPath
+}
+
+
+func (b *Build) SetupGuest(sess *Session) error {
+  // sess.Start("setup guest")
+
+  // Make sure our guest path exists
+  exit, recv, err := sess.SendChecked(
+    fmt.Sprintf(`mkdir "%s"`, b.GuestPath())
+  )
+
+  // Copy the source dir to the guest path
+  exit, recv, err = sess.SendChecked(
+    fmt.Sprintf(`cp -r "%s" "%s"`, b.MntPath("source"), b.GuestPath("source"))
+  )
+
+  exit, recv, err = sess.SendChecked(
+  // sess.Commit()
 }

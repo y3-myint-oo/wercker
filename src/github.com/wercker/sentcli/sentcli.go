@@ -5,7 +5,7 @@ import (
   // "time"
   "bytes"
   "fmt"
-  // "io/ioutil"
+  "io/ioutil"
   "log"
   "os"
   // "code.google.com/p/go.net/websocket"
@@ -79,15 +79,16 @@ func main() {
 
 
 func BuildProject(c *cli.Context) {
-  // endpoint := "tcp://127.0.0.1:4243"
-  // client, _ := docker.NewClient(endpoint)
-
   // Parse CLI and local env
   options, err := CreateGlobalOptions(c, os.Environ())
   if err != nil {
     panic(err)
   }
   fmt.Println(options)
+
+  // Setup a docker client
+  client, _ := docker.NewClient(options.DockerEndpoint)
+
 
   // The project to build is the first arg
   // NOTE(termie): For now we are expecting it to be downloaded
@@ -157,6 +158,56 @@ func BuildProject(c *cli.Context) {
   }
 
   // Make our list of binds for the Docker attach
+  // NOTE(termie): I'm not sure why we need both of these and with opposite
+  //               argument ordering.
+  binds := []string{}
+  // volumes := make(map[string]struct{})
+  entries, err := ioutil.ReadDir(build.HostPath())
+  for _, entry := range entries {
+    if entry.IsDir() {
+      binds = append(binds, fmt.Sprintf("%s:%s:ro", build.HostPath(entry.Name()), build.MntPath(entry.Name())))
+      // volumes[build.MntPath(entry.Name())] = struct{}{}
+    }
+  }
+  fmt.Println(binds)
+
+  // Make and start the container
+  containerName := "wercker-build-" + options.BuildId
+  container, err := client.CreateContainer(
+    docker.CreateContainerOptions{
+      Name: containerName,
+      Config: &docker.Config{
+        Image: box.Name,
+        Tty: false,
+        OpenStdin: true,
+        Cmd: []string{"/bin/bash"},
+        AttachStdin: true,
+        AttachStdout: true,
+        AttachStderr: true,
+        // Volumes: volumes,
+      },
+  })
+  if err != nil {
+    panic(err)
+  }
+  fmt.Println("Container:", container)
+  client.StartContainer(container.ID, &docker.HostConfig{Binds:binds})
+
+  // Start our session
+  sess := CreateSession(options.DockerEndpoint, container.ID)
+  sess, err = sess.Attach()
+  if err != nil {
+    log.Fatalln(err)
+  }
+
+
+
+
+  // exitCode, recv, err := sess.SendChecked([]string{"ls /mnt/source"})
+  // fmt.Println("exit code:", exitCode)
+  // for _, line := range recv {
+  //   fmt.Print(line)
+  // }
 
 }
 

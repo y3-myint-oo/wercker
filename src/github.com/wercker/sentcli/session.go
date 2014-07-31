@@ -57,7 +57,7 @@ func (s *Session) Attach() (*Session, error) {
 
 
 // Send an array of commands.
-func (s *Session) Send(commands []string) {
+func (s *Session) Send(commands ...string) {
   for i := range commands {
     fmt.Println("send: ", commands[i])
     err := websocket.Message.Send(s.ws, commands[i] + "\n")
