@@ -39,6 +39,7 @@ func main() {
     cli.StringFlag{"dockerEndpoint", "tcp://127.0.0.1:4243", "docker api endpoint"},
     cli.StringFlag{"mntRoot", "/mnt", "directory on the guest where volumes are mounted"},
     cli.StringFlag{"guestRoot", "/pipeline", "directory on the guest where work is done"},
+    cli.StringFlag{"reportRoot", "/report", "directory on the guest where reports will be written"},
     cli.StringFlag{"buildId", "", "build id"},
 
     // These options might be overwritten by the wercker.yml
@@ -98,7 +99,7 @@ func BuildProject(c *cli.Context) {
   projectDir := fmt.Sprintf("%s/%s", options.ProjectDir, project)
 
   // Return a []byte of the yaml we find or create.
-  werckerYaml, err := ReadYaml([]string{projectDir}, false)
+  werckerYaml, err := ReadWerckerYaml([]string{projectDir}, false)
   if err != nil {
     panic(err)
   }
@@ -200,8 +201,26 @@ func BuildProject(c *cli.Context) {
     log.Fatalln(err)
   }
 
+  fmt.Println(build.Env.Map)
+  fmt.Println(build.Env.Export())
+
+  err = build.SetupGuest(sess)
+  exit, recv, err := sess.SendChecked(build.Env.Export()...)
+  fmt.Println(exit, recv, err)
 
 
+  sc, err := ReadStepConfig("./steps/virtualenv/wercker-step.yml")
+  fmt.Println(sc)
+  fmt.Println(sc.Properties["install_wheel"].Default)
+
+  for _, step := range build.Steps {
+    err = step.Execute(sess)
+    if err != nil {
+      panic(err)
+    }
+
+    fmt.Println(step.Env.Map)
+  }
 
   // exitCode, recv, err := sess.SendChecked([]string{"ls /mnt/source"})
   // fmt.Println("exit code:", exitCode)
@@ -268,11 +287,12 @@ func RunArbitrary(c *cli.Context) {
   //   sess.Send([]string{"date"})
   //   fmt.Println(<-sess.ch)
   // }
-  exitCode, recv, err := sess.SendChecked([]string{"date", "sleep 1", "date", "sleep 1", "date"})
+  exitCode, recv, err := sess.SendChecked("date", "sleep 1", "date", "sleep 1", "date")
   fmt.Println("exit code: ", exitCode)
   for i := range recv {
     fmt.Print(recv[i])
   }
+
 
   // var stderr bytes.Buffer
   // var listener = make(chan string, 2)

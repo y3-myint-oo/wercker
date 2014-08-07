@@ -14,7 +14,7 @@ type Reporter struct {
 }
 
 
-func CreateReporter(options *GlobalOptions) Reporter {
+func CreateReporter(options *GlobalOptions) *Reporter {
   return &Reporter{options:options}
 }
 

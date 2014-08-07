@@ -69,14 +69,14 @@ func (s *Session) Send(commands ...string) {
 
 // SendChecked sends commands, waits for them to complete and returns the
 // exit status and output
-func (s *Session) SendChecked(commands []string) (int, []string, error) {
+func (s *Session) SendChecked(commands ...string) (int, []string, error) {
   var exitCode int
   rand := uuid.NewRandom().String()
   check := false
   recv := []string{}
 
-  s.Send(commands)
-  s.Send([]string{fmt.Sprintf("echo %s $?", rand)})
+  s.Send(commands...)
+  s.Send(fmt.Sprintf("echo %s $?", rand))
 
   // This is relatively naive and will break if the messages returned aren't
   // complete lines, if this becomes a problem we'll have to buffer it.

@@ -1,5 +1,8 @@
 package main
 
+type Artifact struct {
+
+}
 
 type Artifacter struct {
   options *GlobalOptions
@@ -11,4 +14,6 @@ func CreateArtifacter(options *GlobalOptions) *Artifacter {
 }
 
 
-func (a *Artifacter) Store(
+func (a *Artifacter) Store(bucket, path string, artifact *Artifact) error {
+  return nil
+}

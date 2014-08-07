@@ -41,10 +41,10 @@ func exists(path string) (bool, error) {
     return false, err
 }
 
-// ReadYaml will try to find a wercker.yml file and return its bytes.
+// ReadWerckerYaml will try to find a wercker.yml file and return its bytes.
 // TODO(termie): If allowDefault is true it will try to generate a
 // default yaml file by inspecting the project.
-func ReadYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
+func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
   var foundYaml string
   found := false
 
