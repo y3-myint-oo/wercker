@@ -5,6 +5,7 @@ import (
   "errors"
   "fmt"
   "io/ioutil"
+  "log"
   "os"
   "net/http"
   "path/filepath"
@@ -249,7 +250,7 @@ func (s *Step) Fetch() (string, error) {
   cfg, err := ReadStepConfig(s.HostPath("wercker-step.yml"))
   if err != nil && !os.IsNotExist(err) {
     // TODO(termie): Log an error instead of printing
-    fmt.Println("ERROR: Reading wercker-step.yml:", err)
+    log.Println("ERROR: Reading wercker-step.yml:", err)
   }
   if err == nil {
     s.stepConfig = cfg
@@ -268,43 +269,36 @@ func (s *Step) SetupGuest(sess *Session) error {
 }
 
 
-func (s *Step) Execute(sess *Session) error {
-  s.initEnv()
+func (s *Step) Execute(sess *Session) (int, error) {
   err := s.SetupGuest(sess)
   if err != nil {
-    return err
+    return 1, err
   }
   _, _, err = sess.SendChecked(s.Env.Export()...)
   if err != nil {
-    return err
+    return 1, err
   }
 
   if yes, _ := exists(s.HostPath("init.sh")); yes {
     exit, _, err := sess.SendChecked(fmt.Sprintf(`source "%s"`, s.GuestPath("init.sh")))
     if exit != 0 {
-      return errors.New("Ack!")
+      return exit, errors.New("Ack!")
     }
     if err != nil {
-      return err
+      return 1, err
     }
   }
 
   if yes, _ := exists(s.HostPath("run.sh")); yes {
     exit, _, err := sess.SendChecked(fmt.Sprintf(`source "%s"`, s.GuestPath("run.sh")))
-    if exit != 0 {
-      return errors.New("Ack!")
-    }
-    if err != nil {
-      return err
-    }
+    return exit, err
   }
 
-
-  return nil
+  return 0, nil
 }
 
 
-func (s *Step) initEnv() {
+func (s *Step) InitEnv() {
   s.Env = &Environment{}
   m := map[string]string {
     "WERCKER_STEP_ROOT": s.GuestPath(),

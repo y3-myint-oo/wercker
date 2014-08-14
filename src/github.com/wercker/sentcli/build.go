@@ -1,6 +1,7 @@
 package main
 
 import (
+  "errors"
   "fmt"
   "path"
   "code.google.com/p/go-uuid/uuid"
@@ -144,20 +145,32 @@ func (b *Build) ReportPath(s ...string) (string) {
 
 
 func (b *Build) SetupGuest(sess *Session) error {
-  // sess.Start("setup guest")
-
   // Make sure our guest path exists
-  exit, recv, err := sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.GuestPath()))
+  exit, _, err := sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.GuestPath()))
+  if err != nil {
+    return err
+  }
+  if exit != 0 {
+    return errors.New("Guest command failed.")
+  }
 
   // And the cache path
-  exit, recv, err = sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, "/cache"))
+  exit, _, err = sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, "/cache"))
+  if err != nil {
+    return err
+  }
+  if exit != 0 {
+    return errors.New("Guest command failed.")
+  }
 
   // Copy the source dir to the guest path
-  exit, recv, err = sess.SendChecked(fmt.Sprintf(`cp -r "%s" "%s"`, b.MntPath("source"), b.GuestPath("source")))
+  exit, _, err = sess.SendChecked(fmt.Sprintf(`cp -r "%s" "%s"`, b.MntPath("source"), b.GuestPath("source")))
+  if err != nil {
+    return err
+  }
+  if exit != 0 {
+    return errors.New("Guest command failed.")
+  }
 
-  fmt.Println(exit, recv, err)
-
-  // exit, recv, err = sess.SendChecked(
-  // sess.Commit()
   return nil
 }

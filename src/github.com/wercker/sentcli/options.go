@@ -92,8 +92,6 @@ type GlobalOptions struct {
 func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
   env := CreateEnvironment(e)
 
-  fmt.Println("buildDir", c.GlobalString("buildDir"))
-
   buildDir, _ := filepath.Abs(c.GlobalString("buildDir"))
   projectDir, _ := filepath.Abs(c.GlobalString("projectDir"))
   stepDir, _ := filepath.Abs(c.GlobalString("stepDir"))
