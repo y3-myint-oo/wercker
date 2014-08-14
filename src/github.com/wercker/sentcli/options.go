@@ -8,7 +8,8 @@ import (
   "github.com/codegangsta/cli"
 )
 
-
+// This represents a shell environment and is implemented as something
+// like an OrderedMap
 type Environment struct {
   Map map[string]string
   Order []string
@@ -43,6 +44,7 @@ func (e *Environment) Update(m map[string]string) {
   }
 }
 
+
 // Export the environment as shell commands for use with Session.Send*
 func (e *Environment) Export() []string {
   s := []string{}
@@ -51,7 +53,6 @@ func (e *Environment) Export() []string {
   }
   return s
 }
-
 
 
 type GlobalOptions struct {
@@ -88,6 +89,7 @@ type GlobalOptions struct {
   // Timeout if the command doesn't complete in this many minutes
   CommandTimeout int
 }
+
 
 func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
   env := CreateEnvironment(e)

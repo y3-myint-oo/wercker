@@ -67,6 +67,7 @@ func (s *Session) Send(commands ...string) {
   }
 }
 
+
 // SendChecked sends commands, waits for them to complete and returns the
 // exit status and output
 func (s *Session) SendChecked(commands ...string) (int, []string, error) {

@@ -18,10 +18,12 @@ func CreateApiClient(endpoint string) *ApiClient {
   return &ApiClient{endpoint:endpoint}
 }
 
+
 func (c *ApiClient) Url(parts ...string) string {
   allParts := append([]string{c.endpoint}, parts...)
   return strings.Join(allParts, "/")
 }
+
 
 func (c *ApiClient) Get(parts ...string) ([]byte, error) {
   url := c.Url(parts...)

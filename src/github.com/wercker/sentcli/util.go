@@ -3,14 +3,12 @@ package main
 import (
   "archive/tar"
   "compress/gzip"
-  "fmt"
   "io"
   "os"
   "path/filepath"
   "strings"
 )
 
-// Dumb utility functions
 
 // exists is like python's os.path.exists and too many lines in Go
 func exists(path string) (bool, error) {
@@ -24,7 +22,8 @@ func exists(path string) (bool, error) {
     return false, err
 }
 
-// untargzip tries to untar-gzip stuff to a named
+
+// untargzip tries to untar-gzip stuff to a path
 func untargzip(path string, r io.Reader) error {
   ungzipped, err := gzip.NewReader(r)
   if err != nil {
@@ -49,7 +48,6 @@ func untargzip(path string, r io.Reader) error {
       continue
     }
 
-    fmt.Println("HDRNAME", hdr.Name)
     fpath := filepath.Join(path, hdr.Name)
     if strings.HasSuffix(fpath, "/") {
       err = os.MkdirAll(fpath, 0755)

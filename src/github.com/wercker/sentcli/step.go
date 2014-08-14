@@ -72,7 +72,7 @@ type Step struct {
   Version string
   DisplayName string
   data RawStepData
-  Build *Build
+  build *Build
   options *GlobalOptions
   stepConfig *StepConfig
 }
@@ -106,6 +106,7 @@ func NormalizeStep(raw interface{}) (*RawStep, error) {
   }
   return nil, errors.New(fmt.Sprintf("Invalid step data. %s", raw))
 }
+
 
 // Convert a RawStep into a Step
 func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
@@ -153,7 +154,7 @@ func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOp
   delete(data, "name")
 
 
-  return &Step{Id:stepId, Owner:owner, Name:name, DisplayName:displayName, Version:version, data:data, Build:build, options:options}, nil
+  return &Step{Id:stepId, Owner:owner, Name:name, DisplayName:displayName, Version:version, data:data, build:build, options:options}, nil
 }
 
 
@@ -171,8 +172,8 @@ func normalizeCode(code string) string {
 
 
 func (s *Step) FetchScript() (string, error) {
-  hostStepPath := s.Build.HostPath(s.Id)
-  scriptPath := s.Build.HostPath(s.Id, "run.sh")
+  hostStepPath := s.build.HostPath(s.Id)
+  scriptPath := s.build.HostPath(s.Id, "run.sh")
   content := normalizeCode(s.data["code"])
 
   err := os.MkdirAll(hostStepPath, 0755)
@@ -264,7 +265,7 @@ func (s *Step) SetupGuest(sess *Session) error {
  _, _, err := sess.SendChecked(fmt.Sprintf(`mkdir -p "%s"`, s.ReportPath("artifacts")))
  _, _, err = sess.SendChecked("set +e")
  _, _, err = sess.SendChecked(fmt.Sprintf(`cp -r "%s" "%s"`, s.MntPath(), s.GuestPath()))
- _, _, err = sess.SendChecked(fmt.Sprintf(`cd "%s"`, s.Build.SourcePath()))
+ _, _, err = sess.SendChecked(fmt.Sprintf(`cd "%s"`, s.build.SourcePath()))
  return err
 }
 
@@ -332,23 +333,23 @@ func (s *Step) InitEnv() {
 
 func (s *Step) HostPath(p ...string) string {
   newArgs := append([]string{s.Id}, p...)
-  return s.Build.HostPath(newArgs...)
+  return s.build.HostPath(newArgs...)
 }
 
 
 func (s *Step) GuestPath(p ...string) string {
   newArgs := append([]string{s.Id}, p...)
-  return s.Build.GuestPath(newArgs...)
+  return s.build.GuestPath(newArgs...)
 }
 
 
 func (s *Step) MntPath(p ...string) string {
   newArgs := append([]string{s.Id}, p...)
-  return s.Build.MntPath(newArgs...)
+  return s.build.MntPath(newArgs...)
 }
 
 
 func (s *Step) ReportPath(p ...string) string {
   newArgs := append([]string{s.Id}, p...)
-  return s.Build.ReportPath(newArgs...)
+  return s.build.ReportPath(newArgs...)
 }
