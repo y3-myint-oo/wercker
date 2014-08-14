@@ -15,13 +15,23 @@ this working locally:
      `$expose_docker_tcp=4243`
   2. You need to manually check out the project you are going to build into
      the `projects` directory. Something like::
-
-       $ git clone git@github.com:wercker/wercker-sentinel
+       $ mkdir projects/wercker
+       $ git clone git@github.com:wercker/wercker-sentinel \
+         projects/wercker/wercker-sentinel
 
   3. You need a working Go environment and the root of the checkout has to
-     be on your `GOPATH`.
+     be on your `GOPATH`. Mine looks like::
 
-  4. You need to import the appropriate base boxes. They don't all work
+       GOPATH=/Users/termie/.venv/test-sentcli/gopath:/Users/termie/p/wercker/test-sentcli
+
+  4. If you're using the Vagrant method, you need to mount your local
+     directories in the box so that Docker can mount them. If you are
+     running inside a VM or on Linux already you don't need to do this.
+     Anyway, this is what I added to my Vagrantfile::
+
+       config.vm.synced_folder "/Users/termie/dev/wercker", "/Users/termie/dev/wercker", id: "wercker", :nfs => true, :mount_options => ['nolock,vers=3,udp']
+
+  5. You need to import the appropriate base boxes. They don't all work
      perfectly, but these two do, at least::
 
        # for the wercker-sentinel build
@@ -36,6 +46,7 @@ this working locally:
 
 Now that you have all that stuff working, let's do the fun stuffs::
 
+  $ ./install_dependencies.sh
   $ ./testme.sh wercker/wercker-sentinel
 
 

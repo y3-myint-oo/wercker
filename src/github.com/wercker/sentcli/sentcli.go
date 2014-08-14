@@ -20,6 +20,7 @@ type ChanWriter struct {
   out chan string
 }
 
+
 func (cw *ChanWriter) Write(p []byte) (n int, err error) {
   var buf bytes.Buffer
   n, err = buf.Write(p)
@@ -29,24 +30,25 @@ func (cw *ChanWriter) Write(p []byte) (n int, err error) {
   return n, err
 }
 
+
 func main() {
   app := cli.NewApp()
   app.Flags = []cli.Flag {
-    cli.StringFlag{"projectDir", "./projects", "path where projects live"},
-    cli.StringFlag{"stepDir", "./steps", "path where steps live"},
-    cli.StringFlag{"buildDir", "./builds", "path where builds live"},
+    cli.StringFlag{Name:"projectDir", Value:"./projects", Usage:"path where projects live"},
+    cli.StringFlag{Name:"stepDir", Value:"./steps", Usage:"path where steps live"},
+    cli.StringFlag{Name:"buildDir", Value:"./builds", Usage:"path where builds live"},
 
-    cli.StringFlag{"dockerEndpoint", "tcp://127.0.0.1:4243", "docker api endpoint"},
-    cli.StringFlag{"werckerEndpoint", "https://app.wercker.com/api/v2", "wercker api endpoint"},
-    cli.StringFlag{"mntRoot", "/mnt", "directory on the guest where volumes are mounted"},
-    cli.StringFlag{"guestRoot", "/pipeline", "directory on the guest where work is done"},
-    cli.StringFlag{"reportRoot", "/report", "directory on the guest where reports will be written"},
-    cli.StringFlag{"buildId", "", "build id"},
+    cli.StringFlag{Name:"dockerEndpoint", Value:"tcp://127.0.0.1:4243", Usage:"docker api endpoint"},
+    cli.StringFlag{Name:"werckerEndpoint", Value:"https://app.wercker.com/api/v2", Usage:"wercker api endpoint"},
+    cli.StringFlag{Name:"mntRoot", Value:"/mnt", Usage:"directory on the guest where volumes are mounted"},
+    cli.StringFlag{Name:"guestRoot", Value:"/pipeline", Usage:"directory on the guest where work is done"},
+    cli.StringFlag{Name:"reportRoot", Value:"/report", Usage:"directory on the guest where reports will be written"},
+    cli.StringFlag{Name:"buildId", Value:"", Usage:"build id"},
 
     // These options might be overwritten by the wercker.yml
-    cli.StringFlag{"sourceDir", "", "source path relative to checkout root"},
-    cli.IntFlag{"noResponseTimeout", 5, "timeout if no script output is received in this many minutes"},
-    cli.IntFlag{"commandTimeout", 10, "timeout if command does not complete in this many minutes"},
+    cli.StringFlag{Name:"sourceDir", Value:"", Usage:"source path relative to checkout root"},
+    cli.IntFlag{Name:"noResponseTimeout", Value:5, Usage:"timeout if no script output is received in this many minutes"},
+    cli.IntFlag{Name:"commandTimeout", Value:10, Usage:"timeout if command does not complete in this many minutes"},
   }
 
   app.Commands = []cli.Command{
@@ -215,11 +217,6 @@ func BuildProject(c *cli.Context) {
   exit, recv, err := sess.SendChecked(build.Env.Export()...)
   fmt.Println(exit, recv, err)
 
-
-  sc, err := ReadStepConfig("./steps/virtualenv/wercker-step.yml")
-  fmt.Println(sc)
-  fmt.Println(sc.Properties["install_wheel"].Default)
-
   for _, step := range build.Steps {
     err = step.Execute(sess)
     if err != nil {
@@ -236,8 +233,6 @@ func BuildProject(c *cli.Context) {
   // }
 
 }
-
-
 
 
 func RunArbitrary(c *cli.Context) {
