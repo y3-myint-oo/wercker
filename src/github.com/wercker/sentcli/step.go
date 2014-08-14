@@ -1,10 +1,12 @@
 package main
 
 import (
+  "encoding/json"
   "errors"
   "fmt"
   "io/ioutil"
   "os"
+  "net/http"
   "path/filepath"
   "strings"
   "code.google.com/p/go-uuid/uuid"
@@ -66,6 +68,7 @@ type Step struct {
   Id string
   Owner string
   Name string
+  Version string
   DisplayName string
   data RawStepData
   Build *Build
@@ -73,6 +76,35 @@ type Step struct {
   stepConfig *StepConfig
 }
 
+
+// Steps unfortunately can come in a couple shapes in the yaml, this
+// function attempts to normalize them all to a RawStep
+func NormalizeStep(raw interface{}) (*RawStep, error) {
+  s := make(RawStep)
+
+  // If it was just a string, make a RawStep with empty data
+  stringBase, ok := raw.(string)
+  if ok {
+    s[stringBase] = make(RawStepData)
+    return &s, nil
+  }
+
+  // Otherwise it is a map[interface{}]map[interface{}]interface{},
+  // and we will manually assert it into shape
+  mapBase, ok := raw.(map[interface{}]interface{})
+  if ok {
+    for key, value := range mapBase {
+      mapValue := value.(map[interface{}]interface{})
+      data := make(RawStepData)
+      for dataKey, dataValue := range mapValue {
+        data[dataKey.(string)] = dataValue.(string)
+      }
+      s[key.(string)] = data
+    }
+    return &s, nil
+  }
+  return nil, errors.New(fmt.Sprintf("Invalid step data. %s", raw))
+}
 
 // Convert a RawStep into a Step
 func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
@@ -92,6 +124,9 @@ func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
 func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
   var owner string
   var name string
+
+  // TODO(termie): support other versions, "*" returns latest version
+  version := "*"
 
   // Steps without an owner are owned by wercker
   if strings.Contains(stepId, "/") {
@@ -116,7 +151,8 @@ func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOp
   }
   delete(data, "name")
 
-  return &Step{Id:stepId, Owner:owner, Name:name, DisplayName:displayName, data:data, Build:build, options:options}, nil
+
+  return &Step{Id:stepId, Owner:owner, Name:name, DisplayName:displayName, Version:version, data:data, Build:build, options:options}, nil
 }
 
 
@@ -152,6 +188,13 @@ func (s *Step) FetchScript() (string, error) {
 }
 
 
+type StepApiInfo struct {
+  TarballUrl string
+  Version string
+  Description string
+}
+
+
 func (s *Step) Fetch() (string, error) {
   // NOTE(termie): polymorphism based on kind, we could probably do something
   //               with interfaces here, but this is okay for now
@@ -159,11 +202,45 @@ func (s *Step) Fetch() (string, error) {
     return s.FetchScript()
   }
 
-  // TODO(termie): Actually fetch the step!
   stepPath := filepath.Join(s.options.StepDir, s.Id)
+  stepExists, err := exists(stepPath)
+  if err != nil {
+    return "", err
+  }
+  if !stepExists {
+    var stepInfo StepApiInfo
+
+    // Grab the info about the step from the api
+    client := CreateApiClient(s.options.WerckerEndpoint)
+    apiBytes, err := client.Get("steps", s.Owner, s.Id, s.Version)
+    if err != nil {
+      return "", err
+    }
+
+    err = json.Unmarshal(apiBytes, &stepInfo)
+    if err != nil {
+      return "", err
+    }
+
+    // Grab the tarball and untar it
+    resp, err := http.Get(stepInfo.TarballUrl)
+    if err != nil {
+      return "", err
+    }
+    if resp.StatusCode != 200 {
+      return "", errors.New("Bad status code fetching tarball")
+    }
+
+    // Assuming we have a gzip'd tarball at this point
+    err = untargzip(stepPath, resp.Body)
+    if err != nil {
+      return "", err
+    }
+  }
+
   hostStepPath := s.HostPath()
 
-  err := shutil.CopyTree(stepPath, hostStepPath, nil)
+  err = shutil.CopyTree(stepPath, hostStepPath, nil)
   if err != nil {
     return "", nil
   }
@@ -189,6 +266,7 @@ func (s *Step) SetupGuest(sess *Session) error {
  _, _, err = sess.SendChecked(fmt.Sprintf(`cd "%s"`, s.Build.SourcePath()))
  return err
 }
+
 
 func (s *Step) Execute(sess *Session) error {
   s.initEnv()

@@ -37,6 +37,7 @@ func main() {
     cli.StringFlag{"buildDir", "./builds", "path where builds live"},
 
     cli.StringFlag{"dockerEndpoint", "tcp://127.0.0.1:4243", "docker api endpoint"},
+    cli.StringFlag{"werckerEndpoint", "https://app.wercker.com/api/v2", "wercker api endpoint"},
     cli.StringFlag{"mntRoot", "/mnt", "directory on the guest where volumes are mounted"},
     cli.StringFlag{"guestRoot", "/pipeline", "directory on the guest where work is done"},
     cli.StringFlag{"reportRoot", "/report", "directory on the guest where reports will be written"},
@@ -110,6 +111,11 @@ func BuildProject(c *cli.Context) {
     panic(err)
   }
 
+  // Add some options to the global config
+  if rawConfig.SourceDir != "" {
+    options.SourceDir = rawConfig.SourceDir
+  }
+
   // Promote the RawBuild to a real Build. We believe in you, Build!
   build, err := rawConfig.RawBuild.ToBuild(options)
   if err != nil {
@@ -151,6 +157,7 @@ func BuildProject(c *cli.Context) {
 
   // Make sure we have the steps
   for _, step := range build.Steps {
+    fmt.Println("FETCHING STEP", step.Name)
     path, err := step.Fetch()
     if err != nil {
       panic(err)

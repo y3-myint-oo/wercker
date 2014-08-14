@@ -66,6 +66,9 @@ type GlobalOptions struct {
 
   DockerEndpoint string
 
+  // Base endpoint for wercker api
+  WerckerEndpoint string
+
   // The read-write directory on the guest where all the work happens
   GuestRoot string
 
@@ -105,6 +108,7 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
     BuildId:buildId,
     CommandTimeout:c.GlobalInt("commandTimeout"),
     DockerEndpoint:c.GlobalString("dockerEndpoint"),
+    WerckerEndpoint:c.GlobalString("werckerEndpoint"),
     NoResponseTimeout:c.GlobalInt("noResponseTimeout"),
     ProjectDir:projectDir,
     SourceDir:c.GlobalString("sourceDir"),

@@ -28,7 +28,6 @@ var MirroredEnv = [...]string{"WERCKER_GIT_DOMAIN",
                               "WERCKER_APPLICATION_OWNER_NAME"}
 
 
-
 func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
   var steps []*Step
   var build Build
@@ -41,7 +40,11 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
   }
   steps = append(steps, initStep)
 
-  for _, rawStep := range b.RawSteps {
+  for _, extraRawStep := range b.RawSteps {
+    rawStep, err := NormalizeStep(extraRawStep)
+    if err != nil {
+      return nil, err
+    }
     step, err := rawStep.ToStep(&build, options)
     if err != nil {
       return nil, err
@@ -85,6 +88,7 @@ func (b *Build) InitEnv() {
   }
   b.Env.Update(m)
 }
+
 
 func (b *Build) getMirrorEnv() map[string]string {
   var m = make(map[string]string)
@@ -144,6 +148,9 @@ func (b *Build) SetupGuest(sess *Session) error {
 
   // Make sure our guest path exists
   exit, recv, err := sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.GuestPath()))
+
+  // And the cache path
+  exit, recv, err = sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, "/cache"))
 
   // Copy the source dir to the guest path
   exit, recv, err = sess.SendChecked(fmt.Sprintf(`cp -r "%s" "%s"`, b.MntPath("source"), b.GuestPath("source")))

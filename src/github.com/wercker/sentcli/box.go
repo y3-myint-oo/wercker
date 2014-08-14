@@ -2,8 +2,17 @@ package main
 
 import (
   "reflect"
+  "strings"
   "github.com/fsouza/go-dockerclient"
 )
+
+
+type BoxConfig struct {
+  Env map[string]string
+  Name string
+  Owner string
+  Version string
+}
 
 
 type Box struct {
@@ -22,6 +31,9 @@ func (b *RawBox) ToBox(build *Build, options *GlobalOptions) (*Box, error) {
 
 // CreateBox from a name and other references
 func CreateBox(name string, build *Build, options *GlobalOptions) (*Box, error) {
+  // TODO(termie): right now I am just tacking the version into the name
+  //               by replacing @ with _
+  name = strings.Replace(name, "@", "_", 1)
   return &Box{Name: name, build: build, options: options}, nil
 }
 
@@ -38,5 +50,5 @@ func (b *Box) Fetch() (*docker.Image, error) {
   if err == nil {
     return image, nil
   }
-  return nil, nil
+  return nil, err
 }
