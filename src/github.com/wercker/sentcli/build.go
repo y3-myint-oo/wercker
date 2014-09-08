@@ -4,14 +4,12 @@ import (
   "errors"
   "fmt"
   "path"
-  "code.google.com/p/go-uuid/uuid"
 )
 
 
 type Build struct {
   Env *Environment
   Steps []*Step
-  Id string
   options *GlobalOptions
 }
 
@@ -57,10 +55,9 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
   build.Steps = steps
 
   id, ok := build.options.Env.Map["WERCKER_BUILD_ID"]
-  if !ok {
-    id = uuid.NewRandom().String()
+  if ok {
+    build.options.BuildId = id
   }
-  build.Id = id
 
   build.InitEnv()
 
@@ -78,7 +75,7 @@ func (b *Build) InitEnv() {
     "WERCKER": "true",
     "BUILD": "true",
     "CI": "true",
-    "WERCKER_BUILD_ID": b.Id,
+    "WERCKER_BUILD_ID": b.options.BuildId,
     "WERCKER_ROOT": b.GuestPath("source"),
     "WERCKER_SOURCE_DIR": b.GuestPath("source", b.options.SourceDir),
     "WERCKER_CACHE_DIR": "/cache",
