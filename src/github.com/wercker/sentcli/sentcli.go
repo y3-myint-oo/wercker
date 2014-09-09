@@ -18,7 +18,7 @@ func main() {
     cli.StringFlag{Name:"stepDir", Value:"./steps", Usage:"path where steps live"},
     cli.StringFlag{Name:"buildDir", Value:"./builds", Usage:"path where builds live"},
 
-    cli.StringFlag{Name:"dockerEndpoint", Value:"tcp://127.0.0.1:4243", Usage:"docker api endpoint"},
+    cli.StringFlag{Name:"dockerEndpoint", Value:"tcp://127.0.0.1:2375", Usage:"docker api endpoint"},
     cli.StringFlag{Name:"werckerEndpoint", Value:"https://app.wercker.com/api/v2", Usage:"wercker api endpoint"},
     cli.StringFlag{Name:"mntRoot", Value:"/mnt", Usage:"directory on the guest where volumes are mounted"},
     cli.StringFlag{Name:"guestRoot", Value:"/pipeline", Usage:"directory on the guest where work is done"},
