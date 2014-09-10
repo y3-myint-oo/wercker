@@ -43,6 +43,10 @@ function setMessage() {
   echo "${1}" > "$WERCKER_REPORT_MESSAGE_FILE"
 }
 
+# Because we aren't in an interactive shell, we need to set expand_aliases
+# manually, to override sudo in scripts.
+shopt -s expand_aliases
+alias sudo=""
 
 
 # Make sure we fail on all errors
