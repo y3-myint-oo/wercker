@@ -6,7 +6,6 @@ import (
   "io"
   "os"
   "path/filepath"
-  "strings"
 )
 
 
@@ -49,7 +48,7 @@ func untargzip(path string, r io.Reader) error {
     }
 
     fpath := filepath.Join(path, hdr.Name)
-    if strings.HasSuffix(fpath, "/") {
+    if hdr.FileInfo().IsDir() {
       err = os.MkdirAll(fpath, 0755)
       if err != nil {
         return err
