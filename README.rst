@@ -44,7 +44,9 @@ this working locally:
 Now that you have all that stuff working, let's do the fun stuffs::
 
   $ ./install_dependencies.sh
-  $ ./testme.sh wercker/wercker-sentinel
+  $ mkdir -p projects/termie
+  $ git clone http://github.com/termie/farmboy projects/termie/farmboy
+  $ ./testme.sh termie/farmboy
 
 
 
