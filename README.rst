@@ -34,9 +34,6 @@ this working locally:
   5. You need to import the appropriate base boxes. They don't all work
      perfectly, but these two do, at least::
 
-       # for the wercker-sentinel build
-       sudo ./convert_lxc.sh wercker/ubuntu12.04-nodejs0.10_1.4.0 "https://s3.amazonaws.com/wercker-production-optimi/146e3d62-f6aa-432e-a4d1-25093bebb748"
-
        # for the wercker/python box
        sudo ./convert_lxc.sh wercker/python "https://s3.amazonaws.com/wercker-production-optimi/1c84b4ce-2c0a-42d5-931a-9f07721de53e"
 
