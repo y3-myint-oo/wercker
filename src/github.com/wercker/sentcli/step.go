@@ -67,6 +67,7 @@ func (sc *StepConfig) Defaults() map[string]string {
 type Step struct {
   Env *Environment
   Id string
+  SafeId string
   Owner string
   Name string
   Version string
@@ -141,6 +142,9 @@ func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOp
     name = stepId
   }
 
+  // Add a random number to the name to prevent collisions on disk
+  stepSafeId := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
+
   // Script steps need unique IDs
   if name == "script" {
     stepId = uuid.NewRandom().String()
@@ -154,7 +158,7 @@ func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOp
   delete(data, "name")
 
 
-  return &Step{Id:stepId, Owner:owner, Name:name, DisplayName:displayName, Version:version, data:data, build:build, options:options}, nil
+  return &Step{Id:stepId, SafeId:stepSafeId, Owner:owner, Name:name, DisplayName:displayName, Version:version, data:data, build:build, options:options}, nil
 }
 
 
@@ -303,7 +307,7 @@ func (s *Step) InitEnv() {
   s.Env = &Environment{}
   m := map[string]string {
     "WERCKER_STEP_ROOT": s.GuestPath(),
-    "WERCKER_STEP_ID": s.Id,
+    "WERCKER_STEP_ID": s.SafeId,
     "WERCKER_STEP_OWNER": s.Owner,
     "WERCKER_STEP_NAME": s.Name,
     "WERCKER_REPORT_NUMBERS_FILE": s.ReportPath("numbers.ini"),
@@ -332,24 +336,24 @@ func (s *Step) InitEnv() {
 
 
 func (s *Step) HostPath(p ...string) string {
-  newArgs := append([]string{s.Id}, p...)
+  newArgs := append([]string{s.SafeId}, p...)
   return s.build.HostPath(newArgs...)
 }
 
 
 func (s *Step) GuestPath(p ...string) string {
-  newArgs := append([]string{s.Id}, p...)
+  newArgs := append([]string{s.SafeId}, p...)
   return s.build.GuestPath(newArgs...)
 }
 
 
 func (s *Step) MntPath(p ...string) string {
-  newArgs := append([]string{s.Id}, p...)
+  newArgs := append([]string{s.SafeId}, p...)
   return s.build.MntPath(newArgs...)
 }
 
 
 func (s *Step) ReportPath(p ...string) string {
-  newArgs := append([]string{s.Id}, p...)
+  newArgs := append([]string{s.SafeId}, p...)
   return s.build.ReportPath(newArgs...)
 }
