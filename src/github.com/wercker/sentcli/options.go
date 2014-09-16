@@ -3,6 +3,7 @@ package main
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"path/filepath"
 	"strings"
@@ -64,6 +65,9 @@ type GlobalOptions struct {
 	// Build ID for this operation
 	BuildID string
 
+	// Project ID for this operation
+	ProjectID string
+
 	DockerEndpoint string
 
 	// Base endpoint for wercker api
@@ -100,10 +104,17 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		buildID = uuid.NewRandom().String()
 	}
 
+	projectID := c.GlobalString("projectID")
+	if projectID == "" {
+		projectID = strings.Replace(c.Args().First(), "/", "_", -1)
+		log.Warnln("No ProjectID specified, using", projectID)
+	}
+
 	return &GlobalOptions{
 		Env:               env,
 		BuildDir:          buildDir,
 		BuildID:           buildID,
+		ProjectID:         projectID,
 		CommandTimeout:    c.GlobalInt("commandTimeout"),
 		DockerEndpoint:    c.GlobalString("dockerEndpoint"),
 		WerckerEndpoint:   c.GlobalString("werckerEndpoint"),
