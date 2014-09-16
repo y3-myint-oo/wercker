@@ -107,8 +107,34 @@ func BuildProject(c *cli.Context) {
 
 	for _, service := range rawConfig.RawServices {
 		log.Println("Fetching service:", service)
+
+		// TODO(mh): fetch the image
+
+		_, err := client.InspectImage(service)
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		containerName := fmt.Sprintf("wercker-service-%s-%s",
+			service, options.BuildId)
+
+		container, err := client.CreateContainer(
+			docker.CreateContainerOptions{
+				Name: containerName,
+				Config: &docker.Config{
+					Image: service,
+				},
+			})
+
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		client.StartContainer(container.ID, &docker.HostConfig{})
+		// TODO(mh): We want to make sure container is running fully before
+		// allowing build steps to run. We may need custom steps which block
+		// until service services are running.
 	}
-	log.Panicln("Services:", rawConfig.RawServices)
 
 	// Start setting up the build dir
 	err = os.MkdirAll(build.HostPath(), 0755)
