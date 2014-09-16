@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// BoxConfig is the content of a wercker-box.yml
 type BoxConfig struct {
 	Env     map[string]string
 	Name    string
@@ -13,13 +14,14 @@ type BoxConfig struct {
 	Version string
 }
 
+// Box is our wrapper for Box operations
 type Box struct {
 	Name    string
 	build   *Build
 	options *GlobalOptions
 }
 
-// Convert RawBox into a Box
+// ToBox will convert a RawBox into a Box
 func (b *RawBox) ToBox(build *Build, options *GlobalOptions) (*Box, error) {
 	v := reflect.ValueOf(*b)
 	return CreateBox(v.String(), build, options)

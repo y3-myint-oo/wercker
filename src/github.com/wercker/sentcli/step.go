@@ -24,14 +24,15 @@ type StepConfig struct {
 	Properties  map[string]StepConfigProperty
 }
 
-// This is structure of the values in the "properties" section of the config
+// StepConfigProperty is the structure of the values in the "properties"
+// section of the config
 type StepConfigProperty struct {
 	Default  string
 	Required bool
 	Type     string
 }
 
-// Reads a file, expecting it to be parsed into a StepConfig.
+// ReadStepConfig reads a file, expecting it to be parsed into a StepConfig.
 func ReadStepConfig(configPath string) (*StepConfig, error) {
 	file, err := ioutil.ReadFile(configPath)
 	if err != nil {
@@ -47,7 +48,7 @@ func ReadStepConfig(configPath string) (*StepConfig, error) {
 	return &m, nil
 }
 
-// Return the default properties as a map
+// Defaults returns the default properties for a step as a map.
 func (sc *StepConfig) Defaults() map[string]string {
 	m := make(map[string]string)
 	if sc == nil || sc.Properties == nil {
@@ -59,10 +60,11 @@ func (sc *StepConfig) Defaults() map[string]string {
 	return m
 }
 
+// Step is the holder of the Step methods.
 type Step struct {
 	Env         *Environment
-	Id          string
-	SafeId      string
+	ID          string
+	SafeID      string
 	Owner       string
 	Name        string
 	Version     string
@@ -73,6 +75,7 @@ type Step struct {
 	stepConfig  *StepConfig
 }
 
+// NormalizeStep attempts to make things like RawSteps into RawSteps.
 // Steps unfortunately can come in a couple shapes in the yaml, this
 // function attempts to normalize them all to a RawStep
 func NormalizeStep(raw interface{}) (*RawStep, error) {
@@ -99,24 +102,25 @@ func NormalizeStep(raw interface{}) (*RawStep, error) {
 		}
 		return &s, nil
 	}
-	return nil, errors.New(fmt.Sprintf("Invalid step data. %s", raw))
+	return nil, fmt.Errorf("Invalid step data. %s", raw)
 }
 
-// Convert a RawStep into a Step
+// ToStep converts a RawStep into a Step.
 func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
 	// There should only be one step in the internal map
-	var stepId string
+	var stepID string
 	var stepData RawStepData
 
 	// Dereference ourself to get to our underlying data structure
 	for id, data := range *s {
-		stepId = id
+		stepID = id
 		stepData = data
 	}
-	return CreateStep(stepId, stepData, build, options)
+	return CreateStep(stepID, stepData, build, options)
 }
 
-func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
+// CreateStep sets up the basic parts of a Step.
+func CreateStep(stepID string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
 	var owner string
 	var name string
 
@@ -124,22 +128,22 @@ func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOp
 	version := "*"
 
 	// Steps without an owner are owned by wercker
-	if strings.Contains(stepId, "/") {
-		_, err := fmt.Sscanf(stepId, "%s/%s", &owner, &name)
+	if strings.Contains(stepID, "/") {
+		_, err := fmt.Sscanf(stepID, "%s/%s", &owner, &name)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		owner = "wercker"
-		name = stepId
+		name = stepID
 	}
 
 	// Add a random number to the name to prevent collisions on disk
-	stepSafeId := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
+	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
 	// Script steps need unique IDs
 	if name == "script" {
-		stepId = uuid.NewRandom().String()
+		stepID = uuid.NewRandom().String()
 	}
 
 	// If there is a name in data, make it our displayName and delete it
@@ -149,9 +153,10 @@ func CreateStep(stepId string, data RawStepData, build *Build, options *GlobalOp
 	}
 	delete(data, "name")
 
-	return &Step{Id: stepId, SafeId: stepSafeId, Owner: owner, Name: name, DisplayName: displayName, Version: version, data: data, build: build, options: options}, nil
+	return &Step{ID: stepID, SafeID: stepSafeID, Owner: owner, Name: name, DisplayName: displayName, Version: version, data: data, build: build, options: options}, nil
 }
 
+// IsScript should probably not be exported.
 func (s *Step) IsScript() bool {
 	return s.Name == "script"
 }
@@ -163,9 +168,10 @@ func normalizeCode(code string) string {
 	return code
 }
 
+// FetchScript turns the raw code in a step into a shell file.
 func (s *Step) FetchScript() (string, error) {
-	hostStepPath := s.build.HostPath(s.Id)
-	scriptPath := s.build.HostPath(s.Id, "run.sh")
+	hostStepPath := s.build.HostPath(s.ID)
+	scriptPath := s.build.HostPath(s.ID, "run.sh")
 	content := normalizeCode(s.data["code"])
 
 	err := os.MkdirAll(hostStepPath, 0755)
@@ -181,12 +187,14 @@ func (s *Step) FetchScript() (string, error) {
 	return hostStepPath, nil
 }
 
-type StepApiInfo struct {
-	TarballUrl  string
+// StepAPIInfo is the data structure for the JSON returned by the wercker API.
+type StepAPIInfo struct {
+	TarballURL  string
 	Version     string
 	Description string
 }
 
+// Fetch grabs the Step content (or calls FetchScript for script steps).
 func (s *Step) Fetch() (string, error) {
 	// NOTE(termie): polymorphism based on kind, we could probably do something
 	//               with interfaces here, but this is okay for now
@@ -194,17 +202,17 @@ func (s *Step) Fetch() (string, error) {
 		return s.FetchScript()
 	}
 
-	stepPath := filepath.Join(s.options.StepDir, s.Id)
+	stepPath := filepath.Join(s.options.StepDir, s.ID)
 	stepExists, err := exists(stepPath)
 	if err != nil {
 		return "", err
 	}
 	if !stepExists {
-		var stepInfo StepApiInfo
+		var stepInfo StepAPIInfo
 
 		// Grab the info about the step from the api
-		client := CreateApiClient(s.options.WerckerEndpoint)
-		apiBytes, err := client.Get("steps", s.Owner, s.Id, s.Version)
+		client := CreateAPIClient(s.options.WerckerEndpoint)
+		apiBytes, err := client.Get("steps", s.Owner, s.ID, s.Version)
 		if err != nil {
 			return "", err
 		}
@@ -215,7 +223,7 @@ func (s *Step) Fetch() (string, error) {
 		}
 
 		// Grab the tarball and untar it
-		resp, err := http.Get(stepInfo.TarballUrl)
+		resp, err := http.Get(stepInfo.TarballURL)
 		if err != nil {
 			return "", err
 		}
@@ -249,6 +257,7 @@ func (s *Step) Fetch() (string, error) {
 	return hostStepPath, nil
 }
 
+// SetupGuest ensures that the guest is ready to run a Step.
 func (s *Step) SetupGuest(sess *Session) error {
 	// TODO(termie): can this even fail? i.e. exit code != 0
 	_, _, err := sess.SendChecked(fmt.Sprintf(`mkdir -p "%s"`, s.ReportPath("artifacts")))
@@ -258,6 +267,7 @@ func (s *Step) SetupGuest(sess *Session) error {
 	return err
 }
 
+// Execute actually sends the commands for the step.
 func (s *Step) Execute(sess *Session) (int, error) {
 	err := s.SetupGuest(sess)
 	if err != nil {
@@ -286,11 +296,12 @@ func (s *Step) Execute(sess *Session) (int, error) {
 	return 0, nil
 }
 
+// InitEnv sets up the internal environment for the Step.
 func (s *Step) InitEnv() {
 	s.Env = &Environment{}
 	m := map[string]string{
 		"WERCKER_STEP_ROOT":            s.GuestPath(),
-		"WERCKER_STEP_ID":              s.SafeId,
+		"WERCKER_STEP_ID":              s.SafeID,
 		"WERCKER_STEP_OWNER":           s.Owner,
 		"WERCKER_STEP_NAME":            s.Name,
 		"WERCKER_REPORT_NUMBERS_FILE":  s.ReportPath("numbers.ini"),
@@ -317,22 +328,27 @@ func (s *Step) InitEnv() {
 	s.Env.Update(u)
 }
 
+// HostPath returns a path relative to the Step on the host.
 func (s *Step) HostPath(p ...string) string {
-	newArgs := append([]string{s.SafeId}, p...)
+	newArgs := append([]string{s.SafeID}, p...)
 	return s.build.HostPath(newArgs...)
 }
 
+// GuestPath returns a path relative to the Step on the guest.
 func (s *Step) GuestPath(p ...string) string {
-	newArgs := append([]string{s.SafeId}, p...)
+	newArgs := append([]string{s.SafeID}, p...)
 	return s.build.GuestPath(newArgs...)
 }
 
+// MntPath returns a path relative to the read-only mount of the Step on
+// the guest.
 func (s *Step) MntPath(p ...string) string {
-	newArgs := append([]string{s.SafeId}, p...)
+	newArgs := append([]string{s.SafeID}, p...)
 	return s.build.MntPath(newArgs...)
 }
 
+// ReportPath returns a path to the reports for the step on the guest.
 func (s *Step) ReportPath(p ...string) string {
-	newArgs := append([]string{s.SafeId}, p...)
+	newArgs := append([]string{s.SafeID}, p...)
 	return s.build.ReportPath(newArgs...)
 }

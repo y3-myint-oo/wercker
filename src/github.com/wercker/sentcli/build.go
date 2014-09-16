@@ -6,13 +6,14 @@ import (
 	"path"
 )
 
+// Build is our basic wrapper for Build operations
 type Build struct {
 	Env     *Environment
 	Steps   []*Step
 	options *GlobalOptions
 }
 
-var MirroredEnv = [...]string{"WERCKER_GIT_DOMAIN",
+var mirroredEnv = [...]string{"WERCKER_GIT_DOMAIN",
 	"WERCKER_GIT_OWNER",
 	"WERCKER_GIT_REPOSITORY",
 	"WERCKER_GIT_BRANCH",
@@ -24,6 +25,7 @@ var MirroredEnv = [...]string{"WERCKER_GIT_DOMAIN",
 	"WERCKER_APPLICATION_NAME",
 	"WERCKER_APPLICATION_OWNER_NAME"}
 
+// ToBuild converts a RawBuild into a Build
 func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 	var steps []*Step
 	var build Build
@@ -53,7 +55,7 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 
 	id, ok := build.options.Env.Map["WERCKER_BUILD_ID"]
 	if ok {
-		build.options.BuildId = id
+		build.options.BuildID = id
 	}
 
 	build.InitEnv()
@@ -61,6 +63,7 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 	return &build, nil
 }
 
+// InitEnv sets up the internal state of the environment for the build
 func (b *Build) InitEnv() {
 	b.Env = &Environment{}
 	// TODO(termie): deal with PASSTHRU args from the user here
@@ -71,7 +74,7 @@ func (b *Build) InitEnv() {
 		"WERCKER":              "true",
 		"BUILD":                "true",
 		"CI":                   "true",
-		"WERCKER_BUILD_ID":     b.options.BuildId,
+		"WERCKER_BUILD_ID":     b.options.BuildID,
 		"WERCKER_ROOT":         b.GuestPath("source"),
 		"WERCKER_SOURCE_DIR":   b.GuestPath("source", b.options.SourceDir),
 		"WERCKER_CACHE_DIR":    "/cache",
@@ -85,7 +88,7 @@ func (b *Build) InitEnv() {
 
 func (b *Build) getMirrorEnv() map[string]string {
 	var m = make(map[string]string)
-	for _, key := range MirroredEnv {
+	for _, key := range mirroredEnv {
 		value, ok := b.options.Env.Map[key]
 		if ok {
 			m[key] = value
@@ -94,18 +97,21 @@ func (b *Build) getMirrorEnv() map[string]string {
 	return m
 }
 
+// SourcePath returns the path to the source dir
 func (b *Build) SourcePath() string {
 	return b.GuestPath("source", b.options.SourceDir)
 }
 
+// HostPath returns a path relative to the build root on the host.
 func (b *Build) HostPath(s ...string) string {
-	hostPath := path.Join(b.options.BuildDir, b.options.BuildId)
+	hostPath := path.Join(b.options.BuildDir, b.options.BuildID)
 	for _, v := range s {
 		hostPath = path.Join(hostPath, v)
 	}
 	return hostPath
 }
 
+// GuestPath returns a path relative to the build root on the guest.
 func (b *Build) GuestPath(s ...string) string {
 	guestPath := b.options.GuestRoot
 	for _, v := range s {
@@ -114,6 +120,7 @@ func (b *Build) GuestPath(s ...string) string {
 	return guestPath
 }
 
+// MntPath returns a path relative to the read-only mount root on the guest.
 func (b *Build) MntPath(s ...string) string {
 	mntPath := b.options.MntRoot
 	for _, v := range s {
@@ -122,6 +129,7 @@ func (b *Build) MntPath(s ...string) string {
 	return mntPath
 }
 
+// ReportPath returns a path relative to the report root on the guest.
 func (b *Build) ReportPath(s ...string) string {
 	reportPath := b.options.ReportRoot
 	for _, v := range s {
@@ -130,6 +138,7 @@ func (b *Build) ReportPath(s ...string) string {
 	return reportPath
 }
 
+// SetupGuest ensures that the guest is prepared to run the pipeline.
 func (b *Build) SetupGuest(sess *Session) error {
 	// Make sure our guest path exists
 	exit, _, err := sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.GuestPath()))
