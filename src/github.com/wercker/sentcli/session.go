@@ -10,7 +10,7 @@ import (
 
 // Session is our class for interacting with a running Docker container.
 type Session struct {
-	wsUrl string
+	wsURL string
 	ws    *websocket.Conn
 	ch    chan string
 }
@@ -19,12 +19,12 @@ type Session struct {
 func CreateSession(endpoint string, containerID string) *Session {
 	wsEndpoint := strings.Replace(endpoint, "tcp://", "ws://", 1)
 	wsQuery := "stdin=1&stderr=1&stdout=1&stream=1"
-	wsUrl := fmt.Sprintf("%s/containers/%s/attach/ws?%s",
+	wsURL := fmt.Sprintf("%s/containers/%s/attach/ws?%s",
 		wsEndpoint, containerID, wsQuery)
 
 	ch := make(chan string)
 
-	return &Session{wsUrl: wsUrl, ws: nil, ch: ch}
+	return &Session{wsURL: wsURL, ws: nil, ch: ch}
 }
 
 // ReadToChan reads on a websocket forever, writing to a channel
@@ -41,7 +41,7 @@ func ReadToChan(ws *websocket.Conn, ch chan string) {
 
 // Attach begins reading on the websocket and writing to the internal channel.
 func (s *Session) Attach() (*Session, error) {
-	ws, err := websocket.Dial(s.wsUrl, "", "http://localhost/")
+	ws, err := websocket.Dial(s.wsURL, "", "http://localhost/")
 	if err != nil {
 		return s, err
 	}

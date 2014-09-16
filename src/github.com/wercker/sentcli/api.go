@@ -1,28 +1,31 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 )
 
-type ApiClient struct {
+// APIClient is a very dumb client for the wercker API
+type APIClient struct {
 	endpoint string
 }
 
-func CreateApiClient(endpoint string) *ApiClient {
-	return &ApiClient{endpoint: endpoint}
+// CreateAPIClient returns our dumb client
+func CreateAPIClient(endpoint string) *APIClient {
+	return &APIClient{endpoint: endpoint}
 }
 
-func (c *ApiClient) Url(parts ...string) string {
+// URL joins some strings to the endpoint
+func (c *APIClient) URL(parts ...string) string {
 	allParts := append([]string{c.endpoint}, parts...)
 	return strings.Join(allParts, "/")
 }
 
-func (c *ApiClient) Get(parts ...string) ([]byte, error) {
-	url := c.Url(parts...)
+// Get is the basic fetch of the JSON
+func (c *APIClient) Get(parts ...string) ([]byte, error) {
+	url := c.URL(parts...)
 	fmt.Println("GET URL", url)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -30,7 +33,7 @@ func (c *ApiClient) Get(parts ...string) ([]byte, error) {
 	}
 	if resp.StatusCode != 200 {
 		fmt.Println(ioutil.ReadAll(resp.Body))
-		return nil, errors.New(fmt.Sprintf("Got non-200 response: %d", resp.StatusCode))
+		return nil, fmt.Errorf("Got non-200 response: %d", resp.StatusCode)
 	}
 
 	buf, err := ioutil.ReadAll(resp.Body)

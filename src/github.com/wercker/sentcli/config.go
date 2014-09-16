@@ -7,20 +7,25 @@ import (
 	"io/ioutil"
 )
 
+// RawBox is the data type for a box in the wercker.yml
 type RawBox string
 
+// RawBuild is the data type for builds in the wercker.yml
 type RawBuild struct {
 	RawSteps []interface{} `yaml:"steps"`
 }
 
+// RawConfig is the data type for wercker.yml
 type RawConfig struct {
 	SourceDir string    `yaml:"source-dir"`
 	RawBox    *RawBox   `yaml:"box"`
 	RawBuild  *RawBuild `yaml:"build"`
 }
 
+// RawStep is the data type for a step in wercker.yml
 type RawStep map[string]RawStepData
 
+// RawStepData is the data type for the contents of a step in wercker.yml
 type RawStepData map[string]string
 
 // ReadWerckerYaml will try to find a wercker.yml file and return its bytes.
@@ -51,7 +56,7 @@ func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
 	return ioutil.ReadFile(foundYaml)
 }
 
-// Read a []byte as yaml and turn it into a RawConfig object
+// ConfigFromYaml reads a []byte as yaml and turn it into a RawConfig object
 func ConfigFromYaml(file []byte) (*RawConfig, error) {
 	var m RawConfig
 
