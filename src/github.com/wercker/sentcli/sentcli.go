@@ -137,6 +137,7 @@ func BuildProject(c *cli.Context) {
 		// allowing build steps to run. We may need custom steps which block
 		// until service services are running.
 	}
+	fmt.Println("creating links: ", serviceLinks)
 
 	// Start setting up the build dir
 	err = os.MkdirAll(build.HostPath(), 0755)
@@ -152,8 +153,7 @@ func BuildProject(c *cli.Context) {
 	// Make sure we have the steps
 	for _, step := range build.Steps {
 		log.Println("Fetching Step:", step.Name, step.Id)
-		_, err := step.Fetch()
-		if err != nil {
+		if _, err := step.Fetch(); err != nil {
 			log.Panicln(err)
 		}
 	}
@@ -241,5 +241,6 @@ func BuildProject(c *cli.Context) {
 	}
 
 	log.Println("########### Build successful! #############")
-	// TODO(mh): Stop containers
+	// TODO(mh): Stop containers.
+	// https://github.com/docker/docker/blob/master/api/client/commands.go#L2255
 }
