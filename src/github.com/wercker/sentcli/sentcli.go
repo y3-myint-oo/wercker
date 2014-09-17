@@ -105,13 +105,13 @@ func BuildProject(c *cli.Context) {
 
 	log.Println("Docker Image:", image.ID)
 
+	serviceLinks := []string{}
 	for _, service := range rawConfig.RawServices {
 		log.Println("Fetching service:", service)
 
 		// TODO(mh): fetch the image
 
-		_, err := client.InspectImage(service)
-		if err != nil {
+		if _, err := client.InspectImage(service); err != nil {
 			log.Panicln(err)
 		}
 
@@ -131,6 +131,8 @@ func BuildProject(c *cli.Context) {
 		}
 
 		client.StartContainer(container.ID, &docker.HostConfig{})
+
+		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", containerName, service))
 		// TODO(mh): We want to make sure container is running fully before
 		// allowing build steps to run. We may need custom steps which block
 		// until service services are running.
@@ -190,7 +192,10 @@ func BuildProject(c *cli.Context) {
 	}
 
 	log.Println("Docker Container:", container.ID)
-	client.StartContainer(container.ID, &docker.HostConfig{Binds: binds})
+	client.StartContainer(container.ID, &docker.HostConfig{
+		Binds: binds,
+		Links: serviceLinks,
+	})
 
 	// Start our session
 	sess := CreateSession(options.DockerEndpoint, container.ID)
@@ -236,4 +241,5 @@ func BuildProject(c *cli.Context) {
 	}
 
 	log.Println("########### Build successful! #############")
+	// TODO(mh): Stop containers
 }
