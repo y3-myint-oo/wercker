@@ -8,13 +8,14 @@ import (
 	"strings"
 )
 
-// This represents a shell environment and is implemented as something
+// Environment represents a shell environment and is implemented as something
 // like an OrderedMap
 type Environment struct {
 	Map   map[string]string
 	Order []string
 }
 
+// CreateEnvironment fills up an Environment from a []string
 // Usually called like: env := CreateEnvironment(os.Environ())
 func CreateEnvironment(env []string) *Environment {
 	var m map[string]string
@@ -29,6 +30,7 @@ func CreateEnvironment(env []string) *Environment {
 	return &e
 }
 
+// Update adds new elements to the Environment data structure
 func (e *Environment) Update(m map[string]string) {
 	if e.Map == nil {
 		e.Map = make(map[string]string)
@@ -51,6 +53,7 @@ func (e *Environment) Export() []string {
 	return s
 }
 
+// GlobalOptions is a shared data structure for global config.
 type GlobalOptions struct {
 	Env *Environment
 
@@ -59,7 +62,7 @@ type GlobalOptions struct {
 	BuildDir   string
 
 	// Build ID for this operation
-	BuildId string
+	BuildID string
 
 	DockerEndpoint string
 
@@ -85,21 +88,22 @@ type GlobalOptions struct {
 	CommandTimeout int
 }
 
+// CreateGlobalOptions builds up GlobalOptions from the cli and environment.
 func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	env := CreateEnvironment(e)
 
 	buildDir, _ := filepath.Abs(c.GlobalString("buildDir"))
 	projectDir, _ := filepath.Abs(c.GlobalString("projectDir"))
 	stepDir, _ := filepath.Abs(c.GlobalString("stepDir"))
-	buildId := c.GlobalString("buildId")
-	if buildId == "" {
-		buildId = uuid.NewRandom().String()
+	buildID := c.GlobalString("buildID")
+	if buildID == "" {
+		buildID = uuid.NewRandom().String()
 	}
 
 	return &GlobalOptions{
 		Env:               env,
 		BuildDir:          buildDir,
-		BuildId:           buildId,
+		BuildID:           buildID,
 		CommandTimeout:    c.GlobalInt("commandTimeout"),
 		DockerEndpoint:    c.GlobalString("dockerEndpoint"),
 		WerckerEndpoint:   c.GlobalString("werckerEndpoint"),

@@ -36,7 +36,7 @@ func main() {
 			ShortName: "b",
 			Usage:     "build a project",
 			Action: func(c *cli.Context) {
-				BuildProject(c)
+				buildProject(c)
 			},
 			Flags: []cli.Flag{},
 		},
@@ -44,7 +44,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func BuildProject(c *cli.Context) {
+func buildProject(c *cli.Context) {
 	log.Println("############# Building project #############")
 	log.Println(c.Args().First())
 	log.Println("############################################")
@@ -152,7 +152,7 @@ func BuildProject(c *cli.Context) {
 
 	// Make sure we have the steps
 	for _, step := range build.Steps {
-		log.Println("Fetching Step:", step.Name, step.Id)
+		log.Println("Fetching Step:", step.Name, step.ID)
 		if _, err := step.Fetch(); err != nil {
 			log.Panicln(err)
 		}
@@ -172,7 +172,7 @@ func BuildProject(c *cli.Context) {
 	}
 
 	// Make and start the container
-	containerName := "wercker-build-" + options.BuildId
+	containerName := "wercker-build-" + options.BuildID
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
 			Name: containerName,
@@ -222,7 +222,7 @@ func BuildProject(c *cli.Context) {
 	for _, step := range build.Steps {
 		log.Println()
 		log.Println("============= Executing Step ==============")
-		log.Println(step.Name, step.Id)
+		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
 		step.InitEnv()
