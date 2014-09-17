@@ -47,6 +47,6 @@ func (b *Box) Fetch() (*docker.Image, error) {
 	if err == nil {
 		return image, nil
 	}
-	// TODO (mh): "oh, no image? try a docker pull"
+	// TODO(mh): "oh, no image? try a docker pull"
 	return nil, err
 }
