@@ -116,7 +116,7 @@ func buildProject(c *cli.Context) {
 		}
 
 		containerName := fmt.Sprintf("wercker-service-%s-%s",
-			service, options.BuildId)
+			service, options.BuildID)
 
 		container, err := client.CreateContainer(
 			docker.CreateContainerOptions{
