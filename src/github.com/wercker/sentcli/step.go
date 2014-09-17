@@ -170,8 +170,8 @@ func normalizeCode(code string) string {
 
 // FetchScript turns the raw code in a step into a shell file.
 func (s *Step) FetchScript() (string, error) {
-	hostStepPath := s.build.HostPath(s.ID)
-	scriptPath := s.build.HostPath(s.ID, "run.sh")
+	hostStepPath := s.build.HostPath(s.SafeID)
+	scriptPath := s.build.HostPath(s.SafeID, "run.sh")
 	content := normalizeCode(s.data["code"])
 
 	err := os.MkdirAll(hostStepPath, 0755)
