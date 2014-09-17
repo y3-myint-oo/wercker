@@ -115,8 +115,7 @@ func buildProject(c *cli.Context) {
 			log.Panicln(err)
 		}
 
-		containerName := fmt.Sprintf("wercker-service-%s-%s",
-			service, options.BuildID)
+		containerName := fmt.Sprintf("wercker-service-%s-%s", service, options.BuildID)
 
 		container, err := client.CreateContainer(
 			docker.CreateContainerOptions{
@@ -137,7 +136,7 @@ func buildProject(c *cli.Context) {
 		// allowing build steps to run. We may need custom steps which block
 		// until service services are running.
 	}
-	fmt.Println("creating links: ", serviceLinks)
+	log.Println("creating links: ", serviceLinks)
 
 	// Start setting up the build dir
 	err = os.MkdirAll(build.HostPath(), 0755)
