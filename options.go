@@ -90,6 +90,12 @@ type GlobalOptions struct {
 
 	// Timeout if the command doesn't complete in this many minutes
 	CommandTimeout int
+
+	// AWS Bits
+	AWSSecretAccessKey string
+	AWSAccessKeyID     string
+	AWSRegion          string
+	AWSBucket          string
 }
 
 // CreateGlobalOptions builds up GlobalOptions from the cli and environment.
@@ -110,20 +116,38 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		log.Warnln("No ProjectID specified, using", projectID)
 	}
 
+	// AWS bits
+	awsSecretAccessKey := c.GlobalString("awsSecretAccessKey")
+	awsAccessKeyID := c.GlobalString("awsAccessKeyID")
+	if awsSecretAccessKey == "" {
+		if val, ok := env.Map["AWS_SECRET_ACCESS_KEY"]; ok {
+			awsSecretAccessKey = val
+		}
+	}
+	if awsAccessKeyID == "" {
+		if val, ok := env.Map["AWS_ACCESS_KEY_ID"]; ok {
+			awsAccessKeyID = val
+		}
+	}
+
 	return &GlobalOptions{
-		Env:               env,
-		BuildDir:          buildDir,
-		BuildID:           buildID,
-		ProjectID:         projectID,
-		CommandTimeout:    c.GlobalInt("commandTimeout"),
-		DockerEndpoint:    c.GlobalString("dockerEndpoint"),
-		WerckerEndpoint:   c.GlobalString("werckerEndpoint"),
-		NoResponseTimeout: c.GlobalInt("noResponseTimeout"),
-		ProjectDir:        projectDir,
-		SourceDir:         c.GlobalString("sourceDir"),
-		StepDir:           stepDir,
-		GuestRoot:         c.GlobalString("guestRoot"),
-		MntRoot:           c.GlobalString("mntRoot"),
-		ReportRoot:        c.GlobalString("reportRoot"),
+		Env:                env,
+		BuildDir:           buildDir,
+		BuildID:            buildID,
+		ProjectID:          projectID,
+		CommandTimeout:     c.GlobalInt("commandTimeout"),
+		DockerEndpoint:     c.GlobalString("dockerEndpoint"),
+		WerckerEndpoint:    c.GlobalString("werckerEndpoint"),
+		NoResponseTimeout:  c.GlobalInt("noResponseTimeout"),
+		ProjectDir:         projectDir,
+		SourceDir:          c.GlobalString("sourceDir"),
+		StepDir:            stepDir,
+		GuestRoot:          c.GlobalString("guestRoot"),
+		MntRoot:            c.GlobalString("mntRoot"),
+		ReportRoot:         c.GlobalString("reportRoot"),
+		AWSSecretAccessKey: awsSecretAccessKey,
+		AWSAccessKeyID:     awsAccessKeyID,
+		AWSBucket:          c.GlobalString("awsBucket"),
+		AWSRegion:          c.GlobalString("awsRegion"),
 	}, nil
 }

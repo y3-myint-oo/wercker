@@ -9,6 +9,8 @@ import (
 
 // RawBox is the data type for a box in the wercker.yml
 type RawBox string
+
+// RawServices is a list of auxilliary boxes to boot in the wercker.yml
 type RawServices []RawBox
 
 // RawBuild is the data type for builds in the wercker.yml

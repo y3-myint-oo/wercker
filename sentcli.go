@@ -25,6 +25,12 @@ func main() {
 		cli.StringFlag{Name: "buildID", Value: "", Usage: "build id"},
 		cli.StringFlag{Name: "projectID", Value: "", Usage: "project id"},
 
+		// AWS bits
+		cli.StringFlag{Name: "awsSecretAccessKey", Value: "", Usage: "secret access key"},
+		cli.StringFlag{Name: "awsAccessKeyID", Value: "", Usage: "access key id"},
+		cli.StringFlag{Name: "awsBucket", Value: "wercker-development", Usage: "bucket for artifacts"},
+		cli.StringFlag{Name: "awsRegion", Value: "us-east-1", Usage: "region"},
+
 		// These options might be overwritten by the wercker.yml
 		cli.StringFlag{Name: "sourceDir", Value: "", Usage: "source path relative to checkout root"},
 		cli.IntFlag{Name: "noResponseTimeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
@@ -234,6 +240,18 @@ func buildProject(c *cli.Context) {
 		}
 		if err != nil {
 			log.Panicln(err)
+		}
+		artifacts, err := step.CollectArtifacts(sess)
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		artificer := CreateArtificer(options)
+		for _, artifact := range artifacts {
+			err := artificer.Upload(artifact)
+			if err != nil {
+				log.Panicln(err)
+			}
 		}
 		log.Println("============ Step successful! =============")
 	}
