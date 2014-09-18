@@ -89,39 +89,36 @@ func buildProject(c *cli.Context) {
 	}
 
 	// Promote RawBox to a real Box. We believe in you, Box!
-	box, err := rawConfig.RawBox.ToBox(build, options)
-	if err != nil {
-		log.Panicln(err)
-	}
+	box := rawConfig.RawBox.ToBox(build, options)
 
 	log.Println("Box:", box.Name)
 	log.Println("Steps:", len(build.Steps))
 
 	// Make sure we have the box available
-	image, err := box.Fetch()
-	if err != nil {
+	if image, err := box.Fetch(); err != nil {
 		log.Panicln(err)
+	} else {
+		log.Println("Docker Image:", image.ID)
 	}
 
-	log.Println("Docker Image:", image.ID)
-
 	serviceLinks := []string{}
-	for _, service := range rawConfig.RawServices {
-		log.Println("Fetching service:", service)
+	for _, rawService := range rawConfig.RawServices {
+		log.Println("Fetching service:", rawService)
 
 		// TODO(mh): fetch the image
+		serviceBox := rawService.ToBox(build, options)
 
-		if _, err := client.InspectImage(service); err != nil {
+		if _, err := serviceBox.Fetch(); err != nil {
 			log.Panicln(err)
 		}
 
-		containerName := fmt.Sprintf("wercker-service-%s-%s", service, options.BuildID)
+		containerName := fmt.Sprintf("wercker-service-%s-%s", serviceBox.Name, options.BuildID)
 
 		container, err := client.CreateContainer(
 			docker.CreateContainerOptions{
 				Name: containerName,
 				Config: &docker.Config{
-					Image: service,
+					Image: serviceBox.Name,
 				},
 			})
 
@@ -131,7 +128,7 @@ func buildProject(c *cli.Context) {
 
 		client.StartContainer(container.ID, &docker.HostConfig{})
 
-		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", containerName, service))
+		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", containerName, serviceBox.Name))
 		// TODO(mh): We want to make sure container is running fully before
 		// allowing build steps to run. We may need custom steps which block
 		// until service services are running.
