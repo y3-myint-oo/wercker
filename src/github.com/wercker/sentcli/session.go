@@ -4,15 +4,16 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 	"code.google.com/p/go.net/websocket"
 	"fmt"
-	"log"
+	log "github.com/Sirupsen/logrus"
 	"strings"
 )
 
 // Session is our class for interacting with a running Docker container.
 type Session struct {
-	wsURL string
-	ws    *websocket.Conn
-	ch    chan string
+	wsURL       string
+	ws          *websocket.Conn
+	ch          chan string
+	ContainerID string
 }
 
 // CreateSession based on a docker api endpoint and container ID.
@@ -24,7 +25,7 @@ func CreateSession(endpoint string, containerID string) *Session {
 
 	ch := make(chan string)
 
-	return &Session{wsURL: wsURL, ws: nil, ch: ch}
+	return &Session{wsURL: wsURL, ws: nil, ch: ch, ContainerID: containerID}
 }
 
 // ReadToChan reads on a websocket forever, writing to a channel
@@ -54,7 +55,7 @@ func (s *Session) Attach() (*Session, error) {
 // Send an array of commands.
 func (s *Session) Send(commands ...string) {
 	for i := range commands {
-		fmt.Println("send: ", commands[i])
+		log.Println("send: ", commands[i])
 		err := websocket.Message.Send(s.ws, commands[i]+"\n")
 		if err != nil {
 			log.Fatalln(err)
@@ -73,11 +74,12 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 	s.Send(commands...)
 	s.Send(fmt.Sprintf("echo %s $?", rand))
 
-	// This is relatively naive and will break if the messages returned aren't
-	// complete lines, if this becomes a problem we'll have to buffer it.
+	// BUG(termie): This is relatively naive and will break if the messages
+	// returned aren't complete lines, if this becomes a problem we'll have
+	// to buffer it.
 	for check != true {
 		line := <-s.ch
-		fmt.Print("recv: ", line)
+		log.Println("recv: ", strings.TrimSpace(line))
 		if strings.HasPrefix(line, rand) {
 			check = true
 			_, err := fmt.Sscanf(line, "%s %d\n", &rand, &exitCode)

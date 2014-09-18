@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/termie/go-shutil"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
@@ -22,7 +22,8 @@ func main() {
 		cli.StringFlag{Name: "mntRoot", Value: "/mnt", Usage: "directory on the guest where volumes are mounted"},
 		cli.StringFlag{Name: "guestRoot", Value: "/pipeline", Usage: "directory on the guest where work is done"},
 		cli.StringFlag{Name: "reportRoot", Value: "/report", Usage: "directory on the guest where reports will be written"},
-		cli.StringFlag{Name: "buildId", Value: "", Usage: "build id"},
+		cli.StringFlag{Name: "buildID", Value: "", Usage: "build id"},
+		cli.StringFlag{Name: "projectID", Value: "", Usage: "project id"},
 
 		// These options might be overwritten by the wercker.yml
 		cli.StringFlag{Name: "sourceDir", Value: "", Usage: "source path relative to checkout root"},
@@ -94,6 +95,7 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 
+	log.Println("Project:", options.ProjectID)
 	log.Println("Box:", box.Name)
 	log.Println("Steps:", len(build.Steps))
 
