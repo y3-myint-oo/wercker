@@ -22,17 +22,17 @@ type Box struct {
 }
 
 // ToBox will convert a RawBox into a Box
-func (b *RawBox) ToBox(build *Build, options *GlobalOptions) (*Box, error) {
+func (b *RawBox) ToBox(build *Build, options *GlobalOptions) *Box {
 	v := reflect.ValueOf(*b)
 	return CreateBox(v.String(), build, options)
 }
 
 // CreateBox from a name and other references
-func CreateBox(name string, build *Build, options *GlobalOptions) (*Box, error) {
+func CreateBox(name string, build *Build, options *GlobalOptions) *Box {
 	// TODO(termie): right now I am just tacking the version into the name
 	//               by replacing @ with _
 	name = strings.Replace(name, "@", "_", 1)
-	return &Box{Name: name, build: build, options: options}, nil
+	return &Box{Name: name, build: build, options: options}
 }
 
 // Fetch an image if we don't have it already
@@ -47,5 +47,6 @@ func (b *Box) Fetch() (*docker.Image, error) {
 	if err == nil {
 		return image, nil
 	}
+	// TODO(mh): "oh, no image? try a docker pull"
 	return nil, err
 }

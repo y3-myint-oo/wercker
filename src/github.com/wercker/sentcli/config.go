@@ -9,6 +9,7 @@ import (
 
 // RawBox is the data type for a box in the wercker.yml
 type RawBox string
+type RawServices []RawBox
 
 // RawBuild is the data type for builds in the wercker.yml
 type RawBuild struct {
@@ -17,9 +18,10 @@ type RawBuild struct {
 
 // RawConfig is the data type for wercker.yml
 type RawConfig struct {
-	SourceDir string    `yaml:"source-dir"`
-	RawBox    *RawBox   `yaml:"box"`
-	RawBuild  *RawBuild `yaml:"build"`
+	SourceDir   string      `yaml:"source-dir"`
+	RawBox      *RawBox     `yaml:"box"`
+	RawServices RawServices `yaml:"services"`
+	RawBuild    *RawBuild   `yaml:"build"`
 }
 
 // RawStep is the data type for a step in wercker.yml

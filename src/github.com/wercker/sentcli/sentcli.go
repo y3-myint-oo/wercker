@@ -90,24 +90,52 @@ func buildProject(c *cli.Context) {
 	}
 
 	// Promote RawBox to a real Box. We believe in you, Box!
-	box, err := rawConfig.RawBox.ToBox(build, options)
-	if err != nil {
-		log.Panicln(err)
-	}
+	box := rawConfig.RawBox.ToBox(build, options)
 
 	log.Println("Project:", options.ProjectID)
 	log.Println("Box:", box.Name)
 	log.Println("Steps:", len(build.Steps))
 
 	// Make sure we have the box available
-	image, err := box.Fetch()
-	if err != nil {
+	if image, err := box.Fetch(); err != nil {
 		log.Panicln(err)
+	} else {
+		log.Println("Docker Image:", image.ID)
 	}
 
-	log.Println("Docker Image:", image.ID)
+	serviceLinks := []string{}
+	for _, rawService := range rawConfig.RawServices {
+		log.Println("Fetching service:", rawService)
 
-	// TODO(termie): Services go here
+		// TODO(mh): fetch the image
+		serviceBox := rawService.ToBox(build, options)
+
+		if _, err := serviceBox.Fetch(); err != nil {
+			log.Panicln(err)
+		}
+
+		containerName := fmt.Sprintf("wercker-service-%s-%s", serviceBox.Name, options.BuildID)
+
+		container, err := client.CreateContainer(
+			docker.CreateContainerOptions{
+				Name: containerName,
+				Config: &docker.Config{
+					Image: serviceBox.Name,
+				},
+			})
+
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		client.StartContainer(container.ID, &docker.HostConfig{})
+
+		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", containerName, serviceBox.Name))
+		// TODO(mh): We want to make sure container is running fully before
+		// allowing build steps to run. We may need custom steps which block
+		// until service services are running.
+	}
+	log.Println("creating links: ", serviceLinks)
 
 	// Start setting up the build dir
 	err = os.MkdirAll(build.HostPath(), 0755)
@@ -123,8 +151,7 @@ func buildProject(c *cli.Context) {
 	// Make sure we have the steps
 	for _, step := range build.Steps {
 		log.Println("Fetching Step:", step.Name, step.ID)
-		_, err := step.Fetch()
-		if err != nil {
+		if _, err := step.Fetch(); err != nil {
 			log.Panicln(err)
 		}
 	}
@@ -163,7 +190,10 @@ func buildProject(c *cli.Context) {
 	}
 
 	log.Println("Docker Container:", container.ID)
-	client.StartContainer(container.ID, &docker.HostConfig{Binds: binds})
+	client.StartContainer(container.ID, &docker.HostConfig{
+		Binds: binds,
+		Links: serviceLinks,
+	})
 
 	// Start our session
 	sess := CreateSession(options.DockerEndpoint, container.ID)
@@ -209,4 +239,6 @@ func buildProject(c *cli.Context) {
 	}
 
 	log.Println("########### Build successful! #############")
+	// TODO(mh): Stop containers.
+	// https://github.com/docker/docker/blob/master/api/client/commands.go#L2255
 }
