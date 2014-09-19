@@ -1,0 +1,10 @@
+box: ubuntu
+# Build definition
+services:
+    - nginx
+build:
+  # The steps that will be executed on build
+  steps:
+    - script:
+        code: |
+            nc -z `echo ${NGINX_PORT#*://} | sed 's/:/ /g'`
