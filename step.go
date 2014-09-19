@@ -296,6 +296,32 @@ func (s *Step) Execute(sess *Session) (int, error) {
 	return 0, nil
 }
 
+// CollectArtifacts copies the artifacts associated with the Step.
+func (s *Step) CollectArtifacts(sess *Session) ([]*Artifact, error) {
+	artificer := CreateArtificer(s.options)
+
+	// Ensure we have the host directory
+
+	artifact := &Artifact{
+		ContainerID: sess.ContainerID,
+		GuestPath:   s.ReportPath("artifacts"),
+		HostPath:    s.build.HostPath("artifacts", s.SafeID, "artifacts.tar"),
+		ProjectID:   s.options.ProjectID,
+		BuildID:     s.options.BuildID,
+		BuildStepID: s.SafeID,
+	}
+
+	fullArtifact, err := artificer.Collect(artifact)
+	if err != nil {
+		if err == ErrEmptyTarball {
+			return []*Artifact{}, nil
+		}
+		return nil, err
+	}
+
+	return []*Artifact{fullArtifact}, nil
+}
+
 // InitEnv sets up the internal environment for the Step.
 func (s *Step) InitEnv() {
 	s.Env = &Environment{}
