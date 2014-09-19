@@ -107,7 +107,6 @@ func buildProject(c *cli.Context) {
 	for _, rawService := range rawConfig.RawServices {
 		log.Println("Fetching service:", rawService)
 
-		// TODO(mh): fetch the image
 		serviceBox := rawService.ToBox(build, options)
 
 		if _, err := serviceBox.Fetch(); err != nil {
