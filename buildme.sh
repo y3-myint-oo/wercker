@@ -1,2 +1,2 @@
 #!/bin/sh
-go build github.com/wercker/sentcli
+go build

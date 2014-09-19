@@ -13,12 +13,12 @@ build:
         code: |-
           export GOPATH=$WERCKER_SOURCE_DIR
           sudo GOPATH=$WERCKER_SOURCE_DIR /usr/local/go/bin/go get code.google.com/p/go.tools/cmd/vet
-          go tool vet src/github.com/wercker/sentcli
+          go tool vet .
     - script:
         name: go lint
         code: |-
           export GOPATH=$WERCKER_SOURCE_DIR
           export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
           go get github.com/golang/lint/golint
-          golint src/github.com/wercker/sentcli
+          golint
 
