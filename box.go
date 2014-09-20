@@ -1,6 +1,7 @@
 package main
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
 	"reflect"
 	"strings"
@@ -36,17 +37,31 @@ func CreateBox(name string, build *Build, options *GlobalOptions) *Box {
 }
 
 // Fetch an image if we don't have it already
-// TODO(termie): we don't actually fetch new ones yet!
 func (b *Box) Fetch() (*docker.Image, error) {
 	client, err := docker.NewClient(b.options.DockerEndpoint)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	image, err := client.InspectImage(b.Name)
-	if err == nil {
+	if image, err := client.InspectImage(b.Name); err == nil {
 		return image, nil
 	}
-	// TODO(mh): "oh, no image? try a docker pull"
+
+	log.Println("couldn't find image locally, fetching.")
+
+	options := docker.PullImageOptions{
+		Repository: b.Name,
+		// changeme if we have a private registry
+		//Registry:     "docker.tsuru.io",
+		Tag: "latest",
+	}
+
+	if err = client.PullImage(options, docker.AuthConfiguration{}); err == nil {
+		image, err := client.InspectImage(b.Name)
+		if err == nil {
+			return image, nil
+		}
+	}
+
 	return nil, err
 }
