@@ -1,8 +1,8 @@
 #!/bin/sh
 
 function integration_tests() {
-    ./wercker-sentcli --projectDir=tests/projects build pass || return 1
     ./wercker-sentcli --projectDir=tests/projects build fail && return 1
+    ./wercker-sentcli --projectDir=tests/projects build pass || return 1
     return 0
 }
 
