@@ -4,9 +4,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/fsouza/go-dockerclient"
 	"github.com/termie/go-shutil"
-	"io/ioutil"
 	"os"
 )
 
@@ -63,9 +61,6 @@ func buildProject(c *cli.Context) {
 	}
 	// log.Println(options)
 
-	// Setup a docker client
-	client, _ := docker.NewClient(options.DockerEndpoint)
-
 	// NOTE(termie): For now we are expecting it to be downloaded
 	// before we start so we are just expecting it to exist in our
 	// projects directory.
@@ -96,7 +91,10 @@ func buildProject(c *cli.Context) {
 	}
 
 	// Promote RawBox to a real Box. We believe in you, Box!
-	box := rawConfig.RawBox.ToBox(build, options)
+	box, err := rawConfig.RawBox.ToBox(build, options)
+	if err != nil {
+		log.Panicln(err)
+	}
 
 	log.Println("Project:", options.ProjectID)
 	log.Println("Box:", box.Name)
@@ -109,38 +107,28 @@ func buildProject(c *cli.Context) {
 		log.Println("Docker Image:", image.ID)
 	}
 
-	serviceLinks := []string{}
 	for _, rawService := range rawConfig.RawServices {
 		log.Println("Fetching service:", rawService)
 
-		serviceBox := rawService.ToBox(build, options)
-
-		if _, err := serviceBox.Fetch(); err != nil {
-			log.Panicln(err)
-		}
-
-		containerName := fmt.Sprintf("wercker-service-%s-%s", serviceBox.Name, options.BuildID)
-
-		container, err := client.CreateContainer(
-			docker.CreateContainerOptions{
-				Name: containerName,
-				Config: &docker.Config{
-					Image: serviceBox.Name,
-				},
-			})
-
+		serviceBox, err := rawService.ToServiceBox(build, options)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		client.StartContainer(container.ID, &docker.HostConfig{})
+		if _, err := serviceBox.Box.Fetch(); err != nil {
+			log.Panicln(err)
+		}
 
-		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", containerName, serviceBox.Name))
+		_, err = serviceBox.Run()
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		box.AddService(serviceBox)
 		// TODO(mh): We want to make sure container is running fully before
 		// allowing build steps to run. We may need custom steps which block
 		// until service services are running.
 	}
-	log.Println("creating links: ", serviceLinks)
 
 	// Start setting up the build dir
 	err = os.MkdirAll(build.HostPath(), 0755)
@@ -161,44 +149,11 @@ func buildProject(c *cli.Context) {
 		}
 	}
 
-	// Make our list of binds for the Docker attach
-	// NOTE(termie): we don't appear to need the "volumes" stuff, leaving
-	//               it commented out in case it actually does something
-	binds := []string{}
-	// volumes := make(map[string]struct{})
-	entries, err := ioutil.ReadDir(build.HostPath())
-	for _, entry := range entries {
-		if entry.IsDir() {
-			binds = append(binds, fmt.Sprintf("%s:%s:ro", build.HostPath(entry.Name()), build.MntPath(entry.Name())))
-			// volumes[build.MntPath(entry.Name())] = struct{}{}
-		}
-	}
-
-	// Make and start the container
-	containerName := "wercker-build-" + options.BuildID
-	container, err := client.CreateContainer(
-		docker.CreateContainerOptions{
-			Name: containerName,
-			Config: &docker.Config{
-				Image:        box.Name,
-				Tty:          false,
-				OpenStdin:    true,
-				Cmd:          []string{"/bin/bash"},
-				AttachStdin:  true,
-				AttachStdout: true,
-				AttachStderr: true,
-				// Volumes: volumes,
-			},
-		})
+	container, err := box.Run()
 	if err != nil {
 		log.Panicln(err)
 	}
-
-	log.Println("Docker Container:", container.ID)
-	client.StartContainer(container.ID, &docker.HostConfig{
-		Binds: binds,
-		Links: serviceLinks,
-	})
+	defer box.Stop()
 
 	// Start our session
 	sess := CreateSession(options.DockerEndpoint, container.ID)
@@ -235,6 +190,7 @@ func buildProject(c *cli.Context) {
 		}
 		exit, err = step.Execute(sess)
 		if exit != 0 {
+			box.Stop()
 			log.Fatalln("Build failed with exit code:", exit)
 		}
 		if err != nil {
@@ -256,6 +212,4 @@ func buildProject(c *cli.Context) {
 	}
 
 	log.Println("########### Build successful! #############")
-	// TODO(mh): Stop containers.
-	// https://github.com/docker/docker/blob/master/api/client/commands.go#L2255
 }

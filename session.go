@@ -5,6 +5,7 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"io"
 	"strings"
 )
 
@@ -34,7 +35,9 @@ func ReadToChan(ws *websocket.Conn, ch chan string) {
 	for {
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
-			log.Fatalln(err)
+			if err != io.EOF {
+				log.Fatalln(err)
+			}
 		}
 		ch <- data
 	}
