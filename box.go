@@ -10,12 +10,14 @@ import (
 
 // Box is our wrapper for Box operations
 type Box struct {
-	Name      string
-	services  []*ServiceBox
-	build     *Build
-	options   *GlobalOptions
-	client    *docker.Client
-	container *docker.Container
+	Name       string
+	services   []*ServiceBox
+	build      *Build
+	options    *GlobalOptions
+	client     *docker.Client
+	container  *docker.Container
+	repository string
+	tag        string
 }
 
 // ToBox will convert a RawBox into a Box
@@ -28,12 +30,19 @@ func CreateBox(name string, build *Build, options *GlobalOptions) (*Box, error) 
 	// TODO(termie): right now I am just tacking the version into the name
 	//               by replacing @ with _
 	name = strings.Replace(name, "@", "_", 1)
+	parts := strings.Split(name, ":")
+	repository := parts[0]
+	tag := "latest"
+
+	if len(parts) > 1 {
+		tag = parts[1]
+	}
 
 	client, err := docker.NewClient(options.DockerEndpoint)
 	if err != nil {
 		return nil, err
 	}
-	return &Box{client: client, Name: name, build: build, options: options}, nil
+	return &Box{client: client, Name: name, build: build, options: options, repository: repository, tag: tag}, nil
 }
 
 func (b *Box) links() []string {
@@ -132,10 +141,10 @@ func (b *Box) Fetch() (*docker.Image, error) {
 	log.Println("Couldn't find image locally, fetching.")
 
 	options := docker.PullImageOptions{
-		Repository: b.Name,
+		Repository: b.repository,
 		// changeme if we have a private registry
 		//Registry:     "docker.tsuru.io",
-		Tag: "latest",
+		Tag: b.tag,
 	}
 
 	err := b.client.PullImage(options, docker.AuthConfiguration{})
