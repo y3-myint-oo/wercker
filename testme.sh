@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 function integration_tests() {
     ./wercker-sentcli --projectDir=tests/projects build fail && return 1
@@ -14,6 +14,7 @@ fi
 
 passfail=$?
 
+echo -n "Tests "
 case $passfail in
     0)
         echo "♡ PASS"
