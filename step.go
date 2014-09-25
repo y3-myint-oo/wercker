@@ -124,8 +124,8 @@ func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
 // Step names can come in a couple forms (x means currently supported):
 //   x setup-go-environment (fetches from api)
 //   x wercker/hipchat-notify (fetches from api)
-//   x http://someurl/thingee.tar (downloads tarball)
-//   file:///some_path (uses local path)
+//   x wercker/hipchat-notify "http://someurl/thingee.tar" (downloads tarball)
+//   setup-go-environment "file:///some_path" (uses local path)
 func CreateStep(stepID string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
 	var identifier string
 	var owner string
