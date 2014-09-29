@@ -91,6 +91,9 @@ type GlobalOptions struct {
 	// Timeout if the command doesn't complete in this many minutes
 	CommandTimeout int
 
+	// For fetching code
+	ProjectURL string
+
 	// AWS Bits
 	AWSSecretAccessKey string
 	AWSAccessKeyID     string
@@ -145,6 +148,7 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		GuestRoot:          c.GlobalString("guestRoot"),
 		MntRoot:            c.GlobalString("mntRoot"),
 		ReportRoot:         c.GlobalString("reportRoot"),
+		ProjectURL:         c.GlobalString("projectURL"),
 		AWSSecretAccessKey: awsSecretAccessKey,
 		AWSAccessKeyID:     awsAccessKeyID,
 		AWSBucket:          c.GlobalString("awsBucket"),

@@ -23,6 +23,10 @@ func main() {
 		cli.StringFlag{Name: "buildID", Value: "", Usage: "build id"},
 		cli.StringFlag{Name: "projectID", Value: "", Usage: "project id"},
 
+		// Code fetching
+		// TODO(termie): this should probably be a separate command run beforehand.
+		cli.StringFlag{Name: "projectURL", Value: "", Usage: "url of the project tarball"},
+
 		// AWS bits
 		cli.StringFlag{Name: "awsSecretAccessKey", Value: "", Usage: "secret access key"},
 		cli.StringFlag{Name: "awsAccessKeyID", Value: "", Usage: "access key id"},
@@ -66,6 +70,19 @@ func buildProject(c *cli.Context) {
 	// projects directory.
 	project := c.Args().First()
 	projectDir := fmt.Sprintf("%s/%s", options.ProjectDir, project)
+
+	// TODO(termie): We'll probably do this externally eventually, but
+	// this is the easiest place to start fetching code.
+	if options.ProjectURL != "" {
+		resp, err := fetchTarball(options.ProjectURL)
+		if err != nil {
+			log.Panicln(err)
+		}
+		err = untargzip(projectDir, resp.Body)
+		if err != nil {
+			log.Panicln(err)
+		}
+	}
 
 	// Return a []byte of the yaml we find or create.
 	werckerYaml, err := ReadWerckerYaml([]string{projectDir}, false)

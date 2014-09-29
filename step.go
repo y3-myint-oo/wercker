@@ -9,7 +9,6 @@ import (
 	"github.com/termie/go-shutil"
 	"gopkg.in/yaml.v1"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -238,12 +237,9 @@ func (s *Step) Fetch() (string, error) {
 			s.url = stepInfo.TarballURL
 		}
 		// Grab the tarball and untargzip it
-		resp, err := http.Get(s.url)
+		resp, err := fetchTarball(s.url)
 		if err != nil {
 			return "", err
-		}
-		if resp.StatusCode != 200 {
-			return "", errors.New("Bad status code fetching tarball")
 		}
 
 		// Assuming we have a gzip'd tarball at this point

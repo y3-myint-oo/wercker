@@ -3,7 +3,9 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +21,21 @@ func exists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+// fetchTarball tries to fetch a tarball
+// For now this is pretty naive and useless, but we are doing it in a couple
+// places and this is a fine stub to expand upon.
+func fetchTarball(url string) (*http.Response, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != 200 {
+		return resp, errors.New("Bad status code fetching tarball.")
+	}
+
+	return resp, nil
 }
 
 // untargzip tries to untar-gzip stuff to a path
