@@ -32,7 +32,8 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 
 	// Start with the secret step, wercker-init that runs before everything
 	rawStepData := RawStepData{}
-	initStep, err := CreateStep("wercker-init", rawStepData, &build, options)
+	werckerInit := `wercker-init "https://api.github.com/repos/wercker/wercker-init/tarball"`
+	initStep, err := CreateStep(werckerInit, rawStepData, &build, options)
 	if err != nil {
 		return nil, err
 	}

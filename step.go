@@ -69,6 +69,7 @@ type Step struct {
 	Name        string
 	Version     string
 	DisplayName string
+	url         string
 	data        RawStepData
 	build       *Build
 	options     *GlobalOptions
@@ -120,22 +121,32 @@ func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
 }
 
 // CreateStep sets up the basic parts of a Step.
+// Step names can come in a couple forms (x means currently supported):
+//   x setup-go-environment (fetches from api)
+//   x wercker/hipchat-notify (fetches from api)
+//   x wercker/hipchat-notify "http://someurl/thingee.tar" (downloads tarball)
+//   setup-go-environment "file:///some_path" (uses local path)
 func CreateStep(stepID string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
+	var identifier string
 	var owner string
 	var name string
+	url := ""
 
 	// TODO(termie): support other versions, "*" returns latest version
 	version := "*"
 
-	// Steps without an owner are owned by wercker
-	if strings.Contains(stepID, "/") {
-		_, err := fmt.Sscanf(stepID, "%s/%s", &owner, &name)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	// Check for urls
+	_, err := fmt.Sscanf(stepID, "%s %q", &identifier, &url)
+	if err != nil {
+		// There was probably no url part
+		identifier = stepID
+	}
+
+	// Check for owner/name
+	if _, err := fmt.Sscanf(identifier, "%s/%s", &owner, &name); err != nil {
+		// No owner, "wercker" is the default
 		owner = "wercker"
-		name = stepID
+		name = identifier
 	}
 
 	// Add a random number to the name to prevent collisions on disk
@@ -153,7 +164,7 @@ func CreateStep(stepID string, data RawStepData, build *Build, options *GlobalOp
 	}
 	delete(data, "name")
 
-	return &Step{ID: stepID, SafeID: stepSafeID, Owner: owner, Name: name, DisplayName: displayName, Version: version, data: data, build: build, options: options}, nil
+	return &Step{ID: identifier, SafeID: stepSafeID, Owner: owner, Name: name, DisplayName: displayName, Version: version, url: url, data: data, build: build, options: options}, nil
 }
 
 // IsScript should probably not be exported.
@@ -202,28 +213,32 @@ func (s *Step) Fetch() (string, error) {
 		return s.FetchScript()
 	}
 
-	stepPath := filepath.Join(s.options.StepDir, s.ID)
+	stepPath := filepath.Join(s.options.StepDir, s.SafeID)
 	stepExists, err := exists(stepPath)
 	if err != nil {
 		return "", err
 	}
+
 	if !stepExists {
-		var stepInfo StepAPIInfo
+		// If we don't have a url already
+		if s.url == "" {
+			var stepInfo StepAPIInfo
 
-		// Grab the info about the step from the api
-		client := CreateAPIClient(s.options.WerckerEndpoint)
-		apiBytes, err := client.Get("steps", s.Owner, s.ID, s.Version)
-		if err != nil {
-			return "", err
+			// Grab the info about the step from the api
+			client := CreateAPIClient(s.options.WerckerEndpoint)
+			apiBytes, err := client.Get("steps", s.Owner, s.ID, s.Version)
+			if err != nil {
+				return "", err
+			}
+
+			err = json.Unmarshal(apiBytes, &stepInfo)
+			if err != nil {
+				return "", err
+			}
+			s.url = stepInfo.TarballURL
 		}
-
-		err = json.Unmarshal(apiBytes, &stepInfo)
-		if err != nil {
-			return "", err
-		}
-
-		// Grab the tarball and untar it
-		resp, err := http.Get(stepInfo.TarballURL)
+		// Grab the tarball and untargzip it
+		resp, err := http.Get(s.url)
 		if err != nil {
 			return "", err
 		}

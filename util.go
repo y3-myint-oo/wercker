@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // exists is like python's os.path.exists and too many lines in Go
@@ -29,6 +30,10 @@ func untargzip(path string, r io.Reader) error {
 	tarball := tar.NewReader(ungzipped)
 
 	defer ungzipped.Close()
+
+	// We have to treat things differently for git-archives
+	isGitArchive := false
+
 	// Alright, things seem in order, let's make the base directory
 	os.MkdirAll(path, 0755)
 	for {
@@ -45,7 +50,21 @@ func untargzip(path string, r io.Reader) error {
 			continue
 		}
 
-		fpath := filepath.Join(path, hdr.Name)
+		// If this was made with git-archive it will be in kinda an ugly
+		// format, but we can identify it by the pax_global_header "file"
+		name := hdr.Name
+		if name == "pax_global_header" {
+			isGitArchive = true
+			continue
+		}
+
+		// It will also contain an extra subdir that we will automatically strip
+		if isGitArchive {
+			parts := strings.Split(name, "/")
+			name = strings.Join(parts[1:], "/")
+		}
+
+		fpath := filepath.Join(path, name)
 		if hdr.FileInfo().IsDir() {
 			err = os.MkdirAll(fpath, 0755)
 			if err != nil {
