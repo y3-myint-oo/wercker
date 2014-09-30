@@ -13,7 +13,8 @@ type Build struct {
 	options *GlobalOptions
 }
 
-var mirroredEnv = [...]string{"WERCKER_GIT_DOMAIN",
+var mirroredEnv = [...]string{
+	"WERCKER_GIT_DOMAIN",
 	"WERCKER_GIT_OWNER",
 	"WERCKER_GIT_REPOSITORY",
 	"WERCKER_GIT_BRANCH",
@@ -23,7 +24,8 @@ var mirroredEnv = [...]string{"WERCKER_GIT_DOMAIN",
 	"WERCKER_APPLICATION_URL",
 	"WERCKER_APPLICATION_ID",
 	"WERCKER_APPLICATION_NAME",
-	"WERCKER_APPLICATION_OWNER_NAME"}
+	"WERCKER_APPLICATION_OWNER_NAME",
+}
 
 // ToBuild converts a RawBuild into a Build
 func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
@@ -67,35 +69,37 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 // InitEnv sets up the internal state of the environment for the build
 func (b *Build) InitEnv() {
 	b.Env = &Environment{}
-	// TODO(termie): deal with PASSTHRU args from the user here
-	b.Env.Update(b.getMirrorEnv())
 
 	// Add all of our basic env vars
-	m := map[string]string{
-		"WERCKER":              "true",
-		"BUILD":                "true",
-		"CI":                   "true",
-		"WERCKER_BUILD_ID":     b.options.BuildID,
-		"WERCKER_ROOT":         b.GuestPath("source"),
-		"WERCKER_SOURCE_DIR":   b.GuestPath("source", b.options.SourceDir),
-		"WERCKER_CACHE_DIR":    "/cache",
-		"WERCKER_OUTPUT_DIR":   b.GuestPath("output"),
-		"WERCKER_PIPELINE_DIR": b.GuestPath(),
-		"WERCKER_REPORT_DIR":   b.GuestPath("report"),
-		"TERM":                 "xterm-256color",
+	a := [][]string{
+		[]string{"WERCKER", "true"},
+		[]string{"BUILD", "true"},
+		[]string{"CI", "true"},
+		[]string{"WERCKER_BUILD_ID", b.options.BuildID},
+		[]string{"WERCKER_ROOT", b.GuestPath("source")},
+		[]string{"WERCKER_SOURCE_DIR", b.GuestPath("source", b.options.SourceDir)},
+		[]string{"WERCKER_CACHE_DIR", "/cache"},
+		[]string{"WERCKER_OUTPUT_DIR", b.GuestPath("output")},
+		[]string{"WERCKER_PIPELINE_DIR", b.GuestPath()},
+		[]string{"WERCKER_REPORT_DIR", b.GuestPath("report")},
+		[]string{"TERM", "xterm-256color"},
 	}
-	b.Env.Update(m)
+
+	b.Env.Update(a)
+	b.Env.Update(b.getMirrorEnv())
+
+	// TODO(termie): deal with PASSTHRU args from the user here
 }
 
-func (b *Build) getMirrorEnv() map[string]string {
-	var m = make(map[string]string)
+func (b *Build) getMirrorEnv() [][]string {
+	a := [][]string{}
 	for _, key := range mirroredEnv {
 		value, ok := b.options.Env.Map[key]
 		if ok {
-			m[key] = value
+			a = append(a, []string{key, value})
 		}
 	}
-	return m
+	return a
 }
 
 // SourcePath returns the path to the source dir

@@ -336,18 +336,16 @@ func (s *Step) CollectArtifacts(sess *Session) ([]*Artifact, error) {
 // InitEnv sets up the internal environment for the Step.
 func (s *Step) InitEnv() {
 	s.Env = &Environment{}
-	m := map[string]string{
-		"WERCKER_STEP_ROOT":            s.GuestPath(),
-		"WERCKER_STEP_ID":              s.SafeID,
-		"WERCKER_STEP_OWNER":           s.Owner,
-		"WERCKER_STEP_NAME":            s.Name,
-		"WERCKER_REPORT_NUMBERS_FILE":  s.ReportPath("numbers.ini"),
-		"WERCKER_REPORT_MESSAGE_FILE":  s.ReportPath("message.txt"),
-		"WERCKER_REPORT_ARTIFACTS_DIR": s.ReportPath("artifacts"),
+	a := [][]string{
+		[]string{"WERCKER_STEP_ROOT", s.GuestPath()},
+		[]string{"WERCKER_STEP_ID", s.SafeID},
+		[]string{"WERCKER_STEP_OWNER", s.Owner},
+		[]string{"WERCKER_STEP_NAME", s.Name},
+		[]string{"WERCKER_REPORT_NUMBERS_FILE", s.ReportPath("numbers.ini")},
+		[]string{"WERCKER_REPORT_MESSAGE_FILE", s.ReportPath("message.txt")},
+		[]string{"WERCKER_REPORT_ARTIFACTS_DIR", s.ReportPath("artifacts")},
 	}
-	s.Env.Update(m)
-
-	u := map[string]string{}
+	s.Env.Update(a)
 
 	defaults := s.stepConfig.Defaults()
 
@@ -356,13 +354,11 @@ func (s *Step) InitEnv() {
 		key := fmt.Sprintf("WERCKER_%s_%s", strings.Replace(s.Name, "-", "_", -1), k)
 		key = strings.ToUpper(key)
 		if !ok {
-			u[key] = defaultValue
+			s.Env.Add(key, defaultValue)
 		} else {
-			u[key] = value
+			s.Env.Add(key, value)
 		}
 	}
-
-	s.Env.Update(u)
 }
 
 // HostPath returns a path relative to the Step on the host.

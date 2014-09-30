@@ -181,8 +181,8 @@ func buildProject(c *cli.Context) {
 
 	// Some helpful logging
 	log.Println("Base Build Environment:")
-	for k, v := range build.Env.Map {
-		log.Println(" ", k, v)
+	for _, pair := range build.Env.Ordered() {
+		log.Println(" ", pair[0], pair[1])
 	}
 
 	err = build.SetupGuest(sess)
@@ -202,8 +202,8 @@ func buildProject(c *cli.Context) {
 
 		step.InitEnv()
 		log.Println("Step Environment")
-		for k, v := range step.Env.Map {
-			log.Println(" ", k, v)
+		for _, pair := range step.Env.Ordered() {
+			log.Println(" ", pair[0], pair[1])
 		}
 		exit, err = step.Execute(sess)
 		if exit != 0 {

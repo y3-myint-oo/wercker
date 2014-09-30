@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -26,13 +27,13 @@ func (c *APIClient) URL(parts ...string) string {
 // Get is the basic fetch of the JSON
 func (c *APIClient) Get(parts ...string) ([]byte, error) {
 	url := c.URL(parts...)
-	fmt.Println("GET URL", url)
+	log.Debugln("API Get:", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
-		fmt.Println(ioutil.ReadAll(resp.Body))
+		log.Debugln(ioutil.ReadAll(resp.Body))
 		return nil, fmt.Errorf("Got non-200 response: %d", resp.StatusCode)
 	}
 

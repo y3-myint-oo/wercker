@@ -19,30 +19,31 @@ type Environment struct {
 // CreateEnvironment fills up an Environment from a []string
 // Usually called like: env := CreateEnvironment(os.Environ())
 func CreateEnvironment(env []string) *Environment {
-	var m map[string]string
-	m = make(map[string]string)
-	for _, e := range env {
-		pair := strings.SplitN(e, "=", 2)
-		m[pair[0]] = pair[1]
+	e := Environment{}
+	for _, keyvalue := range env {
+		pair := strings.SplitN(keyvalue, "=", 2)
+		e.Add(pair[0], pair[1])
 	}
 
-	e := Environment{}
-	e.Update(m)
 	return &e
 }
 
-// Update adds new elements to the Environment data structure
-func (e *Environment) Update(m map[string]string) {
+// Update adds new elements to the Environment data structure.
+func (e *Environment) Update(a [][]string) {
+	for _, keyvalue := range a {
+		e.Add(keyvalue[0], keyvalue[1])
+	}
+}
+
+// Add an idividual record.
+func (e *Environment) Add(key, value string) {
 	if e.Map == nil {
 		e.Map = make(map[string]string)
 	}
-	for k, v := range m {
-		_, ok := e.Map[k]
-		if !ok {
-			e.Order = append(e.Order, k)
-		}
-		e.Map[k] = v
+	if _, ok := e.Map[key]; !ok {
+		e.Order = append(e.Order, key)
 	}
+	e.Map[key] = value
 }
 
 // Export the environment as shell commands for use with Session.Send*
@@ -52,6 +53,15 @@ func (e *Environment) Export() []string {
 		s = append(s, fmt.Sprintf(`export %s="%s"`, key, e.Map[key]))
 	}
 	return s
+}
+
+// Ordered returns a [][]string of the items in the env.
+func (e *Environment) Ordered() [][]string {
+	a := [][]string{}
+	for _, k := range e.Order {
+		a = append(a, []string{k, e.Map[k]})
+	}
+	return a
 }
 
 // GlobalOptions is a shared data structure for global config.
