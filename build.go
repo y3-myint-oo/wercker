@@ -21,7 +21,6 @@ var mirroredEnv = [...]string{
 	"WERCKER_GIT_COMMIT",
 	"WERCKER_STARTED_BY",
 	"WERCKER_MAIN_PIPELINE_STARTED",
-	"WERCKER_APPLICATION_URL",
 	"WERCKER_APPLICATION_ID",
 	"WERCKER_APPLICATION_NAME",
 	"WERCKER_APPLICATION_OWNER_NAME",
@@ -76,8 +75,10 @@ func (b *Build) InitEnv() {
 		[]string{"BUILD", "true"},
 		[]string{"CI", "true"},
 		[]string{"WERCKER_BUILD_ID", b.options.BuildID},
+		[]string{"WERCKER_BUILD_URL", fmt.Sprintf("%s#build/%s", b.options.BaseURL, b.options.BuildID)},
 		[]string{"WERCKER_ROOT", b.GuestPath("source")},
 		[]string{"WERCKER_SOURCE_DIR", b.GuestPath("source", b.options.SourceDir)},
+		// TODO(termie): Support cache dir
 		[]string{"WERCKER_CACHE_DIR", "/cache"},
 		[]string{"WERCKER_OUTPUT_DIR", b.GuestPath("output")},
 		[]string{"WERCKER_PIPELINE_DIR", b.GuestPath()},
@@ -87,6 +88,8 @@ func (b *Build) InitEnv() {
 
 	b.Env.Update(a)
 	b.Env.Update(b.getMirrorEnv())
+
+	b.Env.Add("WERCKER_APPLICATION_URL", fmt.Sprintf("%s#application/%s", b.options.BaseURL, b.options.BuildID))
 
 	// TODO(termie): deal with PASSTHRU args from the user here
 }

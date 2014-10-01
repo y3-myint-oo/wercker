@@ -72,11 +72,17 @@ type GlobalOptions struct {
 	StepDir    string
 	BuildDir   string
 
+	// Application ID for this operation
+	ApplicationID string
+
 	// Build ID for this operation
 	BuildID string
 
 	// Project ID for this operation
 	ProjectID string
+
+	// Base url template to see the results of this build
+	BaseURL string
 
 	DockerEndpoint string
 
@@ -122,6 +128,10 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	if buildID == "" {
 		buildID = uuid.NewRandom().String()
 	}
+	applicationID, ok := env.Map["WERCKER_APPLICATION_ID"]
+	if !ok {
+		applicationID = "unknown_application"
+	}
 
 	projectID := c.GlobalString("projectID")
 	if projectID == "" {
@@ -147,7 +157,9 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		Env:                env,
 		BuildDir:           buildDir,
 		BuildID:            buildID,
+		ApplicationID:      applicationID,
 		ProjectID:          projectID,
+		BaseURL:            c.GlobalString("baseURL"),
 		CommandTimeout:     c.GlobalInt("commandTimeout"),
 		DockerEndpoint:     c.GlobalString("dockerEndpoint"),
 		WerckerEndpoint:    c.GlobalString("werckerEndpoint"),

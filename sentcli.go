@@ -22,6 +22,7 @@ func main() {
 		cli.StringFlag{Name: "reportRoot", Value: "/report", Usage: "directory on the guest where reports will be written"},
 		cli.StringFlag{Name: "buildID", Value: "", Usage: "build id"},
 		cli.StringFlag{Name: "projectID", Value: "", Usage: "project id"},
+		cli.StringFlag{Name: "baseURL", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
 
 		// Code fetching
 		// TODO(termie): this should probably be a separate command run beforehand.
