@@ -124,7 +124,7 @@ func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
 //   x setup-go-environment (fetches from api)
 //   x wercker/hipchat-notify (fetches from api)
 //   x wercker/hipchat-notify "http://someurl/thingee.tar" (downloads tarball)
-//   setup-go-environment "file:///some_path" (uses local path)
+//   x setup-go-environment "file:///some_path" (uses local path)
 func CreateStep(stepID string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
 	var identifier string
 	var owner string
@@ -236,16 +236,23 @@ func (s *Step) Fetch() (string, error) {
 			}
 			s.url = stepInfo.TarballURL
 		}
-		// Grab the tarball and untargzip it
-		resp, err := fetchTarball(s.url)
-		if err != nil {
-			return "", err
-		}
 
-		// Assuming we have a gzip'd tarball at this point
-		err = untargzip(stepPath, resp.Body)
-		if err != nil {
-			return "", err
+		// If we have a file uri let's just copytree it.
+		if strings.HasPrefix(s.url, "file:///") {
+			localPath := s.url[len("file://"):]
+			err = shutil.CopyTree(localPath, stepPath, nil)
+		} else {
+			// Grab the tarball and untargzip it
+			resp, err := fetchTarball(s.url)
+			if err != nil {
+				return "", err
+			}
+
+			// Assuming we have a gzip'd tarball at this point
+			err = untargzip(stepPath, resp.Body)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 
