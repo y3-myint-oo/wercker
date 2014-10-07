@@ -33,10 +33,14 @@ func CreateSession(endpoint string, containerID string) *Session {
 func ReadToChan(ws *websocket.Conn, ch chan string) {
 	var data string
 	for {
+		data = ""
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
 			if err != io.EOF {
 				log.Fatalln(err)
+			} else {
+				close(ch)
+				return
 			}
 		}
 		ch <- data
@@ -81,7 +85,10 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 	// returned aren't complete lines, if this becomes a problem we'll have
 	// to buffer it.
 	for check != true {
-		line := <-s.ch
+		line, ok := <-s.ch
+		if !ok {
+			return 1, recv, nil
+		}
 		log.Println("recv: ", strings.TrimSpace(line))
 		if strings.HasPrefix(line, rand) {
 			check = true
