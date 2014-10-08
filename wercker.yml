@@ -13,7 +13,7 @@ build:
         code: |-
           export GOPATH=$WERCKER_SOURCE_DIR
           sudo GOPATH=$WERCKER_SOURCE_DIR /usr/local/go/bin/go get code.google.com/p/go.tools/cmd/vet
-          go tool vet .
+          go tool vet *.go
     - script:
         name: go lint
         code: |-
