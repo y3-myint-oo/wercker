@@ -142,7 +142,11 @@ func CreateStep(stepID string, data RawStepData, build *Build, options *GlobalOp
 	}
 
 	// Check for owner/name
-	if _, err := fmt.Sscanf(identifier, "%s/%s", &owner, &name); err != nil {
+	parts := strings.Split(identifier, "/")
+	if len(parts) > 1 {
+		owner = parts[0]
+		name = parts[1]
+	} else {
 		// No owner, "wercker" is the default
 		owner = "wercker"
 		name = identifier
@@ -225,7 +229,7 @@ func (s *Step) Fetch() (string, error) {
 
 			// Grab the info about the step from the api
 			client := CreateAPIClient(s.options.WerckerEndpoint)
-			apiBytes, err := client.Get("steps", s.Owner, s.ID, s.Version)
+			apiBytes, err := client.Get("steps", s.Owner, s.Name, s.Version)
 			if err != nil {
 				return "", err
 			}
