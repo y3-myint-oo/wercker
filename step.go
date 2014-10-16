@@ -142,7 +142,7 @@ func CreateStep(stepID string, data RawStepData, build *Build, options *GlobalOp
 	}
 
 	// Check for owner/name
-	parts := strings.Split(identifier, "/")
+	parts := strings.SplitN(identifier, "/", 2)
 	if len(parts) > 1 {
 		owner = parts[0]
 		name = parts[1]
