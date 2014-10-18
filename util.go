@@ -98,6 +98,7 @@ func untargzip(path string, r io.Reader) error {
 		if err != nil {
 			return err
 		}
+		file.Close()
 	}
 	return nil
 }
