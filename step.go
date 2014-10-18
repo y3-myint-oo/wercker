@@ -96,7 +96,18 @@ func NormalizeStep(raw interface{}) (*RawStep, error) {
 			mapValue := value.(map[interface{}]interface{})
 			data := make(RawStepData)
 			for dataKey, dataValue := range mapValue {
-				data[dataKey.(string)] = dataValue.(string)
+
+				assertedValue, ok := dataValue.(string)
+				if !ok {
+					maybeBool, ok := dataValue.(bool)
+					if ok && maybeBool {
+						assertedValue = "true"
+					} else {
+						assertedValue = "false"
+					}
+				}
+
+				data[dataKey.(string)] = assertedValue
 			}
 			s[key.(string)] = data
 		}
@@ -362,13 +373,24 @@ func (s *Step) InitEnv() {
 
 	for k, defaultValue := range defaults {
 		value, ok := s.data[k]
-		key := fmt.Sprintf("WERCKER_%s_%s", strings.Replace(s.Name, "-", "_", -1), k)
+		key := fmt.Sprintf("WERCKER_%s_%s", s.Name, k)
+		key = strings.Replace(key, "-", "_", -1)
 		key = strings.ToUpper(key)
 		if !ok {
 			s.Env.Add(key, defaultValue)
 		} else {
 			s.Env.Add(key, value)
 		}
+	}
+
+	for k, value := range s.data {
+		if k == "code" || k == "name" {
+			continue
+		}
+		key := fmt.Sprintf("WERCKER_%s_%s", s.Name, k)
+		key = strings.Replace(key, "-", "_", -1)
+		key = strings.ToUpper(key)
+		s.Env.Add(key, value)
 	}
 }
 
