@@ -6,6 +6,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/termie/go-shutil"
 	"os"
+	"os/signal"
 )
 
 func main() {
@@ -65,6 +66,11 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 	// log.Println(options)
+
+	// Signal handling
+	// Later on we'll register stuff to happen when one is received
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
 
 	// NOTE(termie): For now we are expecting it to be downloaded
 	// before we start so we are just expecting it to exist in our
@@ -172,6 +178,22 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 	defer box.Stop()
+	// Register our signal handler to clean the box up
+	// TODO(termie): we should probably make a little general purpose signal
+	// handler and register callbacks with it so that multiple parts of the app
+	// can do cleanup
+	go func() {
+		tries := 0
+		for _ = range sigint {
+			if tries == 0 {
+				tries = 1
+				box.Stop()
+				os.Exit(1)
+			} else {
+				panic("Exiting forcefully")
+			}
+		}
+	}()
 
 	// Start our session
 	sess := CreateSession(options.DockerEndpoint, container.ID)
