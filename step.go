@@ -188,7 +188,7 @@ func (s *Step) IsScript() bool {
 
 func normalizeCode(code string) string {
 	if !strings.HasPrefix(code, "#!") {
-		code = strings.Join([]string{"#!/bin/bash -xe", code}, "\n")
+		code = strings.Join([]string{"set -v", "set -e", code}, "\n")
 	}
 	return code
 }
