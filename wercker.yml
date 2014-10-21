@@ -22,3 +22,18 @@ build:
           go get github.com/golang/lint/golint
           golint
 
+deploy:
+  steps:
+    - script:
+        name: build dist
+        code: |-
+          export GOPATH=$WERCKER_SOURCE_DIR:$GOPATH
+          ./install_dependencies.sh
+          go build -o ./dist/$WERCKER_GIT_BRANCH/wercker-sentcli
+          cp ./dist/$WERCKER_GIT_BRANCH/wercker-sentcli ./dist/$WERCKER_GIT_BRANCH/wercker-sentcli.${WERCKER_GIT_COMMIT:0:8}
+    - s3sync:
+        source-dir: dist
+        delete-removed: false
+        bucket-url: s3://wercker-development/sentcli/
+        key-id: $AWS_ACCESS_KEY_ID
+        key-secret: $AWS_SECRET_ACCESS_KEY
