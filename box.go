@@ -89,6 +89,7 @@ func (b *Box) Run() (*docker.Container, error) {
 				AttachStdin:  true,
 				AttachStdout: true,
 				AttachStderr: true,
+				// NetworkDisabled: true,
 				// Volumes: volumes,
 			},
 		})
