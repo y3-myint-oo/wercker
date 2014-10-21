@@ -9,13 +9,13 @@ type ServiceBox struct {
 	*Box
 }
 
-func (b *RawBox) ToServiceBox(build *Build, options *GlobalOptions) (*ServiceBox, error) {
-	return CreateServiceBox(string(*b), build, options)
+func (b *RawBox) ToServiceBox(build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+	return CreateServiceBox(string(*b), build, options, boxOptions)
 }
 
 // CreateBox from a name and other references
-func CreateServiceBox(name string, build *Build, options *GlobalOptions) (*ServiceBox, error) {
-	box, err := CreateBox(name, build, options)
+func CreateServiceBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+	box, err := CreateBox(name, build, options, boxOptions)
 	return &ServiceBox{Box: box}, err
 }
 
@@ -26,7 +26,8 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 		docker.CreateContainerOptions{
 			Name: containerName,
 			Config: &docker.Config{
-				Image: b.Name,
+				Image:           b.Name,
+				NetworkDisabled: b.networkDisabled,
 			},
 		})
 
