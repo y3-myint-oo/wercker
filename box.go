@@ -10,23 +10,28 @@ import (
 
 // Box is our wrapper for Box operations
 type Box struct {
-	Name       string
-	services   []*ServiceBox
-	build      *Build
-	options    *GlobalOptions
-	client     *docker.Client
-	container  *docker.Container
-	repository string
-	tag        string
+	Name            string
+	networkDisabled bool
+	services        []*ServiceBox
+	build           *Build
+	options         *GlobalOptions
+	client          *docker.Client
+	container       *docker.Container
+	repository      string
+	tag             string
+}
+
+type BoxOptions struct {
+	NetworkDisabled bool
 }
 
 // ToBox will convert a RawBox into a Box
-func (b *RawBox) ToBox(build *Build, options *GlobalOptions) (*Box, error) {
-	return CreateBox(string(*b), build, options)
+func (b *RawBox) ToBox(build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
+	return CreateBox(string(*b), build, options, boxOptions)
 }
 
 // CreateBox from a name and other references
-func CreateBox(name string, build *Build, options *GlobalOptions) (*Box, error) {
+func CreateBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
 	// TODO(termie): right now I am just tacking the version into the name
 	//               by replacing @ with _
 	name = strings.Replace(name, "@", "_", 1)
@@ -42,7 +47,13 @@ func CreateBox(name string, build *Build, options *GlobalOptions) (*Box, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &Box{client: client, Name: name, build: build, options: options, repository: repository, tag: tag}, nil
+
+	networkDisabled := false
+	if boxOptions != nil {
+		networkDisabled = boxOptions.NetworkDisabled
+	}
+
+	return &Box{client: client, Name: name, build: build, options: options, repository: repository, tag: tag, networkDisabled: networkDisabled}, nil
 }
 
 func (b *Box) links() []string {
@@ -82,14 +93,14 @@ func (b *Box) Run() (*docker.Container, error) {
 		docker.CreateContainerOptions{
 			Name: containerName,
 			Config: &docker.Config{
-				Image:        b.Name,
-				Tty:          false,
-				OpenStdin:    true,
-				Cmd:          []string{"/bin/bash"},
-				AttachStdin:  true,
-				AttachStdout: true,
-				AttachStderr: true,
-				// NetworkDisabled: true,
+				Image:           b.Name,
+				Tty:             false,
+				OpenStdin:       true,
+				Cmd:             []string{"/bin/bash"},
+				AttachStdin:     true,
+				AttachStdout:    true,
+				AttachStderr:    true,
+				NetworkDisabled: b.networkDisabled,
 				// Volumes: volumes,
 			},
 		})

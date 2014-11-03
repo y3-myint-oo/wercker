@@ -115,7 +115,7 @@ func buildProject(c *cli.Context) {
 	}
 
 	// Promote RawBox to a real Box. We believe in you, Box!
-	box, err := rawConfig.RawBox.ToBox(build, options)
+	box, err := rawConfig.RawBox.ToBox(build, options, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -134,7 +134,7 @@ func buildProject(c *cli.Context) {
 	for _, rawService := range rawConfig.RawServices {
 		log.Println("Fetching service:", rawService)
 
-		serviceBox, err := rawService.ToServiceBox(build, options)
+		serviceBox, err := rawService.ToServiceBox(build, options, nil)
 		if err != nil {
 			log.Panicln(err)
 		}
