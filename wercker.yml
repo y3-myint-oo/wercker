@@ -1,24 +1,15 @@
-box: wercker/golang
+box: tcnksm/gox@0.1.0
 build:
   steps:
-    - setup-go-workspace
     - script:
-        name: get dependencies
-        code: |-
-          go version
-          export GOPATH=$WERCKER_SOURCE_DIR:$GOPATH
-          ./install_dependencies.sh
+        name: go get
+        code: go get -v -d ./...
     - script:
         name: go vet
-        code: |-
-          export GOPATH=$WERCKER_SOURCE_DIR
-          sudo GOPATH=$WERCKER_SOURCE_DIR /usr/local/go/bin/go get code.google.com/p/go.tools/cmd/vet
-          go tool vet *.go
+        code: go tool vet *.go
     - script:
         name: go lint
         code: |-
-          export GOPATH=$WERCKER_SOURCE_DIR
-          export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
           go get github.com/golang/lint/golint
           LINTLINES=$(golint | tee lint_results.txt | wc -l | tr -d " ")
           cat lint_results.txt
@@ -26,19 +17,20 @@ build:
           if [ "$LINTLINES" -ge 5 ]; then echo "You should be tidying soon: $LINTLINES lint warnings." > $WERCKER_REPORT_MESSAGE_FILE; warn "You should be tidying soon."; fi
           if [ "$LINTLINES" -lt 5 && "$LINTLINES" -gt 0 ]; then echo "You are fairly tidy: $LINTLINES lint warnings." > $WERCKER_REPORT_MESSAGE_FILE; fi
           if [ "$LINTLINES" -eq 0 ]; then echo "Perfect: $LINTLINES lint warnings." > $WERCKER_REPORT_MESSAGE_FILE; fi
+    - tcnksm/gox:
+        os: "darwin linux"
+        arch: "386 amd64"
+    - script:
+        name: prepare
+        code: |-
+            echo $WERCKER_GIT_COMMIT > $WERCKER_OUTPUT_DIR/HEAD
+            mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
 
 deploy:
   steps:
-    - script:
-        name: build dist
-        code: |-
-          export GOPATH=$WERCKER_SOURCE_DIR:$GOPATH
-          ./install_dependencies.sh
-          go build -o ./dist/$WERCKER_GIT_BRANCH/wercker-sentcli
-          cp ./dist/$WERCKER_GIT_BRANCH/wercker-sentcli ./dist/$WERCKER_GIT_BRANCH/wercker-sentcli.${WERCKER_GIT_COMMIT:0:8}
     - s3sync:
-        source-dir: dist
+        source-dir: "."
         delete-removed: false
-        bucket-url: s3://wercker-development/sentcli/
+        bucket-url: $AWS_BUCKET_URL/$WERCKER_GIT_BRANCH/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
