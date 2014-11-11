@@ -115,6 +115,9 @@ type GlobalOptions struct {
 	AWSAccessKeyID     string
 	AWSRegion          string
 	AWSBucket          string
+
+	Registry       string
+	PushToRegistry bool
 }
 
 // CreateGlobalOptions builds up GlobalOptions from the cli and environment.
@@ -175,5 +178,7 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		AWSAccessKeyID:     awsAccessKeyID,
 		AWSBucket:          c.GlobalString("awsBucket"),
 		AWSRegion:          c.GlobalString("awsRegion"),
+		Registry:           c.GlobalString("registry"),
+		PushToRegistry:     c.GlobalBool("pushToRegistry"),
 	}, nil
 }

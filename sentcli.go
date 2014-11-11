@@ -10,6 +10,9 @@ import (
 )
 
 func main() {
+
+	log.SetLevel(log.DebugLevel)
+
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "projectDir", Value: "./projects", Usage: "path where projects live"},
@@ -24,6 +27,8 @@ func main() {
 		cli.StringFlag{Name: "buildID", Value: "", Usage: "build id"},
 		cli.StringFlag{Name: "projectID", Value: "", Usage: "project id"},
 		cli.StringFlag{Name: "baseURL", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
+		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
+		cli.BoolTFlag{Name: "pushToRegistry", Usage: "auto push the build result to registry"},
 
 		// Code fetching
 		// TODO(termie): this should probably be a separate command run beforehand.
@@ -249,6 +254,22 @@ func buildProject(c *cli.Context) {
 			}
 		}
 		log.Println("============ Step successful! =============")
+	}
+
+	if options.PushToRegistry {
+		name := fmt.Sprintf("projects/%s", options.ProjectID)
+		tag := fmt.Sprintf("build-%s", options.BuildID)
+
+		pushOptions := &PushOptions{
+			Registry: options.Registry,
+			Name:     name,
+			Tag:      tag,
+		}
+
+		_, err = box.Push(pushOptions)
+		if err != nil {
+			log.WithField("Error", err).Error("Unable to push to registry")
+		}
 	}
 
 	log.Println("########### Build successful! #############")
