@@ -1,0 +1,13 @@
+package: main
+
+import:
+  - package: code.google.com/p/go-uuid
+  - package: code.google.com/p/go.net
+  - package: github.com/Sirupsen/logrus
+  - package: github.com/codegangsta/cli
+  - package: github.com/crowdmob/goamz
+  - package: github.com/docker/docker
+  - package: github.com/fsouza/go-dockerclient
+  - package: github.com/termie/go-shutil
+  - package: gopkg.in/yaml.v1
+

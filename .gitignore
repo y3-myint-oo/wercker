@@ -1,1 +1,4 @@
 steps/*
+_vendor
+wercker-sentcli
+
