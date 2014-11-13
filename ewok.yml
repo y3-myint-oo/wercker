@@ -27,7 +27,7 @@ build:
         name: go lint
         code: |-
           # export GOPATH=$WERCKER_SOURCE_DIR
-          # export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+          export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
           go get github.com/golang/lint/golint
           LINTLINES=$(golint | tee lint_results.txt | wc -l | tr -d " ")
           cat lint_results.txt
