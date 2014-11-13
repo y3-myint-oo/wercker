@@ -21,6 +21,7 @@ type Box struct {
 	tag             string
 }
 
+// BoxOptions are box options, duh
 type BoxOptions struct {
 	NetworkDisabled bool
 }
@@ -85,7 +86,7 @@ func (b *Box) binds() ([]string, error) {
 	return binds, nil
 }
 
-// Creates the container and runs it.
+// Run creates the container and runs it.
 func (b *Box) Run() (*docker.Container, error) {
 	// Make and start the container
 	containerName := "wercker-build-" + b.options.BuildID
@@ -123,7 +124,7 @@ func (b *Box) Run() (*docker.Container, error) {
 	return container, nil
 }
 
-// Add a service needed by this Box
+// AddService needed by this Box
 func (b *Box) AddService(service *ServiceBox) {
 	b.services = append(b.services, service)
 }
@@ -170,13 +171,14 @@ func (b *Box) Fetch() (*docker.Image, error) {
 	return nil, err
 }
 
+// PushOptions configures what we push to a registry
 type PushOptions struct {
 	Registry string
 	Name     string
 	Tag      string
 }
 
-// Commit and tag a container. Then push the resulting image to the registry.
+// Push commits and tag a container. Then push the image to the registry.
 // Returns the new image, no cleanup is provided.
 func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
 

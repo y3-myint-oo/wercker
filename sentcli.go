@@ -112,10 +112,7 @@ func buildProject(c *cli.Context) {
 				if abspath == options.BuildDir || abspath == options.ProjectDir || abspath == options.StepDir {
 					ignores = append(ignores, file.Name())
 				}
-				// Some default ignores for local paths
-				if file.Name() == "_vendor" { //|| file.Name() == ".git" {
-					ignores = append(ignores, file.Name())
-				}
+				// TODO(termie): maybe ignore .gitignore files?
 			}
 			return ignores
 		}

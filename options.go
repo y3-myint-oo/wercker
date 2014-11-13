@@ -128,8 +128,8 @@ type GlobalOptions struct {
 	PushToRegistry bool
 }
 
-func GuessApplicationName(c *cli.Context, env *Environment) (string, error) {
-	// Some logic to guess the application name
+// Some logic to guess the application name
+func guessApplicationName(c *cli.Context, env *Environment) (string, error) {
 	// If we explicitly were given an application name, use that
 	applicationName, ok := env.Map["WERCKER_APPLICATION_NAME"]
 	if ok {
@@ -157,7 +157,7 @@ func GuessApplicationName(c *cli.Context, env *Environment) (string, error) {
 	}
 	stat, err := os.Stat(target)
 	if err != nil || !stat.IsDir() {
-		return "", fmt.Errorf("target '%s' is not a directory.", target)
+		return "", fmt.Errorf("target '%s' is not a directory", target)
 	}
 	abspath, err := filepath.Abs(target)
 	if err != nil {
@@ -178,7 +178,7 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		buildID = uuid.NewRandom().String()
 	}
 
-	applicationName, err := GuessApplicationName(c, env)
+	applicationName, err := guessApplicationName(c, env)
 	if err != nil {
 		return nil, err
 	}
