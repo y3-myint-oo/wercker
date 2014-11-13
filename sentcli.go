@@ -1,12 +1,14 @@
 package main
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/termie/go-shutil"
 	"os"
 	"os/signal"
+	"path/filepath"
 )
 
 func main() {
@@ -15,24 +17,30 @@ func main() {
 
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
-		cli.StringFlag{Name: "projectDir", Value: "./projects", Usage: "path where projects live"},
-		cli.StringFlag{Name: "stepDir", Value: "./steps", Usage: "path where steps live"},
-		cli.StringFlag{Name: "buildDir", Value: "./builds", Usage: "path where builds live"},
+		// These flags control where we store local files
+		cli.StringFlag{Name: "projectDir", Value: "./_projects", Usage: "path where downloaded projects live"},
+		cli.StringFlag{Name: "stepDir", Value: "./_steps", Usage: "path where downloaded steps live"},
+		cli.StringFlag{Name: "buildDir", Value: "./_builds", Usage: "path where created builds live"},
 
+		// These flags tell us where to go for operations
 		cli.StringFlag{Name: "dockerHost", Value: "tcp://127.0.0.1:2375", Usage: "docker api host", EnvVar: "DOCKER_HOST"},
 		cli.StringFlag{Name: "werckerEndpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
+		cli.StringFlag{Name: "baseURL", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
+		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
+
+		// These flags control paths on the guest and probably shouldn't change
 		cli.StringFlag{Name: "mntRoot", Value: "/mnt", Usage: "directory on the guest where volumes are mounted"},
 		cli.StringFlag{Name: "guestRoot", Value: "/pipeline", Usage: "directory on the guest where work is done"},
 		cli.StringFlag{Name: "reportRoot", Value: "/report", Usage: "directory on the guest where reports will be written"},
-		cli.StringFlag{Name: "buildID", Value: "", Usage: "build id"},
-		cli.StringFlag{Name: "projectID", Value: "", Usage: "project id"},
-		cli.StringFlag{Name: "baseURL", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
-		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
-		cli.BoolFlag{Name: "pushToRegistry", Usage: "auto push the build result to registry"},
 
-		// Code fetching
-		// TODO(termie): this should probably be a separate command run beforehand.
-		cli.StringFlag{Name: "projectURL", Value: "", Usage: "url of the project tarball"},
+		// These flags are usually pulled from the env
+		cli.StringFlag{Name: "buildID", Value: "", Usage: "build id", EnvVar: "WERCKER_BUILD_ID"},
+		cli.StringFlag{Name: "applicationID", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_ID"},
+		cli.StringFlag{Name: "applicationName", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
+		cli.StringFlag{Name: "applicationOwnerName", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
+
+		// Should we push finished builds to the registry?
+		cli.BoolFlag{Name: "pushToRegistry", Usage: "auto push the build result to registry"},
 
 		// AWS bits
 		cli.StringFlag{Name: "awsSecretAccessKey", Value: "", Usage: "secret access key"},
@@ -62,29 +70,25 @@ func main() {
 
 func buildProject(c *cli.Context) {
 	log.Println("############# Building project #############")
-	log.Println(c.Args().First())
-	log.Println("############################################")
 
 	// Parse CLI and local env
 	options, err := CreateGlobalOptions(c, os.Environ())
 	if err != nil {
 		log.Panicln(err)
 	}
-	// log.Println(options)
+	// log.Println(fmt.Sprintf("%+v", options))
+
+	log.Println(options.ApplicationName)
+	log.Println("############################################")
 
 	// Signal handling
 	// Later on we'll register stuff to happen when one is received
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 
-	// NOTE(termie): For now we are expecting it to be downloaded
-	// before we start so we are just expecting it to exist in our
-	// projects directory.
-	project := c.Args().First()
-	projectDir := fmt.Sprintf("%s/%s", options.ProjectDir, project)
+	projectDir := fmt.Sprintf("%s/%s", options.ProjectDir, options.ApplicationID)
 
-	// TODO(termie): We'll probably do this externally eventually, but
-	// this is the easiest place to start fetching code.
+	// If the target is a tarball fetch and build that
 	if options.ProjectURL != "" {
 		resp, err := fetchTarball(options.ProjectURL)
 		if err != nil {
@@ -93,6 +97,33 @@ func buildProject(c *cli.Context) {
 		err = untargzip(projectDir, resp.Body)
 		if err != nil {
 			log.Panicln(err)
+		}
+	} else {
+		// We were pointed at a path, copy it to projectDir
+
+		// Make sure we don't accidentally recurse or copy extra files
+		ignoreFunc := func(src string, files []os.FileInfo) []string {
+			ignores := []string{}
+			for _, file := range files {
+				abspath, err := filepath.Abs(filepath.Join(src, file.Name()))
+				if err != nil {
+					panic(err)
+				}
+				if abspath == options.BuildDir || abspath == options.ProjectDir || abspath == options.StepDir {
+					ignores = append(ignores, file.Name())
+				}
+				// Some default ignores for local paths
+				if file.Name() == "_vendor" { //|| file.Name() == ".git" {
+					ignores = append(ignores, file.Name())
+				}
+			}
+			return ignores
+		}
+		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy}
+		os.Rename(projectDir, fmt.Sprintf("%s-%s", projectDir, uuid.NewRandom().String()))
+		err = shutil.CopyTree(options.ProjectPath, projectDir, copyOpts)
+		if err != nil {
+			panic(err)
 		}
 	}
 
@@ -125,7 +156,7 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 
-	log.Println("Project:", options.ProjectID)
+	log.Println("Application:", options.ApplicationName)
 	log.Println("Box:", box.Name)
 	log.Println("Steps:", len(build.Steps))
 
@@ -257,7 +288,7 @@ func buildProject(c *cli.Context) {
 	}
 
 	if options.PushToRegistry {
-		name := fmt.Sprintf("projects/%s", options.ProjectID)
+		name := fmt.Sprintf("projects/%s", options.ApplicationName)
 		tag := fmt.Sprintf("build-%s", options.BuildID)
 
 		pushOptions := &PushOptions{

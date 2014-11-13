@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"gopkg.in/yaml.v1"
 	"io/ioutil"
@@ -32,13 +31,7 @@ type RawStep map[string]RawStepData
 // RawStepData is the data type for the contents of a step in wercker.yml
 type RawStepData map[string]string
 
-// ReadWerckerYaml will try to find a wercker.yml file and return its bytes.
-// TODO(termie): If allowDefault is true it will try to generate a
-// default yaml file by inspecting the project.
-func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
-	var foundYaml string
-	found := false
-
+func findYaml(searchDirs []string) (string, error) {
 	possibleYaml := []string{"%s/ewok.yml", "%s/wercker.yml", "%s/.wercker.yml"}
 
 	for _, v := range searchDirs {
@@ -46,20 +39,30 @@ func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
 			possibleYaml := fmt.Sprintf(y, v)
 			ymlExists, err := exists(possibleYaml)
 			if err != nil {
-				return nil, err
+				return "", err
 			}
 			if !ymlExists {
 				continue
 			}
-			found = true
-			foundYaml = possibleYaml
+			return possibleYaml, nil
 		}
+	}
+	return "", fmt.Errorf("No wercker.yml found")
+}
+
+// ReadWerckerYaml will try to find a wercker.yml file and return its bytes.
+// TODO(termie): If allowDefault is true it will try to generate a
+// default yaml file by inspecting the project.
+func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
+	foundYaml, err := findYaml(searchDirs)
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO(termie): If allowDefault, we'd generate something here
-	if !allowDefault && !found {
-		return nil, errors.New("No wercker.yml found and no defaults allowed.")
-	}
+	// if !allowDefault && !found {
+	//   return nil, errors.New("No wercker.yml found and no defaults allowed.")
+	// }
 
 	return ioutil.ReadFile(foundYaml)
 }

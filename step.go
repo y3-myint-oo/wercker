@@ -336,12 +336,12 @@ func (s *Step) CollectArtifacts(sess *Session) ([]*Artifact, error) {
 	// Ensure we have the host directory
 
 	artifact := &Artifact{
-		ContainerID: sess.ContainerID,
-		GuestPath:   s.ReportPath("artifacts"),
-		HostPath:    s.build.HostPath("artifacts", s.SafeID, "artifacts.tar"),
-		ProjectID:   s.options.ProjectID,
-		BuildID:     s.options.BuildID,
-		BuildStepID: s.SafeID,
+		ContainerID:   sess.ContainerID,
+		GuestPath:     s.ReportPath("artifacts"),
+		HostPath:      s.build.HostPath("artifacts", s.SafeID, "artifacts.tar"),
+		ApplicationID: s.options.ApplicationID,
+		BuildID:       s.options.BuildID,
+		BuildStepID:   s.SafeID,
 	}
 
 	fullArtifact, err := artificer.Collect(artifact)

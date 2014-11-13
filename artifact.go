@@ -25,13 +25,13 @@ type Artificer struct {
 // Artifact holds the information required to extract a folder
 // from a container and eventually upload it to S3.
 type Artifact struct {
-	ContainerID string
-	GuestPath   string
-	HostPath    string
-	ProjectID   string
-	BuildID     string
-	DeployID    string
-	BuildStepID string
+	ContainerID   string
+	GuestPath     string
+	HostPath      string
+	ApplicationID string
+	BuildID       string
+	DeployID      string
+	BuildStepID   string
 }
 
 var (
@@ -51,9 +51,9 @@ func CreateArtificer(options *GlobalOptions) *Artificer {
 // RemotePath returns the S3 path for an artifact
 func (art *Artifact) RemotePath() string {
 	if art.DeployID != "" {
-		return fmt.Sprintf("project-artifacts/project-%s/deploys/deploy-%s/buildStep-%s/artifacts.tar", art.ProjectID, art.DeployID, art.BuildStepID)
+		return fmt.Sprintf("project-artifacts/project-%s/deploys/deploy-%s/buildStep-%s/artifacts.tar", art.ApplicationID, art.DeployID, art.BuildStepID)
 	}
-	return fmt.Sprintf("project-artifacts/project-%s/builds/build-%s/buildStep-%s/artifacts.tar", art.ProjectID, art.BuildID, art.BuildStepID)
+	return fmt.Sprintf("project-artifacts/project-%s/builds/build-%s/buildStep-%s/artifacts.tar", art.ApplicationID, art.BuildID, art.BuildStepID)
 }
 
 // Collect an artifact from the container, if it doesn't have any files in
