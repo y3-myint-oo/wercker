@@ -39,17 +39,21 @@ func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
 	var foundYaml string
 	found := false
 
+	possibleYaml := []string{"%s/ewok.yml", "%s/wercker.yml", "%s/.wercker.yml"}
+
 	for _, v := range searchDirs {
-		possibleYaml := fmt.Sprintf("%s/wercker.yml", v)
-		ymlExists, err := exists(possibleYaml)
-		if err != nil {
-			return nil, err
+		for _, y := range possibleYaml {
+			possibleYaml := fmt.Sprintf(y, v)
+			ymlExists, err := exists(possibleYaml)
+			if err != nil {
+				return nil, err
+			}
+			if !ymlExists {
+				continue
+			}
+			found = true
+			foundYaml = possibleYaml
 		}
-		if !ymlExists {
-			continue
-		}
-		found = true
-		foundYaml = possibleYaml
 	}
 
 	// TODO(termie): If allowDefault, we'd generate something here
