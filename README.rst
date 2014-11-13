@@ -1,5 +1,5 @@
-wercker-sentcli
-===============
+sentcli
+=======
 
 Parse your wercker.yml, do the things wercker would do.
 
@@ -65,4 +65,4 @@ Basic Process
     b. Run docker containers locally
     c. Execute scripts in docker containers
 
-See https://github.com/wercker/wercker-sentcli/blob/master/docs/design.rst for more.
+See https://github.com/wercker/sentcli/blob/master/docs/design.rst for more.
