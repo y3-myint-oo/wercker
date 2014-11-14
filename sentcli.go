@@ -28,7 +28,7 @@ func main() {
 		cli.StringFlag{Name: "projectID", Value: "", Usage: "project id"},
 		cli.StringFlag{Name: "baseURL", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
 		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
-		cli.BoolTFlag{Name: "pushToRegistry", Usage: "auto push the build result to registry"},
+		cli.BoolFlag{Name: "pushToRegistry", Usage: "auto push the build result to registry"},
 
 		// Code fetching
 		// TODO(termie): this should probably be a separate command run beforehand.
