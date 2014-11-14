@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v1"
 	"io/ioutil"
+	"path"
 )
 
 // RawBox is the data type for a box in the wercker.yml
@@ -32,11 +33,11 @@ type RawStep map[string]RawStepData
 type RawStepData map[string]string
 
 func findYaml(searchDirs []string) (string, error) {
-	possibleYaml := []string{"%s/ewok.yml", "%s/wercker.yml", "%s/.wercker.yml"}
+	possibleYaml := []string{"ewok.yml", "wercker.yml", ".wercker.yml"}
 
 	for _, v := range searchDirs {
 		for _, y := range possibleYaml {
-			possibleYaml := fmt.Sprintf(y, v)
+			possibleYaml := path.Join(y, v)
 			ymlExists, err := exists(possibleYaml)
 			if err != nil {
 				return "", err

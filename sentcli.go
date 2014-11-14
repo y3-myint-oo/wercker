@@ -76,7 +76,7 @@ func buildProject(c *cli.Context) {
 	if err != nil {
 		log.Panicln(err)
 	}
-	// log.Println(fmt.Sprintf("%+v", options))
+	log.Debugln(fmt.Sprintf("%+v", options))
 
 	log.Println(options.ApplicationName)
 	log.Println("############################################")
