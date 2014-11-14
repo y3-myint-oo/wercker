@@ -84,7 +84,7 @@ type GlobalOptions struct {
 	// Base url template to see the results of this build
 	BaseURL string
 
-	DockerEndpoint string
+	DockerHost string
 
 	// Base endpoint for wercker api
 	WerckerEndpoint string
@@ -164,7 +164,7 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		ProjectID:          projectID,
 		BaseURL:            c.GlobalString("baseURL"),
 		CommandTimeout:     c.GlobalInt("commandTimeout"),
-		DockerEndpoint:     c.GlobalString("dockerEndpoint"),
+		DockerHost:         c.GlobalString("dockerHost"),
 		WerckerEndpoint:    c.GlobalString("werckerEndpoint"),
 		NoResponseTimeout:  c.GlobalInt("noResponseTimeout"),
 		ProjectDir:         projectDir,

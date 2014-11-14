@@ -43,7 +43,7 @@ func CreateBox(name string, build *Build, options *GlobalOptions, boxOptions *Bo
 		tag = parts[1]
 	}
 
-	client, err := docker.NewClient(options.DockerEndpoint)
+	client, err := docker.NewClient(options.DockerHost)
 	if err != nil {
 		return nil, err
 	}
