@@ -1,8 +1,8 @@
 #!/bin/bash
 
 function integration_tests() {
-    ./sentcli --projectDir=tests/projects build fail && return 1
-    ./sentcli --projectDir=tests/projects build pass || return 1
+    ./sentcli build tests/projects/fail && return 1
+    ./sentcli build tests/projects/pass || return 1
     return 0
 }
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -78,8 +80,11 @@ type GlobalOptions struct {
 	// Build ID for this operation
 	BuildID string
 
-	// Project ID for this operation
-	ProjectID string
+	// Application name for this operation
+	ApplicationName string
+
+	// Application owner name for this operation
+	ApplicationOwnerName string
 
 	// Base url template to see the results of this build
 	BaseURL string
@@ -107,6 +112,9 @@ type GlobalOptions struct {
 	// Timeout if the command doesn't complete in this many minutes
 	CommandTimeout int
 
+	// A path where the project lives
+	ProjectPath string
+
 	// For fetching code
 	ProjectURL string
 
@@ -120,6 +128,44 @@ type GlobalOptions struct {
 	PushToRegistry bool
 }
 
+// Some logic to guess the application name
+func guessApplicationName(c *cli.Context, env *Environment) (string, error) {
+	// If we explicitly were given an application name, use that
+	applicationName, ok := env.Map["WERCKER_APPLICATION_NAME"]
+	if ok {
+		return applicationName, nil
+	}
+
+	// Otherwise, check our build target, it can be a url...
+	target := c.Args().First()
+	projectURL := ""
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+		projectURL = target
+		base := path.Base(projectURL)
+		// Special handling for github tarballs
+		if base == "tarball" {
+			base = path.Base(path.Dir(projectURL))
+		}
+		ext := path.Ext(base)
+		base = base[:len(ext)]
+		return base, nil
+	}
+
+	// ... or a file path
+	if target == "" {
+		target = "."
+	}
+	stat, err := os.Stat(target)
+	if err != nil || !stat.IsDir() {
+		return "", fmt.Errorf("target '%s' is not a directory", target)
+	}
+	abspath, err := filepath.Abs(target)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Base(abspath), nil
+}
+
 // CreateGlobalOptions builds up GlobalOptions from the cli and environment.
 func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	env := CreateEnvironment(e)
@@ -131,15 +177,32 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	if buildID == "" {
 		buildID = uuid.NewRandom().String()
 	}
+
+	applicationName, err := guessApplicationName(c, env)
+	if err != nil {
+		return nil, err
+	}
+
 	applicationID, ok := env.Map["WERCKER_APPLICATION_ID"]
 	if !ok {
-		applicationID = "unknown_application"
+		applicationID = applicationName
+		log.Warnln("No ApplicationID specified, using", applicationID)
+	}
+
+	projectURL := ""
+	target := c.Args().First()
+	projectPath := target
+	if projectPath == "" {
+		projectPath = "."
+	}
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+		projectURL = target
+		projectPath = ""
 	}
 
 	projectID := c.GlobalString("projectID")
 	if projectID == "" {
 		projectID = strings.Replace(c.Args().First(), "/", "_", -1)
-		log.Warnln("No ProjectID specified, using", projectID)
 	}
 
 	// AWS bits
@@ -157,28 +220,30 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	}
 
 	return &GlobalOptions{
-		Env:                env,
-		BuildDir:           buildDir,
-		BuildID:            buildID,
-		ApplicationID:      applicationID,
-		ProjectID:          projectID,
-		BaseURL:            c.GlobalString("baseURL"),
-		CommandTimeout:     c.GlobalInt("commandTimeout"),
-		DockerHost:         c.GlobalString("dockerHost"),
-		WerckerEndpoint:    c.GlobalString("werckerEndpoint"),
-		NoResponseTimeout:  c.GlobalInt("noResponseTimeout"),
-		ProjectDir:         projectDir,
-		SourceDir:          c.GlobalString("sourceDir"),
-		StepDir:            stepDir,
-		GuestRoot:          c.GlobalString("guestRoot"),
-		MntRoot:            c.GlobalString("mntRoot"),
-		ReportRoot:         c.GlobalString("reportRoot"),
-		ProjectURL:         c.GlobalString("projectURL"),
-		AWSSecretAccessKey: awsSecretAccessKey,
-		AWSAccessKeyID:     awsAccessKeyID,
-		AWSBucket:          c.GlobalString("awsBucket"),
-		AWSRegion:          c.GlobalString("awsRegion"),
-		Registry:           c.GlobalString("registry"),
-		PushToRegistry:     c.GlobalBool("pushToRegistry"),
+		Env:                  env,
+		BuildDir:             buildDir,
+		BuildID:              buildID,
+		ApplicationID:        applicationID,
+		ApplicationName:      applicationName,
+		ApplicationOwnerName: c.GlobalString("applicationOwnerName"),
+		BaseURL:              c.GlobalString("baseURL"),
+		CommandTimeout:       c.GlobalInt("commandTimeout"),
+		DockerHost:           c.GlobalString("dockerHost"),
+		WerckerEndpoint:      c.GlobalString("werckerEndpoint"),
+		NoResponseTimeout:    c.GlobalInt("noResponseTimeout"),
+		ProjectDir:           projectDir,
+		SourceDir:            c.GlobalString("sourceDir"),
+		StepDir:              stepDir,
+		GuestRoot:            c.GlobalString("guestRoot"),
+		MntRoot:              c.GlobalString("mntRoot"),
+		ReportRoot:           c.GlobalString("reportRoot"),
+		ProjectPath:          projectPath,
+		ProjectURL:           projectURL,
+		AWSSecretAccessKey:   awsSecretAccessKey,
+		AWSAccessKeyID:       awsAccessKeyID,
+		AWSBucket:            c.GlobalString("awsBucket"),
+		AWSRegion:            c.GlobalString("awsRegion"),
+		Registry:             c.GlobalString("registry"),
+		PushToRegistry:       c.GlobalBool("pushToRegistry"),
 	}, nil
 }

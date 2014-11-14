@@ -21,9 +21,9 @@ var mirroredEnv = [...]string{
 	"WERCKER_GIT_COMMIT",
 	"WERCKER_STARTED_BY",
 	"WERCKER_MAIN_PIPELINE_STARTED",
-	"WERCKER_APPLICATION_ID",
-	"WERCKER_APPLICATION_NAME",
-	"WERCKER_APPLICATION_OWNER_NAME",
+	// "WERCKER_APPLICATION_ID",
+	// "WERCKER_APPLICATION_NAME",
+	// "WERCKER_APPLICATION_OWNER_NAME",
 }
 
 // ToBuild converts a RawBuild into a Build
@@ -83,6 +83,9 @@ func (b *Build) InitEnv() {
 		[]string{"WERCKER_OUTPUT_DIR", b.GuestPath("output")},
 		[]string{"WERCKER_PIPELINE_DIR", b.GuestPath()},
 		[]string{"WERCKER_REPORT_DIR", b.GuestPath("report")},
+		[]string{"WERCKER_APPLICATION_ID", b.options.ApplicationID},
+		[]string{"WERCKER_APPLICATION_NAME", b.options.ApplicationName},
+		[]string{"WERCKER_APPLICATION_OWNER_NAME", b.options.ApplicationOwnerName},
 		[]string{"TERM", "xterm-256color"},
 	}
 
