@@ -19,7 +19,7 @@ func main() {
 		cli.StringFlag{Name: "stepDir", Value: "./steps", Usage: "path where steps live"},
 		cli.StringFlag{Name: "buildDir", Value: "./builds", Usage: "path where builds live"},
 
-		cli.StringFlag{Name: "dockerEndpoint", Value: "tcp://127.0.0.1:2375", Usage: "docker api endpoint", EnvVar: "DOCKER_ENDPOINT"},
+		cli.StringFlag{Name: "dockerHost", Value: "tcp://127.0.0.1:2375", Usage: "docker api host", EnvVar: "DOCKER_HOST"},
 		cli.StringFlag{Name: "werckerEndpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
 		cli.StringFlag{Name: "mntRoot", Value: "/mnt", Usage: "directory on the guest where volumes are mounted"},
 		cli.StringFlag{Name: "guestRoot", Value: "/pipeline", Usage: "directory on the guest where work is done"},
@@ -201,7 +201,7 @@ func buildProject(c *cli.Context) {
 	}()
 
 	// Start our session
-	sess := CreateSession(options.DockerEndpoint, container.ID)
+	sess := CreateSession(options.DockerHost, container.ID)
 	sess, err = sess.Attach()
 	if err != nil {
 		log.Fatalln(err)
