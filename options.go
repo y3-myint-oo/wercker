@@ -6,6 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
 	"strings"
@@ -124,8 +125,11 @@ type GlobalOptions struct {
 	AWSRegion          string
 	AWSBucket          string
 
-	Registry       string
-	PushToRegistry bool
+	Registry     string
+	ShouldPush   bool
+	ShouldCommit bool
+	Tag          string
+	Message      string
 }
 
 // Some logic to guess the application name
@@ -166,6 +170,30 @@ func guessApplicationName(c *cli.Context, env *Environment) (string, error) {
 	return filepath.Base(abspath), nil
 }
 
+func guessTag(c *cli.Context, env *Environment) string {
+	tag := c.GlobalString("tag")
+	return tag
+}
+
+func guessMessage(c *cli.Context, env *Environment) string {
+	message := c.GlobalString("message")
+	return message
+}
+
+func guessApplicationOwnerName(c *cli.Context, env *Environment) string {
+	name := c.GlobalString("applicationOwnerName")
+	if name == "" {
+		u, err := user.Current()
+		if err == nil {
+			name = u.Name
+		}
+	}
+	if name == "" {
+		name = "wercker"
+	}
+	return name
+}
+
 // CreateGlobalOptions builds up GlobalOptions from the cli and environment.
 func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	env := CreateEnvironment(e)
@@ -182,6 +210,8 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	applicationOwnerName := guessApplicationOwnerName(c, env)
 
 	applicationID, ok := env.Map["WERCKER_APPLICATION_ID"]
 	if !ok {
@@ -205,6 +235,9 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		projectID = strings.Replace(c.Args().First(), "/", "_", -1)
 	}
 
+	tag := guessTag(c, env)
+	message := guessMessage(c, env)
+
 	// AWS bits
 	awsSecretAccessKey := c.GlobalString("awsSecretAccessKey")
 	awsAccessKeyID := c.GlobalString("awsAccessKeyID")
@@ -225,7 +258,7 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		BuildID:              buildID,
 		ApplicationID:        applicationID,
 		ApplicationName:      applicationName,
-		ApplicationOwnerName: c.GlobalString("applicationOwnerName"),
+		ApplicationOwnerName: applicationOwnerName,
 		BaseURL:              c.GlobalString("baseURL"),
 		CommandTimeout:       c.GlobalInt("commandTimeout"),
 		DockerHost:           c.GlobalString("dockerHost"),
@@ -244,6 +277,9 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		AWSBucket:            c.GlobalString("awsBucket"),
 		AWSRegion:            c.GlobalString("awsRegion"),
 		Registry:             c.GlobalString("registry"),
-		PushToRegistry:       c.GlobalBool("pushToRegistry"),
+		ShouldPush:           c.GlobalBool("push"),
+		ShouldCommit:         c.GlobalBool("commit"),
+		Tag:                  tag,
+		Message:              message,
 	}, nil
 }
