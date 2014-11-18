@@ -5,6 +5,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
 	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -157,7 +158,8 @@ func (b *Box) Fetch() (*docker.Image, error) {
 		Repository: b.repository,
 		// changeme if we have a private registry
 		//Registry:     "docker.tsuru.io",
-		Tag: b.tag,
+		OutputStream: os.Stdout,
+		Tag:          b.tag,
 	}
 
 	err := b.client.PullImage(options, docker.AuthConfiguration{})
@@ -207,9 +209,10 @@ func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
 	}
 
 	pushOptions := docker.PushImageOptions{
-		Name:     imageName,
-		Tag:      options.Tag,
-		Registry: options.Registry,
+		Name:         imageName,
+		Tag:          options.Tag,
+		Registry:     options.Registry,
+		OutputStream: os.Stdout,
 	}
 	auth := docker.AuthConfiguration{}
 
