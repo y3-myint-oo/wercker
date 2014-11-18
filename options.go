@@ -123,7 +123,7 @@ type GlobalOptions struct {
 	AWSSecretAccessKey string
 	AWSAccessKeyID     string
 	AWSRegion          string
-	AWSBucket          string
+	S3Bucket           string
 
 	Registry     string
 	ShouldPush   bool
@@ -181,7 +181,7 @@ func guessMessage(c *cli.Context, env *Environment) string {
 }
 
 func guessApplicationOwnerName(c *cli.Context, env *Environment) string {
-	name := c.GlobalString("applicationOwnerName")
+	name := c.GlobalString("application-owner-name")
 	if name == "" {
 		u, err := user.Current()
 		if err == nil {
@@ -198,10 +198,10 @@ func guessApplicationOwnerName(c *cli.Context, env *Environment) string {
 func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	env := CreateEnvironment(e)
 
-	buildDir, _ := filepath.Abs(c.GlobalString("buildDir"))
-	projectDir, _ := filepath.Abs(c.GlobalString("projectDir"))
-	stepDir, _ := filepath.Abs(c.GlobalString("stepDir"))
-	buildID := c.GlobalString("buildID")
+	buildDir, _ := filepath.Abs(c.GlobalString("build-dir"))
+	projectDir, _ := filepath.Abs(c.GlobalString("project-dir"))
+	stepDir, _ := filepath.Abs(c.GlobalString("step-dir"))
+	buildID := c.GlobalString("build-id")
 	if buildID == "" {
 		buildID = uuid.NewRandom().String()
 	}
@@ -230,7 +230,7 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		projectPath = ""
 	}
 
-	projectID := c.GlobalString("projectID")
+	projectID := c.GlobalString("project-id")
 	if projectID == "" {
 		projectID = strings.Replace(c.Args().First(), "/", "_", -1)
 	}
@@ -239,8 +239,8 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	message := guessMessage(c, env)
 
 	// AWS bits
-	awsSecretAccessKey := c.GlobalString("awsSecretAccessKey")
-	awsAccessKeyID := c.GlobalString("awsAccessKeyID")
+	awsSecretAccessKey := c.GlobalString("aws-secret-key")
+	awsAccessKeyID := c.GlobalString("aws-access-key")
 	if awsSecretAccessKey == "" {
 		if val, ok := env.Map["AWS_SECRET_ACCESS_KEY"]; ok {
 			awsSecretAccessKey = val
@@ -259,23 +259,23 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		ApplicationID:        applicationID,
 		ApplicationName:      applicationName,
 		ApplicationOwnerName: applicationOwnerName,
-		BaseURL:              c.GlobalString("baseURL"),
-		CommandTimeout:       c.GlobalInt("commandTimeout"),
-		DockerHost:           c.GlobalString("dockerHost"),
-		WerckerEndpoint:      c.GlobalString("werckerEndpoint"),
-		NoResponseTimeout:    c.GlobalInt("noResponseTimeout"),
+		BaseURL:              c.GlobalString("base-url"),
+		CommandTimeout:       c.GlobalInt("command-timeout"),
+		DockerHost:           c.GlobalString("docker-host"),
+		WerckerEndpoint:      c.GlobalString("wercker-endpoint"),
+		NoResponseTimeout:    c.GlobalInt("no-response-timeout"),
 		ProjectDir:           projectDir,
-		SourceDir:            c.GlobalString("sourceDir"),
+		SourceDir:            c.GlobalString("source-dir"),
 		StepDir:              stepDir,
-		GuestRoot:            c.GlobalString("guestRoot"),
-		MntRoot:              c.GlobalString("mntRoot"),
-		ReportRoot:           c.GlobalString("reportRoot"),
+		GuestRoot:            c.GlobalString("guest-root"),
+		MntRoot:              c.GlobalString("mnt-root"),
+		ReportRoot:           c.GlobalString("report-root"),
 		ProjectPath:          projectPath,
 		ProjectURL:           projectURL,
 		AWSSecretAccessKey:   awsSecretAccessKey,
 		AWSAccessKeyID:       awsAccessKeyID,
-		AWSBucket:            c.GlobalString("awsBucket"),
-		AWSRegion:            c.GlobalString("awsRegion"),
+		S3Bucket:             c.GlobalString("s3-bucket"),
+		AWSRegion:            c.GlobalString("aws-region"),
 		Registry:             c.GlobalString("registry"),
 		ShouldPush:           c.GlobalBool("push"),
 		ShouldCommit:         c.GlobalBool("commit"),
