@@ -37,7 +37,7 @@ func findYaml(searchDirs []string) (string, error) {
 
 	for _, v := range searchDirs {
 		for _, y := range possibleYaml {
-			possibleYaml := path.Join(y, v)
+			possibleYaml := path.Join(v, y)
 			ymlExists, err := exists(possibleYaml)
 			if err != nil {
 				return "", err
