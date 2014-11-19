@@ -17,26 +17,26 @@ func main() {
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		// These flags control where we store local files
-		cli.StringFlag{Name: "projectDir", Value: "./_projects", Usage: "path where downloaded projects live"},
-		cli.StringFlag{Name: "stepDir", Value: "./_steps", Usage: "path where downloaded steps live"},
-		cli.StringFlag{Name: "buildDir", Value: "./_builds", Usage: "path where created builds live"},
+		cli.StringFlag{Name: "project-dir", Value: "./_projects", Usage: "path where downloaded projects live"},
+		cli.StringFlag{Name: "step-dir", Value: "./_steps", Usage: "path where downloaded steps live"},
+		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "path where created builds live"},
 
 		// These flags tell us where to go for operations
-		cli.StringFlag{Name: "dockerHost", Value: "tcp://127.0.0.1:2375", Usage: "docker api host", EnvVar: "DOCKER_HOST"},
-		cli.StringFlag{Name: "werckerEndpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
-		cli.StringFlag{Name: "baseURL", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
+		cli.StringFlag{Name: "docker-host", Value: "tcp://127.0.0.1:2375", Usage: "docker api host", EnvVar: "DOCKER_HOST"},
+		cli.StringFlag{Name: "wercker-endpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
+		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
 		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
 
 		// These flags control paths on the guest and probably shouldn't change
-		cli.StringFlag{Name: "mntRoot", Value: "/mnt", Usage: "directory on the guest where volumes are mounted"},
-		cli.StringFlag{Name: "guestRoot", Value: "/pipeline", Usage: "directory on the guest where work is done"},
-		cli.StringFlag{Name: "reportRoot", Value: "/report", Usage: "directory on the guest where reports will be written"},
+		cli.StringFlag{Name: "mnt-root", Value: "/mnt", Usage: "directory on the guest where volumes are mounted"},
+		cli.StringFlag{Name: "guest-root", Value: "/pipeline", Usage: "directory on the guest where work is done"},
+		cli.StringFlag{Name: "report-root", Value: "/report", Usage: "directory on the guest where reports will be written"},
 
 		// These flags are usually pulled from the env
-		cli.StringFlag{Name: "buildID", Value: "", Usage: "build id", EnvVar: "WERCKER_BUILD_ID"},
-		cli.StringFlag{Name: "applicationID", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_ID"},
-		cli.StringFlag{Name: "applicationName", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
-		cli.StringFlag{Name: "applicationOwnerName", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
+		cli.StringFlag{Name: "build-id", Value: "", Usage: "build id", EnvVar: "WERCKER_BUILD_ID"},
+		cli.StringFlag{Name: "application-id", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_ID"},
+		cli.StringFlag{Name: "application-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
+		cli.StringFlag{Name: "application-owner-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
 
 		// Should we push finished builds to the registry?
 		cli.BoolFlag{Name: "push", Usage: "push the build result to registry"},
@@ -45,15 +45,15 @@ func main() {
 		cli.StringFlag{Name: "message", Value: "", Usage: "message for this build"},
 
 		// AWS bits
-		cli.StringFlag{Name: "awsSecretAccessKey", Value: "", Usage: "secret access key"},
-		cli.StringFlag{Name: "awsAccessKeyID", Value: "", Usage: "access key id"},
-		cli.StringFlag{Name: "awsBucket", Value: "wercker-development", Usage: "bucket for artifacts"},
-		cli.StringFlag{Name: "awsRegion", Value: "us-east-1", Usage: "region"},
+		cli.StringFlag{Name: "aws-secret-key", Value: "", Usage: "secret access key"},
+		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "access key id"},
+		cli.StringFlag{Name: "s3-bucket", Value: "wercker-development", Usage: "bucket for artifacts"},
+		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "region"},
 
 		// These options might be overwritten by the wercker.yml
-		cli.StringFlag{Name: "sourceDir", Value: "", Usage: "source path relative to checkout root"},
-		cli.IntFlag{Name: "noResponseTimeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
-		cli.IntFlag{Name: "commandTimeout", Value: 10, Usage: "timeout if command does not complete in this many minutes"},
+		cli.StringFlag{Name: "source-dir", Value: "", Usage: "source path relative to checkout root"},
+		cli.IntFlag{Name: "no-response-timeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
+		cli.IntFlag{Name: "command-timeout", Value: 10, Usage: "timeout if command does not complete in this many minutes"},
 	}
 
 	app.Commands = []cli.Command{

@@ -126,7 +126,7 @@ func (a *Artificer) Upload(artifact *Artifact) error {
 	region := aws.Regions[a.options.AWSRegion]
 
 	s := s3.New(auth, region)
-	b := s.Bucket(a.options.AWSBucket)
+	b := s.Bucket(a.options.S3Bucket)
 
 	f, err := os.Open(artifact.HostPath)
 	if err != nil {
