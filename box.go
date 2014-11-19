@@ -178,16 +178,34 @@ type PushOptions struct {
 	Registry string
 	Name     string
 	Tag      string
+	Message  string
+}
+
+func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
+	log.WithFields(log.Fields{
+		"Name": name,
+		"Tag":  tag,
+	}).Debug("Commit container")
+
+	commitOptions := docker.CommitContainerOptions{
+		Container:  b.container.ID,
+		Repository: name,
+		Tag:        tag,
+		Message:    "Build completed",
+		Author:     "wercker",
+	}
+	image, err := b.client.CommitContainer(commitOptions)
+	return image, err
 }
 
 // Push commits and tag a container. Then push the image to the registry.
 // Returns the new image, no cleanup is provided.
 func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
-
 	log.WithFields(log.Fields{
 		"Registry": options.Registry,
 		"Name":     options.Name,
 		"Tag":      options.Tag,
+		"Message":  options.Message,
 	}).Debug("Push to registry")
 
 	imageName := options.Name
@@ -195,15 +213,7 @@ func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
 		imageName = fmt.Sprintf("%s/%s", options.Registry, options.Name)
 	}
 
-	commitOptions := docker.CommitContainerOptions{
-		Container:  b.container.ID,
-		Repository: imageName,
-		Message:    "Build completed",
-		Author:     "wercker",
-		Tag:        options.Tag,
-	}
-
-	i, err := b.client.CommitContainer(commitOptions)
+	i, err := b.Commit(imageName, options.Tag, options.Message)
 	if err != nil {
 		return nil, err
 	}

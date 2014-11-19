@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-
 	log.SetLevel(log.DebugLevel)
 
 	app := cli.NewApp()
@@ -40,7 +39,10 @@ func main() {
 		cli.StringFlag{Name: "applicationOwnerName", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
 
 		// Should we push finished builds to the registry?
-		cli.BoolFlag{Name: "pushToRegistry", Usage: "auto push the build result to registry"},
+		cli.BoolFlag{Name: "push", Usage: "push the build result to registry"},
+		cli.BoolFlag{Name: "commit", Usage: "commit the build result locally"},
+		cli.StringFlag{Name: "tag", Value: "", Usage: "tag for this build", EnvVar: "WERCKER_GIT_BRANCH"},
+		cli.StringFlag{Name: "message", Value: "", Usage: "message for this build"},
 
 		// AWS bits
 		cli.StringFlag{Name: "awsSecretAccessKey", Value: "", Usage: "secret access key"},
@@ -250,6 +252,16 @@ func buildProject(c *cli.Context) {
 		log.Fatalln("Build failed with exit code:", exit)
 	}
 
+	repoName := fmt.Sprintf("%s/%s", options.ApplicationOwnerName, options.ApplicationName)
+	tag := options.Tag
+	if tag == "" {
+		tag = fmt.Sprintf("build-%s", options.BuildID)
+	}
+	message := options.Message
+	if message == "" {
+		message = fmt.Sprintf("Build %s", options.BuildID)
+	}
+
 	for _, step := range build.Steps {
 		log.Println()
 		log.Println("============= Executing Step ==============")
@@ -282,16 +294,22 @@ func buildProject(c *cli.Context) {
 			}
 		}
 		log.Println("============ Step successful! =============")
+
+		if options.ShouldCommit {
+			box.Commit(repoName, tag, message)
+		}
 	}
 
-	if options.PushToRegistry {
-		name := fmt.Sprintf("projects/%s", options.ApplicationName)
-		tag := fmt.Sprintf("build-%s", options.BuildID)
+	if options.ShouldCommit {
+		box.Commit(repoName, tag, message)
+	}
 
+	if options.ShouldPush {
 		pushOptions := &PushOptions{
 			Registry: options.Registry,
-			Name:     name,
+			Name:     repoName,
 			Tag:      tag,
+			Message:  message,
 		}
 
 		_, err = box.Push(pushOptions)
