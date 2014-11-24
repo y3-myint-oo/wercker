@@ -1,4 +1,4 @@
-package: main
+package: github.com/wercker/sentcli
 
 import:
   - package: code.google.com/p/go-uuid
