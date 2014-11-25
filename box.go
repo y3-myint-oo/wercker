@@ -181,6 +181,7 @@ type PushOptions struct {
 	Message  string
 }
 
+// Commit the current running Docker container to an Docker image.
 func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 	log.WithFields(log.Fields{
 		"Name": name,
