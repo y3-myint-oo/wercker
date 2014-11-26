@@ -5,6 +5,7 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/chuckpreslar/emission"
 	"io"
 	"strings"
 )
@@ -15,6 +16,7 @@ type Session struct {
 	ws          *websocket.Conn
 	ch          chan string
 	ContainerID string
+	e           *emission.Emitter
 }
 
 // CreateSession based on a docker api endpoint and container ID.
@@ -26,7 +28,13 @@ func CreateSession(endpoint string, containerID string) *Session {
 
 	ch := make(chan string)
 
-	return &Session{wsURL: wsURL, ws: nil, ch: ch, ContainerID: containerID}
+	return &Session{
+		wsURL:       wsURL,
+		ws:          nil,
+		ch:          ch,
+		ContainerID: containerID,
+		e:           GetEmitter(),
+	}
 }
 
 // ReadToChan reads on a websocket forever, writing to a channel
@@ -62,8 +70,12 @@ func (s *Session) Attach() (*Session, error) {
 // Send an array of commands.
 func (s *Session) Send(commands ...string) {
 	for i := range commands {
-		log.Println("send: ", commands[i])
-		err := websocket.Message.Send(s.ws, commands[i]+"\n")
+		command := commands[i] + "\n"
+		s.e.Emit(Logs, &LogsArgs{
+			Stream: "stdin",
+			Logs:   command,
+		})
+		err := websocket.Message.Send(s.ws, command)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -89,7 +101,12 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 		if !ok {
 			return 1, recv, nil
 		}
-		log.Println("recv: ", strings.TrimSpace(line))
+
+		s.e.Emit(Logs, &LogsArgs{
+			Stream: "stdout",
+			Logs:   line,
+		})
+
 		if strings.HasPrefix(line, rand) {
 			check = true
 			_, err := fmt.Sscanf(line, "%s %d\n", &rand, &exitCode)

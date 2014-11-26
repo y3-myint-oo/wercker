@@ -10,4 +10,4 @@ import:
   - package: github.com/fsouza/go-dockerclient
   - package: github.com/termie/go-shutil
   - package: gopkg.in/yaml.v1
-
+  - package: github.com/chuckpreslar/emission
