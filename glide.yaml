@@ -12,3 +12,4 @@ import:
   - package: gopkg.in/yaml.v1
   - package: github.com/chuckpreslar/emission
   - package: github.com/wercker/reporter
+  - package: github.com/inconshreveable/go-keen

@@ -93,6 +93,12 @@ func buildProject(c *cli.Context) {
 	}
 	l.ListenTo(e)
 
+	mh, err := NewMetricsHandler()
+	if err != nil {
+		log.WithField("Error", err).Panic("Unable to MetricsHandler")
+	}
+	mh.ListenTo(e)
+
 	log.Debugln(fmt.Sprintf("%+v", options))
 
 	log.Println(options.ApplicationName)
