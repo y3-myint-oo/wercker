@@ -1,12 +1,23 @@
 box: tcnksm/gox@0.1.0
 build:
   steps:
+    - setup-go-workspace@1.0.4
+
+    - wercker/add-ssh-key:
+        keyname: REPORTER_KEY
+
+    - script:
+        name: fetch github.com/wercker/reporter
+        code: git clone git@github.com:wercker/reporter $GOPATH/src/github.com/wercker/reporter
+
     - script:
         name: go get
         code: go get -v -d ./...
+
     - script:
         name: go vet
         code: go tool vet *.go
+
     - script:
         name: go lint
         code: |-
@@ -17,9 +28,11 @@ build:
           if [ "$LINTLINES" -ge 5 ]; then echo "You should be tidying soon: $LINTLINES lint warnings." > $WERCKER_REPORT_MESSAGE_FILE; warn "You should be tidying soon."; fi
           if [ "$LINTLINES" -lt 5 && "$LINTLINES" -gt 0 ]; then echo "You are fairly tidy: $LINTLINES lint warnings." > $WERCKER_REPORT_MESSAGE_FILE; fi
           if [ "$LINTLINES" -eq 0 ]; then echo "Perfect: $LINTLINES lint warnings." > $WERCKER_REPORT_MESSAGE_FILE; fi
+
     - tcnksm/gox:
         os: "darwin linux"
         arch: "386 amd64"
+
     - script:
         name: prepare
         code: |-

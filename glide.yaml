@@ -11,3 +11,4 @@ import:
   - package: github.com/termie/go-shutil
   - package: gopkg.in/yaml.v1
   - package: github.com/chuckpreslar/emission
+  - package: github.com/wercker/reporter
