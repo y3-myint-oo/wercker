@@ -78,6 +78,21 @@ func buildProject(c *cli.Context) {
 	if err != nil {
 		log.Panicln(err)
 	}
+
+	e := GetEmitter()
+
+	h, err := NewLogHandler()
+	if err != nil {
+		log.WithField("Error", err).Panic("Unable to LogHandler")
+	}
+	h.ListenTo(e)
+
+	l, err := NewLiteralLogHandler()
+	if err != nil {
+		log.WithField("Error", err).Panic("Unable to LiteralLogHandler")
+	}
+	l.ListenTo(e)
+
 	log.Debugln(fmt.Sprintf("%+v", options))
 
 	log.Println(options.ApplicationName)
@@ -125,6 +140,13 @@ func buildProject(c *cli.Context) {
 			panic(err)
 		}
 	}
+
+	setupEnvironmentStep := &Step{Name: "setup environment"}
+	e.Emit(BuildStepStarted, &BuildStepStartedArgs{
+		Options: options,
+		Step:    setupEnvironmentStep,
+		Order:   2,
+	})
 
 	// Return a []byte of the yaml we find or create.
 	werckerYaml, err := ReadWerckerYaml([]string{projectDir}, false)
@@ -262,11 +284,34 @@ func buildProject(c *cli.Context) {
 		message = fmt.Sprintf("Build %s", options.BuildID)
 	}
 
-	for _, step := range build.Steps {
+	e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
+		Build:      build,
+		Options:    options,
+		Step:       setupEnvironmentStep,
+		Order:      2,
+		Successful: true,
+	})
+
+	// TODO(bvdberg): Add steps to event
+	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
+		Build:   build,
+		Steps:   build.Steps,
+		Options: options,
+	})
+
+	offset := 2
+	for i, step := range build.Steps {
 		log.Println()
 		log.Println("============= Executing Step ==============")
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
+
+		e.Emit(BuildStepStarted, &BuildStepStartedArgs{
+			Build:   build,
+			Step:    step,
+			Options: options,
+			Order:   offset + i,
+		})
 
 		step.InitEnv()
 		log.Println("Step Environment")
@@ -293,6 +338,15 @@ func buildProject(c *cli.Context) {
 				log.Panicln(err)
 			}
 		}
+
+		e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
+			Build:      build,
+			Options:    options,
+			Step:       step,
+			Order:      offset + i,
+			Successful: true,
+		})
+
 		log.Println("============ Step successful! =============")
 
 		if options.ShouldCommit {

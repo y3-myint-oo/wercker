@@ -7,4 +7,12 @@ build:
   steps:
     - script:
         code: |
+            COUNTER=0
+            until [  $COUNTER -gt 100 ]; do
+              echo -e -n "$COUNTER%\r"
+              sleep 0.1
+              let COUNTER+=1
+            done
+    - script:
+        code: |
             nc -z `echo ${NGINX_PORT#*://} | sed 's/:/ /g'`
