@@ -88,6 +88,9 @@ type GlobalOptions struct {
 	// Application owner name for this operation
 	ApplicationOwnerName string
 
+	// Application starter name for this operation
+	ApplicationStartedByName string
+
 	// Base url template to see the results of this build
 	BaseURL string
 
@@ -273,36 +276,37 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	}
 
 	return &GlobalOptions{
-		Env:                  env,
-		BuildDir:             buildDir,
-		BuildID:              buildID,
-		ApplicationID:        applicationID,
-		ApplicationName:      applicationName,
-		ApplicationOwnerName: applicationOwnerName,
-		BaseURL:              c.GlobalString("base-url"),
-		CommandTimeout:       c.GlobalInt("command-timeout"),
-		DockerHost:           c.GlobalString("docker-host"),
-		WerckerEndpoint:      c.GlobalString("wercker-endpoint"),
-		NoResponseTimeout:    c.GlobalInt("no-response-timeout"),
-		ProjectDir:           projectDir,
-		SourceDir:            c.GlobalString("source-dir"),
-		StepDir:              stepDir,
-		GuestRoot:            c.GlobalString("guest-root"),
-		MntRoot:              c.GlobalString("mnt-root"),
-		ReportRoot:           c.GlobalString("report-root"),
-		ProjectPath:          projectPath,
-		ProjectURL:           projectURL,
-		AWSSecretAccessKey:   awsSecretAccessKey,
-		AWSAccessKeyID:       awsAccessKeyID,
-		S3Bucket:             c.GlobalString("s3-bucket"),
-		AWSRegion:            c.GlobalString("aws-region"),
-		Registry:             c.GlobalString("registry"),
-		ShouldPush:           c.GlobalBool("push"),
-		ShouldCommit:         c.GlobalBool("commit"),
-		ShouldKeenMetrics:    keenMetrics,
-		KeenProjectWriteKey:  keenProjectWriteKey,
-		KeenProjectID:        keenProjectID,
-		Tag:                  tag,
-		Message:              message,
+		Env:                      env,
+		BuildDir:                 buildDir,
+		BuildID:                  buildID,
+		ApplicationID:            applicationID,
+		ApplicationName:          applicationName,
+		ApplicationOwnerName:     applicationOwnerName,
+		ApplicationStartedByName: c.GlobalString("application-started-by-name"),
+		BaseURL:                  c.GlobalString("base-url"),
+		CommandTimeout:           c.GlobalInt("command-timeout"),
+		DockerHost:               c.GlobalString("docker-host"),
+		WerckerEndpoint:          c.GlobalString("wercker-endpoint"),
+		NoResponseTimeout:        c.GlobalInt("no-response-timeout"),
+		ProjectDir:               projectDir,
+		SourceDir:                c.GlobalString("source-dir"),
+		StepDir:                  stepDir,
+		GuestRoot:                c.GlobalString("guest-root"),
+		MntRoot:                  c.GlobalString("mnt-root"),
+		ReportRoot:               c.GlobalString("report-root"),
+		ProjectPath:              projectPath,
+		ProjectURL:               projectURL,
+		AWSSecretAccessKey:       awsSecretAccessKey,
+		AWSAccessKeyID:           awsAccessKeyID,
+		S3Bucket:                 c.GlobalString("s3-bucket"),
+		AWSRegion:                c.GlobalString("aws-region"),
+		Registry:                 c.GlobalString("registry"),
+		ShouldPush:               c.GlobalBool("push"),
+		ShouldCommit:             c.GlobalBool("commit"),
+		ShouldKeenMetrics:        keenMetrics,
+		KeenProjectWriteKey:      keenProjectWriteKey,
+		KeenProjectID:            keenProjectID,
+		Tag:                      tag,
+		Message:                  message,
 	}, nil
 }

@@ -32,7 +32,7 @@ type MetricsPayload struct {
 	// Box                        string `json:"box"`       // todo
 	// Core                       string `json:"core"`      // todo
 	// JobID                      string `json:"jobId"`     // todo
-	// StartedBy                  string `json:"startedBy"` // todo
+	ApplicationStartedByName string `json:"startedBy"` // todo
 }
 
 // NewMetricsHandler will create a new NewMetricsHandler.
@@ -68,10 +68,10 @@ func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
 		StepOrder: event.Order,
 		Timestamp: int32(time.Now().Unix()),
 		VCS:       "git",
+		ApplicationStartedByName: event.Options.ApplicationStartedByName,
 		// Box:     event.Box,
 		// Core:      "",
 		// JobID:     "",
-		// StartedBy: "",
 	})
 }
 
@@ -90,10 +90,10 @@ func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
 		StepOrder: event.Order,
 		Timestamp: int32(time.Now().Unix()),
 		VCS:       "git",
+		ApplicationStartedByName: "",
 		// Box:     event.Box,
 		// Core:      "",
 		// JobID:     "",
-		// StartedBy: "",
 	})
 }
 

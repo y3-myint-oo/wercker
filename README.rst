@@ -44,6 +44,7 @@ Usage
   --aws-access-key 					access key id
   --s3-bucket 'wercker-development'			bucket for artifacts
   --aws-region 'us-east-1'				region
+  --keen-metrics					report metrics to keen.io
   --keen-project-write-key 				keen write key
   --keen-project-id 					keen project id
   --source-dir 					source path relative to checkout root
@@ -51,6 +52,7 @@ Usage
   --command-timeout '10'				timeout if command does not complete in this many minutes
   --help, -h						show help
   --version, -v					print the version
+  
 
 
   Getting Started
