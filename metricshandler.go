@@ -2,9 +2,14 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/chuckpreslar/emission"
 	"github.com/inconshreveable/go-keen"
 	"time"
+)
+
+var (
+	start = time.Now()
 )
 
 // A MetricsEventHandler reporting to keen.io.
@@ -23,16 +28,17 @@ type MetricsApplicationPayload struct {
 // `sentinel` -> `core`.
 type MetricsPayload struct {
 	*MetricsApplicationPayload `json:"application"`
+	ApplicationStartedByName   string `json:"startedBy"`
 	BuildID                    string `json:"buildId"`
 	Event                      string `json:"event"`
 	StepName                   string `json:"stepName"`
 	StepOrder                  int    `json:"stepOrder"`
+	TimeElapsed                string `json:"timeElapsed,omitempty"`
 	Timestamp                  int32  `json:"timestamp"`
 	VCS                        string `json:"versionControl"`
 	// Box                        string `json:"box"`       // todo
 	// Core                       string `json:"core"`      // todo
 	// JobID                      string `json:"jobId"`     // todo
-	ApplicationStartedByName string `json:"startedBy"` // todo
 }
 
 // NewMetricsHandler will create a new NewMetricsHandler.
@@ -56,19 +62,21 @@ func NewMetricsHandler(opts *GlobalOptions) (*MetricsEventHandler, error) {
 
 // BuildStepStarted responds to the BuildStepStarted event.
 func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
+	start = time.Now()
+
 	h.keen.AddEvent("build-events-ewok", &MetricsPayload{
 		MetricsApplicationPayload: &MetricsApplicationPayload{
 			ID:        event.Options.ApplicationID,
 			Name:      event.Options.ApplicationName,
 			OwnerName: event.Options.ApplicationOwnerName,
 		},
-		BuildID:   event.Options.ApplicationID,
-		Event:     "buildStepStarted",
-		StepName:  event.Step.Name,
-		StepOrder: event.Order,
-		Timestamp: int32(time.Now().Unix()),
-		VCS:       "git",
 		ApplicationStartedByName: event.Options.ApplicationStartedByName,
+		BuildID:                  event.Options.ApplicationID,
+		Event:                    "buildStepStarted",
+		StepName:                 event.Step.Name,
+		StepOrder:                event.Order,
+		Timestamp:                int32(time.Now().Unix()),
+		VCS:                      "git",
 		// Box:     event.Box,
 		// Core:      "",
 		// JobID:     "",
@@ -77,20 +85,24 @@ func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
 
 // BuildStepFinished responds to the BuildStepFinished event.
 func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
+
+	elapsed := time.Since(start)
+	start = time.Now()
+
 	h.keen.AddEvent("build-events-ewok", &MetricsPayload{
 		MetricsApplicationPayload: &MetricsApplicationPayload{
 			ID:        event.Options.ApplicationID,
 			Name:      event.Options.ApplicationName,
 			OwnerName: event.Options.ApplicationOwnerName,
 		},
-		//Box:       event.Box,
-		BuildID:   event.Options.ApplicationID,
-		Event:     "buildStepFinished",
-		StepName:  event.Step.Name,
-		StepOrder: event.Order,
-		Timestamp: int32(time.Now().Unix()),
-		VCS:       "git",
-		ApplicationStartedByName: "",
+		ApplicationStartedByName: event.Options.ApplicationStartedByName,
+		BuildID:                  event.Options.ApplicationID,
+		Event:                    "buildStepFinished",
+		StepName:                 event.Step.Name,
+		StepOrder:                event.Order,
+		TimeElapsed:              fmt.Sprintf("%s", elapsed),
+		Timestamp:                int32(time.Now().Unix()),
+		VCS:                      "git",
 		// Box:     event.Box,
 		// Core:      "",
 		// JobID:     "",
