@@ -2,6 +2,7 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -124,6 +125,11 @@ type GlobalOptions struct {
 	AWSAccessKeyID     string
 	AWSRegion          string
 	S3Bucket           string
+
+	// Keen Bits
+	ShouldKeenMetrics   bool
+	KeenProjectWriteKey string
+	KeenProjectID       string
 
 	Registry     string
 	ShouldPush   bool
@@ -252,6 +258,20 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		}
 	}
 
+	keenMetrics := c.GlobalBool("keen-metrics")
+	keenProjectWriteKey := c.GlobalString("keen-project-write-key")
+	keenProjectID := c.GlobalString("keen-project-id")
+
+	if keenMetrics {
+		if keenProjectWriteKey == "" {
+			return nil, errors.New("keen-project-write-key is required")
+		}
+
+		if keenProjectID == "" {
+			return nil, errors.New("keen-project-id is required")
+		}
+	}
+
 	return &GlobalOptions{
 		Env:                  env,
 		BuildDir:             buildDir,
@@ -279,6 +299,9 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		Registry:             c.GlobalString("registry"),
 		ShouldPush:           c.GlobalBool("push"),
 		ShouldCommit:         c.GlobalBool("commit"),
+		ShouldKeenMetrics:    keenMetrics,
+		KeenProjectWriteKey:  keenProjectWriteKey,
+		KeenProjectID:        keenProjectID,
 		Tag:                  tag,
 		Message:              message,
 	}, nil

@@ -1,15 +1,10 @@
 package main
 
 import (
+	"errors"
 	"github.com/chuckpreslar/emission"
 	"github.com/inconshreveable/go-keen"
 	"time"
-)
-
-const (
-	//  keenFlushInterval = 10 * time.Second
-	keenProjectWriteKey = "***REMOVED***"
-	keenProjectID       = "***REMOVED***"
 )
 
 // A MetricsEventHandler reporting to keen.io.
@@ -41,12 +36,20 @@ type MetricsPayload struct {
 }
 
 // NewMetricsHandler will create a new NewMetricsHandler.
-func NewMetricsHandler() (*MetricsEventHandler, error) {
+func NewMetricsHandler(opts *GlobalOptions) (*MetricsEventHandler, error) {
+
+	if "" == opts.KeenProjectWriteKey {
+		return nil, errors.New("No KeenProjectWriteKey specified")
+	}
+
+	if "" == opts.KeenProjectID {
+		return nil, errors.New("No KeenProjectID specified")
+	}
 
 	// todo(yoshuawuyts): replace with `keen batch client` + regular flushes
 	keenInstance := &keen.Client{
-		ApiKey:       keenProjectWriteKey,
-		ProjectToken: keenProjectID}
+		ApiKey:       opts.KeenProjectWriteKey,
+		ProjectToken: opts.KeenProjectID}
 
 	return &MetricsEventHandler{keen: keenInstance}, nil
 }

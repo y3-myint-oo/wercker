@@ -1,8 +1,22 @@
 #!/bin/bash
 
 function integration_tests() {
-    ./sentcli build tests/projects/fail && return 1
-    ./sentcli build tests/projects/pass || return 1
+  local keenProjectWriteKey="***REMOVED***"
+  local keenProjectId="***REMOVED***"
+
+  ./sentcli \
+    --keen-metrics \
+    --keen-project-write-key $keenProjectWriteKey \
+    --keen-project-id $keenProjectId \
+    build tests/projects/fail \
+    && return 1
+
+  ./sentcli \
+    --keen-metrics \
+    --keen-project-write-key $keenProjectWriteKey \
+    --keen-project-id $keenProjectId \
+    build tests/projects/pass \
+    || return 1 \
     return 0
 }
 
