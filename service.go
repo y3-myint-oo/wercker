@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"github.com/fsouza/go-dockerclient"
 )
 
@@ -23,7 +24,7 @@ func CreateServiceBox(name string, build *Build, options *GlobalOptions, boxOpti
 
 // Run executes the service
 func (b *ServiceBox) Run() (*docker.Container, error) {
-	containerName := fmt.Sprintf("wercker-service-%s-%s", b.Name, b.options.BuildID)
+	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name,"/","-",-1), b.options.BuildID)
 
 	container, err := b.client.CreateContainer(
 		docker.CreateContainerOptions{
