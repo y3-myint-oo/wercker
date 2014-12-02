@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// SentCLIVersion from `version.go`
 var (
 	start = time.Now()
 )
@@ -32,6 +33,7 @@ type MetricsPayload struct {
 	BuildID                    string `json:"buildId"`
 	Event                      string `json:"event"`
 	Step                       *Step  `json:"step"`
+	SentCLIVersion             string `json:"sentCLIVersion"`
 	StepOrder                  int    `json:"stepOrder"`
 	TimeElapsed                string `json:"timeElapsed,omitempty"`
 	Timestamp                  int32  `json:"timestamp"`
@@ -74,6 +76,7 @@ func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
 		BuildID:                  event.Options.ApplicationID,
 		Event:                    "buildStepStarted",
 		Step:                     event.Step,
+		SentCLIVersion:           SentCLIVersion,
 		StepOrder:                event.Order,
 		Timestamp:                int32(time.Now().Unix()),
 		VCS:                      "git",
@@ -98,6 +101,7 @@ func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
 		ApplicationStartedByName: event.Options.ApplicationStartedByName,
 		BuildID:                  event.Options.ApplicationID,
 		Event:                    "buildStepFinished",
+		SentCLIVersion:           SentCLIVersion,
 		Step:                     event.Step,
 		StepOrder:                event.Order,
 		TimeElapsed:              fmt.Sprintf("%s", elapsed),
