@@ -31,7 +31,7 @@ type MetricsPayload struct {
 	ApplicationStartedByName   string `json:"startedBy"`
 	BuildID                    string `json:"buildId"`
 	Event                      string `json:"event"`
-	StepName                   string `json:"stepName"`
+	Step                       *Step  `json:"step"`
 	StepOrder                  int    `json:"stepOrder"`
 	TimeElapsed                string `json:"timeElapsed,omitempty"`
 	Timestamp                  int32  `json:"timestamp"`
@@ -73,7 +73,7 @@ func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
 		ApplicationStartedByName: event.Options.ApplicationStartedByName,
 		BuildID:                  event.Options.ApplicationID,
 		Event:                    "buildStepStarted",
-		StepName:                 event.Step.Name,
+		Step:                     event.Step,
 		StepOrder:                event.Order,
 		Timestamp:                int32(time.Now().Unix()),
 		VCS:                      "git",
@@ -98,7 +98,7 @@ func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
 		ApplicationStartedByName: event.Options.ApplicationStartedByName,
 		BuildID:                  event.Options.ApplicationID,
 		Event:                    "buildStepFinished",
-		StepName:                 event.Step.Name,
+		Step:                     event.Step,
 		StepOrder:                event.Order,
 		TimeElapsed:              fmt.Sprintf("%s", elapsed),
 		Timestamp:                int32(time.Now().Unix()),
