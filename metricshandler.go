@@ -54,8 +54,8 @@ func NewMetricsHandler(opts *GlobalOptions) (*MetricsEventHandler, error) {
 
 	// todo(yoshuawuyts): replace with `keen batch client` + regular flushes
 	keenInstance := &keen.Client{
-		ApiKey:       opts.KeenProjectWriteKey,
-		ProjectToken: opts.KeenProjectID}
+		WriteKey:  opts.KeenProjectWriteKey,
+		ProjectID: opts.KeenProjectID}
 
 	return &MetricsEventHandler{keen: keenInstance}, nil
 }
