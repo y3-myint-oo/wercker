@@ -1,13 +1,14 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
 	"fmt"
+	"os"
+
+	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/joho/godotenv"
-	"os"
 )
 
 func main() {
@@ -379,4 +380,8 @@ func displayVersion(options *VersionOptions) {
 
 	os.Stdout.WriteString("\n")
 
+}
+
+func createProject(c *cli.Context) {
+	log.Println("########### Creating project! #############")
 }
