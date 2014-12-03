@@ -11,6 +11,6 @@ cat >./version.go <<EOL
 package main
 
 const (
-  SentCLIVersion = "$GITHASH"
+  GitVersion = "$GITHASH"
 )
 EOL

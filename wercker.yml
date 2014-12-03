@@ -32,7 +32,7 @@ build:
     - script:
         name: get version
         code: |-
-            sh -e ./version.sh "$(git rev-parse HEAD)"
+            sh -e ./version.sh "$(git rev-parse $WERCKER_GIT_COMMIT)"
 
     - tcnksm/gox:
         os: "darwin linux"

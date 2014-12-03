@@ -8,16 +8,14 @@ import (
 	"time"
 )
 
-// SentCLIVersion from `version.go`
-var (
-	start = time.Now()
-)
-
 // A MetricsEventHandler reporting to keen.io.
 type MetricsEventHandler struct {
-	keen *keen.Client
+	keen  *keen.Client
+	start time.Time
 }
 
+// MetricsApplicationPayload is the app data we're reporting
+// to keen. Part of MetricsPayload.
 type MetricsApplicationPayload struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -28,16 +26,16 @@ type MetricsApplicationPayload struct {
 // Identical to legacy pool but we've renamed
 // `sentinel` -> `core`.
 type MetricsPayload struct {
-	*MetricsApplicationPayload `json:"application"`
-	ApplicationStartedByName   string `json:"startedBy"`
-	BuildID                    string `json:"buildId"`
-	Event                      string `json:"event"`
-	Step                       *Step  `json:"step"`
-	SentCLIVersion             string `json:"sentCLIVersion"`
-	StepOrder                  int    `json:"stepOrder"`
-	TimeElapsed                string `json:"timeElapsed,omitempty"`
-	Timestamp                  int32  `json:"timestamp"`
-	VCS                        string `json:"versionControl"`
+	MetricsApplicationPayload *MetricsApplicationPayload `json:"application"`
+	ApplicationStartedByName  string                     `json:"startedBy"`
+	BuildID                   string                     `json:"buildId"`
+	Event                     string                     `json:"event"`
+	Step                      *Step                      `json:"step"`
+	GitVersion                string                     `json:"GitVersion"`
+	StepOrder                 int                        `json:"stepOrder"`
+	TimeElapsed               string                     `json:"timeElapsed,omitempty"`
+	Timestamp                 int32                      `json:"timestamp"`
+	VCS                       string                     `json:"versionControl"`
 	// Box                        string `json:"box"`       // todo
 	// Core                       string `json:"core"`      // todo
 	// JobID                      string `json:"jobId"`     // todo
@@ -57,14 +55,15 @@ func NewMetricsHandler(opts *GlobalOptions) (*MetricsEventHandler, error) {
 	// todo(yoshuawuyts): replace with `keen batch client` + regular flushes
 	keenInstance := &keen.Client{
 		WriteKey:  opts.KeenProjectWriteKey,
-		ProjectID: opts.KeenProjectID}
+		ProjectID: opts.KeenProjectID,
+	}
 
 	return &MetricsEventHandler{keen: keenInstance}, nil
 }
 
 // BuildStepStarted responds to the BuildStepStarted event.
 func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
-	start = time.Now()
+	h.start = time.Now()
 
 	h.keen.AddEvent("build-events-ewok", &MetricsPayload{
 		MetricsApplicationPayload: &MetricsApplicationPayload{
@@ -76,7 +75,7 @@ func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
 		BuildID:                  event.Options.ApplicationID,
 		Event:                    "buildStepStarted",
 		Step:                     event.Step,
-		SentCLIVersion:           SentCLIVersion,
+		GitVersion:               GitVersion,
 		StepOrder:                event.Order,
 		Timestamp:                int32(time.Now().Unix()),
 		VCS:                      "git",
@@ -89,8 +88,8 @@ func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
 // BuildStepFinished responds to the BuildStepFinished event.
 func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
 
-	elapsed := time.Since(start)
-	start = time.Now()
+	elapsed := time.Since(h.start)
+	h.start = time.Now()
 
 	h.keen.AddEvent("build-events-ewok", &MetricsPayload{
 		MetricsApplicationPayload: &MetricsApplicationPayload{
@@ -101,7 +100,7 @@ func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
 		ApplicationStartedByName: event.Options.ApplicationStartedByName,
 		BuildID:                  event.Options.ApplicationID,
 		Event:                    "buildStepFinished",
-		SentCLIVersion:           SentCLIVersion,
+		GitVersion:               GitVersion,
 		Step:                     event.Step,
 		StepOrder:                event.Order,
 		TimeElapsed:              fmt.Sprintf("%s", elapsed),

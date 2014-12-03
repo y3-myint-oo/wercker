@@ -1,5 +1,5 @@
 package main
 
 const (
-	SentCLIVersion = "not defined"
+	GitVersion = "not defined"
 )
