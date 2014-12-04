@@ -384,4 +384,23 @@ func displayVersion(options *VersionOptions) {
 
 func createProject(c *cli.Context) {
 	log.Println("########### Creating project! #############")
+	d, err := os.Open(".")
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	defer d.Close()
+
+	files, err := d.Readdir(-1)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	for _, f :=range(files) {
+		if f.Mode().IsRegular() {
+			if filepath.Ext(f.Name()) == ".go" {
+				log.Println(f.Name())
+			}
+		}
+	}
 }
