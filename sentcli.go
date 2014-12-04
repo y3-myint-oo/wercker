@@ -365,34 +365,48 @@ func buildProject(c *cli.Context) {
 		for _, pair := range step.Env.Ordered() {
 			log.Println(" ", pair[0], pair[1])
 		}
-		exit, err = step.Execute(sess)
-		if exit != 0 {
-			box.Stop()
-			log.Fatalln("Build failed with exit code:", exit)
-		}
-		if err != nil {
-			log.Panicln(err)
-		}
-		artifacts, err := step.CollectArtifacts(sess)
-		if err != nil {
-			log.Panicln(err)
-		}
 
-		artificer := CreateArtificer(options)
-		for _, artifact := range artifacts {
-			err := artificer.Upload(artifact)
-			if err != nil {
-				log.Panicln(err)
+		err = func() error {
+			// Get ready to report this
+			stepArgs := &BuildStepFinishedArgs{
+				Build:      build,
+				Options:    options,
+				Step:       step,
+				Order:      offset + i,
+				Successful: false,
 			}
-		}
+			defer e.Emit(BuildStepFinished, stepArgs)
 
-		e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
-			Build:      build,
-			Options:    options,
-			Step:       step,
-			Order:      offset + i,
-			Successful: true,
-		})
+			exit, err = step.Execute(sess)
+			if exit != 0 {
+				box.Stop()
+				return fmt.Errorf("Build failed with exit code: %d", exit)
+			}
+			if err != nil {
+				return err
+				// log.Panicln(err)
+			}
+			artifacts, err := step.CollectArtifacts(sess)
+			if err != nil {
+				return err
+				// log.Panicln(err)
+			}
+
+			artificer := CreateArtificer(options)
+			for _, artifact := range artifacts {
+				err := artificer.Upload(artifact)
+				if err != nil {
+					return err
+					// log.Panicln(err)
+				}
+			}
+			stepArgs.Successful = true
+			return nil
+		}()
+
+		if err != nil {
+			break
+		}
 
 		log.Println("============ Step successful! =============")
 
