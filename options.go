@@ -2,6 +2,7 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -87,6 +88,9 @@ type GlobalOptions struct {
 	// Application owner name for this operation
 	ApplicationOwnerName string
 
+	// Application starter name for this operation
+	ApplicationStartedByName string
+
 	// Base url template to see the results of this build
 	BaseURL string
 
@@ -124,6 +128,11 @@ type GlobalOptions struct {
 	AWSAccessKeyID     string
 	AWSRegion          string
 	S3Bucket           string
+
+	// Keen Bits
+	ShouldKeenMetrics   bool
+	KeenProjectWriteKey string
+	KeenProjectID       string
 
 	Registry     string
 	ShouldPush   bool
@@ -252,34 +261,52 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		}
 	}
 
+	keenMetrics := c.GlobalBool("keen-metrics")
+	keenProjectWriteKey := c.GlobalString("keen-project-write-key")
+	keenProjectID := c.GlobalString("keen-project-id")
+
+	if keenMetrics {
+		if keenProjectWriteKey == "" {
+			return nil, errors.New("keen-project-write-key is required")
+		}
+
+		if keenProjectID == "" {
+			return nil, errors.New("keen-project-id is required")
+		}
+	}
+
 	return &GlobalOptions{
-		Env:                  env,
-		BuildDir:             buildDir,
-		BuildID:              buildID,
-		ApplicationID:        applicationID,
-		ApplicationName:      applicationName,
-		ApplicationOwnerName: applicationOwnerName,
-		BaseURL:              c.GlobalString("base-url"),
-		CommandTimeout:       c.GlobalInt("command-timeout"),
-		DockerHost:           c.GlobalString("docker-host"),
-		WerckerEndpoint:      c.GlobalString("wercker-endpoint"),
-		NoResponseTimeout:    c.GlobalInt("no-response-timeout"),
-		ProjectDir:           projectDir,
-		SourceDir:            c.GlobalString("source-dir"),
-		StepDir:              stepDir,
-		GuestRoot:            c.GlobalString("guest-root"),
-		MntRoot:              c.GlobalString("mnt-root"),
-		ReportRoot:           c.GlobalString("report-root"),
-		ProjectPath:          projectPath,
-		ProjectURL:           projectURL,
-		AWSSecretAccessKey:   awsSecretAccessKey,
-		AWSAccessKeyID:       awsAccessKeyID,
-		S3Bucket:             c.GlobalString("s3-bucket"),
-		AWSRegion:            c.GlobalString("aws-region"),
-		Registry:             c.GlobalString("registry"),
-		ShouldPush:           c.GlobalBool("push"),
-		ShouldCommit:         c.GlobalBool("commit"),
-		Tag:                  tag,
-		Message:              message,
+		Env:                      env,
+		BuildDir:                 buildDir,
+		BuildID:                  buildID,
+		ApplicationID:            applicationID,
+		ApplicationName:          applicationName,
+		ApplicationOwnerName:     applicationOwnerName,
+		ApplicationStartedByName: c.GlobalString("application-started-by-name"),
+		BaseURL:                  c.GlobalString("base-url"),
+		CommandTimeout:           c.GlobalInt("command-timeout"),
+		DockerHost:               c.GlobalString("docker-host"),
+		WerckerEndpoint:          c.GlobalString("wercker-endpoint"),
+		NoResponseTimeout:        c.GlobalInt("no-response-timeout"),
+		ProjectDir:               projectDir,
+		SourceDir:                c.GlobalString("source-dir"),
+		StepDir:                  stepDir,
+		GuestRoot:                c.GlobalString("guest-root"),
+		MntRoot:                  c.GlobalString("mnt-root"),
+		ReportRoot:               c.GlobalString("report-root"),
+		ProjectPath:              projectPath,
+		ProjectURL:               projectURL,
+		AWSSecretAccessKey:       awsSecretAccessKey,
+		AWSAccessKeyID:           awsAccessKeyID,
+		S3Bucket:                 c.GlobalString("s3-bucket"),
+		AWSRegion:                c.GlobalString("aws-region"),
+		Registry:                 c.GlobalString("registry"),
+		ShouldPush:               c.GlobalBool("push"),
+		ShouldCommit:             c.GlobalBool("commit"),
+		ShouldKeenMetrics:        keenMetrics,
+		KeenProjectWriteKey:      keenProjectWriteKey,
+		KeenProjectID:            keenProjectID,
+		Tag:                      tag,
+		Message:                  message,
 	}, nil
 }

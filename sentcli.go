@@ -37,6 +37,7 @@ func main() {
 		cli.StringFlag{Name: "application-id", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_ID"},
 		cli.StringFlag{Name: "application-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
 		cli.StringFlag{Name: "application-owner-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
+		cli.StringFlag{Name: "application-started-by-name", Value: "", Usage: "application started by", EnvVar: "WERCKER_APPLICATION_STARTED_BY_NAME"},
 
 		// Should we push finished builds to the registry?
 		cli.BoolFlag{Name: "push", Usage: "push the build result to registry"},
@@ -49,6 +50,20 @@ func main() {
 		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "access key id"},
 		cli.StringFlag{Name: "s3-bucket", Value: "wercker-development", Usage: "bucket for artifacts"},
 		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "region"},
+
+		// keen.io bits
+		cli.BoolFlag{
+			Name:  "keen-metrics",
+			Usage: "report metrics to keen.io",
+		},
+		cli.StringFlag{
+			Name:  "keen-project-write-key",
+			Value: "",
+			Usage: "keen write key"},
+		cli.StringFlag{
+			Name:  "keen-project-id",
+			Value: "",
+			Usage: "keen project id"},
 
 		// These options might be overwritten by the wercker.yml
 		cli.StringFlag{Name: "source-dir", Value: "", Usage: "source path relative to checkout root"},
@@ -92,6 +107,14 @@ func buildProject(c *cli.Context) {
 		log.WithField("Error", err).Panic("Unable to LiteralLogHandler")
 	}
 	l.ListenTo(e)
+
+	if options.ShouldKeenMetrics {
+		mh, err := NewMetricsHandler(options)
+		if err != nil {
+			log.WithField("Error", err).Panic("Unable to MetricsHandler")
+		}
+		mh.ListenTo(e)
+	}
 
 	log.Debugln(fmt.Sprintf("%+v", options))
 

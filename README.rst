@@ -7,6 +7,56 @@ Parse your wercker.yml, do the things wercker would do.
 Getting Started
 ---------------
 
+Usage
+-----
+::
+
+  NAME:
+  ./sentcli - A new cli application
+
+  USAGE:
+  ./sentcli [global options] command [command options] [arguments...]
+
+  VERSION:
+  0.0.0
+
+  COMMANDS:
+  build, b	build a project
+  help, h	Shows a list of commands or help for one command
+
+  GLOBAL OPTIONS:
+  --project-dir './_projects'				path where downloaded projects live
+  --step-dir './_steps'				path where downloaded steps live
+  --build-dir './_builds'				path where created builds live
+  --docker-host 'tcp://127.0.0.1:2375'			docker api host [$DOCKER_HOST]
+  --wercker-endpoint 'https://app.wercker.com/api/v2'	wercker api endpoint
+  --base-url 'https://app.wercker.com/'		base url for the web app
+  --registry '127.0.0.1:3000'				registry endpoint to push images to
+  --mnt-root '/mnt'					directory on the guest where volumes are mounted
+  --guest-root '/pipeline'				directory on the guest where work is done
+  --report-root '/report'				directory on the guest where reports will be written
+  --build-id 						build id [$WERCKER_BUILD_ID]
+  --application-id 					application id [$WERCKER_APPLICATION_ID]
+  --application-name 					application id [$WERCKER_APPLICATION_NAME]
+  --application-owner-name 				application id [$WERCKER_APPLICATION_OWNER_NAME]
+  --application-started-by-name 			application started by [$WERCKER_APPLICATION_STARTED_BY_NAME]
+  --push						push the build result to registry
+  --commit						commit the build result locally
+  --tag 						tag for this build [$WERCKER_GIT_BRANCH]
+  --message 						message for this build
+  --aws-secret-key 					secret access key
+  --aws-access-key 					access key id
+  --s3-bucket 'wercker-development'			bucket for artifacts
+  --aws-region 'us-east-1'				region
+  --keen-metrics					report metrics to keen.io
+  --keen-project-write-key 				keen write key
+  --keen-project-id 					keen project id
+  --source-dir 					source path relative to checkout root
+  --no-response-timeout '5'				timeout if no script output is received in this many minutes
+  --command-timeout '10'				timeout if command does not complete in this many minutes
+  --help, -h						show help
+  --version, -v					print the version
+
 We're still in the demo-ware phase so there are a couple steps to getting
 this working locally:
 

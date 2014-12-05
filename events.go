@@ -21,6 +21,7 @@ const (
 
 // LogsArgs contains the args associated with the "Logs" event.
 type LogsArgs struct {
+	Box     string
 	Build   *Build
 	Options *GlobalOptions
 	Order   int
@@ -29,9 +30,19 @@ type LogsArgs struct {
 	Stream  string
 }
 
+// BuildStepsAddedArgs contains the args associated with the
+// "BuildStepsAdded" event.
+type BuildStepsAddedArgs struct {
+	Box     string
+	Build   *Build
+	Options *GlobalOptions
+	Steps   []*Step
+}
+
 // BuildStepStartedArgs contains the args associated with the
 // "BuildStepStarted" event.
 type BuildStepStartedArgs struct {
+	Box     string
 	Build   *Build
 	Options *GlobalOptions
 	Order   int
@@ -41,19 +52,12 @@ type BuildStepStartedArgs struct {
 // BuildStepFinishedArgs contains the args associated with the
 // "BuildStepFinished" event.
 type BuildStepFinishedArgs struct {
+	Box        string
 	Build      *Build
 	Options    *GlobalOptions
 	Order      int
 	Step       *Step
 	Successful bool
-}
-
-// BuildStepsAddedArgs contains the args associated with the "BuildStepsAdded"
-// event.
-type BuildStepsAddedArgs struct {
-	Build   *Build
-	Options *GlobalOptions
-	Steps   []*Step
 }
 
 // emitter contains the singleton emitter.

@@ -29,6 +29,11 @@ build:
           if [ "$LINTLINES" -lt 5 && "$LINTLINES" -gt 0 ]; then echo "You are fairly tidy: $LINTLINES lint warnings." > $WERCKER_REPORT_MESSAGE_FILE; fi
           if [ "$LINTLINES" -eq 0 ]; then echo "Perfect: $LINTLINES lint warnings." > $WERCKER_REPORT_MESSAGE_FILE; fi
 
+    - script:
+        name: get version
+        code: |-
+            sh -e ./version.sh "$(git rev-parse $WERCKER_GIT_COMMIT)"
+
     - tcnksm/gox:
         os: "darwin linux"
         arch: "386 amd64"
