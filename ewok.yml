@@ -1,6 +1,8 @@
 box: golang
 build:
   steps:
+    - add-ssh-key:
+        keyname: REPORTER_KEY
     - script:
         name: install glide
         code: |-
