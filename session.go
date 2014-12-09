@@ -45,7 +45,9 @@ func ReadToChan(ws *websocket.Conn, ch chan string) {
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
 			if err != io.EOF {
-				log.Fatalln(err)
+				log.Errorln(err)
+				close(ch)
+				return
 			} else {
 				close(ch)
 				return
@@ -77,7 +79,7 @@ func (s *Session) Send(commands ...string) {
 		})
 		err := websocket.Message.Send(s.ws, command)
 		if err != nil {
-			log.Fatalln(err)
+			log.Panicln(err)
 		}
 	}
 }
