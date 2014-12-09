@@ -139,6 +139,10 @@ type GlobalOptions struct {
 	ShouldCommit bool
 	Tag          string
 	Message      string
+
+	ShouldReport bool
+	WerckerHost  string
+	WerckerToken string
 }
 
 // Some logic to guess the application name
@@ -275,6 +279,24 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		}
 	}
 
+	report := c.GlobalBool("report")
+	werckerHost := c.GlobalString("wercker-host")
+	werckerToken := c.GlobalString("wercker-token")
+
+	if report {
+		if buildID == "" {
+			return nil, errors.New("build-id is required")
+		}
+
+		if werckerHost == "" {
+			return nil, errors.New("wercker-host is required")
+		}
+
+		if werckerToken == "" {
+			return nil, errors.New("wercker-token is required")
+		}
+	}
+
 	return &GlobalOptions{
 		Env:                      env,
 		BuildDir:                 buildDir,
@@ -308,5 +330,8 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		KeenProjectID:            keenProjectID,
 		Tag:                      tag,
 		Message:                  message,
+		ShouldReport:             report,
+		WerckerHost:              werckerHost,
+		WerckerToken:             werckerToken,
 	}, nil
 }

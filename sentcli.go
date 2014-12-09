@@ -65,6 +65,20 @@ func main() {
 			Value: "",
 			Usage: "keen project id"},
 
+		// Reporter settings
+		cli.BoolFlag{
+			Name:  "report",
+			Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token)",
+		},
+		cli.StringFlag{
+			Name:  "wercker-host",
+			Usage: "Wercker host to use for wercker reporter",
+		},
+		cli.StringFlag{
+			Name:  "wercker-token",
+			Usage: "Wercker token to use for wercker reporter",
+		},
+
 		// These options might be overwritten by the wercker.yml
 		cli.StringFlag{Name: "source-dir", Value: "", Usage: "source path relative to checkout root"},
 		cli.IntFlag{Name: "no-response-timeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
@@ -86,8 +100,6 @@ func main() {
 }
 
 func buildProject(c *cli.Context) {
-	log.Println("############# Building project #############")
-
 	// Parse CLI and local env
 	options, err := CreateGlobalOptions(c, os.Environ())
 	if err != nil {
@@ -115,6 +127,18 @@ func buildProject(c *cli.Context) {
 		}
 		mh.ListenTo(e)
 	}
+
+	if options.ShouldReport {
+		r, err := NewReportHandler(options.WerckerHost, options.WerckerToken)
+		if err != nil {
+			log.WithField("Error", err).Panic("Unable to ReportHandler")
+		}
+		r.ListenTo(e)
+	}
+
+	// e.Emit(BuildStarted, &BuildStartedArgs{})
+
+	log.Println("############# Building project #############")
 
 	log.Debugln(fmt.Sprintf("%+v", options))
 
@@ -395,5 +419,6 @@ func buildProject(c *cli.Context) {
 		}
 	}
 
+	e.Emit(BuildFinished, &BuildFinishedArgs{})
 	log.Println("########### Build successful! #############")
 }

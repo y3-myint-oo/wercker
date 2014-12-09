@@ -8,6 +8,12 @@ const (
 	// Logs is the event when sentcli generate logs
 	Logs = "Logs"
 
+	// BuildStarted is the event when sentcli has started a build.
+	BuildStarted = "BuildStarted"
+
+	// BuildFinished is the event when sentcli has finished a build.
+	BuildFinished = "BuildFinished"
+
 	// BuildStepsAdded is the event when sentcli has parsed the wercker.yml and
 	// has valdiated that the steps exist.
 	BuildStepsAdded = "BuildStepsAdded"
@@ -18,6 +24,13 @@ const (
 	// BuildStepFinished is the event when sentcli has finished a buildstep.
 	BuildStepFinished = "BuildStepFinished"
 )
+
+// BuildStartedArgs contains the args associated with the "BuildStarted" event.
+type BuildStartedArgs struct{}
+
+// BuildFinishedArgs contains the args associated with the "BuildFinished"
+// event.
+type BuildFinishedArgs struct{}
 
 // LogsArgs contains the args associated with the "Logs" event.
 type LogsArgs struct {
