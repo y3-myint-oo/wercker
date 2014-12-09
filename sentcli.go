@@ -2,6 +2,7 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -15,6 +16,7 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 
 	app := cli.NewApp()
+	app.Version = Version
 	app.Flags = []cli.Flag{
 		// These flags control where we store local files
 		cli.StringFlag{Name: "project-dir", Value: "./_projects", Usage: "path where downloaded projects live"},
@@ -94,6 +96,25 @@ func main() {
 				buildProject(c)
 			},
 			Flags: []cli.Flag{},
+		},
+		{
+			Name:      "version",
+			ShortName: "v",
+			Usage:     "display version information",
+			Action: func(c *cli.Context) {
+				options, err := createVersionOptions(c)
+				if err != nil {
+					log.Panicln(err)
+				}
+
+				displayVersion(options)
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "json",
+					Usage: "Output version information as JSON",
+				},
+			},
 		},
 	}
 	app.Run(os.Args)
@@ -435,4 +456,30 @@ func buildProject(c *cli.Context) {
 
 	e.Emit(BuildFinished, &BuildFinishedArgs{})
 	log.Println("########### Build successful! #############")
+}
+
+type versions struct {
+	Version   string `json:"version"`
+	GitCommit string `json:"gitCommit"`
+}
+
+func displayVersion(options *VersionOptions) {
+	v := &versions{
+		Version:   Version,
+		GitCommit: GitVersion,
+	}
+
+	if options.OutputJSON {
+		b, err := json.MarshalIndent(v, "", "  ")
+		if err != nil {
+			log.WithField("Error", err).Panic("Unable to marshal versions")
+		}
+		os.Stdout.Write(b)
+	} else {
+		os.Stdout.WriteString(fmt.Sprintf("Version: %s\n", v.Version))
+		os.Stdout.WriteString(fmt.Sprintf("Git commit: %s", v.GitCommit))
+	}
+
+	os.Stdout.WriteString("\n")
+
 }

@@ -12,5 +12,6 @@ package main
 
 const (
   GitVersion = "$GITHASH"
+  Version    = "1.0.0"
 )
 EOL

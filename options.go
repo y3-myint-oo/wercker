@@ -335,3 +335,13 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		WerckerToken:             werckerToken,
 	}, nil
 }
+
+type VersionOptions struct {
+	OutputJSON bool
+}
+
+func createVersionOptions(c *cli.Context) (*VersionOptions, error) {
+	return &VersionOptions{
+		OutputJSON: c.Bool("json"),
+	}, nil
+}
