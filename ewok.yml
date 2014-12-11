@@ -3,21 +3,7 @@ build:
   steps:
     #- add-ssh-key:
       #keyname: REPORTER_KEY
-    - script:
-        name: install glide
-        code: |-
-          apt-get update
-          apt-get install unzip
-          curl -L -o glide_linux_amd64.zip https://github.com/Masterminds/glide/releases/download/0.2.0/glide_linux_amd64.zip
-          unzip glide_linux_amd64.zip
-          cp glide_linux_amd64/glide /usr/bin/glide
-
-    - script:
-        name: build
-        code: |-
-          export GOPATH=$(glide gopath)
-          /usr/bin/glide install
-          go build
+    - termie/glide-build
     - script:
         name: go vet
         code: |-

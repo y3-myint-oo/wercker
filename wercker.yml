@@ -10,9 +10,11 @@ build:
         name: fetch github.com/wercker/reporter
         code: git clone git@github.com:wercker/reporter $GOPATH/src/github.com/wercker/reporter
 
-    - script:
-        name: go get
-        code: go get -v -d ./...
+    - termie/glide-build:
+        build: false
+    # - script:
+    #     name: go get
+    #     code: go get -v -d ./...
 
     - script:
         name: go vet
