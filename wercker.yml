@@ -11,10 +11,8 @@ build:
         code: git clone git@github.com:wercker/reporter $GOPATH/src/github.com/wercker/reporter
 
     - termie/glide-build:
+        # We do the actual build with gox below
         build: false
-    # - script:
-    #     name: go get
-    #     code: go get -v -d ./...
 
     - script:
         name: go vet
