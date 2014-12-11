@@ -111,6 +111,8 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 
 // BuildFinished will handle the BuildFinished event. This will call h.Close.
 func (h *ReportHandler) BuildFinished(args *BuildFinishedArgs) {
+	h.reporter.BuildFinished(args.Options.BuildID, args.Result)
+
 	h.Close()
 }
 

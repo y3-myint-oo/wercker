@@ -26,11 +26,16 @@ const (
 )
 
 // BuildStartedArgs contains the args associated with the "BuildStarted" event.
-type BuildStartedArgs struct{}
+type BuildStartedArgs struct {
+	Options *GlobalOptions
+}
 
 // BuildFinishedArgs contains the args associated with the "BuildFinished"
 // event.
-type BuildFinishedArgs struct{}
+type BuildFinishedArgs struct {
+	Options *GlobalOptions
+	Result  string
+}
 
 // LogsArgs contains the args associated with the "Logs" event.
 type LogsArgs struct {
