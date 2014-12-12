@@ -22,7 +22,9 @@ type LiteralLogHandler struct {
 }
 
 func (h *LiteralLogHandler) Logs(args *LogsArgs) {
-	h.l.Print(args.Logs)
+	if !args.Hidden {
+		h.l.Print(args.Logs)
+	}
 }
 
 // ListenTo will add eventhandlers to e.

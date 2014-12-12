@@ -293,6 +293,8 @@ func (s *Step) Fetch() (string, error) {
 // SetupGuest ensures that the guest is ready to run a Step.
 func (s *Step) SetupGuest(sess *Session) error {
 	// TODO(termie): can this even fail? i.e. exit code != 0
+	sess.HideLogs()
+	defer sess.ShowLogs()
 	_, _, err := sess.SendChecked(fmt.Sprintf(`mkdir -p "%s"`, s.ReportPath("artifacts")))
 	_, _, err = sess.SendChecked("set +e")
 	_, _, err = sess.SendChecked(fmt.Sprintf(`cp -r "%s" "%s"`, s.MntPath(), s.GuestPath()))

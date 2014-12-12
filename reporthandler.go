@@ -93,6 +93,10 @@ func (h *ReportHandler) getStepOutputWriter(buildId, stepName string, order int)
 
 // Logs will handle the Logs event.
 func (h *ReportHandler) Logs(args *LogsArgs) {
+	if args.Hidden {
+		return
+	}
+
 	step := h.currentStep
 	order := h.currentOrder
 	buildId := h.currentBuildId

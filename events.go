@@ -46,6 +46,7 @@ type LogsArgs struct {
 	Step    *Step
 	Logs    string
 	Stream  string
+	Hidden  bool
 }
 
 // BuildStepsAddedArgs contains the args associated with the

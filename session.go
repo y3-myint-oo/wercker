@@ -17,6 +17,7 @@ type Session struct {
 	ch          chan string
 	ContainerID string
 	e           *emission.Emitter
+	logsHidden  bool
 }
 
 // CreateSession based on a docker api endpoint and container ID.
@@ -70,13 +71,21 @@ func (s *Session) Attach() (*Session, error) {
 }
 
 // Send an array of commands.
-func (s *Session) Send(commands ...string) {
+func (s *Session) Send(forceHidden bool, commands ...string) {
 	for i := range commands {
 		command := commands[i] + "\n"
+
+		hidden := s.logsHidden
+		if forceHidden {
+			hidden = forceHidden
+		}
+
 		s.e.Emit(Logs, &LogsArgs{
+			Hidden: hidden,
 			Stream: "stdin",
 			Logs:   command,
 		})
+
 		err := websocket.Message.Send(s.ws, command)
 		if err != nil {
 			log.Panicln(err)
@@ -92,8 +101,8 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 	check := false
 	recv := []string{}
 
-	s.Send(commands...)
-	s.Send(fmt.Sprintf("echo %s $?", rand))
+	s.Send(false, commands...)
+	s.Send(true, fmt.Sprintf("echo %s $?", rand))
 
 	// BUG(termie): This is relatively naive and will break if the messages
 	// returned aren't complete lines, if this becomes a problem we'll have
@@ -104,20 +113,33 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 			return 1, recv, nil
 		}
 
-		s.e.Emit(Logs, &LogsArgs{
-			Stream: "stdout",
-			Logs:   line,
-		})
-
 		if strings.HasPrefix(line, rand) {
 			check = true
 			_, err := fmt.Sscanf(line, "%s %d\n", &rand, &exitCode)
 			if err != nil {
+				s.e.Emit(Logs, &LogsArgs{
+					Hidden: true,
+					Logs:   line,
+					Stream: "stdout",
+				})
 				return exitCode, recv, err
 			}
 		} else {
+			s.e.Emit(Logs, &LogsArgs{
+				Hidden: s.logsHidden,
+				Logs:   line,
+				Stream: "stdout",
+			})
 			recv = append(recv, line)
 		}
 	}
 	return exitCode, recv, nil
+}
+
+func (s *Session) HideLogs() {
+	s.logsHidden = true
+}
+
+func (s *Session) ShowLogs() {
+	s.logsHidden = false
 }
