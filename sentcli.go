@@ -157,7 +157,15 @@ func buildProject(c *cli.Context) {
 		r.ListenTo(e)
 	}
 
-	// e.Emit(BuildStarted, &BuildStartedArgs{})
+	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
+
+	// This will be emitted at the end of the execution, we're going to be
+	// pessimistic and report that we failed, unless overridden at the end of the
+	// execution.
+	// TODO(bvdberg): This is good for now, but we should be able to report
+	// halfway through (when the build finishes, but after steps have not yet run)
+	buildFinishedArgs := &BuildFinishedArgs{Options: options, Result: "failed"}
+	defer e.Emit(BuildFinished, buildFinishedArgs)
 
 	log.Println("############# Building project #############")
 
@@ -367,6 +375,7 @@ func buildProject(c *cli.Context) {
 		Options: options,
 	})
 
+	stepFailed := false
 	offset := 2
 	for i, step := range build.Steps {
 		log.Println()
@@ -426,6 +435,7 @@ func buildProject(c *cli.Context) {
 		}()
 
 		if err != nil {
+			stepFailed = true
 			break
 		}
 
@@ -454,7 +464,12 @@ func buildProject(c *cli.Context) {
 		}
 	}
 
-	e.Emit(BuildFinished, &BuildFinishedArgs{})
+	// Only make it passed if we reach this code (ie no panics) and no step
+	// failed.
+	if !stepFailed {
+		buildFinishedArgs.Result = "passed"
+	}
+
 	log.Println("########### Build successful! #############")
 }
 
