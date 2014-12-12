@@ -46,13 +46,10 @@ func ReadToChan(ws *websocket.Conn, ch chan string) {
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
 			if err != io.EOF {
-				log.Errorln(err)
-				close(ch)
-				return
-			} else {
-				close(ch)
-				return
+				log.WithField("Error", err).Error("Error while reading from websocket")
 			}
+			close(ch)
+			return
 		}
 		ch <- data
 	}
@@ -136,10 +133,12 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 	return exitCode, recv, nil
 }
 
+// HideLogs will emit Logs with args.Hidden set to true
 func (s *Session) HideLogs() {
 	s.logsHidden = true
 }
 
+// ShowLogs will emit Logs with args.Hidden set to false
 func (s *Session) ShowLogs() {
 	s.logsHidden = false
 }

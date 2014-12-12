@@ -46,14 +46,14 @@ type ReportHandler struct {
 	writers        map[string]io.WriteCloser
 	currentStep    *Step
 	currentOrder   int
-	currentBuildId string
+	currentBuildID string
 }
 
 // BuildStepStarted will handle the BuildStepStarted event.
 func (h *ReportHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 	h.currentStep = args.Step
 	h.currentOrder = args.Order
-	h.currentBuildId = args.Options.BuildID
+	h.currentBuildID = args.Options.BuildID
 
 	h.reporter.StepStarted(args.Options.BuildID, args.Step.Name, args.Order)
 }
@@ -62,7 +62,7 @@ func (h *ReportHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 	h.currentStep = nil
 	h.currentOrder = -1
-	h.currentBuildId = ""
+	h.currentBuildID = ""
 
 	h.reporter.StepFinished(args.Options.BuildID, args.Step.Name, args.Order, args.Successful)
 }
@@ -75,12 +75,12 @@ func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
 
 // getStepOutputWriter will check h.writers for a writer for the step, otherwise
 // it will create a new one.
-func (h *ReportHandler) getStepOutputWriter(buildId, stepName string, order int) (io.WriteCloser, error) {
-	key := fmt.Sprintf("%s_%s_%d", buildId, stepName, order)
+func (h *ReportHandler) getStepOutputWriter(buildID, stepName string, order int) (io.WriteCloser, error) {
+	key := fmt.Sprintf("%s_%s_%d", buildID, stepName, order)
 	writer, ok := h.writers[key]
 
 	if !ok {
-		w, err := h.reporter.StepOutput(buildId, stepName, order)
+		w, err := h.reporter.StepOutput(buildID, stepName, order)
 		if err != nil {
 			return nil, err
 		}
@@ -99,13 +99,13 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 
 	step := h.currentStep
 	order := h.currentOrder
-	buildId := h.currentBuildId
+	buildID := h.currentBuildID
 
 	if step == nil {
 		return
 	}
 
-	w, err := h.getStepOutputWriter(buildId, step.Name, order)
+	w, err := h.getStepOutputWriter(buildID, step.Name, order)
 	if err != nil {
 		log.WithField("Error", err).Error("Unable to create step output writer")
 		return
@@ -121,8 +121,8 @@ func (h *ReportHandler) BuildFinished(args *BuildFinishedArgs) {
 }
 
 // Close will call close on any log writers that have been created.
-func (r *ReportHandler) Close() error {
-	for _, w := range r.writers {
+func (h *ReportHandler) Close() error {
+	for _, w := range h.writers {
 		w.Close()
 	}
 

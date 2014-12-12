@@ -21,6 +21,7 @@ type LiteralLogHandler struct {
 	l *log.Logger
 }
 
+// Logs will handle the Logs event.
 func (h *LiteralLogHandler) Logs(args *LogsArgs) {
 	if !args.Hidden {
 		h.l.Print(args.Logs)
