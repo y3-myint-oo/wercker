@@ -336,6 +336,8 @@ func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	}, nil
 }
 
+// VersionOptions contains the options associated with the version
+// command.
 type VersionOptions struct {
 	OutputJSON bool
 }

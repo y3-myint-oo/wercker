@@ -151,6 +151,9 @@ func (b *Build) ReportPath(s ...string) string {
 
 // SetupGuest ensures that the guest is prepared to run the pipeline.
 func (b *Build) SetupGuest(sess *Session) error {
+	sess.HideLogs()
+	defer sess.ShowLogs()
+
 	// Make sure our guest path exists
 	exit, _, err := sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.GuestPath()))
 	if err != nil {
