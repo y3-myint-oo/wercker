@@ -414,20 +414,17 @@ func buildProject(c *cli.Context) {
 			}
 			if err != nil {
 				return err
-				// log.Panicln(err)
 			}
-			artifacts, err := step.CollectArtifacts(sess)
+			artifact, err := step.CollectArtifact(sess)
 			if err != nil {
 				return err
-				// log.Panicln(err)
 			}
 
-			artificer := CreateArtificer(options)
-			for _, artifact := range artifacts {
-				err := artificer.Upload(artifact)
+			if artifact != nil {
+				artificer := CreateArtificer(options)
+				err = artificer.Upload(artifact)
 				if err != nil {
 					return err
-					// log.Panicln(err)
 				}
 			}
 			stepArgs.Successful = true
@@ -436,10 +433,11 @@ func buildProject(c *cli.Context) {
 
 		if err != nil {
 			stepFailed = true
+			log.Errorln("============== Step failed! ===============")
 			break
 		}
 
-		log.Println("============ Step successful! =============")
+		log.Println("============== Step passed! ===============")
 
 		if options.ShouldCommit {
 			box.Commit(repoName, tag, message)
@@ -470,7 +468,31 @@ func buildProject(c *cli.Context) {
 		buildFinishedArgs.Result = "passed"
 	}
 
-	log.Println("########### Build successful! #############")
+	if buildFinishedArgs.Result == "passed" {
+		err = func() error {
+			artifact, err := build.CollectArtifact(sess)
+			if err != nil {
+				return err
+			}
+
+			artificer := CreateArtificer(options)
+			err = artificer.Upload(artifact)
+			if err != nil {
+				return err
+			}
+			return nil
+		}()
+		if err != nil {
+			log.WithField("Error", err).Error("Unable to store build output")
+			buildFinishedArgs.Result = "failed"
+		}
+	}
+
+	if buildFinishedArgs.Result == "passed" {
+		log.Println("############# Build passed! ###############")
+	} else {
+		log.Errorln("############# Build failed! ###############")
+	}
 }
 
 type versions struct {
