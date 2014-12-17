@@ -368,11 +368,16 @@ func buildProject(c *cli.Context) {
 		Successful: true,
 	})
 
-	// TODO(bvdberg): Add steps to event
+	// TODO(bvdberg):
+	storeStep := &Step{Name: "Store"}
+	// Package should be the last item, + "setup environemnt" and "get code"
+	storeStepOrder := len(build.Steps) + 1 + 2
+
 	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
-		Build:   build,
-		Steps:   build.Steps,
-		Options: options,
+		Build:     build,
+		Steps:     build.Steps,
+		StoreStep: storeStep,
+		Options:   options,
 	})
 
 	stepFailed := false
@@ -449,14 +454,36 @@ func buildProject(c *cli.Context) {
 	}
 
 	if options.ShouldPush {
-		pushOptions := &PushOptions{
-			Registry: options.Registry,
-			Name:     repoName,
-			Tag:      tag,
-			Message:  message,
-		}
+		e.Emit(BuildStepStarted, &BuildStepStartedArgs{
+			Build:   build,
+			Step:    storeStep,
+			Options: options,
+			Order:   storeStepOrder,
+		})
 
-		_, err = box.Push(pushOptions)
+		err = func() error {
+			// Get ready to report this
+			stepArgs := &BuildStepFinishedArgs{
+				Build:      build,
+				Options:    options,
+				Step:       storeStep,
+				Order:      storeStepOrder,
+				Successful: false,
+			}
+			defer e.Emit(BuildStepFinished, stepArgs)
+
+			pushOptions := &PushOptions{
+				Registry: options.Registry,
+				Name:     repoName,
+				Tag:      tag,
+				Message:  message,
+			}
+
+			_, err = box.Push(pushOptions)
+			stepArgs.Successful = true
+			return err
+		}()
+
 		if err != nil {
 			log.WithField("Error", err).Error("Unable to push to registry")
 		}

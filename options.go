@@ -198,7 +198,7 @@ func guessApplicationOwnerName(c *cli.Context, env *Environment) string {
 	if name == "" {
 		u, err := user.Current()
 		if err == nil {
-			name = u.Name
+			name = u.Username
 		}
 	}
 	if name == "" {
