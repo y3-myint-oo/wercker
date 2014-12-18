@@ -108,8 +108,8 @@ func (b *Build) getMirrorEnv() [][]string {
 	return a
 }
 
-// CollectArtifacts copies the artifacts associated with the Step.
-func (b *Build) CollectArtifacts(sess *Session) ([]*Artifact, error) {
+// CollectArtifact copies the artifacts associated with the Step.
+func (b *Build) CollectArtifact(sess *Session) (*Artifact, error) {
 	artificer := CreateArtificer(b.options)
 
 	// Ensure we have the host directory
@@ -138,12 +138,12 @@ func (b *Build) CollectArtifacts(sess *Session) ([]*Artifact, error) {
 			if err != nil {
 				return nil, err
 			}
-			return []*Artifact{fullArtifact}, nil
+			return fullArtifact, nil
 		}
 		return nil, err
 	}
 
-	return []*Artifact{fullArtifact}, nil
+	return fullArtifact, nil
 }
 
 // SourcePath returns the path to the source dir
