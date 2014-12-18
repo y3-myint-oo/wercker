@@ -50,10 +50,17 @@ func CreateArtificer(options *GlobalOptions) *Artificer {
 
 // RemotePath returns the S3 path for an artifact
 func (art *Artifact) RemotePath() string {
+	path := fmt.Sprintf("project-artifacts/project-%s", art.ApplicationID)
 	if art.DeployID != "" {
-		return fmt.Sprintf("project-artifacts/project-%s/deploys/deploy-%s/buildStep-%s/artifacts.tar", art.ApplicationID, art.DeployID, art.BuildStepID)
+		path = fmt.Sprintf("%s/deploys/deploy-%s", path, art.DeployID)
+	} else {
+		path = fmt.Sprintf("%s/builds/build-%s", path, art.BuildID)
 	}
-	return fmt.Sprintf("project-artifacts/project-%s/builds/build-%s/buildStep-%s/artifacts.tar", art.ApplicationID, art.BuildID, art.BuildStepID)
+	if art.BuildStepID != "" {
+		path = fmt.Sprintf("%s/buildStep-%s", path, art.BuildStepID)
+	}
+	path = fmt.Sprintf("%s/%s", path, filepath.Base(art.HostPath))
+	return path
 }
 
 // Collect an artifact from the container, if it doesn't have any files in
