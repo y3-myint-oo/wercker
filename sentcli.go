@@ -54,32 +54,14 @@ func main() {
 		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "region"},
 
 		// keen.io bits
-		cli.BoolFlag{
-			Name:  "keen-metrics",
-			Usage: "report metrics to keen.io",
-		},
-		cli.StringFlag{
-			Name:  "keen-project-write-key",
-			Value: "",
-			Usage: "keen write key"},
-		cli.StringFlag{
-			Name:  "keen-project-id",
-			Value: "",
-			Usage: "keen project id"},
+		cli.BoolFlag{Name: "keen-metrics", Usage: "report metrics to keen.io"},
+		cli.StringFlag{Name: "keen-project-write-key", Value: "", Usage: "keen write key"},
+		cli.StringFlag{Name: "keen-project-id", Value: "", Usage: "keen project id"},
 
 		// Reporter settings
-		cli.BoolFlag{
-			Name:  "report",
-			Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token)",
-		},
-		cli.StringFlag{
-			Name:  "wercker-host",
-			Usage: "Wercker host to use for wercker reporter",
-		},
-		cli.StringFlag{
-			Name:  "wercker-token",
-			Usage: "Wercker token to use for wercker reporter",
-		},
+		cli.BoolFlag{Name: "report", Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token)"},
+		cli.StringFlag{Name: "wercker-host", Usage: "Wercker host to use for wercker reporter"},
+		cli.StringFlag{Name: "wercker-token", Usage: "Wercker token to use for wercker reporter"},
 
 		// These options might be overwritten by the wercker.yml
 		cli.StringFlag{Name: "source-dir", Value: "", Usage: "source path relative to checkout root"},
