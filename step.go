@@ -332,7 +332,7 @@ func (s *Step) Execute(sess *Session) (int, error) {
 }
 
 // CollectArtifacts copies the artifacts associated with the Step.
-func (s *Step) CollectArtifacts(sess *Session) ([]*Artifact, error) {
+func (s *Step) CollectArtifact(sess *Session) (*Artifact, error) {
 	artificer := CreateArtificer(s.options)
 
 	// Ensure we have the host directory
@@ -349,12 +349,12 @@ func (s *Step) CollectArtifacts(sess *Session) ([]*Artifact, error) {
 	fullArtifact, err := artificer.Collect(artifact)
 	if err != nil {
 		if err == ErrEmptyTarball {
-			return []*Artifact{}, nil
+			return nil, nil
 		}
 		return nil, err
 	}
 
-	return []*Artifact{fullArtifact}, nil
+	return fullArtifact, nil
 }
 
 // InitEnv sets up the internal environment for the Step.
