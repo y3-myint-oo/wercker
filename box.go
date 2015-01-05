@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
+	"io"
 	"io/ioutil"
-	"os"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/docker/docker/utils"
+	"github.com/fsouza/go-dockerclient"
 )
 
 // Box is our wrapper for Box operations
@@ -154,12 +157,19 @@ func (b *Box) Fetch() (*docker.Image, error) {
 
 	log.Println("Couldn't find image locally, fetching.")
 
+	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
+	r, w := io.Pipe()
+
+	// emitStatusses in a different go routine
+	go emitStatus(r)
+
 	options := docker.PullImageOptions{
-		Repository: b.repository,
 		// changeme if we have a private registry
-		//Registry:     "docker.tsuru.io",
-		OutputStream: os.Stdout,
-		Tag:          b.tag,
+		// Registry:      "docker.tsuru.io",
+		OutputStream:  w,
+		RawJSONStream: true,
+		Repository:    b.repository,
+		Tag:           b.tag,
 	}
 
 	err := b.client.PullImage(options, docker.AuthConfiguration{})
@@ -169,6 +179,9 @@ func (b *Box) Fetch() (*docker.Image, error) {
 			return image, nil
 		}
 	}
+
+	// Cleanup the go routine by closing the writer.
+	w.Close()
 
 	return nil, err
 }
@@ -219,11 +232,18 @@ func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
 		return nil, err
 	}
 
+	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
+	r, w := io.Pipe()
+
+	// emitStatusses in a different go routine
+	go emitStatus(r)
+
 	pushOptions := docker.PushImageOptions{
-		Name:         imageName,
-		Tag:          options.Tag,
-		Registry:     options.Registry,
-		OutputStream: os.Stdout,
+		Name:          imageName,
+		OutputStream:  w,
+		RawJSONStream: true,
+		Registry:      options.Registry,
+		Tag:           options.Tag,
 	}
 	auth := docker.AuthConfiguration{}
 
@@ -233,5 +253,33 @@ func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
 	}
 	log.WithField("Image", i).Debug("Commit completed")
 
+	// Cleanup the go routine by closing the writer.
+	w.Close()
+
 	return i, nil
+}
+
+// emitStatus will decode the messages coming from r and decode these into
+// JSONMessage
+func emitStatus(r io.Reader) {
+	e := GetEmitter()
+
+	s := NewJSONMessageProcessor()
+	dec := json.NewDecoder(r)
+	for {
+		var m utils.JSONMessage
+		if err := dec.Decode(&m); err == io.EOF {
+			// Once the EOF is reached the function will stop
+			break
+		} else if err != nil {
+			log.Panic(err)
+		}
+
+		line := s.ProcessJSONMessage(&m)
+		e.Emit(Logs, &LogsArgs{
+			Logs:   line,
+			Stream: "docker",
+			Hidden: false,
+		})
+	}
 }

@@ -52,10 +52,12 @@ type LogsArgs struct {
 // BuildStepsAddedArgs contains the args associated with the
 // "BuildStepsAdded" event.
 type BuildStepsAddedArgs struct {
-	Box     string
-	Build   *Build
-	Options *GlobalOptions
-	Steps   []*Step
+	Box        string
+	Build      *Build
+	Options    *GlobalOptions
+	Steps      []*Step
+	StoreStep  *Step
+	AfterSteps []*Step
 }
 
 // BuildStepStartedArgs contains the args associated with the
