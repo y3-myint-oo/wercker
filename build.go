@@ -108,6 +108,44 @@ func (b *Build) getMirrorEnv() [][]string {
 	return a
 }
 
+// CollectArtifact copies the artifacts associated with the Step.
+func (b *Build) CollectArtifact(sess *Session) (*Artifact, error) {
+	artificer := CreateArtificer(b.options)
+
+	// Ensure we have the host directory
+
+	artifact := &Artifact{
+		ContainerID:   sess.ContainerID,
+		GuestPath:     b.GuestPath("output"),
+		HostPath:      b.HostPath("build.tar"),
+		ApplicationID: b.options.ApplicationID,
+		BuildID:       b.options.BuildID,
+	}
+
+	sourceArtifact := &Artifact{
+		ContainerID:   sess.ContainerID,
+		GuestPath:     b.SourcePath(),
+		HostPath:      b.HostPath("build.tar"),
+		ApplicationID: b.options.ApplicationID,
+		BuildID:       b.options.BuildID,
+	}
+
+	// Get the output dir, if it is empty grab the source dir.
+	fullArtifact, err := artificer.Collect(artifact)
+	if err != nil {
+		if err == ErrEmptyTarball {
+			fullArtifact, err = artificer.Collect(sourceArtifact)
+			if err != nil {
+				return nil, err
+			}
+			return fullArtifact, nil
+		}
+		return nil, err
+	}
+
+	return fullArtifact, nil
+}
+
 // SourcePath returns the path to the source dir
 func (b *Build) SourcePath() string {
 	return b.GuestPath("source", b.options.SourceDir)
@@ -156,6 +194,15 @@ func (b *Build) SetupGuest(sess *Session) error {
 
 	// Make sure our guest path exists
 	exit, _, err := sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.GuestPath()))
+	if err != nil {
+		return err
+	}
+	if exit != 0 {
+		return errors.New("Guest command failed.")
+	}
+
+	// Make sure the output path exists
+	exit, _, err = sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.GuestPath("output")))
 	if err != nil {
 		return err
 	}
