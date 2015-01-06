@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const (
@@ -37,10 +38,6 @@ type Artifact struct {
 var (
 	// ErrEmptyTarball is returned when the tarball has no files in it
 	ErrEmptyTarball = errors.New("empty tarball")
-	// ErrNoSecretAccessKey is returned when we can't find an AWS secret key
-	ErrNoSecretAccessKey = errors.New("No AWS Secret Access Key")
-	// ErrNoAccessKeyID is returned when we can't find an AWS access key
-	ErrNoAccessKeyID = errors.New("No AWS Access Key ID")
 )
 
 // CreateArtificer returns an Artificer
@@ -115,21 +112,17 @@ func (a *Artificer) Collect(artifact *Artifact) (*Artifact, error) {
 
 // Upload an artifact to S3
 func (a *Artificer) Upload(artifact *Artifact) error {
-	if a.options.AWSSecretAccessKey == "" {
-		return ErrNoSecretAccessKey
-	}
 
-	if a.options.AWSAccessKeyID == "" {
-		return ErrNoAccessKeyID
+	auth, err := aws.GetAuth(
+		a.options.AWSAccessKeyID,
+		a.options.AWSSecretAccessKey,
+		"",
+		time.Now().Add(time.Minute*10))
+	if err != nil {
+		return err
 	}
 
 	log.Println("Uploading artifact:", artifact.RemotePath())
-
-	auth := aws.Auth{
-		AccessKey: a.options.AWSAccessKeyID,
-		SecretKey: a.options.AWSSecretAccessKey,
-	}
-
 	region := aws.Regions[a.options.AWSRegion]
 
 	s := s3.New(auth, region)
