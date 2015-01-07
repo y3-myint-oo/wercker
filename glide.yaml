@@ -7,7 +7,9 @@ import:
   - package: github.com/codegangsta/cli
   - package: github.com/crowdmob/goamz
   - package: github.com/docker/docker
+    ref: 84dc197b087dc63280cdae50795a36434a84fa6f
   - package: github.com/fsouza/go-dockerclient
+    ref: b52383442df766febf51f9f858ee311f69a2f264
   - package: github.com/termie/go-shutil
   - package: gopkg.in/yaml.v1
   - package: github.com/chuckpreslar/emission
