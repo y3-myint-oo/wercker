@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"strings"
 )
 
 // Build is our basic wrapper for Build operations
@@ -90,17 +91,27 @@ func (b *Build) InitEnv() {
 	}
 
 	b.Env.Update(a)
-	b.Env.Update(b.getMirrorEnv())
+	b.Env.Update(b.options.Env.getMirror())
+	b.Env.Update(b.options.Env.getPassthrough())
 
 	b.Env.Add("WERCKER_APPLICATION_URL", fmt.Sprintf("%s#application/%s", b.options.BaseURL, b.options.BuildID))
-
-	// TODO(termie): deal with PASSTHRU args from the user here
 }
 
-func (b *Build) getMirrorEnv() [][]string {
+// Collect passthrough variables from the project
+func (e *Environment) getPassthrough() [][]string {
+	a := [][]string{}
+	for key, value := range e.Map {
+		if strings.HasPrefix(key, "X_") {
+			a = append(a, []string{strings.TrimPrefix(key, "X_"), value})
+		}
+	}
+	return a
+}
+
+func (e *Environment) getMirror() [][]string {
 	a := [][]string{}
 	for _, key := range mirroredEnv {
-		value, ok := b.options.Env.Map[key]
+		value, ok := e.Map[key]
 		if ok {
 			a = append(a, []string{key, value})
 		}
