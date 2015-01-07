@@ -20,8 +20,8 @@ type Session struct {
 	logsHidden  bool
 }
 
-// CreateSession based on a docker api endpoint and container ID.
-func CreateSession(endpoint string, containerID string) *Session {
+// NewSession based on a docker api endpoint and container ID.
+func NewSession(endpoint string, containerID string) *Session {
 	wsEndpoint := strings.Replace(endpoint, "tcp://", "ws://", 1)
 	wsQuery := "stdin=1&stderr=1&stdout=1&stream=1"
 	wsURL := fmt.Sprintf("%s/containers/%s/attach/ws?%s",

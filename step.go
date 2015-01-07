@@ -127,16 +127,16 @@ func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
 		stepID = id
 		stepData = data
 	}
-	return CreateStep(stepID, stepData, build, options)
+	return NewStep(stepID, stepData, build, options)
 }
 
-// CreateStep sets up the basic parts of a Step.
+// NewStep sets up the basic parts of a Step.
 // Step names can come in a couple forms (x means currently supported):
 //   x setup-go-environment (fetches from api)
 //   x wercker/hipchat-notify (fetches from api)
 //   x wercker/hipchat-notify "http://someurl/thingee.tar" (downloads tarball)
 //   x setup-go-environment "file:///some_path" (uses local path)
-func CreateStep(stepID string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
+func NewStep(stepID string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
 	var identifier string
 	var owner string
 	var name string
@@ -239,7 +239,7 @@ func (s *Step) Fetch() (string, error) {
 			var stepInfo StepAPIInfo
 
 			// Grab the info about the step from the api
-			client := CreateAPIClient(s.options.WerckerEndpoint)
+			client := NewAPIClient(s.options.WerckerEndpoint)
 			apiBytes, err := client.Get("steps", s.Owner, s.Name, s.Version)
 			if err != nil {
 				return "", err
@@ -333,7 +333,7 @@ func (s *Step) Execute(sess *Session) (int, error) {
 
 // CollectArtifacts copies the artifacts associated with the Step.
 func (s *Step) CollectArtifact(sess *Session) (*Artifact, error) {
-	artificer := CreateArtificer(s.options)
+	artificer := NewArtificer(s.options)
 
 	// Ensure we have the host directory
 

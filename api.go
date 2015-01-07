@@ -13,8 +13,8 @@ type APIClient struct {
 	endpoint string
 }
 
-// CreateAPIClient returns our dumb client
-func CreateAPIClient(endpoint string) *APIClient {
+// NewAPIClient returns our dumb client
+func NewAPIClient(endpoint string) *APIClient {
 	return &APIClient{endpoint: endpoint}
 }
 

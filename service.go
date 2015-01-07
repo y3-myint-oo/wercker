@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"github.com/fsouza/go-dockerclient"
+	"strings"
 )
 
 // ServiceBox wraps a box as a service
@@ -13,18 +13,18 @@ type ServiceBox struct {
 
 // ToServiceBox turns a box into a ServiceBox
 func (b *RawBox) ToServiceBox(build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
-	return CreateServiceBox(string(*b), build, options, boxOptions)
+	return NewServiceBox(string(*b), build, options, boxOptions)
 }
 
-// CreateServiceBox from a name and other references
-func CreateServiceBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
-	box, err := CreateBox(name, build, options, boxOptions)
+// NewServiceBox from a name and other references
+func NewServiceBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+	box, err := NewBox(name, build, options, boxOptions)
 	return &ServiceBox{Box: box}, err
 }
 
 // Run executes the service
 func (b *ServiceBox) Run() (*docker.Container, error) {
-	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name,"/","-",-1), b.options.BuildID)
+	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name, "/", "-", -1), b.options.BuildID)
 
 	container, err := b.client.CreateContainer(
 		docker.CreateContainerOptions{

@@ -104,7 +104,7 @@ func main() {
 
 func buildProject(c *cli.Context) {
 	// Parse CLI and local env
-	options, err := CreateGlobalOptions(c, os.Environ())
+	options, err := NewGlobalOptions(c, os.Environ())
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -311,7 +311,7 @@ func buildProject(c *cli.Context) {
 	}()
 
 	// Start our session
-	sess := CreateSession(options.DockerHost, container.ID)
+	sess := NewSession(options.DockerHost, container.ID)
 	sess, err = sess.Attach()
 	if err != nil {
 		log.Fatalln(err)
@@ -408,7 +408,7 @@ func buildProject(c *cli.Context) {
 			}
 
 			if artifact != nil {
-				artificer := CreateArtificer(options)
+				artificer := NewArtificer(options)
 				err = artificer.Upload(artifact)
 				if err != nil {
 					return err
@@ -484,7 +484,7 @@ func buildProject(c *cli.Context) {
 				return err
 			}
 
-			artificer := CreateArtificer(options)
+			artificer := NewArtificer(options)
 			err = artificer.Upload(artifact)
 			if err != nil {
 				return err

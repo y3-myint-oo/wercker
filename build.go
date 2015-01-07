@@ -34,7 +34,7 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 	// Start with the secret step, wercker-init that runs before everything
 	rawStepData := RawStepData{}
 	werckerInit := `wercker-init "https://api.github.com/repos/wercker/wercker-init/tarball"`
-	initStep, err := CreateStep(werckerInit, rawStepData, &build, options)
+	initStep, err := NewStep(werckerInit, rawStepData, &build, options)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (b *Build) getMirrorEnv() [][]string {
 
 // CollectArtifact copies the artifacts associated with the Step.
 func (b *Build) CollectArtifact(sess *Session) (*Artifact, error) {
-	artificer := CreateArtificer(b.options)
+	artificer := NewArtificer(b.options)
 
 	// Ensure we have the host directory
 
