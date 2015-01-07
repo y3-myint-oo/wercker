@@ -40,8 +40,8 @@ var (
 	ErrEmptyTarball = errors.New("empty tarball")
 )
 
-// CreateArtificer returns an Artificer
-func CreateArtificer(options *GlobalOptions) *Artificer {
+// NewArtificer returns an Artificer
+func NewArtificer(options *GlobalOptions) *Artificer {
 	return &Artificer{options: options}
 }
 

@@ -32,11 +32,11 @@ type BoxOptions struct {
 
 // ToBox will convert a RawBox into a Box
 func (b *RawBox) ToBox(build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
-	return CreateBox(string(*b), build, options, boxOptions)
+	return NewBox(string(*b), build, options, boxOptions)
 }
 
-// CreateBox from a name and other references
-func CreateBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
+// NewBox from a name and other references
+func NewBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
 	// TODO(termie): right now I am just tacking the version into the name
 	//               by replacing @ with _
 	name = strings.Replace(name, "@", "_", 1)

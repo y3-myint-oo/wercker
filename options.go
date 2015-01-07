@@ -20,9 +20,9 @@ type Environment struct {
 	Order []string
 }
 
-// CreateEnvironment fills up an Environment from a []string
-// Usually called like: env := CreateEnvironment(os.Environ())
-func CreateEnvironment(env []string) *Environment {
+// NewEnvironment fills up an Environment from a []string
+// Usually called like: env := NewEnvironment(os.Environ())
+func NewEnvironment(env []string) *Environment {
 	e := Environment{}
 	for _, keyvalue := range env {
 		pair := strings.SplitN(keyvalue, "=", 2)
@@ -207,9 +207,9 @@ func guessApplicationOwnerName(c *cli.Context, env *Environment) string {
 	return name
 }
 
-// CreateGlobalOptions builds up GlobalOptions from the cli and environment.
-func CreateGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
-	env := CreateEnvironment(e)
+// NewGlobalOptions builds up GlobalOptions from the cli and environment.
+func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
+	env := NewEnvironment(e)
 
 	buildDir, _ := filepath.Abs(c.GlobalString("build-dir"))
 	projectDir, _ := filepath.Abs(c.GlobalString("project-dir"))
