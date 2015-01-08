@@ -96,6 +96,16 @@ func (b *Box) binds(build *Build) ([]string, error) {
 	return binds, nil
 }
 
+func (b *Box) RunServices() error {
+	for _, serviceBox := range b.services {
+		_, err := serviceBox.Run()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Run creates the container and runs it.
 func (b *Box) Run(build *Build) (*docker.Container, error) {
 	// Make and start the container

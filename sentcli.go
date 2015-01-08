@@ -236,6 +236,45 @@ func (p *Pipeline) GetConfig() (*RawConfig, error) {
 	return rawConfig, nil
 }
 
+func (p *Pipeline) GetBox(rawConfig *RawConfig) (*Box, error) {
+	// Promote RawBox to a real Box. We believe in you, Box!
+	box, err := rawConfig.RawBox.ToBox(p.options, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("Box:", box.Name)
+
+	// Make sure we have the box available
+	if image, err := box.Fetch(); err != nil {
+		return nil, err
+	} else {
+		log.Println("Docker Image:", image.ID)
+	}
+	return box, nil
+}
+
+func (p *Pipeline) AddServices(rawConfig *RawConfig, box *Box) error {
+	for _, rawService := range rawConfig.RawServices {
+		log.Println("Fetching service:", rawService)
+
+		serviceBox, err := rawService.ToServiceBox(p.options, nil)
+		if err != nil {
+			return err
+		}
+
+		if _, err := serviceBox.Box.Fetch(); err != nil {
+			return err
+		}
+
+		box.AddService(serviceBox)
+		// TODO(mh): We want to make sure container is running fully before
+		// allowing build steps to run. We may need custom steps which block
+		// until service services are running.
+	}
+	return nil
+}
+
 func buildProject(c *cli.Context) {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
@@ -281,14 +320,19 @@ func buildProject(c *cli.Context) {
 		Order:   2,
 	})
 
+	log.Println("Application:", options.ApplicationName)
 	// Grab our config
 	rawConfig, err := p.GetConfig()
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	// Promote RawBox to a real Box. We believe in you, Box!
-	box, err := rawConfig.RawBox.ToBox(options, nil)
+	box, err := p.GetBox(rawConfig)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	err = p.AddServices(rawConfig, box)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -298,40 +342,7 @@ func buildProject(c *cli.Context) {
 	if err != nil {
 		log.Panicln(err)
 	}
-
-	log.Println("Application:", options.ApplicationName)
-	log.Println("Box:", box.Name)
 	log.Println("Steps:", len(build.Steps))
-
-	// Make sure we have the box available
-	if image, err := box.Fetch(); err != nil {
-		log.Panicln(err)
-	} else {
-		log.Println("Docker Image:", image.ID)
-	}
-
-	for _, rawService := range rawConfig.RawServices {
-		log.Println("Fetching service:", rawService)
-
-		serviceBox, err := rawService.ToServiceBox(options, nil)
-		if err != nil {
-			log.Panicln(err)
-		}
-
-		if _, err := serviceBox.Box.Fetch(); err != nil {
-			log.Panicln(err)
-		}
-
-		_, err = serviceBox.Run()
-		if err != nil {
-			log.Panicln(err)
-		}
-
-		box.AddService(serviceBox)
-		// TODO(mh): We want to make sure container is running fully before
-		// allowing build steps to run. We may need custom steps which block
-		// until service services are running.
-	}
 
 	// Start setting up the build dir
 	err = os.MkdirAll(options.HostPath(), 0755)
@@ -350,6 +361,11 @@ func buildProject(c *cli.Context) {
 		if _, err := step.Fetch(); err != nil {
 			log.Panicln(err)
 		}
+	}
+
+	err = box.RunServices()
+	if err != nil {
+		log.Panicln(err)
 	}
 
 	container, err := box.Run(build)
