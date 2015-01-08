@@ -398,8 +398,24 @@ func createProject(c *cli.Context) {
 	}
 	for _, f :=range(files) {
 		if f.Mode().IsRegular() {
-			if filepath.Ext(f.Name()) == ".go" {
+			counts := make(map[string]int)
+			switch {
+			case filepath.Ext(f.Name()) == ".go":
 				log.Println(f.Name())
+				break
+			
+			case filepath.Ext(f.Name()) == ".py":
+				log.Println(f.Name())
+				break
+			
+			case filepath.Ext(f.Name()) == ".rb":
+				log.Println(f.Name())
+				break
+			
+			case filepath.Ext(f.Name()) == ".js":
+				log.Println(f.Name())
+				break
+			
 			}
 		}
 	}
