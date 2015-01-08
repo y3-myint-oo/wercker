@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/chuckpreslar/emission"
 	"github.com/codegangsta/cli"
 	"github.com/termie/go-shutil"
 	"os"
@@ -102,13 +103,17 @@ func main() {
 	app.Run(os.Args)
 }
 
-func buildProject(c *cli.Context) {
-	// Parse CLI and local env
-	options, err := NewGlobalOptions(c, os.Environ())
-	if err != nil {
-		log.Panicln(err)
-	}
+type Pipeline struct {
+	options       *GlobalOptions
+	emitter       *emission.Emitter
+	logger        *LogHandler
+	literalLogger *LiteralLogHandler
+	metrics       *MetricsEventHandler
+	reporter      *ReportHandler
+}
 
+// NewPipeline from global options
+func NewPipeline(options *GlobalOptions) *Pipeline {
 	e := GetEmitter()
 
 	h, err := NewLogHandler()
@@ -123,14 +128,16 @@ func buildProject(c *cli.Context) {
 	}
 	l.ListenTo(e)
 
+	var mh *MetricsEventHandler
 	if options.ShouldKeenMetrics {
-		mh, err := NewMetricsHandler(options)
+		mh, err = NewMetricsHandler(options)
 		if err != nil {
 			log.WithField("Error", err).Panic("Unable to MetricsHandler")
 		}
 		mh.ListenTo(e)
 	}
 
+	var r *ReportHandler
 	if options.ShouldReport {
 		r, err := NewReportHandler(options.WerckerHost, options.WerckerToken)
 		if err != nil {
@@ -138,6 +145,91 @@ func buildProject(c *cli.Context) {
 		}
 		r.ListenTo(e)
 	}
+
+	return &Pipeline{
+		options:       options,
+		emitter:       e,
+		logger:        h,
+		literalLogger: l,
+		metrics:       mh,
+		reporter:      r,
+	}
+}
+
+// Emitter shares the Pipeline's emitter.
+func (p *Pipeline) Emitter() *emission.Emitter {
+	return p.emitter
+}
+
+func (p *Pipeline) ProjectDir() string {
+	return fmt.Sprintf("%s/%s", p.options.ProjectDir, p.options.ApplicationID)
+}
+
+// GetCode makes sure the code is in the ProjectDir.
+// NOTE(termie): When launched by kiddie-pool the ProjectPath will be
+// set to the location where grappler checked out the code and the copy
+// will be a little superfluous, but in the case where this is being
+// run in Single Player Mode this copy is necessary to avoid screwing
+// with the local dir.
+// TODO(termie): This may end up being BuildPipeline only,
+// if we split that off
+func (p *Pipeline) GetCode() (string, error) {
+	projectDir := p.ProjectDir()
+
+	// If the target is a tarball feetch and build that
+	if p.options.ProjectURL != "" {
+		resp, err := fetchTarball(p.options.ProjectURL)
+		if err != nil {
+			return projectDir, err
+		}
+		err = untargzip(projectDir, resp.Body)
+		if err != nil {
+			return projectDir, err
+		}
+	} else {
+		// We were pointed at a path with ProjectPath, copy it to projectDir
+
+		// Make sure we don't accidentally recurse or copy extra files
+		ignoreFunc := func(src string, files []os.FileInfo) []string {
+			ignores := []string{}
+			for _, file := range files {
+				abspath, err := filepath.Abs(filepath.Join(src, file.Name()))
+				if err != nil {
+					// Something went sufficiently wrong
+					panic(err)
+				}
+				if abspath == p.options.BuildDir || abspath == p.options.ProjectDir || abspath == p.options.StepDir {
+					ignores = append(ignores, file.Name())
+				}
+				// TODO(termie): maybe ignore .gitignore files?
+			}
+			return ignores
+		}
+		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy}
+		os.Rename(projectDir, fmt.Sprintf("%s-%s", projectDir, uuid.NewRandom().String()))
+		err := shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
+		if err != nil {
+			return projectDir, err
+		}
+	}
+	return projectDir, nil
+}
+
+func buildProject(c *cli.Context) {
+	// Parse CLI and local env
+	options, err := NewGlobalOptions(c, os.Environ())
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	// Signal handling
+	// Later on we'll register stuff to happen when one is received
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+
+	// Build our common pipeline
+	p := NewPipeline(options)
+	e := p.Emitter()
 
 	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
 
@@ -156,47 +248,9 @@ func buildProject(c *cli.Context) {
 	log.Println(options.ApplicationName)
 	log.Println("############################################")
 
-	// Signal handling
-	// Later on we'll register stuff to happen when one is received
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-
-	projectDir := fmt.Sprintf("%s/%s", options.ProjectDir, options.ApplicationID)
-
-	// If the target is a tarball fetch and build that
-	if options.ProjectURL != "" {
-		resp, err := fetchTarball(options.ProjectURL)
-		if err != nil {
-			log.Panicln(err)
-		}
-		err = untargzip(projectDir, resp.Body)
-		if err != nil {
-			log.Panicln(err)
-		}
-	} else {
-		// We were pointed at a path, copy it to projectDir
-
-		// Make sure we don't accidentally recurse or copy extra files
-		ignoreFunc := func(src string, files []os.FileInfo) []string {
-			ignores := []string{}
-			for _, file := range files {
-				abspath, err := filepath.Abs(filepath.Join(src, file.Name()))
-				if err != nil {
-					panic(err)
-				}
-				if abspath == options.BuildDir || abspath == options.ProjectDir || abspath == options.StepDir {
-					ignores = append(ignores, file.Name())
-				}
-				// TODO(termie): maybe ignore .gitignore files?
-			}
-			return ignores
-		}
-		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy}
-		os.Rename(projectDir, fmt.Sprintf("%s-%s", projectDir, uuid.NewRandom().String()))
-		err = shutil.CopyTree(options.ProjectPath, projectDir, copyOpts)
-		if err != nil {
-			panic(err)
-		}
+	projectDir, err := p.GetCode()
+	if err != nil {
+		log.Panicln(err)
 	}
 
 	setupEnvironmentStep := &Step{Name: "setup environment"}
