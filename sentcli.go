@@ -173,7 +173,7 @@ func (p *Pipeline) ProjectDir() string {
 // with the local dir.
 // TODO(termie): This may end up being BuildPipeline only,
 // if we split that off
-func (p *Pipeline) GetCode() (string, error) {
+func (p *Pipeline) EnsureCode() (string, error) {
 	projectDir := p.ProjectDir()
 
 	// If the target is a tarball feetch and build that
@@ -215,6 +215,27 @@ func (p *Pipeline) GetCode() (string, error) {
 	return projectDir, nil
 }
 
+func (p *Pipeline) GetConfig() (*RawConfig, error) {
+	// Return a []byte of the yaml we find or create.
+	werckerYaml, err := ReadWerckerYaml([]string{p.ProjectDir()}, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse that bad boy.
+	rawConfig, err := ConfigFromYaml(werckerYaml)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add some options to the global config
+	if rawConfig.SourceDir != "" {
+		p.options.SourceDir = rawConfig.SourceDir
+	}
+
+	return rawConfig, nil
+}
+
 func buildProject(c *cli.Context) {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
@@ -248,7 +269,7 @@ func buildProject(c *cli.Context) {
 	log.Println(options.ApplicationName)
 	log.Println("############################################")
 
-	projectDir, err := p.GetCode()
+	projectDir, err := p.EnsureCode()
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -260,31 +281,20 @@ func buildProject(c *cli.Context) {
 		Order:   2,
 	})
 
-	// Return a []byte of the yaml we find or create.
-	werckerYaml, err := ReadWerckerYaml([]string{projectDir}, false)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	// Parse that bad boy.
-	rawConfig, err := ConfigFromYaml(werckerYaml)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	// Add some options to the global config
-	if rawConfig.SourceDir != "" {
-		options.SourceDir = rawConfig.SourceDir
-	}
-
-	// Promote the RawBuild to a real Build. We believe in you, Build!
-	build, err := rawConfig.RawBuild.ToBuild(options)
+	// Grab our config
+	rawConfig, err := p.GetConfig()
 	if err != nil {
 		log.Panicln(err)
 	}
 
 	// Promote RawBox to a real Box. We believe in you, Box!
 	box, err := rawConfig.RawBox.ToBox(options, nil)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	// Promote the RawBuild to a real Build. We believe in you, Build!
+	build, err := rawConfig.RawBuild.ToBuild(options)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -342,7 +352,7 @@ func buildProject(c *cli.Context) {
 		}
 	}
 
-	container, err := box.Run()
+	container, err := box.Run(build)
 	if err != nil {
 		log.Panicln(err)
 	}
