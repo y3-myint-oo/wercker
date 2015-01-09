@@ -31,7 +31,7 @@ func (e *Environment) Update(a [][]string) {
 	}
 }
 
-// Add an idividual record.
+// Add an individual record.
 func (e *Environment) Add(key, value string) {
 	if e.Map == nil {
 		e.Map = make(map[string]string)
