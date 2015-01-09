@@ -92,13 +92,13 @@ func (b *Build) InitEnv() {
 
 	b.Env.Update(a)
 	b.Env.Update(b.options.Env.getMirror())
-	b.Env.Update(b.options.Env.getPassthrough())
+	b.Env.Update(b.options.Env.getPassthru())
 
 	b.Env.Add("WERCKER_APPLICATION_URL", fmt.Sprintf("%s#application/%s", b.options.BaseURL, b.options.BuildID))
 }
 
-// Collect passthrough variables from the project
-func (e *Environment) getPassthrough() [][]string {
+// Collect passthru variables from the project
+func (e *Environment) getPassthru() [][]string {
 	a := [][]string{}
 	for key, value := range e.Map {
 		if strings.HasPrefix(key, "X_") {
