@@ -377,11 +377,13 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 
+	// TODO(termie): can we remove the reliance on pipeline here?
 	container, err := box.Run(pipeline)
 	if err != nil {
 		log.Panicln(err)
 	}
 	defer box.Stop()
+
 	// Register our signal handler to clean the box up
 	// TODO(termie): we should probably make a little general purpose signal
 	// handler and register callbacks with it so that multiple parts of the app
