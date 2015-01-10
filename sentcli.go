@@ -103,7 +103,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-type Pipeline struct {
+type Runner struct {
 	options       *GlobalOptions
 	emitter       *emission.Emitter
 	logger        *LogHandler
@@ -112,8 +112,12 @@ type Pipeline struct {
 	reporter      *ReportHandler
 }
 
-// NewPipeline from global options
-func NewPipeline(options *GlobalOptions) *Pipeline {
+type BuildRunner struct {
+	*Runner
+}
+
+// NewRunner from global options
+func NewRunner(options *GlobalOptions) *Runner {
 	e := GetEmitter()
 
 	h, err := NewLogHandler()
@@ -146,7 +150,7 @@ func NewPipeline(options *GlobalOptions) *Pipeline {
 		r.ListenTo(e)
 	}
 
-	return &Pipeline{
+	return &Runner{
 		options:       options,
 		emitter:       e,
 		logger:        h,
@@ -156,12 +160,12 @@ func NewPipeline(options *GlobalOptions) *Pipeline {
 	}
 }
 
-// Emitter shares the Pipeline's emitter.
-func (p *Pipeline) Emitter() *emission.Emitter {
+// Emitter shares the Runner's emitter.
+func (p *Runner) Emitter() *emission.Emitter {
 	return p.emitter
 }
 
-func (p *Pipeline) ProjectDir() string {
+func (p *Runner) ProjectDir() string {
 	return fmt.Sprintf("%s/%s", p.options.ProjectDir, p.options.ApplicationID)
 }
 
@@ -171,9 +175,9 @@ func (p *Pipeline) ProjectDir() string {
 // will be a little superfluous, but in the case where this is being
 // run in Single Player Mode this copy is necessary to avoid screwing
 // with the local dir.
-// TODO(termie): This may end up being BuildPipeline only,
+// TODO(termie): This may end up being BuildRunner only,
 // if we split that off
-func (p *Pipeline) EnsureCode() (string, error) {
+func (p *Runner) EnsureCode() (string, error) {
 	projectDir := p.ProjectDir()
 
 	// If the target is a tarball feetch and build that
@@ -215,7 +219,7 @@ func (p *Pipeline) EnsureCode() (string, error) {
 	return projectDir, nil
 }
 
-func (p *Pipeline) GetConfig() (*RawConfig, error) {
+func (p *Runner) GetConfig() (*RawConfig, error) {
 	// Return a []byte of the yaml we find or create.
 	werckerYaml, err := ReadWerckerYaml([]string{p.ProjectDir()}, false)
 	if err != nil {
@@ -236,7 +240,7 @@ func (p *Pipeline) GetConfig() (*RawConfig, error) {
 	return rawConfig, nil
 }
 
-func (p *Pipeline) GetBox(rawConfig *RawConfig) (*Box, error) {
+func (p *Runner) GetBox(rawConfig *RawConfig) (*Box, error) {
 	// Promote RawBox to a real Box. We believe in you, Box!
 	box, err := rawConfig.RawBox.ToBox(p.options, nil)
 	if err != nil {
@@ -254,7 +258,7 @@ func (p *Pipeline) GetBox(rawConfig *RawConfig) (*Box, error) {
 	return box, nil
 }
 
-func (p *Pipeline) AddServices(rawConfig *RawConfig, box *Box) error {
+func (p *Runner) AddServices(rawConfig *RawConfig, box *Box) error {
 	for _, rawService := range rawConfig.RawServices {
 		log.Println("Fetching service:", rawService)
 
@@ -288,7 +292,7 @@ func buildProject(c *cli.Context) {
 	signal.Notify(sigint, os.Interrupt)
 
 	// Build our common pipeline
-	p := NewPipeline(options)
+	p := NewRunner(options)
 	e := p.Emitter()
 
 	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
@@ -302,9 +306,7 @@ func buildProject(c *cli.Context) {
 	defer e.Emit(BuildFinished, buildFinishedArgs)
 
 	log.Println("############# Building project #############")
-
 	log.Debugln(fmt.Sprintf("%+v", options))
-
 	log.Println(options.ApplicationName)
 	log.Println("############################################")
 
