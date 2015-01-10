@@ -112,10 +112,6 @@ type Runner struct {
 	reporter      *ReportHandler
 }
 
-type BuildRunner struct {
-	*Runner
-}
-
 // NewRunner from global options
 func NewRunner(options *GlobalOptions) *Runner {
 	e := GetEmitter()
@@ -279,6 +275,19 @@ func (p *Runner) AddServices(rawConfig *RawConfig, box *Box) error {
 	return nil
 }
 
+type BuildRunner struct {
+	*Runner
+}
+
+func (b *BuildRunner) GetPipeline(rawConfig *RawConfig) (*Build, error) {
+	// Promote the RawBuild to a real Build. We believe in you, Build!
+	build, err := rawConfig.RawBuild.ToBuild(b.options)
+	if err != nil {
+		return nil, err
+	}
+	return build, nil
+}
+
 func buildProject(c *cli.Context) {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
@@ -293,6 +302,7 @@ func buildProject(c *cli.Context) {
 
 	// Build our common pipeline
 	p := NewRunner(options)
+	b := &BuildRunner{p}
 	e := p.Emitter()
 
 	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
@@ -339,14 +349,11 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 
-	// Promote the RawBuild to a real Build. We believe in you, Build!
-	build, err := rawConfig.RawBuild.ToBuild(options)
-	if err != nil {
-		log.Panicln(err)
-	}
-	log.Println("Steps:", len(build.Steps))
+	pipeline, err := b.GetPipeline(rawConfig)
 
-	// Start setting up the build dir
+	log.Println("Steps:", len(pipeline.Steps))
+
+	// Start setting up the pipeline dir
 	err = os.MkdirAll(options.HostPath(), 0755)
 	if err != nil {
 		log.Panicln(err)
@@ -358,7 +365,7 @@ func buildProject(c *cli.Context) {
 	}
 
 	// Make sure we have the steps
-	for _, step := range build.Steps {
+	for _, step := range pipeline.Steps {
 		log.Println("Fetching Step:", step.Name, step.ID)
 		if _, err := step.Fetch(); err != nil {
 			log.Panicln(err)
@@ -370,7 +377,7 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 
-	container, err := box.Run(build)
+	container, err := box.Run(pipeline)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -401,12 +408,12 @@ func buildProject(c *cli.Context) {
 
 	// Some helpful logging
 	log.Println("Base Build Environment:")
-	for _, pair := range build.Env.Ordered() {
+	for _, pair := range pipeline.Env.Ordered() {
 		log.Println(" ", pair[0], pair[1])
 	}
 
-	err = build.SetupGuest(sess)
-	exit, _, err := sess.SendChecked(build.Env.Export()...)
+	err = pipeline.SetupGuest(sess)
+	exit, _, err := sess.SendChecked(pipeline.Env.Export()...)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -425,7 +432,7 @@ func buildProject(c *cli.Context) {
 	}
 
 	e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
-		Build:      build,
+		Build:      pipeline,
 		Options:    options,
 		Step:       setupEnvironmentStep,
 		Order:      2,
@@ -435,25 +442,25 @@ func buildProject(c *cli.Context) {
 	// TODO(bvdberg):
 	storeStep := &Step{Name: "Store"}
 	// Package should be the last item, + "setup environemnt" and "get code"
-	storeStepOrder := len(build.Steps) + 1 + 2
+	storeStepOrder := len(pipeline.Steps) + 1 + 2
 
 	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
-		Build:     build,
-		Steps:     build.Steps,
+		Build:     pipeline,
+		Steps:     pipeline.Steps,
 		StoreStep: storeStep,
 		Options:   options,
 	})
 
 	stepFailed := false
 	offset := 2
-	for i, step := range build.Steps {
+	for i, step := range pipeline.Steps {
 		log.Println()
 		log.Println("============= Executing Step ==============")
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
 		e.Emit(BuildStepStarted, &BuildStepStartedArgs{
-			Build:   build,
+			Build:   pipeline,
 			Step:    step,
 			Options: options,
 			Order:   offset + i,
@@ -468,7 +475,7 @@ func buildProject(c *cli.Context) {
 		err = func() error {
 			// Get ready to report this
 			stepArgs := &BuildStepFinishedArgs{
-				Build:      build,
+				Build:      pipeline,
 				Options:    options,
 				Step:       step,
 				Order:      offset + i,
@@ -519,7 +526,7 @@ func buildProject(c *cli.Context) {
 
 	if options.ShouldPush {
 		e.Emit(BuildStepStarted, &BuildStepStartedArgs{
-			Build:   build,
+			Build:   pipeline,
 			Step:    storeStep,
 			Options: options,
 			Order:   storeStepOrder,
@@ -528,7 +535,7 @@ func buildProject(c *cli.Context) {
 		err = func() error {
 			// Get ready to report this
 			stepArgs := &BuildStepFinishedArgs{
-				Build:      build,
+				Build:      pipeline,
 				Options:    options,
 				Step:       storeStep,
 				Order:      storeStepOrder,
@@ -561,7 +568,7 @@ func buildProject(c *cli.Context) {
 
 	if buildFinishedArgs.Result == "passed" {
 		err = func() error {
-			artifact, err := build.CollectArtifact(sess)
+			artifact, err := pipeline.CollectArtifact(sess)
 			if err != nil {
 				return err
 			}
@@ -574,7 +581,7 @@ func buildProject(c *cli.Context) {
 			return nil
 		}()
 		if err != nil {
-			log.WithField("Error", err).Error("Unable to store build output")
+			log.WithField("Error", err).Error("Unable to store pipeline output")
 			buildFinishedArgs.Result = "failed"
 		}
 	}
