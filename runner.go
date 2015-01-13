@@ -235,11 +235,49 @@ type RunnerContext struct {
 	config   *RawConfig
 }
 
+type Finisher struct {
+	done       func(bool)
+	isFinished bool
+}
+
+func NewFinisher(done func(bool)) *Finisher {
+	return &Finisher{done: done, isFinished: false}
+}
+
+func (f *Finisher) Finish(result bool) {
+	if f.isFinished {
+		return
+	}
+	f.done(result)
+}
+
+func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher {
+	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
+		Build:   ctx.pipeline,
+		Options: p.options,
+		Step:    step,
+		Order:   order,
+	})
+	return NewFinisher(func(result bool) {
+		p.emitter.Emit(BuildStepFinished, &BuildStepFinishedArgs{
+			Build:      ctx.pipeline,
+			Options:    p.options,
+			Step:       step,
+			Order:      order,
+			Successful: result,
+		})
+	})
+}
+
 // SetupEnvironment does a lot of boilerplate legwork and returns a pipeline,
 // box, and session. This is a bit of a long method, but it is pretty much
 // the entire "Setup Environment" step.
 func (b *BuildRunner) SetupEnvironment() (*RunnerContext, error) {
 	ctx := &RunnerContext{}
+
+	setupEnvironmentStep := &Step{Name: "setup environment"}
+	finisher := b.StartStep(ctx, setupEnvironmentStep, 2)
+	defer finisher.Finish(false)
 
 	log.Println("Application:", b.options.ApplicationName)
 
@@ -330,5 +368,41 @@ func (b *BuildRunner) SetupEnvironment() (*RunnerContext, error) {
 		return ctx, err
 	}
 
+	finisher.Finish(true)
 	return ctx, nil
+}
+
+// RunStep runs a step and tosses error if it fails
+func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) error {
+	finisher := p.StartStep(ctx, step, order)
+	defer finisher.Finish(false)
+
+	step.InitEnv()
+	log.Println("Step Environment")
+	for _, pair := range step.Env.Ordered() {
+		log.Println(" ", pair[0], pair[1])
+	}
+
+	exit, err := step.Execute(ctx.sess)
+	if exit != 0 {
+		return fmt.Errorf("Build failed with exit code: %d", exit)
+	}
+	if err != nil {
+		return err
+	}
+	artifact, err := step.CollectArtifact(ctx.sess)
+	if err != nil {
+		return err
+	}
+
+	if artifact != nil {
+		artificer := NewArtificer(p.options)
+		err = artificer.Upload(artifact)
+		if err != nil {
+			return err
+		}
+	}
+
+	finisher.Finish(true)
+	return nil
 }

@@ -130,13 +130,6 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 
-	setupEnvironmentStep := &Step{Name: "setup environment"}
-	e.Emit(BuildStepStarted, &BuildStepStartedArgs{
-		Options: options,
-		Step:    setupEnvironmentStep,
-		Order:   2,
-	})
-
 	ctx, err := b.SetupEnvironment()
 	if ctx.box != nil {
 		defer ctx.box.Stop()
@@ -149,14 +142,6 @@ func buildProject(c *cli.Context) {
 	box := ctx.box
 	pipeline := ctx.pipeline
 	sess := ctx.sess
-
-	e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
-		Build:      pipeline,
-		Options:    options,
-		Step:       setupEnvironmentStep,
-		Order:      2,
-		Successful: true,
-	})
 
 	repoName := pipeline.dockerRepo()
 	tag := pipeline.dockerTag()
@@ -178,57 +163,11 @@ func buildProject(c *cli.Context) {
 	offset := 2
 	for i, step := range pipeline.Steps {
 		log.Println()
-		log.Println("============= Executing Step ==============")
+		log.Println("============== Running Step ===============")
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
-		e.Emit(BuildStepStarted, &BuildStepStartedArgs{
-			Build:   pipeline,
-			Step:    step,
-			Options: options,
-			Order:   offset + i,
-		})
-
-		step.InitEnv()
-		log.Println("Step Environment")
-		for _, pair := range step.Env.Ordered() {
-			log.Println(" ", pair[0], pair[1])
-		}
-
-		err = func() error {
-			// Get ready to report this
-			stepArgs := &BuildStepFinishedArgs{
-				Build:      pipeline,
-				Options:    options,
-				Step:       step,
-				Order:      offset + i,
-				Successful: false,
-			}
-			defer e.Emit(BuildStepFinished, stepArgs)
-
-			exit, err := step.Execute(sess)
-			if exit != 0 {
-				box.Stop()
-				return fmt.Errorf("Build failed with exit code: %d", exit)
-			}
-			if err != nil {
-				return err
-			}
-			artifact, err := step.CollectArtifact(sess)
-			if err != nil {
-				return err
-			}
-
-			if artifact != nil {
-				artificer := NewArtificer(options)
-				err = artificer.Upload(artifact)
-				if err != nil {
-					return err
-				}
-			}
-			stepArgs.Successful = true
-			return nil
-		}()
+		err = p.RunStep(ctx, step, offset+i)
 
 		if err != nil {
 			stepFailed = true
@@ -248,23 +187,9 @@ func buildProject(c *cli.Context) {
 	}
 
 	if options.ShouldPush {
-		e.Emit(BuildStepStarted, &BuildStepStartedArgs{
-			Build:   pipeline,
-			Step:    storeStep,
-			Options: options,
-			Order:   storeStepOrder,
-		})
-
 		err = func() error {
-			// Get ready to report this
-			stepArgs := &BuildStepFinishedArgs{
-				Build:      pipeline,
-				Options:    options,
-				Step:       storeStep,
-				Order:      storeStepOrder,
-				Successful: false,
-			}
-			defer e.Emit(BuildStepFinished, stepArgs)
+			finisher := p.StartStep(ctx, storeStep, storeStepOrder)
+			defer finisher.Finish(false)
 
 			pushOptions := &PushOptions{
 				Registry: options.Registry,
@@ -274,8 +199,11 @@ func buildProject(c *cli.Context) {
 			}
 
 			_, err = box.Push(pushOptions)
-			stepArgs.Successful = true
-			return err
+			if err != nil {
+				return err
+			}
+			finisher.Finish(true)
+			return nil
 		}()
 
 		if err != nil {
