@@ -302,11 +302,6 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 
-	// Signal handling
-	// Later on we'll register stuff to happen when one is received
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-
 	// Build our common pipeline
 	p := NewRunner(options)
 	b := &BuildRunner{p}
@@ -395,6 +390,8 @@ func buildProject(c *cli.Context) {
 	// TODO(termie): we should probably make a little general purpose signal
 	// handler and register callbacks with it so that multiple parts of the app
 	// can do cleanup
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
 	go func() {
 		tries := 0
 		for _ = range sigint {
