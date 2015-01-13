@@ -330,7 +330,7 @@ func (s *Step) Execute(sess *Session) (int, error) {
 	return 0, nil
 }
 
-// CollectArtifacts copies the artifacts associated with the Step.
+// CollectArtifact copies the artifacts associated with the Step.
 func (s *Step) CollectArtifact(sess *Session) (*Artifact, error) {
 	artificer := NewArtificer(s.options)
 

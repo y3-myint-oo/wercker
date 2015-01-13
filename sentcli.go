@@ -103,6 +103,7 @@ func main() {
 	app.Run(os.Args)
 }
 
+// Runner is the base type for running the pipelines
 type Runner struct {
 	options       *GlobalOptions
 	emitter       *emission.Emitter
@@ -161,11 +162,12 @@ func (p *Runner) Emitter() *emission.Emitter {
 	return p.emitter
 }
 
+// ProjectDir returns the directory where we expect to find the code for this project
 func (p *Runner) ProjectDir() string {
 	return fmt.Sprintf("%s/%s", p.options.ProjectDir, p.options.ApplicationID)
 }
 
-// GetCode makes sure the code is in the ProjectDir.
+// EnsureCode makes sure the code is in the ProjectDir.
 // NOTE(termie): When launched by kiddie-pool the ProjectPath will be
 // set to the location where grappler checked out the code and the copy
 // will be a little superfluous, but in the case where this is being
@@ -215,6 +217,7 @@ func (p *Runner) EnsureCode() (string, error) {
 	return projectDir, nil
 }
 
+// GetConfig parses and returns the wercker.yml file.
 func (p *Runner) GetConfig() (*RawConfig, error) {
 	// Return a []byte of the yaml we find or create.
 	werckerYaml, err := ReadWerckerYaml([]string{p.ProjectDir()}, false)
@@ -236,6 +239,7 @@ func (p *Runner) GetConfig() (*RawConfig, error) {
 	return rawConfig, nil
 }
 
+// GetBox fetches and returns the base box for the pipeline.
 func (p *Runner) GetBox(rawConfig *RawConfig) (*Box, error) {
 	// Promote RawBox to a real Box. We believe in you, Box!
 	box, err := rawConfig.RawBox.ToBox(p.options, nil)
@@ -248,12 +252,12 @@ func (p *Runner) GetBox(rawConfig *RawConfig) (*Box, error) {
 	// Make sure we have the box available
 	if image, err := box.Fetch(); err != nil {
 		return nil, err
-	} else {
-		log.Println("Docker Image:", image.ID)
 	}
+	log.Println("Docker Image:", image.ID)
 	return box, nil
 }
 
+// AddServices fetches and links the services to the base box.
 func (p *Runner) AddServices(rawConfig *RawConfig, box *Box) error {
 	for _, rawService := range rawConfig.RawServices {
 		log.Println("Fetching service:", rawService)
@@ -275,10 +279,12 @@ func (p *Runner) AddServices(rawConfig *RawConfig, box *Box) error {
 	return nil
 }
 
+// BuildRunner is the runner type for a Build pipeline
 type BuildRunner struct {
 	*Runner
 }
 
+// GetPipeline returns a pipeline based on the "build" config section
 func (b *BuildRunner) GetPipeline(rawConfig *RawConfig) (*Build, error) {
 	// Promote the RawBuild to a real Build. We believe in you, Build!
 	build, err := rawConfig.RawBuild.ToBuild(b.options)

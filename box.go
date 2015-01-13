@@ -96,6 +96,7 @@ func (b *Box) binds(build *Build) ([]string, error) {
 	return binds, nil
 }
 
+// RunServices runs the services associated with this box
 func (b *Box) RunServices() error {
 	for _, serviceBox := range b.services {
 		_, err := serviceBox.Run()
