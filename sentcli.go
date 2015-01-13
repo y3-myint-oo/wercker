@@ -76,6 +76,15 @@ func main() {
 			Flags: []cli.Flag{},
 		},
 		{
+			Name:      "deploy",
+			ShortName: "d",
+			Usage:     "deploy a project",
+			Action: func(c *cli.Context) {
+				deployProject(c)
+			},
+			Flags: []cli.Flag{},
+		},
+		{
 			Name:      "version",
 			ShortName: "v",
 			Usage:     "display version information",
@@ -99,7 +108,84 @@ func main() {
 }
 
 func deployProject(c *cli.Context) {
+	// Parse CLI and local env
+	options, err := NewGlobalOptions(c, os.Environ())
+	if err != nil {
+		log.Panicln(err)
+	}
 
+	// Build our common pipeline
+	p := NewRunner(options, GetDeployPipeline)
+	e := p.Emitter()
+
+	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
+
+	// This will be emitted at the end of the execution, we're going to be
+	// pessimistic and report that we failed, unless overridden at the end of the
+	// execution.
+	// TODO(bvdberg): This is good for now, but we should be able to report
+	// halfway through (when the build finishes, but after steps have not yet run)
+	buildFinishedArgs := &BuildFinishedArgs{Options: options, Result: "failed"}
+	defer e.Emit(BuildFinished, buildFinishedArgs)
+
+	log.Println("############ Deploying project #############")
+	log.Debugln(fmt.Sprintf("%+v", options))
+	log.Println(options.ApplicationName)
+	log.Println("############################################")
+
+	_, err = p.EnsureCode()
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	ctx, err := p.SetupEnvironment()
+	if ctx.box != nil {
+		defer ctx.box.Stop()
+	}
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	// Expand our context object
+	// box := ctx.box
+	pipeline := ctx.pipeline
+	// sess := ctx.sess
+
+	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
+		Build:   pipeline,
+		Steps:   pipeline.Steps,
+		Options: options,
+	})
+
+	stepFailed := false
+	offset := 2
+	for i, step := range pipeline.Steps {
+		log.Println()
+		log.Println("============== Running Step ===============")
+		log.Println(step.Name, step.ID)
+		log.Println("===========================================")
+
+		err = p.RunStep(ctx, step, offset+i)
+
+		if err != nil {
+			stepFailed = true
+			log.Errorln("============== Step failed! ===============")
+			break
+		}
+		log.Println("============== Step passed! ===============")
+	}
+
+	// Only make it passed if we reach this code (ie no panics) and no step
+	// failed.
+	if !stepFailed {
+		buildFinishedArgs.Result = "passed"
+	}
+
+	if buildFinishedArgs.Result == "passed" {
+		log.Println("############# Deploy passed! ##############")
+	} else {
+		log.Errorln("############# Deploy failed! ##############")
+	}
 }
 
 func buildProject(c *cli.Context) {
