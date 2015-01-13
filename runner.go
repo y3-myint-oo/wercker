@@ -11,18 +11,42 @@ import (
 	"path/filepath"
 )
 
+// PipelineGetter is a function that will fetch the appropriate pipeline
+// object from the rawConfig
+type GetPipeline func(*RawConfig, *GlobalOptions) (*Build, error)
+
+func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, error) {
+	// Promote the RawBuild to a real Build. We believe in you, Build!
+	build, err := rawConfig.RawBuild.ToBuild(options)
+	if err != nil {
+		return nil, err
+	}
+	return build, nil
+}
+
+func GetDeployPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, error) {
+	// Promote the RawBuild to a real Build. We believe in you, Build!
+	build, err := rawConfig.RawDeploy.ToBuild(options)
+	if err != nil {
+		return nil, err
+	}
+	return build, nil
+}
+
 // Runner is the base type for running the pipelines
 type Runner struct {
-	options       *GlobalOptions
-	emitter       *emission.Emitter
-	logger        *LogHandler
-	literalLogger *LiteralLogHandler
-	metrics       *MetricsEventHandler
-	reporter      *ReportHandler
+	options        *GlobalOptions
+	emitter        *emission.Emitter
+	logger         *LogHandler
+	literalLogger  *LiteralLogHandler
+	metrics        *MetricsEventHandler
+	reporter       *ReportHandler
+	pipelineGetter GetPipeline
 }
 
 // NewRunner from global options
-func NewRunner(options *GlobalOptions) *Runner {
+func NewRunner(options *GlobalOptions, pipelineGetter GetPipeline) *Runner {
+
 	e := GetEmitter()
 
 	h, err := NewLogHandler()
@@ -56,12 +80,13 @@ func NewRunner(options *GlobalOptions) *Runner {
 	}
 
 	return &Runner{
-		options:       options,
-		emitter:       e,
-		logger:        h,
-		literalLogger: l,
-		metrics:       mh,
-		reporter:      r,
+		options:        options,
+		emitter:        e,
+		logger:         h,
+		literalLogger:  l,
+		metrics:        mh,
+		reporter:       r,
+		pipelineGetter: pipelineGetter,
 	}
 }
 
@@ -213,19 +238,9 @@ func (p *Runner) GetSession(containerID string) (*Session, error) {
 	return sess, nil
 }
 
-// BuildRunner is the runner type for a Build pipeline
-type BuildRunner struct {
-	*Runner
-}
-
 // GetPipeline returns a pipeline based on the "build" config section
-func (b *BuildRunner) GetPipeline(rawConfig *RawConfig) (*Build, error) {
-	// Promote the RawBuild to a real Build. We believe in you, Build!
-	build, err := rawConfig.RawBuild.ToBuild(b.options)
-	if err != nil {
-		return nil, err
-	}
-	return build, nil
+func (p *Runner) GetPipeline(rawConfig *RawConfig) (*Build, error) {
+	return p.pipelineGetter(rawConfig, p.options)
 }
 
 type RunnerContext struct {
@@ -272,40 +287,40 @@ func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher 
 // SetupEnvironment does a lot of boilerplate legwork and returns a pipeline,
 // box, and session. This is a bit of a long method, but it is pretty much
 // the entire "Setup Environment" step.
-func (b *BuildRunner) SetupEnvironment() (*RunnerContext, error) {
+func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	ctx := &RunnerContext{}
 
 	setupEnvironmentStep := &Step{Name: "setup environment"}
-	finisher := b.StartStep(ctx, setupEnvironmentStep, 2)
+	finisher := p.StartStep(ctx, setupEnvironmentStep, 2)
 	defer finisher.Finish(false)
 
-	log.Println("Application:", b.options.ApplicationName)
+	log.Println("Application:", p.options.ApplicationName)
 
 	// Grab our config
-	rawConfig, err := b.GetConfig()
+	rawConfig, err := p.GetConfig()
 	if err != nil {
 		return ctx, err
 	}
 	ctx.config = rawConfig
 
-	box, err := b.GetBox(rawConfig)
+	box, err := p.GetBox(rawConfig)
 	if err != nil {
 		return ctx, err
 	}
 	ctx.box = box
 
-	err = b.AddServices(rawConfig, box)
+	err = p.AddServices(rawConfig, box)
 	if err != nil {
 		return ctx, err
 	}
 
 	// Start setting up the pipeline dir
-	err = b.CopySource()
+	err = p.CopySource()
 	if err != nil {
 		return ctx, err
 	}
 
-	pipeline, err := b.GetPipeline(rawConfig)
+	pipeline, err := p.GetPipeline(rawConfig)
 	ctx.pipeline = pipeline
 
 	log.Println("Steps:", len(pipeline.Steps))
@@ -349,7 +364,7 @@ func (b *BuildRunner) SetupEnvironment() (*RunnerContext, error) {
 	}()
 
 	// Start our session
-	sess, err := b.GetSession(container.ID)
+	sess, err := p.GetSession(container.ID)
 	if err != nil {
 		return ctx, err
 	}

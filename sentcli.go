@@ -98,6 +98,10 @@ func main() {
 	app.Run(os.Args)
 }
 
+func deployProject(c *cli.Context) {
+
+}
+
 func buildProject(c *cli.Context) {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
@@ -106,8 +110,7 @@ func buildProject(c *cli.Context) {
 	}
 
 	// Build our common pipeline
-	p := NewRunner(options)
-	b := &BuildRunner{p}
+	p := NewRunner(options, GetBuildPipeline)
 	e := p.Emitter()
 
 	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
@@ -130,7 +133,7 @@ func buildProject(c *cli.Context) {
 		log.Panicln(err)
 	}
 
-	ctx, err := b.SetupEnvironment()
+	ctx, err := p.SetupEnvironment()
 	if ctx.box != nil {
 		defer ctx.box.Stop()
 	}
@@ -174,7 +177,6 @@ func buildProject(c *cli.Context) {
 			log.Errorln("============== Step failed! ===============")
 			break
 		}
-
 		log.Println("============== Step passed! ===============")
 
 		if options.ShouldCommit {
