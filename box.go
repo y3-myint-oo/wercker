@@ -77,7 +77,7 @@ func (b *Box) links() []string {
 	return serviceLinks
 }
 
-func (b *Box) binds(build *Build) ([]string, error) {
+func (b *Box) binds() ([]string, error) {
 	binds := []string{}
 	// Make our list of binds for the Docker attach
 	// NOTE(termie): we don't appear to need the "volumes" stuff, leaving
@@ -108,7 +108,7 @@ func (b *Box) RunServices() error {
 }
 
 // Run creates the container and runs it.
-func (b *Box) Run(build *Build) (*docker.Container, error) {
+func (b *Box) Run() (*docker.Container, error) {
 	// Make and start the container
 	containerName := "wercker-build-" + b.options.BuildID
 	container, err := b.client.CreateContainer(
@@ -132,7 +132,7 @@ func (b *Box) Run(build *Build) (*docker.Container, error) {
 
 	log.Println("Docker Container:", container.ID)
 
-	binds, err := b.binds(build)
+	binds, err := b.binds()
 	if err != nil {
 		return nil, err
 	}

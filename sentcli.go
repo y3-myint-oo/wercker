@@ -250,7 +250,8 @@ func (p *Runner) GetBox(rawConfig *RawConfig) (*Box, error) {
 	log.Println("Box:", box.Name)
 
 	// Make sure we have the box available
-	if image, err := box.Fetch(); err != nil {
+	image, err := box.Fetch()
+	if err != nil {
 		return nil, err
 	}
 	log.Println("Docker Image:", image.ID)
@@ -384,7 +385,7 @@ func buildProject(c *cli.Context) {
 	}
 
 	// TODO(termie): can we remove the reliance on pipeline here?
-	container, err := box.Run(pipeline)
+	container, err := box.Run()
 	if err != nil {
 		log.Panicln(err)
 	}
