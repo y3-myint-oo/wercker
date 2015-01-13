@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"strings"
 )
 
@@ -118,6 +119,46 @@ func (e *Environment) getMirror() [][]string {
 	return a
 }
 
+// Dump the base environment to our logs
+func (b *Build) logEnvironment() {
+	// Some helpful logging
+	log.Println("Base Build Environment:")
+	for _, pair := range b.Env.Ordered() {
+		log.Println(" ", pair[0], pair[1])
+	}
+}
+
+func (b *Build) dockerRepo() string {
+	return fmt.Sprintf("%s/%s", b.options.ApplicationOwnerName, b.options.ApplicationName)
+}
+
+func (b *Build) dockerTag() string {
+	tag := b.options.Tag
+	if tag == "" {
+		tag = fmt.Sprintf("build-%s", b.options.BuildID)
+	}
+	return tag
+}
+
+func (b *Build) dockerMessage() string {
+	message := b.options.Message
+	if message == "" {
+		message = fmt.Sprintf("Build %s", b.options.BuildID)
+	}
+	return message
+}
+
+// FetchSteps makes sure we have all the steps
+func (b *Build) FetchSteps() error {
+	for _, step := range b.Steps {
+		log.Println("Fetching Step:", step.Name, step.ID)
+		if _, err := step.Fetch(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // CollectArtifact copies the artifacts associated with the Step.
 func (b *Build) CollectArtifact(sess *Session) (*Artifact, error) {
 	artificer := NewArtificer(b.options)
@@ -197,5 +238,17 @@ func (b *Build) SetupGuest(sess *Session) error {
 		return errors.New("Guest command failed.")
 	}
 
+	return nil
+}
+
+// ExportEnvironment to the session
+func (b *Build) ExportEnvironment(sess *Session) error {
+	exit, _, err := sess.SendChecked(b.Env.Export()...)
+	if err != nil {
+		return err
+	}
+	if exit != 0 {
+		return fmt.Errorf("Build failed with exit code:", exit)
+	}
 	return nil
 }

@@ -5,9 +5,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/termie/go-shutil"
 	"os"
-	"os/signal"
 )
 
 func main() {
@@ -127,7 +125,7 @@ func buildProject(c *cli.Context) {
 	log.Println(options.ApplicationName)
 	log.Println("############################################")
 
-	projectDir, err := p.EnsureCode()
+	_, err = p.EnsureCode()
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -139,108 +137,18 @@ func buildProject(c *cli.Context) {
 		Order:   2,
 	})
 
-	log.Println("Application:", options.ApplicationName)
-	// Grab our config
-	rawConfig, err := p.GetConfig()
+	ctx, err := b.SetupEnvironment()
+	if ctx.box != nil {
+		defer ctx.box.Stop()
+	}
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	box, err := p.GetBox(rawConfig)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	err = p.AddServices(rawConfig, box)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	pipeline, err := b.GetPipeline(rawConfig)
-
-	log.Println("Steps:", len(pipeline.Steps))
-
-	// Start setting up the pipeline dir
-	err = os.MkdirAll(options.HostPath(), 0755)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	err = shutil.CopyTree(projectDir, options.HostPath("source"), nil)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	// Make sure we have the steps
-	for _, step := range pipeline.Steps {
-		log.Println("Fetching Step:", step.Name, step.ID)
-		if _, err := step.Fetch(); err != nil {
-			log.Panicln(err)
-		}
-	}
-
-	err = box.RunServices()
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	// TODO(termie): can we remove the reliance on pipeline here?
-	container, err := box.Run()
-	if err != nil {
-		log.Panicln(err)
-	}
-	defer box.Stop()
-
-	// Register our signal handler to clean the box up
-	// TODO(termie): we should probably make a little general purpose signal
-	// handler and register callbacks with it so that multiple parts of the app
-	// can do cleanup
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	go func() {
-		tries := 0
-		for _ = range sigint {
-			if tries == 0 {
-				tries = 1
-				box.Stop()
-				os.Exit(1)
-			} else {
-				panic("Exiting forcefully")
-			}
-		}
-	}()
-
-	// Start our session
-	sess := NewSession(options.DockerHost, container.ID)
-	sess, err = sess.Attach()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	// Some helpful logging
-	log.Println("Base Build Environment:")
-	for _, pair := range pipeline.Env.Ordered() {
-		log.Println(" ", pair[0], pair[1])
-	}
-
-	err = pipeline.SetupGuest(sess)
-	exit, _, err := sess.SendChecked(pipeline.Env.Export()...)
-	if err != nil {
-		log.Panicln(err)
-	}
-	if exit != 0 {
-		log.Fatalln("Build failed with exit code:", exit)
-	}
-
-	repoName := fmt.Sprintf("%s/%s", options.ApplicationOwnerName, options.ApplicationName)
-	tag := options.Tag
-	if tag == "" {
-		tag = fmt.Sprintf("build-%s", options.BuildID)
-	}
-	message := options.Message
-	if message == "" {
-		message = fmt.Sprintf("Build %s", options.BuildID)
-	}
+	// Expand our context object
+	box := ctx.box
+	pipeline := ctx.pipeline
+	sess := ctx.sess
 
 	e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
 		Build:      pipeline,
@@ -249,6 +157,10 @@ func buildProject(c *cli.Context) {
 		Order:      2,
 		Successful: true,
 	})
+
+	repoName := pipeline.dockerRepo()
+	tag := pipeline.dockerTag()
+	message := pipeline.dockerMessage()
 
 	// TODO(bvdberg):
 	storeStep := &Step{Name: "Store"}
@@ -294,7 +206,7 @@ func buildProject(c *cli.Context) {
 			}
 			defer e.Emit(BuildStepFinished, stepArgs)
 
-			exit, err = step.Execute(sess)
+			exit, err := step.Execute(sess)
 			if exit != 0 {
 				box.Stop()
 				return fmt.Errorf("Build failed with exit code: %d", exit)
