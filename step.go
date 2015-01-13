@@ -70,7 +70,6 @@ type Step struct {
 	DisplayName string
 	url         string
 	data        RawStepData
-	build       *Build
 	options     *GlobalOptions
 	stepConfig  *StepConfig
 }
@@ -117,7 +116,7 @@ func NormalizeStep(raw interface{}) (*RawStep, error) {
 }
 
 // ToStep converts a RawStep into a Step.
-func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
+func (s *RawStep) ToStep(options *GlobalOptions) (*Step, error) {
 	// There should only be one step in the internal map
 	var stepID string
 	var stepData RawStepData
@@ -127,7 +126,7 @@ func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
 		stepID = id
 		stepData = data
 	}
-	return NewStep(stepID, stepData, build, options)
+	return NewStep(stepID, stepData, options)
 }
 
 // NewStep sets up the basic parts of a Step.
@@ -136,7 +135,7 @@ func (s *RawStep) ToStep(build *Build, options *GlobalOptions) (*Step, error) {
 //   x wercker/hipchat-notify (fetches from api)
 //   x wercker/hipchat-notify "http://someurl/thingee.tar" (downloads tarball)
 //   x setup-go-environment "file:///some_path" (uses local path)
-func NewStep(stepID string, data RawStepData, build *Build, options *GlobalOptions) (*Step, error) {
+func NewStep(stepID string, data RawStepData, options *GlobalOptions) (*Step, error) {
 	var identifier string
 	var owner string
 	var name string
@@ -178,7 +177,7 @@ func NewStep(stepID string, data RawStepData, build *Build, options *GlobalOptio
 	}
 	delete(data, "name")
 
-	return &Step{ID: identifier, SafeID: stepSafeID, Owner: owner, Name: name, DisplayName: displayName, Version: version, url: url, data: data, build: build, options: options}, nil
+	return &Step{ID: identifier, SafeID: stepSafeID, Owner: owner, Name: name, DisplayName: displayName, Version: version, url: url, data: data, options: options}, nil
 }
 
 // IsScript should probably not be exported.
@@ -195,8 +194,8 @@ func normalizeCode(code string) string {
 
 // FetchScript turns the raw code in a step into a shell file.
 func (s *Step) FetchScript() (string, error) {
-	hostStepPath := s.build.HostPath(s.SafeID)
-	scriptPath := s.build.HostPath(s.SafeID, "run.sh")
+	hostStepPath := s.options.HostPath(s.SafeID)
+	scriptPath := s.options.HostPath(s.SafeID, "run.sh")
 	content := normalizeCode(s.data["code"])
 
 	err := os.MkdirAll(hostStepPath, 0755)
@@ -298,7 +297,7 @@ func (s *Step) SetupGuest(sess *Session) error {
 	_, _, err := sess.SendChecked(fmt.Sprintf(`mkdir -p "%s"`, s.ReportPath("artifacts")))
 	_, _, err = sess.SendChecked("set +e")
 	_, _, err = sess.SendChecked(fmt.Sprintf(`cp -r "%s" "%s"`, s.MntPath(), s.GuestPath()))
-	_, _, err = sess.SendChecked(fmt.Sprintf(`cd "%s"`, s.build.SourcePath()))
+	_, _, err = sess.SendChecked(fmt.Sprintf(`cd "%s"`, s.options.SourcePath()))
 	return err
 }
 
@@ -340,7 +339,7 @@ func (s *Step) CollectArtifact(sess *Session) (*Artifact, error) {
 	artifact := &Artifact{
 		ContainerID:   sess.ContainerID,
 		GuestPath:     s.ReportPath("artifacts"),
-		HostPath:      s.build.HostPath("artifacts", s.SafeID, "artifacts.tar"),
+		HostPath:      s.options.HostPath("artifacts", s.SafeID, "artifacts.tar"),
 		ApplicationID: s.options.ApplicationID,
 		BuildID:       s.options.BuildID,
 		BuildStepID:   s.SafeID,
@@ -399,24 +398,24 @@ func (s *Step) InitEnv() {
 // HostPath returns a path relative to the Step on the host.
 func (s *Step) HostPath(p ...string) string {
 	newArgs := append([]string{s.SafeID}, p...)
-	return s.build.HostPath(newArgs...)
+	return s.options.HostPath(newArgs...)
 }
 
 // GuestPath returns a path relative to the Step on the guest.
 func (s *Step) GuestPath(p ...string) string {
 	newArgs := append([]string{s.SafeID}, p...)
-	return s.build.GuestPath(newArgs...)
+	return s.options.GuestPath(newArgs...)
 }
 
 // MntPath returns a path relative to the read-only mount of the Step on
 // the guest.
 func (s *Step) MntPath(p ...string) string {
 	newArgs := append([]string{s.SafeID}, p...)
-	return s.build.MntPath(newArgs...)
+	return s.options.MntPath(newArgs...)
 }
 
 // ReportPath returns a path to the reports for the step on the guest.
 func (s *Step) ReportPath(p ...string) string {
 	newArgs := append([]string{s.SafeID}, p...)
-	return s.build.ReportPath(newArgs...)
+	return s.options.ReportPath(newArgs...)
 }

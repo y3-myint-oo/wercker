@@ -281,6 +281,31 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	}, nil
 }
 
+// SourcePath returns the path to the source dir
+func (o *GlobalOptions) SourcePath() string {
+	return o.GuestPath("source", o.SourceDir)
+}
+
+// HostPath returns a path relative to the build root on the host.
+func (o *GlobalOptions) HostPath(s ...string) string {
+	return path.Join(o.BuildDir, o.BuildID, path.Join(s...))
+}
+
+// GuestPath returns a path relative to the build root on the guest.
+func (o *GlobalOptions) GuestPath(s ...string) string {
+	return path.Join(o.GuestRoot, path.Join(s...))
+}
+
+// MntPath returns a path relative to the read-only mount root on the guest.
+func (o *GlobalOptions) MntPath(s ...string) string {
+	return path.Join(o.MntRoot, path.Join(s...))
+}
+
+// ReportPath returns a path relative to the report root on the guest.
+func (o *GlobalOptions) ReportPath(s ...string) string {
+	return path.Join(o.ReportRoot, path.Join(s...))
+}
+
 // VersionOptions contains the options associated with the version
 // command.
 type VersionOptions struct {

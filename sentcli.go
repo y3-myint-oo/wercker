@@ -230,7 +230,7 @@ func buildProject(c *cli.Context) {
 	}
 
 	// Promote RawBox to a real Box. We believe in you, Box!
-	box, err := rawConfig.RawBox.ToBox(build, options, nil)
+	box, err := rawConfig.RawBox.ToBox(options, nil)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -249,7 +249,7 @@ func buildProject(c *cli.Context) {
 	for _, rawService := range rawConfig.RawServices {
 		log.Println("Fetching service:", rawService)
 
-		serviceBox, err := rawService.ToServiceBox(build, options, nil)
+		serviceBox, err := rawService.ToServiceBox(options, nil)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -270,12 +270,12 @@ func buildProject(c *cli.Context) {
 	}
 
 	// Start setting up the build dir
-	err = os.MkdirAll(build.HostPath(), 0755)
+	err = os.MkdirAll(options.HostPath(), 0755)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	err = shutil.CopyTree(projectDir, build.HostPath("source"), nil)
+	err = shutil.CopyTree(projectDir, options.HostPath("source"), nil)
 	if err != nil {
 		log.Panicln(err)
 	}
