@@ -248,7 +248,7 @@ func (b *Build) ExportEnvironment(sess *Session) error {
 		return err
 	}
 	if exit != 0 {
-		return fmt.Errorf("Build failed with exit code:", exit)
+		return fmt.Errorf("Build failed with exit code: %d", exit)
 	}
 	return nil
 }

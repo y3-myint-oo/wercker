@@ -264,6 +264,7 @@ func (f *Finisher) Finish(result bool) {
 		return
 	}
 	f.done(result)
+	f.isFinished = true
 }
 
 func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher {
