@@ -12,3 +12,9 @@ build:
           go get golang.org/x/tools/cmd/vet
           go vet *.go
     - golint
+deploy:
+  steps:
+    scipt:
+      name: fake deploy
+      code: |-
+        ls
