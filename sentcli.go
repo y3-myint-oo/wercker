@@ -5,6 +5,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/joho/godotenv"
 	"os"
 )
 
@@ -46,6 +47,9 @@ func main() {
 		// Should we push artifacts
 		cli.BoolFlag{Name: "no-artifacts", Usage: "don't upload artifacts"},
 
+		// Load additional environment variables from a file
+		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "specify additional environment variables in a file"},
+
 		// AWS bits
 		cli.StringFlag{Name: "aws-secret-key", Value: "", Usage: "secret access key"},
 		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "access key id"},
@@ -74,6 +78,8 @@ func main() {
 			ShortName: "b",
 			Usage:     "build a project",
 			Action: func(c *cli.Context) {
+				envfile := c.GlobalString("environment")
+				_ = godotenv.Load(envfile)
 				buildProject(c)
 			},
 			Flags: []cli.Flag{},
@@ -83,6 +89,8 @@ func main() {
 			ShortName: "d",
 			Usage:     "deploy a project",
 			Action: func(c *cli.Context) {
+				envfile := c.GlobalString("environment")
+				_ = godotenv.Load(envfile)
 				deployProject(c)
 			},
 			Flags: []cli.Flag{},

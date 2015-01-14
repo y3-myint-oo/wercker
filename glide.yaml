@@ -20,3 +20,4 @@ import:
     vcs: git
   - package: github.com/inconshreveable/go-keen
   - package: gopkg.in/check.v1
+  - package: github.com/joho/godotenv
