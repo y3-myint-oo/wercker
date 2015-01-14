@@ -12,13 +12,13 @@ type ServiceBox struct {
 }
 
 // ToServiceBox turns a box into a ServiceBox
-func (b *RawBox) ToServiceBox(build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
-	return NewServiceBox(string(*b), build, options, boxOptions)
+func (b *RawBox) ToServiceBox(options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+	return NewServiceBox(string(*b), options, boxOptions)
 }
 
 // NewServiceBox from a name and other references
-func NewServiceBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
-	box, err := NewBox(name, build, options, boxOptions)
+func NewServiceBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+	box, err := NewBox(name, options, boxOptions)
 	return &ServiceBox{Box: box}, err
 }
 

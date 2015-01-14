@@ -17,7 +17,6 @@ type Box struct {
 	Name            string
 	networkDisabled bool
 	services        []*ServiceBox
-	build           *Build
 	options         *GlobalOptions
 	client          *docker.Client
 	container       *docker.Container
@@ -31,12 +30,12 @@ type BoxOptions struct {
 }
 
 // ToBox will convert a RawBox into a Box
-func (b *RawBox) ToBox(build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
-	return NewBox(string(*b), build, options, boxOptions)
+func (b *RawBox) ToBox(options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
+	return NewBox(string(*b), options, boxOptions)
 }
 
 // NewBox from a name and other references
-func NewBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
+func NewBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
 	// TODO(termie): right now I am just tacking the version into the name
 	//               by replacing @ with _
 	name = strings.Replace(name, "@", "_", 1)
@@ -58,7 +57,14 @@ func NewBox(name string, build *Build, options *GlobalOptions, boxOptions *BoxOp
 		networkDisabled = boxOptions.NetworkDisabled
 	}
 
-	return &Box{client: client, Name: name, build: build, options: options, repository: repository, tag: tag, networkDisabled: networkDisabled}, nil
+	return &Box{
+		client: client,
+		Name: name,
+		options: options,
+		repository: repository,
+		tag: tag,
+		networkDisabled: networkDisabled,
+	}, nil
 }
 
 func (b *Box) links() []string {
@@ -77,14 +83,14 @@ func (b *Box) binds() ([]string, error) {
 	// NOTE(termie): we don't appear to need the "volumes" stuff, leaving
 	//               it commented out in case it actually does something
 	// volumes := make(map[string]struct{})
-	entries, err := ioutil.ReadDir(b.build.HostPath())
+	entries, err := ioutil.ReadDir(b.options.HostPath())
 	if err != nil {
 		return nil, err
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
-			binds = append(binds, fmt.Sprintf("%s:%s:ro", b.build.HostPath(entry.Name()), b.build.MntPath(entry.Name())))
-			// volumes[build.MntPath(entry.Name())] = struct{}{}
+			binds = append(binds, fmt.Sprintf("%s:%s:ro", b.options.HostPath(entry.Name()), b.options.MntPath(entry.Name())))
+			// volumes[b.options.MntPath(entry.Name())] = struct{}{}
 		}
 	}
 	return binds, nil
