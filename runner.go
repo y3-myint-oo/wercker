@@ -406,16 +406,18 @@ func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) error {
 	if err != nil {
 		return err
 	}
-	artifact, err := step.CollectArtifact(ctx.sess)
-	if err != nil {
-		return err
-	}
-
-	if artifact != nil {
-		artificer := NewArtificer(p.options)
-		err = artificer.Upload(artifact)
+	if p.options.ShouldArtifacts {
+		artifact, err := step.CollectArtifact(ctx.sess)
 		if err != nil {
 			return err
+		}
+
+		if artifact != nil {
+			artificer := NewArtificer(p.options)
+			err = artificer.Upload(artifact)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

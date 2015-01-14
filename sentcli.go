@@ -43,6 +43,9 @@ func main() {
 		cli.StringFlag{Name: "tag", Value: "", Usage: "tag for this build", EnvVar: "WERCKER_GIT_BRANCH"},
 		cli.StringFlag{Name: "message", Value: "", Usage: "message for this build"},
 
+		// Should we push artifacts
+		cli.BoolFlag{Name: "no-artifacts", Usage: "don't upload artifacts"},
+
 		// AWS bits
 		cli.StringFlag{Name: "aws-secret-key", Value: "", Usage: "secret access key"},
 		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "access key id"},
@@ -305,7 +308,7 @@ func buildProject(c *cli.Context) {
 		buildFinishedArgs.Result = "passed"
 	}
 
-	if buildFinishedArgs.Result == "passed" {
+	if buildFinishedArgs.Result == "passed" && options.ShouldArtifacts {
 		err = func() error {
 			artifact, err := pipeline.CollectArtifact(sess)
 			if err != nil {
