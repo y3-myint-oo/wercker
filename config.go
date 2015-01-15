@@ -13,18 +13,18 @@ type RawBox string
 // RawServices is a list of auxilliary boxes to boot in the wercker.yml
 type RawServices []RawBox
 
-// RawBuild is the data type for builds in the wercker.yml
-type RawBuild struct {
+// RawPipeline is the data type for builds and deploys in the wercker.yml
+type RawPipeline struct {
 	RawSteps []interface{} `yaml:"steps"`
 }
 
 // RawConfig is the data type for wercker.yml
 type RawConfig struct {
-	SourceDir   string      `yaml:"source-dir"`
-	RawBox      *RawBox     `yaml:"box"`
-	RawServices RawServices `yaml:"services"`
-	RawBuild    *RawBuild   `yaml:"build"`
-	RawDeploy   *RawBuild   `yaml:"deploy"`
+	SourceDir   string       `yaml:"source-dir"`
+	RawBox      *RawBox      `yaml:"box"`
+	RawServices RawServices  `yaml:"services"`
+	RawBuild    *RawPipeline `yaml:"build"`
+	RawDeploy   *RawPipeline `yaml:"deploy"`
 }
 
 // RawStep is the data type for a step in wercker.yml

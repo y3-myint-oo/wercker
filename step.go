@@ -420,3 +420,14 @@ func (s *Step) ReportPath(p ...string) string {
 	newArgs := append([]string{s.SafeID}, p...)
 	return s.options.ReportPath(newArgs...)
 }
+
+// NewWerckerInitStep returns our fake initial step
+func NewWerckerInitStep(options *GlobalOptions) (*Step, error) {
+	rawStepData := RawStepData{}
+	werckerInit := `wercker-init "https://api.github.com/repos/wercker/wercker-init/tarball"`
+	initStep, err := NewStep(werckerInit, rawStepData, options)
+	if err != nil {
+		return nil, err
+	}
+	return initStep, nil
+}

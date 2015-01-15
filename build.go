@@ -10,20 +10,18 @@ type Build struct {
 	options *GlobalOptions
 }
 
-// ToBuild converts a RawBuild into a Build
-func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
+// ToBuild converts a RawPipeline into a Build
+func (p *RawPipeline) ToBuild(options *GlobalOptions) (*Build, error) {
 	var steps []*Step
 
 	// Start with the secret step, wercker-init that runs before everything
-	rawStepData := RawStepData{}
-	werckerInit := `wercker-init "https://api.github.com/repos/wercker/wercker-init/tarball"`
-	initStep, err := NewStep(werckerInit, rawStepData, options)
+	initStep, err := NewWerckerInitStep(options)
 	if err != nil {
 		return nil, err
 	}
 	steps = append(steps, initStep)
 
-	for _, extraRawStep := range b.RawSteps {
+	for _, extraRawStep := range p.RawSteps {
 		rawStep, err := NormalizeStep(extraRawStep)
 		if err != nil {
 			return nil, err
@@ -36,14 +34,7 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 	}
 
 	build := &Build{NewBasePipeline(options, steps), options}
-
-	id, ok := build.options.Env.Map["WERCKER_BUILD_ID"]
-	if ok {
-		build.options.BuildID = id
-	}
-
 	build.InitEnv()
-
 	return build, nil
 }
 
