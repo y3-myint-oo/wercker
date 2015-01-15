@@ -120,7 +120,7 @@ func main() {
 		},
 		{
 			Name:      "detect",
-			ShortName: "d",
+			ShortName: "de",
 			Usage:     "detect the type of project",
 			Action: func(c *cli.Context) {
 				detectProject(c)
@@ -427,6 +427,14 @@ func displayVersion(options *VersionOptions) {
 // TODO(mies): this needs to commmunicate with yet to be made endpoints that will
 // return a default yml for the programming language detected
 func detectProject(c *cli.Context) {
+	// Parse CLI and local env
+	options, err := NewGlobalOptions(c, os.Environ())
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	soft := &SoftExit{options}
+
 	log.Println("########### Detecting your project! #############")
 
 	detected := ""
@@ -434,14 +442,14 @@ func detectProject(c *cli.Context) {
 	d, err := os.Open(".")
 	if err != nil {
 		log.WithField("Error", err).Error("Unable to open directory")
-		os.Exit(1)
+		soft.Exit(err)
 	}
 	defer d.Close()
 
 	files, err := d.Readdir(-1)
 	if err != nil {
 		log.WithField("Error", err).Error("Unable to read directory")
-		os.Exit(1)
+		soft.Exit(err)
 	}
 outer:
 	for _, f := range files {
