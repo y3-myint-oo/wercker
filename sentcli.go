@@ -1,13 +1,15 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+
+	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/joho/godotenv"
-	"os"
 )
 
 func main() {
@@ -113,6 +115,15 @@ func main() {
 				if err != nil {
 					os.Exit(1)
 				}
+			},
+			Flags: []cli.Flag{},
+		},
+		{
+			Name:      "detect",
+			ShortName: "d",
+			Usage:     "detect the type of project",
+			Action: func(c *cli.Context) {
+				detectProject(c)
 			},
 			Flags: []cli.Flag{},
 		},
@@ -409,4 +420,52 @@ func displayVersion(options *VersionOptions) {
 
 	os.Stdout.WriteString("\n")
 
+}
+
+// detectProject inspects the the current directory that sentcli is running in
+// and detects the project's programming language
+// TODO(mies): this needs to commmunicate with yet to be made endpoints that will
+// return a default yml for the programming language detected
+func detectProject(c *cli.Context) {
+	log.Println("########### Detecting your project! #############")
+
+	detected := ""
+
+	d, err := os.Open(".")
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to open directory")
+		os.Exit(1)
+	}
+	defer d.Close()
+
+	files, err := d.Readdir(-1)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to read directory")
+		os.Exit(1)
+	}
+outer:
+	for _, f := range files {
+		switch {
+		case f.Name() == "package.json":
+			detected = "nodejs"
+			break outer
+
+		case f.Name() == "requirements.txt":
+			detected = "python"
+			break outer
+
+		case f.Name() == "Gemfile":
+			detected = "ruby"
+			break outer
+
+		case filepath.Ext(f.Name()) == ".go":
+			detected = "golang"
+			break outer
+		}
+	}
+	if detected == "" {
+		log.Println("No stack detected")
+	} else {
+		log.Println("Detected:", detected)
+	}
 }
