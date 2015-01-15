@@ -411,28 +411,30 @@ func detectProject(c *cli.Context) {
 		log.Println(err)
 		os.Exit(1)
 	}
+	detected := ""
 outer:
 	for _, f := range files {
 		switch {
 		case f.Name() == "package.json":
-			log.Println("Javascript detected")
+			detected = "nodejs"
 			break outer
 
 		case f.Name() == "requirements.txt":
-			log.Println("Python detected")
+			detected = "python"
 			break outer
 
 		case f.Name() == "Gemfile":
-			log.Println("Ruby detected")
+			detected = "ruby"
 			break outer
 
 		case filepath.Ext(f.Name()) == ".go":
-			log.Println("Golang detected")
-			break outer
-
-		default:
-			log.Println("No stack detected")
+			detected = "golang"
 			break outer
 		}
+	}
+	if detected == "" {
+		log.Println("No stack detected")
+	} else {
+		log.Println("Detected:", detected)
 	}
 }
