@@ -47,7 +47,7 @@ func NewBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*Box, 
 		tag = parts[1]
 	}
 
-	client, err := docker.NewClient(options.DockerHost)
+	client, err := NewDockerClient(options)
 	if err != nil {
 		return nil, err
 	}
@@ -155,14 +155,26 @@ func (b *Box) Stop() {
 	for _, service := range b.services {
 		log.Println("Stopping service", service.Box.container.ID)
 		err := b.client.StopContainer(service.Box.container.ID, 1)
+
 		if err != nil {
-			log.Errorln("Wasn't able to stop service container", service.Box.container.ID)
+			if _, ok := err.(*docker.ContainerNotRunning); ok {
+				log.Warnln("Service container has already stopped.")
+			} else {
+				log.WithField("Error", err).Warnln("Wasn't able to stop service container", service.Box.container.ID)
+			}
 		}
 	}
-	log.Println("Stopping container", b.container.ID)
-	err := b.client.StopContainer(b.container.ID, 1)
-	if err != nil {
-		log.Errorln("Wasn't able to stop box container", b.container.ID)
+	if b.container != nil {
+		log.Println("Stopping container", b.container.ID)
+		err := b.client.StopContainer(b.container.ID, 1)
+
+		if err != nil {
+			if _, ok := err.(*docker.ContainerNotRunning); ok {
+				log.Warnln("Box container has already stopped.")
+			} else {
+				log.WithField("Error", err).Warnln("Wasn't able to stop box container", b.container.ID)
+			}
+		}
 	}
 }
 
