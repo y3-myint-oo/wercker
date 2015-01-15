@@ -24,6 +24,7 @@ type RawConfig struct {
 	RawBox      *RawBox     `yaml:"box"`
 	RawServices RawServices `yaml:"services"`
 	RawBuild    *RawBuild   `yaml:"build"`
+	RawDeploy   *RawBuild   `yaml:"deploy"`
 }
 
 // RawStep is the data type for a step in wercker.yml

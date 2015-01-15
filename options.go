@@ -85,6 +85,8 @@ type GlobalOptions struct {
 	Tag          string
 	Message      string
 
+	ShouldArtifacts bool
+
 	ShouldReport bool
 	WerckerHost  string
 	WerckerToken string
@@ -271,6 +273,7 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		ShouldPush:               c.GlobalBool("push"),
 		ShouldCommit:             c.GlobalBool("commit"),
 		ShouldKeenMetrics:        keenMetrics,
+		ShouldArtifacts:          !c.GlobalBool("no-artifacts"),
 		KeenProjectWriteKey:      keenProjectWriteKey,
 		KeenProjectID:            keenProjectID,
 		Tag:                      tag,
