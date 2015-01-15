@@ -228,7 +228,7 @@ func (p *Runner) CopySource() error {
 
 // GetSession returns a read-write connection to a container
 func (p *Runner) GetSession(containerID string) (*Session, error) {
-	sess := NewSession(p.options.DockerHost, containerID)
+	sess := NewSession(p.options.DockerHost, containerID, p.options)
 	sess, err := sess.Attach()
 	if err != nil {
 		return nil, err

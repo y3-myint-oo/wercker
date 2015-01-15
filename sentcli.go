@@ -52,6 +52,9 @@ func main() {
 		// Load additional environment variables from a file
 		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "specify additional environment variables in a file"},
 
+		// Debug controls whether we soft-exit
+		cli.BoolFlag{Name: "debug", Usage: "print stack traces on failures"},
+
 		// AWS bits
 		cli.StringFlag{Name: "aws-secret-key", Value: "", Usage: "secret access key"},
 		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "access key id"},
@@ -87,7 +90,10 @@ func main() {
 				if id == "" {
 					_ = os.Setenv("WERCKER_BUILD_ID", uuid.NewRandom().String())
 				}
-				buildProject(c)
+				err := buildProject(c)
+				if err != nil {
+					os.Exit(1)
+				}
 			},
 			Flags: []cli.Flag{},
 		},
@@ -103,7 +109,10 @@ func main() {
 				if id == "" {
 					_ = os.Setenv("WERCKER_DEPLOY_ID", uuid.NewRandom().String())
 				}
-				deployProject(c)
+				err := deployProject(c)
+				if err != nil {
+					os.Exit(1)
+				}
 			},
 			Flags: []cli.Flag{},
 		},
@@ -130,12 +139,29 @@ func main() {
 	app.Run(os.Args)
 }
 
-func deployProject(c *cli.Context) {
+// SoftExit is a helper for determining when to show stack traces
+type SoftExit struct {
+	options *GlobalOptions
+}
+
+// Exit with either an error or a panic
+func (s *SoftExit) Exit(v ...interface{}) error {
+	if s.options.Debug {
+		// Clearly this will cause it's own exit if it gets called.
+		log.Panicln(v...)
+	}
+	log.Errorln(v...)
+	return fmt.Errorf("Exiting.")
+}
+
+func deployProject(c *cli.Context) error {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
 	if err != nil {
 		log.Panicln(err)
 	}
+
+	soft := &SoftExit{options}
 
 	// Build our common pipeline
 	p := NewRunner(options, GetDeployPipeline)
@@ -152,13 +178,12 @@ func deployProject(c *cli.Context) {
 	defer e.Emit(BuildFinished, buildFinishedArgs)
 
 	log.Println("############ Deploying project #############")
-	log.Debugln(fmt.Sprintf("%+v", options))
-	log.Println(options.ApplicationName)
+	LogOptions(options)
 	log.Println("############################################")
 
 	_, err = p.EnsureCode()
 	if err != nil {
-		log.Panicln(err)
+		soft.Exit(err)
 	}
 
 	ctx, err := p.SetupEnvironment()
@@ -166,7 +191,7 @@ func deployProject(c *cli.Context) {
 		defer ctx.box.Stop()
 	}
 	if err != nil {
-		log.Panicln(err)
+		return soft.Exit(err)
 	}
 
 	// Expand our context object
@@ -192,7 +217,7 @@ func deployProject(c *cli.Context) {
 
 		if err != nil {
 			stepFailed = true
-			log.Errorln("============== Step failed! ===============")
+			log.Warnln("============== Step failed! ===============")
 			break
 		}
 		log.Println("============== Step passed! ===============")
@@ -207,16 +232,20 @@ func deployProject(c *cli.Context) {
 	if buildFinishedArgs.Result == "passed" {
 		log.Println("############# Deploy passed! ##############")
 	} else {
-		log.Errorln("############# Deploy failed! ##############")
+		log.Warnln("############# Deploy failed! ##############")
+		return fmt.Errorf("Build failed.")
 	}
+	return nil
 }
 
-func buildProject(c *cli.Context) {
+func buildProject(c *cli.Context) error {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
 	if err != nil {
 		log.Panicln(err)
 	}
+
+	soft := &SoftExit{options}
 
 	// Build our common pipeline
 	p := NewRunner(options, GetBuildPipeline)
@@ -233,13 +262,12 @@ func buildProject(c *cli.Context) {
 	defer e.Emit(BuildFinished, buildFinishedArgs)
 
 	log.Println("############# Building project #############")
-	log.Debugln(fmt.Sprintf("%+v", options))
-	log.Println(options.ApplicationName)
+	LogOptions(options)
 	log.Println("############################################")
 
 	_, err = p.EnsureCode()
 	if err != nil {
-		log.Panicln(err)
+		soft.Exit(err)
 	}
 
 	ctx, err := p.SetupEnvironment()
@@ -247,7 +275,7 @@ func buildProject(c *cli.Context) {
 		defer ctx.box.Stop()
 	}
 	if err != nil {
-		log.Panicln(err)
+		return soft.Exit(err)
 	}
 
 	// Expand our context object
@@ -283,7 +311,7 @@ func buildProject(c *cli.Context) {
 
 		if err != nil {
 			stepFailed = true
-			log.Errorln("============== Step failed! ===============")
+			log.Warnln("============== Step failed! ===============")
 			break
 		}
 		log.Println("============== Step passed! ===============")
@@ -351,8 +379,10 @@ func buildProject(c *cli.Context) {
 	if buildFinishedArgs.Result == "passed" {
 		log.Println("############# Build passed! ###############")
 	} else {
-		log.Errorln("############# Build failed! ###############")
+		log.Warnln("############# Build failed! ###############")
+		return fmt.Errorf("Build failed.")
 	}
+	return nil
 }
 
 type versions struct {

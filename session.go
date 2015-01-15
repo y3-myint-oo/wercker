@@ -8,6 +8,7 @@ import (
 	"github.com/chuckpreslar/emission"
 	"io"
 	"strings"
+	"time"
 )
 
 // Session is our class for interacting with a running Docker container.
@@ -18,10 +19,11 @@ type Session struct {
 	ContainerID string
 	e           *emission.Emitter
 	logsHidden  bool
+	options     *GlobalOptions
 }
 
 // NewSession based on a docker api endpoint and container ID.
-func NewSession(endpoint string, containerID string) *Session {
+func NewSession(endpoint string, containerID string, options *GlobalOptions) *Session {
 	wsEndpoint := strings.Replace(endpoint, "tcp://", "ws://", 1)
 	wsQuery := "stdin=1&stderr=1&stdout=1&stream=1"
 	wsURL := fmt.Sprintf("%s/containers/%s/attach/ws?%s",
@@ -35,6 +37,7 @@ func NewSession(endpoint string, containerID string) *Session {
 		ch:          ch,
 		ContainerID: containerID,
 		e:           GetEmitter(),
+		options:     options,
 	}
 }
 
@@ -90,6 +93,13 @@ func (s *Session) Send(forceHidden bool, commands ...string) {
 	}
 }
 
+// CommandResult exists so that we can make a channel of them
+type CommandResult struct {
+	exitCode int
+	recv     []string
+	err      error
+}
+
 // SendChecked sends commands, waits for them to complete and returns the
 // exit status and output
 func (s *Session) SendChecked(commands ...string) (int, []string, error) {
@@ -101,36 +111,60 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 	s.Send(false, commands...)
 	s.Send(true, fmt.Sprintf("echo %s $?", rand))
 
-	// BUG(termie): This is relatively naive and will break if the messages
-	// returned aren't complete lines, if this becomes a problem we'll have
-	// to buffer it.
-	for check != true {
-		line, ok := <-s.ch
-		if !ok {
-			return 1, recv, nil
-		}
+	c := make(chan CommandResult, 1)
+	checkFunc := func() (int, []string, error) {
+		// BUG(termie): This is relatively naive and will break if the messages
+		// returned aren't complete lines, if this becomes a problem we'll have
+		// to buffer it.
+		for check != true {
+			line := ""
+			select {
+			case myline, ok := <-s.ch:
+				if !ok {
+					return 1, recv, nil
+				}
+				line = myline
+			case <-time.After(time.Duration(s.options.NoResponseTimeout) * time.Minute):
+				//close(s.ch)
+				return 1, recv, fmt.Errorf("Timeout: no response seen for %d minutes", s.options.NoResponseTimeout)
+			}
 
-		if strings.HasPrefix(line, rand) {
-			check = true
-			_, err := fmt.Sscanf(line, "%s %d\n", &rand, &exitCode)
-			if err != nil {
+			if strings.HasPrefix(line, rand) {
+				check = true
+				_, err := fmt.Sscanf(line, "%s %d\n", &rand, &exitCode)
+				if err != nil {
+					s.e.Emit(Logs, &LogsArgs{
+						Hidden: true,
+						Logs:   line,
+						Stream: "stdout",
+					})
+					return exitCode, recv, err
+				}
+			} else {
 				s.e.Emit(Logs, &LogsArgs{
-					Hidden: true,
+					Hidden: s.logsHidden,
 					Logs:   line,
 					Stream: "stdout",
 				})
-				return exitCode, recv, err
+				recv = append(recv, line)
 			}
-		} else {
-			s.e.Emit(Logs, &LogsArgs{
-				Hidden: s.logsHidden,
-				Logs:   line,
-				Stream: "stdout",
-			})
-			recv = append(recv, line)
 		}
+		return exitCode, recv, nil
 	}
-	return exitCode, recv, nil
+
+	// Timeout for the whole command
+	go func() {
+		exitCode, recv, err := checkFunc()
+		c <- CommandResult{exitCode, recv, err}
+	}()
+
+	select {
+	case r := <-c:
+		return r.exitCode, r.recv, r.err
+	case <-time.After(time.Duration(s.options.CommandTimeout) * time.Minute):
+		//close(c)
+		return 1, []string{}, fmt.Errorf("Command timed out after %d minutes", s.options.CommandTimeout)
+	}
 }
 
 // HideLogs will emit Logs with args.Hidden set to true

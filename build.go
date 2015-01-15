@@ -64,10 +64,12 @@ func (b *Build) InitEnv() {
 	env.Update(b.PassthruEnv())
 }
 
+// DockerRepo calculates our repo name
 func (b *Build) DockerRepo() string {
 	return fmt.Sprintf("%s/%s", b.options.ApplicationOwnerName, b.options.ApplicationName)
 }
 
+// DockerRepo calculates our tag
 func (b *Build) DockerTag() string {
 	tag := b.options.Tag
 	if tag == "" {
@@ -76,6 +78,7 @@ func (b *Build) DockerTag() string {
 	return tag
 }
 
+// DockerRepo calculates our message
 func (b *Build) DockerMessage() string {
 	message := b.options.Message
 	if message == "" {

@@ -9,6 +9,8 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -95,6 +97,9 @@ type GlobalOptions struct {
 	ShouldReport bool
 	WerckerHost  string
 	WerckerToken string
+
+	// Show stack traces on exit?
+	Debug bool
 }
 
 // Some logic to guess the application name
@@ -181,6 +186,27 @@ func guessDeployID(c *cli.Context, env *Environment) string {
 		return id
 	}
 	return id
+}
+
+// LogOptions prints out a sorted list of options
+func LogOptions(options *GlobalOptions) {
+	s := reflect.ValueOf(options).Elem()
+	typeOfT := s.Type()
+	names := []string{}
+	for i := 0; i < s.NumField(); i++ {
+		// f := s.Field(i)
+		fieldName := typeOfT.Field(i).Name
+		if fieldName != "Env" {
+			names = append(names, fieldName)
+		}
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		r := reflect.ValueOf(options)
+		f := reflect.Indirect(r).FieldByName(name)
+		log.Debugln(fmt.Sprintf("%s %s = %v", name, f.Type(), f.Interface()))
+	}
 }
 
 // NewGlobalOptions builds up GlobalOptions from the cli and environment.
@@ -313,6 +339,7 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		ShouldReport:             report,
 		WerckerHost:              werckerHost,
 		WerckerToken:             werckerToken,
+		Debug:                    c.GlobalBool("debug"),
 	}, nil
 }
 
