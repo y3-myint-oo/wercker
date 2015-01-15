@@ -11,12 +11,12 @@ import (
 	"path/filepath"
 )
 
-// PipelineGetter is a function that will fetch the appropriate pipeline
-// object from the rawConfig
+// GetPipeline is a function that will fetch the appropriate pipeline
+// object from the rawConfig.
 type GetPipeline func(*RawConfig, *GlobalOptions) (*Build, error)
 
+// GetBuildPipeline grabs the "build" section of the yaml.
 func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, error) {
-	// Promote the RawBuild to a real Build. We believe in you, Build!
 	build, err := rawConfig.RawBuild.ToBuild(options)
 	if err != nil {
 		return nil, err
@@ -24,8 +24,8 @@ func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, err
 	return build, nil
 }
 
+// GetDeployPipeline gets the "deploy" section of the yaml.
 func GetDeployPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, error) {
-	// Promote the RawBuild to a real Build. We believe in you, Build!
 	build, err := rawConfig.RawDeploy.ToBuild(options)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func GetDeployPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, er
 	return build, nil
 }
 
-// Runner is the base type for running the pipelines
+// Runner is the base type for running the pipelines.
 type Runner struct {
 	options        *GlobalOptions
 	emitter        *emission.Emitter
@@ -106,8 +106,6 @@ func (p *Runner) ProjectDir() string {
 // will be a little superfluous, but in the case where this is being
 // run in Single Player Mode this copy is necessary to avoid screwing
 // with the local dir.
-// TODO(termie): This may end up being BuildRunner only,
-// if we split that off
 func (p *Runner) EnsureCode() (string, error) {
 	projectDir := p.ProjectDir()
 
@@ -243,6 +241,8 @@ func (p *Runner) GetPipeline(rawConfig *RawConfig) (*Build, error) {
 	return p.pipelineGetter(rawConfig, p.options)
 }
 
+// RunnerContext holds on to the information we got from setting up our
+// environment.
 type RunnerContext struct {
 	box      *Box
 	pipeline *Build
@@ -250,23 +250,7 @@ type RunnerContext struct {
 	config   *RawConfig
 }
 
-type Finisher struct {
-	done       func(bool)
-	isFinished bool
-}
-
-func NewFinisher(done func(bool)) *Finisher {
-	return &Finisher{done: done, isFinished: false}
-}
-
-func (f *Finisher) Finish(result bool) {
-	if f.isFinished {
-		return
-	}
-	f.done(result)
-	f.isFinished = true
-}
-
+// StartStep emits BuildStepStarted and returns a Finisher for the end event.
 func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher {
 	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
 		Build:   ctx.pipeline,
