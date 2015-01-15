@@ -1,7 +1,6 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -26,6 +25,12 @@ type GlobalOptions struct {
 
 	// Build ID for this operation
 	BuildID string
+
+	// Deploy ID for this operation
+	DeployID string
+
+	// Pipeline ID is either BuildID or DeployID dependent on which we got
+	PipelineID string
 
 	// Application name for this operation
 	ApplicationName string
@@ -154,6 +159,30 @@ func guessApplicationOwnerName(c *cli.Context, env *Environment) string {
 	return name
 }
 
+func guessBuildID(c *cli.Context, env *Environment) string {
+	id := c.GlobalString("build-id")
+	if id == "" {
+		id, ok := env.Map["WERCKER_BUILD_ID"]
+		if !ok {
+			return ""
+		}
+		return id
+	}
+	return id
+}
+
+func guessDeployID(c *cli.Context, env *Environment) string {
+	id := c.GlobalString("deploy-id")
+	if id == "" {
+		id, ok := env.Map["WERCKER_DEPLOY_ID"]
+		if !ok {
+			return ""
+		}
+		return id
+	}
+	return id
+}
+
 // NewGlobalOptions builds up GlobalOptions from the cli and environment.
 func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	env := NewEnvironment(e)
@@ -161,9 +190,14 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	buildDir, _ := filepath.Abs(c.GlobalString("build-dir"))
 	projectDir, _ := filepath.Abs(c.GlobalString("project-dir"))
 	stepDir, _ := filepath.Abs(c.GlobalString("step-dir"))
-	buildID := c.GlobalString("build-id")
-	if buildID == "" {
-		buildID = uuid.NewRandom().String()
+	buildID := guessBuildID(c, env)
+	deployID := guessDeployID(c, env)
+
+	pipelineID := ""
+	if deployID != "" {
+		pipelineID = deployID
+	} else {
+		pipelineID = buildID
 	}
 
 	applicationName, err := guessApplicationName(c, env)
@@ -231,10 +265,6 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	werckerToken := c.GlobalString("wercker-token")
 
 	if report {
-		if buildID == "" {
-			return nil, errors.New("build-id is required")
-		}
-
 		if werckerHost == "" {
 			return nil, errors.New("wercker-host is required")
 		}
@@ -248,6 +278,8 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		Env:                      env,
 		BuildDir:                 buildDir,
 		BuildID:                  buildID,
+		DeployID:                 deployID,
+		PipelineID:               pipelineID,
 		ApplicationID:            applicationID,
 		ApplicationName:          applicationName,
 		ApplicationOwnerName:     applicationOwnerName,
@@ -291,7 +323,7 @@ func (o *GlobalOptions) SourcePath() string {
 
 // HostPath returns a path relative to the build root on the host.
 func (o *GlobalOptions) HostPath(s ...string) string {
-	return path.Join(o.BuildDir, o.BuildID, path.Join(s...))
+	return path.Join(o.BuildDir, o.PipelineID, path.Join(s...))
 }
 
 // GuestPath returns a path relative to the build root on the guest.

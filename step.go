@@ -342,6 +342,7 @@ func (s *Step) CollectArtifact(sess *Session) (*Artifact, error) {
 		HostPath:      s.options.HostPath("artifacts", s.SafeID, "artifacts.tar"),
 		ApplicationID: s.options.ApplicationID,
 		BuildID:       s.options.BuildID,
+		DeployID:      s.options.DeployID,
 		BuildStepID:   s.SafeID,
 	}
 

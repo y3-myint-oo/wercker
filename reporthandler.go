@@ -42,11 +42,12 @@ func mapBuildSteps(offset int, steps ...*Step) []*reporter.NewStep {
 
 // A ReportHandler logs all events to the wercker-api.
 type ReportHandler struct {
-	reporter       *reporter.Reporter
-	writers        map[string]io.WriteCloser
-	currentStep    *Step
-	currentOrder   int
-	currentBuildID string
+	reporter        *reporter.Reporter
+	writers         map[string]io.WriteCloser
+	currentStep     *Step
+	currentOrder    int
+	currentBuildID  string
+	currentDeployID string
 }
 
 // BuildStepStarted will handle the BuildStepStarted event.
@@ -54,6 +55,7 @@ func (h *ReportHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 	h.currentStep = args.Step
 	h.currentOrder = args.Order
 	h.currentBuildID = args.Options.BuildID
+	h.currentDeployID = args.Options.DeployID
 
 	h.reporter.StepStarted(args.Options.BuildID, args.Step.Name, args.Order)
 }
