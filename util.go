@@ -120,6 +120,6 @@ func (f *Finisher) Finish(result bool) {
 	if f.isFinished {
 		return
 	}
-	f.callback(result)
 	f.isFinished = true
+	f.callback(result)
 }
