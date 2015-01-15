@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
@@ -105,6 +106,15 @@ func main() {
 					_ = os.Setenv("WERCKER_DEPLOY_ID", uuid.NewRandom().String())
 				}
 				deployProject(c)
+			},
+			Flags: []cli.Flag{},
+		},
+		{
+			Name:      "detect",
+			ShortName: "d",
+			Usage:     "detect the type of project",
+			Action: func(c *cli.Context) {
+				detectProject(c)
 			},
 			Flags: []cli.Flag{},
 		},
@@ -382,8 +392,13 @@ func displayVersion(options *VersionOptions) {
 
 }
 
-func createProject(c *cli.Context) {
-	log.Println("########### Creating project! #############")
+// detectProject inspects the the current directory that sentcli is running in
+// and detects the project's programming language
+// TODO(mies): this needs to commmunicate with yet to be made endpoints that will
+// return a default yml for the programming language detected
+func detectProject(c *cli.Context) {
+	log.Println("########### Detecting your project! #############")
+
 	d, err := os.Open(".")
 	if err != nil {
 		log.Println(err)
@@ -396,27 +411,28 @@ func createProject(c *cli.Context) {
 		log.Println(err)
 		os.Exit(1)
 	}
-	for _, f :=range(files) {
-		if f.Mode().IsRegular() {
-			counts := make(map[string]int)
-			switch {
-			case filepath.Ext(f.Name()) == ".go":
-				log.Println(f.Name())
-				break
-			
-			case filepath.Ext(f.Name()) == ".py":
-				log.Println(f.Name())
-				break
-			
-			case filepath.Ext(f.Name()) == ".rb":
-				log.Println(f.Name())
-				break
-			
-			case filepath.Ext(f.Name()) == ".js":
-				log.Println(f.Name())
-				break
-			
-			}
+outer:
+	for _, f := range files {
+		switch {
+		case f.Name() == "package.json":
+			log.Println("Javascript detected")
+			break outer
+
+		case f.Name() == "requirements.txt":
+			log.Println("Python detected")
+			break outer
+
+		case f.Name() == "Gemfile":
+			log.Println("Ruby detected")
+			break outer
+
+		case filepath.Ext(f.Name()) == ".go":
+			log.Println("Golang detected")
+			break outer
+
+		default:
+			log.Println("No stack detected")
+			break outer
 		}
 	}
 }
