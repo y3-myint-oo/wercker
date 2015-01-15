@@ -399,19 +399,20 @@ func displayVersion(options *VersionOptions) {
 func detectProject(c *cli.Context) {
 	log.Println("########### Detecting your project! #############")
 
+	detected := ""
+
 	d, err := os.Open(".")
 	if err != nil {
-		log.Println(err)
+		log.WithField("Error", err).Error("Unable to open directory")
 		os.Exit(1)
 	}
 	defer d.Close()
 
 	files, err := d.Readdir(-1)
 	if err != nil {
-		log.Println(err)
+		log.WithField("Error", err).Error("Unable to read directory")
 		os.Exit(1)
 	}
-	detected := ""
 outer:
 	for _, f := range files {
 		switch {
