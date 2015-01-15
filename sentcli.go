@@ -1,6 +1,7 @@
 package main
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -33,6 +34,7 @@ func main() {
 
 		// These flags are usually pulled from the env
 		cli.StringFlag{Name: "build-id", Value: "", Usage: "build id", EnvVar: "WERCKER_BUILD_ID"},
+		cli.StringFlag{Name: "deploy-id", Value: "", Usage: "deploy id", EnvVar: "WERCKER_DEPLOY_ID"},
 		cli.StringFlag{Name: "application-id", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_ID"},
 		cli.StringFlag{Name: "application-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
 		cli.StringFlag{Name: "application-owner-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
@@ -80,6 +82,11 @@ func main() {
 			Action: func(c *cli.Context) {
 				envfile := c.GlobalString("environment")
 				_ = godotenv.Load(envfile)
+				// ensure we have an ID
+				id := guessBuildID(c, NewEnvironment(os.Environ()))
+				if id == "" {
+					_ = os.Setenv("WERCKER_BUILD_ID", uuid.NewRandom().String())
+				}
 				buildProject(c)
 			},
 			Flags: []cli.Flag{},
@@ -91,6 +98,11 @@ func main() {
 			Action: func(c *cli.Context) {
 				envfile := c.GlobalString("environment")
 				_ = godotenv.Load(envfile)
+				// ensure we have an ID
+				id := guessDeployID(c, NewEnvironment(os.Environ()))
+				if id == "" {
+					_ = os.Setenv("WERCKER_DEPLOY_ID", uuid.NewRandom().String())
+				}
 				deployProject(c)
 			},
 			Flags: []cli.Flag{},

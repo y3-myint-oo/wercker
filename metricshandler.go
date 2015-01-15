@@ -29,6 +29,7 @@ type MetricsPayload struct {
 	MetricsApplicationPayload *MetricsApplicationPayload `json:"application"`
 	ApplicationStartedByName  string                     `json:"startedBy"`
 	BuildID                   string                     `json:"buildId"`
+	DeployID                  string                     `json:"deployID"`
 	Event                     string                     `json:"event"`
 	Step                      *Step                      `json:"step"`
 	GitVersion                string                     `json:"GitVersion"`
@@ -72,7 +73,8 @@ func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
 			OwnerName: event.Options.ApplicationOwnerName,
 		},
 		ApplicationStartedByName: event.Options.ApplicationStartedByName,
-		BuildID:                  event.Options.ApplicationID,
+		BuildID:                  event.Options.BuildID,
+		DeployID:                 event.Options.DeployID,
 		Event:                    "buildStepStarted",
 		Step:                     event.Step,
 		GitVersion:               GitVersion,
@@ -98,7 +100,8 @@ func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
 			OwnerName: event.Options.ApplicationOwnerName,
 		},
 		ApplicationStartedByName: event.Options.ApplicationStartedByName,
-		BuildID:                  event.Options.ApplicationID,
+		BuildID:                  event.Options.BuildID,
+		DeployID:                 event.Options.DeployID,
 		Event:                    "buildStepFinished",
 		GitVersion:               GitVersion,
 		Step:                     event.Step,

@@ -58,11 +58,11 @@ func NewBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*Box, 
 	}
 
 	return &Box{
-		client: client,
-		Name: name,
-		options: options,
-		repository: repository,
-		tag: tag,
+		client:          client,
+		Name:            name,
+		options:         options,
+		repository:      repository,
+		tag:             tag,
 		networkDisabled: networkDisabled,
 	}, nil
 }
@@ -110,7 +110,7 @@ func (b *Box) RunServices() error {
 // Run creates the container and runs it.
 func (b *Box) Run() (*docker.Container, error) {
 	// Make and start the container
-	containerName := "wercker-build-" + b.options.BuildID
+	containerName := "wercker-pipeline-" + b.options.PipelineID
 	container, err := b.client.CreateContainer(
 		docker.CreateContainerOptions{
 			Name: containerName,
