@@ -28,20 +28,24 @@ type Pipeline interface {
 	DockerMessage() string
 }
 
+// BasePipeline is the base class for Build and Deploy
 type BasePipeline struct {
 	options *GlobalOptions
 	env     *Environment
 	steps   []*Step
 }
 
+// NewBasePipeline returns a new BasePipeline
 func NewBasePipeline(options *GlobalOptions, steps []*Step) *BasePipeline {
 	return &BasePipeline{options, &Environment{}, steps}
 }
 
+// Steps is a getter for steps
 func (p *BasePipeline) Steps() []*Step {
 	return p.steps
 }
 
+// Env is a getter for env
 func (p *BasePipeline) Env() *Environment {
 	return p.env
 }
@@ -67,10 +71,12 @@ func (p *BasePipeline) CommonEnv() [][]string {
 	return a
 }
 
+// MirrorEnv returns the env vars we're mirroring
 func (p *BasePipeline) MirrorEnv() [][]string {
 	return p.options.Env.getMirror()
 }
 
+// PassthruEnv returns the env vars we're passing to the gueset.
 func (p *BasePipeline) PassthruEnv() [][]string {
 	return p.options.Env.getPassthru()
 }
@@ -108,7 +114,7 @@ func (p *BasePipeline) SetupGuest(sess *Session) error {
 			return err
 		}
 		if exit != 0 {
-			return fmt.Errorf("Geust command failed: %s", cmd)
+			return fmt.Errorf("Guest command failed: %s", cmd)
 		}
 	}
 
