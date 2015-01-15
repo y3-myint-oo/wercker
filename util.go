@@ -102,3 +102,24 @@ func untargzip(path string, r io.Reader) error {
 	}
 	return nil
 }
+
+// Finisher is a helper class for running something either right away or
+// at `defer` time.
+type Finisher struct {
+	callback   func(bool)
+	isFinished bool
+}
+
+// NewFinisher returns a new Finisher with a callback.
+func NewFinisher(callback func(bool)) *Finisher {
+	return &Finisher{callback: callback, isFinished: false}
+}
+
+// Finish executes the callback if it hasn't been run yet.
+func (f *Finisher) Finish(result bool) {
+	if f.isFinished {
+		return
+	}
+	f.callback(result)
+	f.isFinished = true
+}
