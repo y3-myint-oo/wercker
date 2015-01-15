@@ -164,13 +164,13 @@ func deployProject(c *cli.Context) {
 
 	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
 		Build:   pipeline,
-		Steps:   pipeline.Steps,
+		Steps:   pipeline.Steps(),
 		Options: options,
 	})
 
 	stepFailed := false
 	offset := 2
-	for i, step := range pipeline.Steps {
+	for i, step := range pipeline.Steps() {
 		log.Println()
 		log.Println("============== Running Step ===============")
 		log.Println(step.Name, step.ID)
@@ -243,25 +243,25 @@ func buildProject(c *cli.Context) {
 	pipeline := ctx.pipeline
 	sess := ctx.sess
 
-	repoName := pipeline.dockerRepo()
-	tag := pipeline.dockerTag()
-	message := pipeline.dockerMessage()
+	repoName := pipeline.DockerRepo()
+	tag := pipeline.DockerTag()
+	message := pipeline.DockerMessage()
 
 	// TODO(bvdberg):
 	storeStep := &Step{Name: "Store"}
 	// Package should be the last item, + "setup environemnt" and "get code"
-	storeStepOrder := len(pipeline.Steps) + 1 + 2
+	storeStepOrder := len(pipeline.Steps()) + 1 + 2
 
 	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
 		Build:     pipeline,
-		Steps:     pipeline.Steps,
+		Steps:     pipeline.Steps(),
 		StoreStep: storeStep,
 		Options:   options,
 	})
 
 	stepFailed := false
 	offset := 2
-	for i, step := range pipeline.Steps {
+	for i, step := range pipeline.Steps() {
 		log.Println()
 		log.Println("============== Running Step ===============")
 		log.Println(step.Name, step.ID)

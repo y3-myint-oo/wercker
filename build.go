@@ -1,36 +1,18 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"strings"
 )
 
 // Build is our basic wrapper for Build operations
 type Build struct {
-	Env     *Environment
-	Steps   []*Step
+	*BasePipeline
 	options *GlobalOptions
-}
-
-var mirroredEnv = [...]string{
-	"WERCKER_GIT_DOMAIN",
-	"WERCKER_GIT_OWNER",
-	"WERCKER_GIT_REPOSITORY",
-	"WERCKER_GIT_BRANCH",
-	"WERCKER_GIT_COMMIT",
-	"WERCKER_STARTED_BY",
-	"WERCKER_MAIN_PIPELINE_STARTED",
-	// "WERCKER_APPLICATION_ID",
-	// "WERCKER_APPLICATION_NAME",
-	// "WERCKER_APPLICATION_OWNER_NAME",
 }
 
 // ToBuild converts a RawBuild into a Build
 func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 	var steps []*Step
-	var build Build
 
 	// Start with the secret step, wercker-init that runs before everything
 	rawStepData := RawStepData{}
@@ -53,8 +35,7 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 		steps = append(steps, step)
 	}
 
-	build.options = options
-	build.Steps = steps
+	build := &Build{NewBasePipeline(options, steps), options}
 
 	id, ok := build.options.Env.Map["WERCKER_BUILD_ID"]
 	if ok {
@@ -63,76 +44,31 @@ func (b *RawBuild) ToBuild(options *GlobalOptions) (*Build, error) {
 
 	build.InitEnv()
 
-	return &build, nil
+	return build, nil
 }
 
 // InitEnv sets up the internal state of the environment for the build
 func (b *Build) InitEnv() {
-	b.Env = &Environment{}
+	env := b.Env()
 
-	// Add all of our basic env vars
 	a := [][]string{
-		[]string{"WERCKER", "true"},
 		[]string{"BUILD", "true"},
 		[]string{"CI", "true"},
 		[]string{"WERCKER_BUILD_ID", b.options.BuildID},
 		[]string{"WERCKER_BUILD_URL", fmt.Sprintf("%s#build/%s", b.options.BaseURL, b.options.BuildID)},
-		[]string{"WERCKER_ROOT", b.options.GuestPath("source")},
-		[]string{"WERCKER_SOURCE_DIR", b.options.GuestPath("source", b.options.SourceDir)},
-		// TODO(termie): Support cache dir
-		[]string{"WERCKER_CACHE_DIR", "/cache"},
-		[]string{"WERCKER_OUTPUT_DIR", b.options.GuestPath("output")},
-		[]string{"WERCKER_PIPELINE_DIR", b.options.GuestPath()},
-		[]string{"WERCKER_REPORT_DIR", b.options.GuestPath("report")},
-		[]string{"WERCKER_APPLICATION_ID", b.options.ApplicationID},
-		[]string{"WERCKER_APPLICATION_NAME", b.options.ApplicationName},
-		[]string{"WERCKER_APPLICATION_OWNER_NAME", b.options.ApplicationOwnerName},
-		[]string{"TERM", "xterm-256color"},
 	}
 
-	b.Env.Update(a)
-	b.Env.Update(b.options.Env.getMirror())
-	b.Env.Update(b.options.Env.getPassthru())
-
-	b.Env.Add("WERCKER_APPLICATION_URL", fmt.Sprintf("%s#application/%s", b.options.BaseURL, b.options.BuildID))
+	env.Update(b.CommonEnv())
+	env.Update(a)
+	env.Update(b.MirrorEnv())
+	env.Update(b.PassthruEnv())
 }
 
-// Collect passthru variables from the project
-func (e *Environment) getPassthru() [][]string {
-	a := [][]string{}
-	for key, value := range e.Map {
-		if strings.HasPrefix(key, "X_") {
-			a = append(a, []string{strings.TrimPrefix(key, "X_"), value})
-		}
-	}
-	return a
-}
-
-func (e *Environment) getMirror() [][]string {
-	a := [][]string{}
-	for _, key := range mirroredEnv {
-		value, ok := e.Map[key]
-		if ok {
-			a = append(a, []string{key, value})
-		}
-	}
-	return a
-}
-
-// Dump the base environment to our logs
-func (b *Build) logEnvironment() {
-	// Some helpful logging
-	log.Println("Base Build Environment:")
-	for _, pair := range b.Env.Ordered() {
-		log.Println(" ", pair[0], pair[1])
-	}
-}
-
-func (b *Build) dockerRepo() string {
+func (b *Build) DockerRepo() string {
 	return fmt.Sprintf("%s/%s", b.options.ApplicationOwnerName, b.options.ApplicationName)
 }
 
-func (b *Build) dockerTag() string {
+func (b *Build) DockerTag() string {
 	tag := b.options.Tag
 	if tag == "" {
 		tag = fmt.Sprintf("build-%s", b.options.BuildID)
@@ -140,7 +76,7 @@ func (b *Build) dockerTag() string {
 	return tag
 }
 
-func (b *Build) dockerMessage() string {
+func (b *Build) DockerMessage() string {
 	message := b.options.Message
 	if message == "" {
 		message = fmt.Sprintf("Build %s", b.options.BuildID)
@@ -148,18 +84,7 @@ func (b *Build) dockerMessage() string {
 	return message
 }
 
-// FetchSteps makes sure we have all the steps
-func (b *Build) FetchSteps() error {
-	for _, step := range b.Steps {
-		log.Println("Fetching Step:", step.Name, step.ID)
-		if _, err := step.Fetch(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// CollectArtifact copies the artifacts associated with the Step.
+// CollectArtifact copies the artifacts associated with the Build.
 func (b *Build) CollectArtifact(sess *Session) (*Artifact, error) {
 	artificer := NewArtificer(b.options)
 
@@ -195,60 +120,4 @@ func (b *Build) CollectArtifact(sess *Session) (*Artifact, error) {
 	}
 
 	return fullArtifact, nil
-}
-
-// SetupGuest ensures that the guest is prepared to run the pipeline.
-func (b *Build) SetupGuest(sess *Session) error {
-	sess.HideLogs()
-	defer sess.ShowLogs()
-
-	// Make sure our guest path exists
-	exit, _, err := sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.options.GuestPath()))
-	if err != nil {
-		return err
-	}
-	if exit != 0 {
-		return errors.New("Guest command failed.")
-	}
-
-	// Make sure the output path exists
-	exit, _, err = sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, b.options.GuestPath("output")))
-	if err != nil {
-		return err
-	}
-	if exit != 0 {
-		return errors.New("Guest command failed.")
-	}
-
-	// And the cache path
-	exit, _, err = sess.SendChecked(fmt.Sprintf(`mkdir "%s"`, "/cache"))
-	if err != nil {
-		return err
-	}
-	if exit != 0 {
-		return errors.New("Guest command failed.")
-	}
-
-	// Copy the source dir to the guest path
-	exit, _, err = sess.SendChecked(fmt.Sprintf(`cp -r "%s" "%s"`, b.options.MntPath("source"), b.options.GuestPath("source")))
-	if err != nil {
-		return err
-	}
-	if exit != 0 {
-		return errors.New("Guest command failed.")
-	}
-
-	return nil
-}
-
-// ExportEnvironment to the session
-func (b *Build) ExportEnvironment(sess *Session) error {
-	exit, _, err := sess.SendChecked(b.Env.Export()...)
-	if err != nil {
-		return err
-	}
-	if exit != 0 {
-		return fmt.Errorf("Build failed with exit code: %d", exit)
-	}
-	return nil
 }

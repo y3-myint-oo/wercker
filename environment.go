@@ -59,3 +59,38 @@ func (e *Environment) Ordered() [][]string {
 	}
 	return a
 }
+
+var mirroredEnv = [...]string{
+	"WERCKER_GIT_DOMAIN",
+	"WERCKER_GIT_OWNER",
+	"WERCKER_GIT_REPOSITORY",
+	"WERCKER_GIT_BRANCH",
+	"WERCKER_GIT_COMMIT",
+	"WERCKER_STARTED_BY",
+	"WERCKER_MAIN_PIPELINE_STARTED",
+	// "WERCKER_APPLICATION_ID",
+	// "WERCKER_APPLICATION_NAME",
+	// "WERCKER_APPLICATION_OWNER_NAME",
+}
+
+// Collect passthru variables from the project
+func (e *Environment) getPassthru() [][]string {
+	a := [][]string{}
+	for key, value := range e.Map {
+		if strings.HasPrefix(key, "X_") {
+			a = append(a, []string{strings.TrimPrefix(key, "X_"), value})
+		}
+	}
+	return a
+}
+
+func (e *Environment) getMirror() [][]string {
+	a := [][]string{}
+	for _, key := range mirroredEnv {
+		value, ok := e.Map[key]
+		if ok {
+			a = append(a, []string{key, value})
+		}
+	}
+	return a
+}

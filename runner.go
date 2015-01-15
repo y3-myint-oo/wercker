@@ -13,10 +13,10 @@ import (
 
 // GetPipeline is a function that will fetch the appropriate pipeline
 // object from the rawConfig.
-type GetPipeline func(*RawConfig, *GlobalOptions) (*Build, error)
+type GetPipeline func(*RawConfig, *GlobalOptions) (Pipeline, error)
 
 // GetBuildPipeline grabs the "build" section of the yaml.
-func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, error) {
+func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (Pipeline, error) {
 	build, err := rawConfig.RawBuild.ToBuild(options)
 	if err != nil {
 		return nil, err
@@ -25,7 +25,7 @@ func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, err
 }
 
 // GetDeployPipeline gets the "deploy" section of the yaml.
-func GetDeployPipeline(rawConfig *RawConfig, options *GlobalOptions) (*Build, error) {
+func GetDeployPipeline(rawConfig *RawConfig, options *GlobalOptions) (Pipeline, error) {
 	build, err := rawConfig.RawDeploy.ToBuild(options)
 	if err != nil {
 		return nil, err
@@ -237,7 +237,7 @@ func (p *Runner) GetSession(containerID string) (*Session, error) {
 }
 
 // GetPipeline returns a pipeline based on the "build" config section
-func (p *Runner) GetPipeline(rawConfig *RawConfig) (*Build, error) {
+func (p *Runner) GetPipeline(rawConfig *RawConfig) (Pipeline, error) {
 	return p.pipelineGetter(rawConfig, p.options)
 }
 
@@ -245,7 +245,7 @@ func (p *Runner) GetPipeline(rawConfig *RawConfig) (*Build, error) {
 // environment.
 type RunnerContext struct {
 	box      *Box
-	pipeline *Build
+	pipeline Pipeline
 	sess     *Session
 	config   *RawConfig
 }
@@ -308,7 +308,7 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	pipeline, err := p.GetPipeline(rawConfig)
 	ctx.pipeline = pipeline
 
-	log.Println("Steps:", len(pipeline.Steps))
+	log.Println("Steps:", len(pipeline.Steps()))
 
 	// Make sure we have the steps
 	err = pipeline.FetchSteps()
@@ -356,7 +356,7 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	ctx.sess = sess
 
 	// Some helpful logging
-	pipeline.logEnvironment()
+	pipeline.LogEnvironment()
 
 	err = pipeline.SetupGuest(sess)
 	if err != nil {
