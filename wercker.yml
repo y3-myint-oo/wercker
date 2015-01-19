@@ -35,6 +35,10 @@ build:
             echo $WERCKER_GIT_COMMIT > $WERCKER_OUTPUT_DIR/HEAD
             mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/latest
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
+  after-steps:
+    - script:
+        name: dump env
+        code: env
 
 deploy:
   steps:
@@ -44,3 +48,8 @@ deploy:
         bucket-url: $AWS_BUCKET_URL/$WERCKER_GIT_BRANCH/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
+  after-steps:
+    - script:
+        name: dump env
+        code: env
+

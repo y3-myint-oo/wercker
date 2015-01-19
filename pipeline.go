@@ -9,8 +9,9 @@ import (
 // both Build and Deploy
 type Pipeline interface {
 	// Getters
-	Env() *Environment // base
-	Steps() []*Step    // base
+	Env() *Environment   // base
+	Steps() []*Step      // base
+	AfterSteps() []*Step // base
 
 	// Methods
 	CommonEnv() [][]string   // base
@@ -28,21 +29,54 @@ type Pipeline interface {
 	DockerMessage() string
 }
 
+// PipelineResult keeps track of the results of a build or deploy
+// mostly so that we can use it to run after-steps
+type PipelineResult struct {
+	Success           bool
+	FailedStepName    string
+	FailedStepMessage string
+}
+
+func (pr *PipelineResult) ExportEnvironment(sess *Session) error {
+	e := &Environment{}
+	result := "failed"
+	if pr.Success {
+		result = "passed"
+	}
+	e.Add("WERCKER_RESULT", result)
+	e.Add("WERCKER_FAILED_STEP_DISPLAY_NAME", pr.FailedStepName)
+	e.Add("WERCKER_FAILED_STEP_MESSAGE", pr.FailedStepMessage)
+
+	exit, _, err := sess.SendChecked(e.Export()...)
+	if err != nil {
+		return err
+	}
+	if exit != 0 {
+		return fmt.Errorf("Build failed with exit code: %d", exit)
+	}
+	return nil
+}
+
 // BasePipeline is the base class for Build and Deploy
 type BasePipeline struct {
-	options *GlobalOptions
-	env     *Environment
-	steps   []*Step
+	options    *GlobalOptions
+	env        *Environment
+	steps      []*Step
+	afterSteps []*Step
 }
 
 // NewBasePipeline returns a new BasePipeline
-func NewBasePipeline(options *GlobalOptions, steps []*Step) *BasePipeline {
-	return &BasePipeline{options, &Environment{}, steps}
+func NewBasePipeline(options *GlobalOptions, steps []*Step, afterSteps []*Step) *BasePipeline {
+	return &BasePipeline{options, &Environment{}, steps, afterSteps}
 }
 
 // Steps is a getter for steps
 func (p *BasePipeline) Steps() []*Step {
 	return p.steps
+}
+
+func (p *BasePipeline) AfterSteps() []*Step {
+	return p.afterSteps
 }
 
 // Env is a getter for env
@@ -85,6 +119,13 @@ func (p *BasePipeline) PassthruEnv() [][]string {
 func (p *BasePipeline) FetchSteps() error {
 	for _, step := range p.steps {
 		log.Println("Fetching Step:", step.Name, step.ID)
+		if _, err := step.Fetch(); err != nil {
+			return err
+		}
+	}
+
+	for _, step := range p.afterSteps {
+		log.Println("Fetching After Step:", step.Name, step.ID)
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}

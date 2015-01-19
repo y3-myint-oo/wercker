@@ -16,3 +16,8 @@ build:
     - script:
         code: |
             nc -z `echo ${NGINX_PORT#*://} | sed 's/:/ /g'`
+  after-steps:
+    - script:
+        name: my little afterstep
+        code: |-
+            echo "I am so happy my after-step ran!"

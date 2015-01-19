@@ -15,7 +15,8 @@ type RawServices []RawBox
 
 // RawPipeline is the data type for builds and deploys in the wercker.yml
 type RawPipeline struct {
-	RawSteps []interface{} `yaml:"steps"`
+	RawSteps      []interface{} `yaml:"steps"`
+	RawAfterSteps []interface{} `yaml:"after-steps"`
 }
 
 // RawConfig is the data type for wercker.yml

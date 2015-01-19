@@ -13,6 +13,7 @@ type Build struct {
 // ToBuild converts a RawPipeline into a Build
 func (p *RawPipeline) ToBuild(options *GlobalOptions) (*Build, error) {
 	var steps []*Step
+	var afterSteps []*Step
 
 	// Start with the secret step, wercker-init that runs before everything
 	initStep, err := NewWerckerInitStep(options)
@@ -21,19 +22,21 @@ func (p *RawPipeline) ToBuild(options *GlobalOptions) (*Build, error) {
 	}
 	steps = append(steps, initStep)
 
-	for _, extraRawStep := range p.RawSteps {
-		rawStep, err := NormalizeStep(extraRawStep)
-		if err != nil {
-			return nil, err
-		}
-		step, err := rawStep.ToStep(options)
-		if err != nil {
-			return nil, err
-		}
-		steps = append(steps, step)
+	realSteps, err := ExtraRawStepsToSteps(p.RawSteps, options)
+	if err != nil {
+		return nil, err
 	}
+	steps = append(steps, realSteps...)
 
-	build := &Build{NewBasePipeline(options, steps), options}
+	// For after steps we again need werker-init
+	afterSteps = append(afterSteps, initStep)
+	realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps, options)
+	if err != nil {
+		return nil, err
+	}
+	afterSteps = append(afterSteps, realAfterSteps...)
+
+	build := &Build{NewBasePipeline(options, steps, afterSteps), options}
 	build.InitEnv()
 	return build, nil
 }

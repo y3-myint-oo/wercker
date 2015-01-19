@@ -273,6 +273,20 @@ func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher 
 	})
 }
 
+func (p *Runner) StartBuild(options *GlobalOptions) *Finisher {
+	p.emitter.Emit(BuildStarted, &BuildStartedArgs{Options: options})
+	return NewFinisher(func(result bool) {
+		msg := "failed"
+		if result {
+			msg = "passed"
+		}
+		p.emitter.Emit(BuildFinished, &BuildFinishedArgs{
+			Options: options,
+			Result:  msg,
+		})
+	})
+}
+
 // SetupEnvironment does a lot of boilerplate legwork and returns a pipeline,
 // box, and session. This is a bit of a long method, but it is pretty much
 // the entire "Setup Environment" step.

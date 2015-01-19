@@ -4,4 +4,9 @@ build:
   # The steps that will be executed on build
   steps:
     - script:
+        name: "i am a display name"
         code: "false"
+  after-steps:
+    - script:
+        code: |-
+          echo "lala la"
