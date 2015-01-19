@@ -23,7 +23,7 @@ function integration_tests() {
 if [ -z "$1" ]; then
   ./buildme.sh && integration_tests
 else
-  ./buildme.sh && ./sentcli build $1
+  ./buildme.sh && ./sentcli $@
 fi
 
 passfail=$?
