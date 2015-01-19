@@ -191,7 +191,7 @@ func deployProject(c *cli.Context) error {
 	defer e.Emit(BuildFinished, buildFinishedArgs)
 
 	log.Println("############ Deploying project #############")
-	LogOptions(options)
+	dumpOptions(options)
 	log.Println("############################################")
 
 	_, err = p.EnsureCode()
@@ -275,7 +275,7 @@ func buildProject(c *cli.Context) error {
 	defer e.Emit(BuildFinished, buildFinishedArgs)
 
 	log.Println("############# Building project #############")
-	LogOptions(options)
+	dumpOptions(options)
 	log.Println("############################################")
 
 	_, err = p.EnsureCode()

@@ -188,8 +188,8 @@ func guessDeployID(c *cli.Context, env *Environment) string {
 	return id
 }
 
-// LogOptions prints out a sorted list of options
-func LogOptions(options *GlobalOptions) {
+// dumpOptions prints out a sorted list of options
+func dumpOptions(options *GlobalOptions) {
 	s := reflect.ValueOf(options).Elem()
 	typeOfT := s.Type()
 	names := []string{}
