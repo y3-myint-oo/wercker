@@ -7,6 +7,7 @@ import (
 	"path"
 )
 
+// NewDockerClient based on options and env
 func NewDockerClient(options *GlobalOptions) (*docker.Client, error) {
 	dockerHost := options.DockerHost
 	tlsVerify, ok := options.Env.Map["DOCKER_TLS_VERIFY"]
