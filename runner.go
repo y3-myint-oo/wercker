@@ -226,6 +226,7 @@ func (p *Runner) CopySource() error {
 	return nil
 }
 
+// GetSession attaches to the container and returns a session.
 func (p *Runner) GetSession(containerID string) (*Session, error) {
 	sess, err := NewSession(p.options, containerID)
 	if err != nil {

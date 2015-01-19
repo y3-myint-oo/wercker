@@ -17,10 +17,12 @@ type Receiver struct {
 	queue chan string
 }
 
+// NewReceiver returns a new channel-based io.Writer
 func NewReceiver(queue chan string) *Receiver {
 	return &Receiver{queue: queue}
 }
 
+// Write writes to a channel
 func (r *Receiver) Write(p []byte) (int, error) {
 	buf := bytes.NewBuffer(p)
 	r.queue <- buf.String()
@@ -32,10 +34,12 @@ type Sender struct {
 	queue chan string
 }
 
+// NewSender gives us a new channel-based io.Reader
 func NewSender(queue chan string) *Sender {
 	return &Sender{queue: queue}
 }
 
+// Read reads from a channel
 func (s *Sender) Read(p []byte) (int, error) {
 	send := <-s.queue
 	i := copy(p, []byte(send))
@@ -54,6 +58,7 @@ type Session struct {
 	exit        chan int
 }
 
+// NewSession returns a new interactive session to a container.
 func NewSession(options *GlobalOptions, containerID string) (*Session, error) {
 	client, err := NewDockerClient(options)
 	if err != nil {
@@ -62,6 +67,7 @@ func NewSession(options *GlobalOptions, containerID string) (*Session, error) {
 	return &Session{options: options, e: GetEmitter(), client: client, ContainerID: containerID, logsHidden: false}, nil
 }
 
+// Attach us to our container and set up read and write queues
 func (s *Session) Attach() error {
 	started := make(chan struct{})
 
