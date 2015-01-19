@@ -1,80 +1,131 @@
 package main
 
 import (
+	"bytes"
 	"code.google.com/p/go-uuid/uuid"
-	"code.google.com/p/go.net/websocket"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
-	"io"
+	"github.com/fsouza/go-dockerclient"
+	// "os"
 	"strings"
 	"time"
 )
 
-// Session is our class for interacting with a running Docker container.
+// Receiver is for reading from our session
+type Receiver struct {
+	queue chan string
+}
+
+func NewReceiver(queue chan string) *Receiver {
+	return &Receiver{queue: queue}
+}
+
+func (r *Receiver) Write(p []byte) (int, error) {
+	buf := bytes.NewBuffer(p)
+	r.queue <- buf.String()
+	return buf.Len(), nil
+}
+
+// Sender is for sending to our session
+type Sender struct {
+	queue chan string
+}
+
+func NewSender(queue chan string) *Sender {
+	return &Sender{queue: queue}
+}
+
+func (s *Sender) Read(p []byte) (int, error) {
+	send := <-s.queue
+	i := copy(p, []byte(send))
+	return i, nil
+}
+
+// Session is our way to interact with the container
 type Session struct {
-	wsURL       string
-	ws          *websocket.Conn
-	ch          chan string
-	ContainerID string
-	e           *emission.Emitter
-	logsHidden  bool
 	options     *GlobalOptions
+	e           *emission.Emitter
+	client      *docker.Client
+	ContainerID string
+	logsHidden  bool
+	send        chan string
+	recv        chan string
+	exit        chan int
 }
 
-// NewSession based on a docker api endpoint and container ID.
-func NewSession(endpoint string, containerID string, options *GlobalOptions) *Session {
-	wsEndpoint := strings.Replace(endpoint, "tcp://", "ws://", 1)
-	wsQuery := "stdin=1&stderr=1&stdout=1&stream=1"
-	wsURL := fmt.Sprintf("%s/containers/%s/attach/ws?%s",
-		wsEndpoint, containerID, wsQuery)
-
-	ch := make(chan string)
-
-	return &Session{
-		wsURL:       wsURL,
-		ws:          nil,
-		ch:          ch,
-		ContainerID: containerID,
-		e:           GetEmitter(),
-		options:     options,
-	}
-}
-
-// ReadToChan reads on a websocket forever, writing to a channel
-func ReadToChan(ws *websocket.Conn, ch chan string) {
-	var data string
-	for {
-		data = ""
-		err := websocket.Message.Receive(ws, &data)
-		if err != nil {
-			if err != io.EOF {
-				log.WithField("Error", err).Error("Error while reading from websocket")
-			}
-			close(ch)
-			return
-		}
-		ch <- data
-	}
-}
-
-// Attach begins reading on the websocket and writing to the internal channel.
-func (s *Session) Attach() (*Session, error) {
-	ws, err := websocket.Dial(s.wsURL, "", "http://localhost/")
+func NewSession(options *GlobalOptions, containerID string) (*Session, error) {
+	client, err := NewDockerClient(options)
 	if err != nil {
-		return s, err
+		return nil, err
 	}
-	s.ws = ws
+	return &Session{options: options, e: GetEmitter(), client: client, ContainerID: containerID, logsHidden: false}, nil
+}
 
-	go ReadToChan(s.ws, s.ch)
-	return s, nil
+func (s *Session) Attach() error {
+	started := make(chan struct{})
+
+	recv := make(chan string)
+	outputStream := NewReceiver(recv)
+	s.recv = recv
+
+	send := make(chan string)
+	inputStream := NewSender(send)
+	s.send = send
+
+	exit := make(chan int)
+	s.exit = exit
+
+	opts := docker.AttachToContainerOptions{
+		Container:    s.ContainerID,
+		Stdin:        true,
+		Stdout:       true,
+		Stderr:       true,
+		Stream:       true,
+		Success:      started,
+		InputStream:  inputStream,
+		ErrorStream:  outputStream,
+		OutputStream: outputStream,
+		RawTerminal:  false,
+	}
+
+	go func() {
+		status, err := s.client.WaitContainer(s.ContainerID)
+		if err != nil {
+			log.Errorln("Error waiting", err)
+		}
+		log.Debugln("Container finished with status code:", status)
+		s.exit <- status
+		close(s.exit)
+	}()
+
+	go func() {
+		err := s.client.AttachToContainer(opts)
+		if err != nil {
+			log.Panicln(err)
+		}
+	}()
+
+	// Wait for attach
+	<-started
+	started <- struct{}{}
+	return nil
+}
+
+// HideLogs will emit Logs with args.Hidden set to true
+func (s *Session) HideLogs() {
+	s.logsHidden = true
+}
+
+// ShowLogs will emit Logs with args.Hidden set to false
+func (s *Session) ShowLogs() {
+	s.logsHidden = false
 }
 
 // Send an array of commands.
 func (s *Session) Send(forceHidden bool, commands ...string) {
 	for i := range commands {
 		command := commands[i] + "\n"
-
 		hidden := s.logsHidden
 		if forceHidden {
 			hidden = forceHidden
@@ -85,11 +136,7 @@ func (s *Session) Send(forceHidden bool, commands ...string) {
 			Stream: "stdin",
 			Logs:   command,
 		})
-
-		err := websocket.Message.Send(s.ws, command)
-		if err != nil {
-			log.Panicln(err)
-		}
+		s.send <- command
 	}
 }
 
@@ -119,11 +166,15 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 		for check != true {
 			line := ""
 			select {
-			case myline, ok := <-s.ch:
+			case myline, ok := <-s.recv:
 				if !ok {
 					return 1, recv, nil
 				}
 				line = myline
+			// Exited "expectedly"
+			case status := <-s.exit:
+				return status, recv, nil
+			// Timed out
 			case <-time.After(time.Duration(s.options.NoResponseTimeout) * time.Minute):
 				//close(s.ch)
 				return 1, recv, fmt.Errorf("Timeout: no response seen for %d minutes", s.options.NoResponseTimeout)
@@ -165,14 +216,4 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 		//close(c)
 		return 1, []string{}, fmt.Errorf("Command timed out after %d minutes", s.options.CommandTimeout)
 	}
-}
-
-// HideLogs will emit Logs with args.Hidden set to true
-func (s *Session) HideLogs() {
-	s.logsHidden = true
-}
-
-// ShowLogs will emit Logs with args.Hidden set to false
-func (s *Session) ShowLogs() {
-	s.logsHidden = false
 }

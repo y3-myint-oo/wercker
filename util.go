@@ -3,7 +3,7 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -32,7 +32,7 @@ func fetchTarball(url string) (*http.Response, error) {
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
-		return resp, errors.New("Bad status code fetching tarball.")
+		return resp, fmt.Errorf("Bad status code fetching tarball: %s", url)
 	}
 
 	return resp, nil
