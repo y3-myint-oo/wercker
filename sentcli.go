@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -424,8 +426,6 @@ func displayVersion(options *VersionOptions) {
 
 // detectProject inspects the the current directory that sentcli is running in
 // and detects the project's programming language
-// TODO(mies): this needs to commmunicate with yet to be made endpoints that will
-// return a default yml for the programming language detected
 func detectProject(c *cli.Context) {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
@@ -472,8 +472,32 @@ outer:
 		}
 	}
 	if detected == "" {
-		log.Println("No stack detected")
+		log.Println("No stack detected, generating default wercker.yml")
+		detected = "default"
 	} else {
 		log.Println("Detected:", detected)
+		log.Println("Generating wercker.yml")
+	}
+	getYml(detected, options)
+}
+
+// TODO(mies): maybe move to util.go at some point
+func getYml(detected string, options *GlobalOptions) {
+	url := fmt.Sprintf("%s/yml/%s", options.WerckerEndpoint, detected)
+	res, err := http.Get(url)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to reach wercker API")
+		os.Exit(1)
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to read response")
+	}
+
+	err = ioutil.WriteFile("wercker.yml", body, 0644)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to write wercker.yml file")
 	}
 }
