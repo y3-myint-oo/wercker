@@ -26,7 +26,7 @@ func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (Pipeline, e
 
 // GetDeployPipeline gets the "deploy" section of the yaml.
 func GetDeployPipeline(rawConfig *RawConfig, options *GlobalOptions) (Pipeline, error) {
-	build, err := rawConfig.RawDeploy.ToBuild(options)
+	build, err := rawConfig.RawDeploy.ToDeploy(options)
 	if err != nil {
 		return nil, err
 	}
