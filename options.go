@@ -14,6 +14,112 @@ import (
 	"strings"
 )
 
+// Flags for setting these options from the CLI
+var (
+	// These flags control where we store local files
+	LocalPathFlags = []cli.Flag{
+		cli.StringFlag{Name: "project-dir", Value: "./_projects", Usage: "path where downloaded projects live"},
+		cli.StringFlag{Name: "step-dir", Value: "./_steps", Usage: "path where downloaded steps live"},
+		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "path where created builds live"},
+	}
+
+	// These flags tell us where to go for operations
+	EndpointFlags = []cli.Flag{
+		cli.StringFlag{Name: "docker-host", Value: "tcp://127.0.0.1:2375", Usage: "docker api host", EnvVar: "DOCKER_HOST"},
+		cli.StringFlag{Name: "wercker-endpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
+		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
+		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
+	}
+
+	// These flags control paths on the guest and probably shouldn't change
+	InternalPathFlags = []cli.Flag{
+		cli.StringFlag{Name: "mnt-root", Value: "/mnt", Usage: "directory on the guest where volumes are mounted"},
+		cli.StringFlag{Name: "guest-root", Value: "/pipeline", Usage: "directory on the guest where work is done"},
+		cli.StringFlag{Name: "report-root", Value: "/report", Usage: "directory on the guest where reports will be written"},
+	}
+
+	// These flags are usually pulled from the env
+	WerckerFlags = []cli.Flag{
+		cli.StringFlag{Name: "build-id", Value: "", Usage: "build id", EnvVar: "WERCKER_BUILD_ID"},
+		cli.StringFlag{Name: "deploy-id", Value: "", Usage: "deploy id", EnvVar: "WERCKER_DEPLOY_ID"},
+		cli.StringFlag{Name: "application-id", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_ID"},
+		cli.StringFlag{Name: "application-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
+		cli.StringFlag{Name: "application-owner-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
+		cli.StringFlag{Name: "application-started-by-name", Value: "", Usage: "application started by", EnvVar: "WERCKER_APPLICATION_STARTED_BY_NAME"},
+	}
+
+	// These flags affect our registry interactions
+	RegistryFlags = []cli.Flag{
+		cli.BoolFlag{Name: "push", Usage: "push the build result to registry"},
+		cli.BoolFlag{Name: "commit", Usage: "commit the build result locally"},
+		cli.StringFlag{Name: "tag", Value: "", Usage: "tag for this build", EnvVar: "WERCKER_GIT_BRANCH"},
+		cli.StringFlag{Name: "message", Value: "", Usage: "message for this build"},
+	}
+
+	// These flags affect our artifact interactions
+	ArtifactFlags = []cli.Flag{
+		cli.BoolFlag{Name: "no-artifacts", Usage: "don't upload artifacts"},
+	}
+
+	// These flags affect our local execution environment
+	DevFlags = []cli.Flag{
+		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "specify additional environment variables in a file"},
+		cli.BoolFlag{Name: "debug", Usage: "print additional debug information"},
+	}
+
+	// AWS bits
+	AWSFlags = []cli.Flag{
+		cli.StringFlag{Name: "aws-secret-key", Value: "", Usage: "secret access key"},
+		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "access key id"},
+		cli.StringFlag{Name: "s3-bucket", Value: "wercker-development", Usage: "bucket for artifacts"},
+		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "region"},
+	}
+
+	// keen.io bits
+	KeenFlags = []cli.Flag{
+		cli.BoolFlag{Name: "keen-metrics", Usage: "report metrics to keen.io"},
+		cli.StringFlag{Name: "keen-project-write-key", Value: "", Usage: "keen write key"},
+		cli.StringFlag{Name: "keen-project-id", Value: "", Usage: "keen project id"},
+	}
+
+	// Wercker Reporter settings
+	ReporterFlags = []cli.Flag{
+		cli.BoolFlag{Name: "report", Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token)"},
+		cli.StringFlag{Name: "wercker-host", Usage: "Wercker host to use for wercker reporter"},
+		cli.StringFlag{Name: "wercker-token", Usage: "Wercker token to use for wercker reporter"},
+	}
+
+	// These options might be overwritten by the wercker.yml
+	ConfigFlags = []cli.Flag{
+		cli.StringFlag{Name: "source-dir", Value: "", Usage: "source path relative to checkout root"},
+		cli.IntFlag{Name: "no-response-timeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
+		cli.IntFlag{Name: "command-timeout", Value: 10, Usage: "timeout if command does not complete in this many minutes"},
+	}
+
+	AllFlags = [][]cli.Flag{
+		LocalPathFlags,
+		EndpointFlags,
+		InternalPathFlags,
+		WerckerFlags,
+		RegistryFlags,
+		ArtifactFlags,
+		DevFlags,
+		AWSFlags,
+		KeenFlags,
+		ReporterFlags,
+		ConfigFlags,
+	}
+)
+
+func allFlags() []cli.Flag {
+	all := []cli.Flag{}
+
+	for _, x := range AllFlags {
+		all = append(all, x...)
+	}
+	return all
+}
+
 // GlobalOptions is a shared data structure for global config.
 type GlobalOptions struct {
 	Env *Environment
