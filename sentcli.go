@@ -108,90 +108,14 @@ func (s *SoftExit) Exit(v ...interface{}) error {
 }
 
 func deployProject(c *cli.Context) error {
-	// Parse CLI and local env
-	options, err := NewGlobalOptions(c, os.Environ())
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	soft := &SoftExit{options}
-
-	// Build our common pipeline
-	p := NewRunner(options, GetDeployPipeline)
-	e := p.Emitter()
-
-	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
-
-	// This will be emitted at the end of the execution, we're going to be
-	// pessimistic and report that we failed, unless overridden at the end of the
-	// execution.
-	// TODO(bvdberg): This is good for now, but we should be able to report
-	// halfway through (when the build finishes, but after steps have not yet run)
-	buildFinishedArgs := &BuildFinishedArgs{Options: options, Result: "failed"}
-	defer e.Emit(BuildFinished, buildFinishedArgs)
-
-	log.Println("############ Deploying project #############")
-	dumpOptions(options)
-	log.Println("############################################")
-
-	_, err = p.EnsureCode()
-	if err != nil {
-		soft.Exit(err)
-	}
-
-	ctx, err := p.SetupEnvironment()
-	if ctx.box != nil {
-		defer ctx.box.Stop()
-	}
-	if err != nil {
-		return soft.Exit(err)
-	}
-
-	// Expand our context object
-	// box := ctx.box
-	pipeline := ctx.pipeline
-	// sess := ctx.sess
-
-	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
-		Build:   pipeline,
-		Steps:   pipeline.Steps(),
-		Options: options,
-	})
-
-	stepFailed := false
-	offset := 2
-	for i, step := range pipeline.Steps() {
-		log.Println()
-		log.Println("============== Running Step ===============")
-		log.Println(step.Name, step.ID)
-		log.Println("===========================================")
-
-		err = p.RunStep(ctx, step, offset+i)
-
-		if err != nil {
-			stepFailed = true
-			log.Warnln("============== Step failed! ===============")
-			break
-		}
-		log.Println("============== Step passed! ===============")
-	}
-
-	// Only make it passed if we reach this code (ie no panics) and no step
-	// failed.
-	if !stepFailed {
-		buildFinishedArgs.Result = "passed"
-	}
-
-	if buildFinishedArgs.Result == "passed" {
-		log.Println("############# Deploy passed! ##############")
-	} else {
-		log.Warnln("############# Deploy failed! ##############")
-		return fmt.Errorf("Build failed.")
-	}
-	return nil
+	return executePipeline(c, GetDeployPipeline)
 }
 
 func buildProject(c *cli.Context) error {
+	return executePipeline(c, GetBuildPipeline)
+}
+
+func executePipeline(c *cli.Context, getter GetPipeline) error {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
 	if err != nil {
@@ -201,20 +125,17 @@ func buildProject(c *cli.Context) error {
 	soft := &SoftExit{options}
 
 	// Build our common pipeline
-	p := NewRunner(options, GetBuildPipeline)
+	p := NewRunner(options, getter)
 	e := p.Emitter()
 
-	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
+	buildFinisher := p.StartBuild(options)
 
 	// This will be emitted at the end of the execution, we're going to be
 	// pessimistic and report that we failed, unless overridden at the end of the
 	// execution.
-	// TODO(bvdberg): This is good for now, but we should be able to report
-	// halfway through (when the build finishes, but after steps have not yet run)
-	buildFinishedArgs := &BuildFinishedArgs{Options: options, Result: "failed"}
-	defer e.Emit(BuildFinished, buildFinishedArgs)
+	defer buildFinisher.Finish(false)
 
-	log.Println("############# Building project #############")
+	log.Println("############ Executing Pipeline ############")
 	dumpOptions(options)
 	log.Println("############################################")
 
@@ -252,7 +173,12 @@ func buildProject(c *cli.Context) error {
 		Options:   options,
 	})
 
-	stepFailed := false
+	pr := &PipelineResult{
+		Success:           true,
+		FailedStepName:    "",
+		FailedStepMessage: "",
+	}
+
 	offset := 2
 	for i, step := range pipeline.Steps() {
 		log.Println()
@@ -263,7 +189,9 @@ func buildProject(c *cli.Context) error {
 		err = p.RunStep(ctx, step, offset+i)
 
 		if err != nil {
-			stepFailed = true
+			pr.Success = false
+			pr.FailedStepName = step.DisplayName
+			pr.FailedStepMessage = ""
 			log.Warnln("============== Step failed! ===============")
 			break
 		}
@@ -299,17 +227,17 @@ func buildProject(c *cli.Context) error {
 		}()
 
 		if err != nil {
+			pr.Success = false
+			pr.FailedStepName = storeStep.Name
+			pr.FailedStepMessage = "Unable to push to registry"
 			log.WithField("Error", err).Error("Unable to push to registry")
 		}
 	}
 
-	// Only make it passed if we reach this code (ie no panics) and no step
-	// failed.
-	if !stepFailed {
-		buildFinishedArgs.Result = "passed"
-	}
+	// At this point the build has effectively passed but we can still mess it
+	// up by being unable to deliver the artifacts
 
-	if buildFinishedArgs.Result == "passed" && options.ShouldArtifacts {
+	if pr.Success && options.ShouldArtifacts {
 		err = func() error {
 			artifact, err := pipeline.CollectArtifact(sess)
 			if err != nil {
@@ -324,16 +252,77 @@ func buildProject(c *cli.Context) error {
 			return nil
 		}()
 		if err != nil {
+			pr.Success = false
+			pr.FailedStepName = storeStep.Name
+			pr.FailedStepMessage = "Unable to store pipeline output"
 			log.WithField("Error", err).Error("Unable to store pipeline output")
-			buildFinishedArgs.Result = "failed"
 		}
 	}
 
-	if buildFinishedArgs.Result == "passed" {
-		log.Println("############# Build passed! ###############")
+	if pr.Success {
+		log.Println("########### Pipeline passed! ##############")
 	} else {
-		log.Warnln("############# Build failed! ###############")
-		return fmt.Errorf("Build failed.")
+		log.Warnln("########### Pipeline failed! ##############")
+	}
+
+	// We're sending our build finished but we're not done yet,
+	// now is time to run after-steps
+	buildFinisher.Finish(pr.Success)
+
+	log.Println("########## Starting After Steps ###########")
+	// The container may have died, either way we'll have a fresh env
+	container, err := box.Restart()
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	newSess, err := p.GetSession(container.ID)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	newCtx := &RunnerContext{
+		box:      ctx.box,
+		pipeline: ctx.pipeline,
+		sess:     newSess,
+		config:   ctx.config,
+	}
+
+	// Set up the base environment
+	err = pipeline.ExportEnvironment(newSess)
+	if err != nil {
+		return err
+	}
+
+	// Add the After-Step parts
+	err = pr.ExportEnvironment(newSess)
+	if err != nil {
+		return err
+	}
+
+	for i, step := range pipeline.AfterSteps() {
+		log.Println()
+		log.Println("=========== Running After Step ============")
+		log.Println(step.Name, step.ID)
+		log.Println("===========================================")
+
+		err = p.RunStep(newCtx, step, offset+i)
+
+		if err != nil {
+			log.Warnln("=========== After Step failed! ============")
+			break
+		}
+		log.Println("=========== After Step passed! ============")
+	}
+
+	if pr.Success {
+		log.Println("########### Pipeline passed! ##############")
+	} else {
+		log.Warnln("########### Pipeline failed! ##############")
+	}
+
+	if !pr.Success {
+		return fmt.Errorf("Step failed: %s", pr.FailedStepName)
 	}
 	return nil
 }

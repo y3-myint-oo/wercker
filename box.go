@@ -145,6 +145,15 @@ func (b *Box) Run() (*docker.Container, error) {
 	return container, nil
 }
 
+// Restart stops and starts the box
+func (b *Box) Restart() (*docker.Container, error) {
+	err := b.client.RestartContainer(b.container.ID, 1)
+	if err != nil {
+		return nil, err
+	}
+	return b.container, nil
+}
+
 // AddService needed by this Box
 func (b *Box) AddService(service *ServiceBox) {
 	b.services = append(b.services, service)

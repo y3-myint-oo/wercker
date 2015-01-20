@@ -74,10 +74,27 @@ type Step struct {
 	stepConfig  *StepConfig
 }
 
-// NormalizeStep attempts to make things like RawSteps into RawSteps.
+// toStep normalizes a step to a RawStep then calls ToStep on that
+func ExtraRawStepsToSteps(raws []interface{}, options *GlobalOptions) ([]*Step, error) {
+	steps := []*Step{}
+	for _, raw := range raws {
+		rawStep, err := normalizeStep(raw)
+		if err != nil {
+			return nil, err
+		}
+		step, err := rawStep.ToStep(options)
+		if err != nil {
+			return nil, err
+		}
+		steps = append(steps, step)
+	}
+	return steps, nil
+}
+
+// normalizeStep attempts to make things like RawSteps into RawSteps.
 // Steps unfortunately can come in a couple shapes in the yaml, this
 // function attempts to normalize them all to a RawStep
-func NormalizeStep(raw interface{}) (*RawStep, error) {
+func normalizeStep(raw interface{}) (*RawStep, error) {
 	s := make(RawStep)
 
 	// If it was just a string, make a RawStep with empty data

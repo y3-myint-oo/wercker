@@ -16,8 +16,8 @@ function integration_tests() {
     --keen-project-write-key $keenProjectWriteKey \
     --keen-project-id $keenProjectId \
     build tests/projects/pass \
-    || return 1 \
-    return 0
+    || return 1
+  return 0
 }
 
 if [ -z "$1" ]; then
