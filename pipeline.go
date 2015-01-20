@@ -44,8 +44,10 @@ func (pr *PipelineResult) ExportEnvironment(sess *Session) error {
 		result = "passed"
 	}
 	e.Add("WERCKER_RESULT", result)
-	e.Add("WERCKER_FAILED_STEP_DISPLAY_NAME", pr.FailedStepName)
-	e.Add("WERCKER_FAILED_STEP_MESSAGE", pr.FailedStepMessage)
+	if !pr.Success {
+		e.Add("WERCKER_FAILED_STEP_DISPLAY_NAME", pr.FailedStepName)
+		e.Add("WERCKER_FAILED_STEP_MESSAGE", pr.FailedStepMessage)
+	}
 
 	exit, _, err := sess.SendChecked(e.Export()...)
 	if err != nil {
