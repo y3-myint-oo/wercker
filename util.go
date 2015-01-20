@@ -133,11 +133,10 @@ func askForConfirmation() bool {
 	if err != nil {
 		log.Fatal(err)
 	}
-	yesResponses := []string{"y", "Y", "yes", "Yes", "YES"}
-	noResponses := []string{"n", "N", "no", "No", "NO"}
-	if containsString(yesResponses, response) {
+	response = strings.ToLower(response)
+	if len(response) > 0 && response[0] == []byte("y")[0] {
 		return true
-	} else if containsString(noResponses, response) {
+	} else if len(response) > 0 && response[0] == []byte("n")[0] {
 		return false
 	} else {
 		log.Println("Please type yes or no and then press enter:")
