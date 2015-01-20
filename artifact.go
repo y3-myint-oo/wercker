@@ -33,6 +33,7 @@ type Artifact struct {
 	BuildID       string
 	DeployID      string
 	BuildStepID   string
+	Bucket        string
 }
 
 var (
@@ -43,6 +44,11 @@ var (
 // NewArtificer returns an Artificer
 func NewArtificer(options *GlobalOptions) *Artificer {
 	return &Artificer{options: options}
+}
+
+// URL returns the artifact's S3 url
+func (art *Artifact) URL() string {
+	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", art.Bucket, art.RemotePath())
 }
 
 // RemotePath returns the S3 path for an artifact

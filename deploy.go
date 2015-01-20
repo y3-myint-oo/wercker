@@ -92,6 +92,7 @@ func (d *Deploy) CollectArtifact(sess *Session) (*Artifact, error) {
 		HostPath:      d.options.HostPath("build.tar"),
 		ApplicationID: d.options.ApplicationID,
 		DeployID:      d.options.DeployID,
+		Bucket:        d.options.S3Bucket,
 	}
 
 	sourceArtifact := &Artifact{
@@ -100,6 +101,7 @@ func (d *Deploy) CollectArtifact(sess *Session) (*Artifact, error) {
 		HostPath:      d.options.HostPath("build.tar"),
 		ApplicationID: d.options.ApplicationID,
 		DeployID:      d.options.DeployID,
+		Bucket:        d.options.S3Bucket,
 	}
 
 	// Get the output dir, if it is empty grab the source dir.

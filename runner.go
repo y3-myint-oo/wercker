@@ -265,12 +265,19 @@ func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher 
 	})
 	return NewFinisher(func(result interface{}) {
 		r := result.(*StepResult)
+		// Code for @hatchan when he implements reporter stuff
+		// artifactURL := ""
+		// if r.Artifact != nil {
+		//   artifactURL = r.Artifact.URL()
+		// }
 		p.emitter.Emit(BuildStepFinished, &BuildStepFinishedArgs{
 			Build:      ctx.pipeline,
 			Options:    p.options,
 			Step:       step,
 			Order:      order,
 			Successful: r.Success,
+			//Message: r.Message,
+			//ArtifactURL: artifactURL,
 		})
 	})
 }
