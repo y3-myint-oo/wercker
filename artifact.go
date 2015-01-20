@@ -48,7 +48,7 @@ func NewArtificer(options *GlobalOptions) *Artificer {
 
 // URL returns the artifact's S3 url
 func (art *Artifact) URL() string {
-	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", art.Bucket, art.RemotePath())
+	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s", art.Bucket, art.RemotePath())
 }
 
 // RemotePath returns the S3 path for an artifact
