@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -122,4 +123,40 @@ func (f *Finisher) Finish(result bool) {
 	}
 	f.isFinished = true
 	f.callback(result)
+}
+
+// Retrieving user input utility functions
+
+func askForConfirmation() bool {
+	var response string
+	_, err := fmt.Scanln(&response)
+	if err != nil {
+		log.Fatal(err)
+	}
+	yesResponses := []string{"y", "Y", "yes", "Yes", "YES"}
+	noResponses := []string{"n", "N", "no", "No", "NO"}
+	if containsString(yesResponses, response) {
+		return true
+	} else if containsString(noResponses, response) {
+		return false
+	} else {
+		log.Println("Please type yes or no and then press enter:")
+		return askForConfirmation()
+	}
+}
+
+// posString returns the first index of element in slice.
+// If slice does not contain element, returns -1.
+func posString(slice []string, element string) int {
+	for index, elem := range slice {
+		if elem == element {
+			return index
+		}
+	}
+	return -1
+}
+
+// containsString returns true iff slice contains element
+func containsString(slice []string, element string) bool {
+	return !(posString(slice, element) == -1)
 }
