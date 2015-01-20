@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -122,4 +123,23 @@ func (f *Finisher) Finish(result bool) {
 	}
 	f.isFinished = true
 	f.callback(result)
+}
+
+// Retrieving user input utility functions
+
+func askForConfirmation() bool {
+	var response string
+	_, err := fmt.Scanln(&response)
+	if err != nil {
+		log.Fatal(err)
+	}
+	response = strings.ToLower(response)
+	if len(response) > 0 && strings.HasPrefix(response, "y") {
+		return true
+	} else if len(response) > 0 && strings.HasPrefix(response, "n") {
+		return false
+	} else {
+		log.Println("Please type yes or no and then press enter:")
+		return askForConfirmation()
+	}
 }

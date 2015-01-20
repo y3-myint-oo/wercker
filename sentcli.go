@@ -412,6 +412,15 @@ outer:
 
 // TODO(mies): maybe move to util.go at some point
 func getYml(detected string, options *GlobalOptions) {
+
+	yml := "wercker.yml"
+	if _, err := os.Stat(yml); err == nil {
+		log.Println(yml, "already exists. Do you want to overwrite? (yes/no)")
+		if !askForConfirmation() {
+			log.Println("Exiting...")
+			os.Exit(1)
+		}
+	}
 	url := fmt.Sprintf("%s/yml/%s", options.WerckerEndpoint, detected)
 	res, err := http.Get(url)
 	if err != nil {
@@ -429,4 +438,5 @@ func getYml(detected string, options *GlobalOptions) {
 	if err != nil {
 		log.WithField("Error", err).Error("Unable to write wercker.yml file")
 	}
+
 }
