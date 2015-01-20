@@ -82,6 +82,15 @@ func main() {
 			Flags: []cli.Flag{},
 		},
 		{
+			Name:      "login",
+			ShortName: "l",
+			Usage:     "log into wercker",
+			Action: func(c *cli.Context) {
+				login(c)
+			},
+			Flags: []cli.Flag{},
+		},
+		{
 			Name:      "version",
 			ShortName: "v",
 			Usage:     "display version information",
@@ -485,4 +494,22 @@ func getYml(detected string, options *GlobalOptions) {
 		log.WithField("Error", err).Error("Unable to write wercker.yml file")
 	}
 
+}
+
+func login(c *cli.Context) {
+	// Parse CLI and local env
+	options, err := NewGlobalOptions(c, os.Environ())
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	soft := &SoftExit{options}
+
+	log.Println("########### Logging into wercker! #############")
+	url := fmt.Sprintf("%s/api/1.0/%s", options.BaseURL, "oauth/basicauthaccesstoken")
+	err = performLogin(url)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to log into wercker")
+		soft.Exit(err)
+	}
 }

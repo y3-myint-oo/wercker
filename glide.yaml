@@ -42,3 +42,4 @@ import:
   - package: github.com/joho/godotenv
     ref:     ead2e75
     vcs:     git
+  - package: github.com/docker/docker/pkg/term
