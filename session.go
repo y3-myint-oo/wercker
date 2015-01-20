@@ -50,7 +50,7 @@ func (s *Sender) Read(p []byte) (int, error) {
 type Session struct {
 	options     *GlobalOptions
 	e           *emission.Emitter
-	client      *docker.Client
+	client      *DockerClient
 	ContainerID string
 	logsHidden  bool
 	send        chan string
