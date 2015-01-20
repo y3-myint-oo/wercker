@@ -134,9 +134,9 @@ func askForConfirmation() bool {
 		log.Fatal(err)
 	}
 	response = strings.ToLower(response)
-	if len(response) > 0 && response[0] == []byte("y")[0] {
+	if len(response) > 0 && strings.HasPrefix(response, "y") {
 		return true
-	} else if len(response) > 0 && response[0] == []byte("n")[0] {
+	} else if len(response) > 0 && strings.HasPrefix(response, "n") {
 		return false
 	} else {
 		log.Println("Please type yes or no and then press enter:")
