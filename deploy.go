@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-// Build is our basic wrapper for Build operations
+// Deploy is our basic wrapper for Deploy operations
 type Deploy struct {
 	*BasePipeline
 	options *GlobalOptions
@@ -57,10 +57,12 @@ func (d *Deploy) InitEnv() {
 	env.Update(d.PassthruEnv())
 }
 
+// DockerRepo returns the name where we might store this in docker
 func (d *Deploy) DockerRepo() string {
 	return fmt.Sprintf("%s/%s", d.options.ApplicationOwnerName, d.options.ApplicationName)
 }
 
+// DockerTag returns the tag where we might store this in docker
 func (d *Deploy) DockerTag() string {
 	tag := d.options.Tag
 	if tag == "" {
@@ -69,6 +71,7 @@ func (d *Deploy) DockerTag() string {
 	return tag
 }
 
+// DockerMessage returns the message to store this with in docker
 func (d *Deploy) DockerMessage() string {
 	message := d.options.Message
 	if message == "" {

@@ -37,6 +37,7 @@ type PipelineResult struct {
 	FailedStepMessage string
 }
 
+// ExportEnvironment for this pipeline result (used in after-steps)
 func (pr *PipelineResult) ExportEnvironment(sess *Session) error {
 	e := &Environment{}
 	result := "failed"
@@ -77,6 +78,7 @@ func (p *BasePipeline) Steps() []*Step {
 	return p.steps
 }
 
+// AfterSteps is a getter for afterSteps
 func (p *BasePipeline) AfterSteps() []*Step {
 	return p.afterSteps
 }

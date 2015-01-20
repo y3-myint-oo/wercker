@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/termie/go-shutil"
+	"io"
+
 	"gopkg.in/yaml.v1"
 	"io/ioutil"
 	"os"
@@ -74,7 +77,7 @@ type Step struct {
 	stepConfig  *StepConfig
 }
 
-// toStep normalizes a step to a RawStep then calls ToStep on that
+// ExtraRawStepsToSteps normalizes steps to RawSteps then calls ToStep on them
 func ExtraRawStepsToSteps(raws []interface{}, options *GlobalOptions) ([]*Step, error) {
 	steps := []*Step{}
 	for _, raw := range raws {
@@ -345,6 +348,34 @@ func (s *Step) Execute(sess *Session) (int, error) {
 	}
 
 	return 0, nil
+}
+
+// CollectFile gets an individual file from the container
+func (s *Step) CollectFile(sess *Session, path, name string, dst io.Writer) error {
+	client, err := NewDockerClient(s.options)
+	if err != nil {
+		return err
+	}
+
+	pipeReader, pipeWriter := io.Pipe()
+	opts := docker.CopyFromContainerOptions{
+		OutputStream: pipeWriter,
+		Container:    sess.ContainerID,
+		Resource:     filepath.Join(path, name),
+	}
+
+	errs := make(chan error)
+	go func() {
+		defer close(errs)
+		errs <- untarOne(name, dst, pipeReader)
+	}()
+
+	if err = client.CopyFromContainer(opts); err != nil {
+		log.Debugln(err)
+		return ErrEmptyTarball
+	}
+
+	return <-errs
 }
 
 // CollectArtifact copies the artifacts associated with the Step.

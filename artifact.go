@@ -63,7 +63,7 @@ func (art *Artifact) RemotePath() string {
 // Collect an artifact from the container, if it doesn't have any files in
 // the tarball return ErrEmptyTarball
 func (a *Artificer) Collect(artifact *Artifact) (*Artifact, error) {
-	client, _ := docker.NewClient(a.options.DockerHost)
+	client, _ := NewDockerClient(a.options)
 
 	if err := os.MkdirAll(filepath.Dir(artifact.HostPath), 0755); err != nil {
 		return nil, err
