@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"code.google.com/p/go-uuid/uuid"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -262,22 +263,25 @@ func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher 
 		Step:    step,
 		Order:   order,
 	})
-	return NewFinisher(func(result bool) {
+	return NewFinisher(func(result interface{}) {
+		r := result.(*StepResult)
 		p.emitter.Emit(BuildStepFinished, &BuildStepFinishedArgs{
 			Build:      ctx.pipeline,
 			Options:    p.options,
 			Step:       step,
 			Order:      order,
-			Successful: result,
+			Successful: r.Success,
 		})
 	})
 }
 
+// StartBuild emits a BuildStarted and returns for a Finisher for the end.
 func (p *Runner) StartBuild(options *GlobalOptions) *Finisher {
 	p.emitter.Emit(BuildStarted, &BuildStartedArgs{Options: options})
-	return NewFinisher(func(result bool) {
+	return NewFinisher(func(result interface{}) {
+		r := result.(bool)
 		msg := "failed"
-		if result {
+		if r {
 			msg = "passed"
 		}
 		p.emitter.Emit(BuildFinished, &BuildFinishedArgs{
@@ -293,9 +297,16 @@ func (p *Runner) StartBuild(options *GlobalOptions) *Finisher {
 func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	ctx := &RunnerContext{}
 
+	sr := &StepResult{
+		Success:  false,
+		Artifact: nil,
+		Message:  "",
+		ExitCode: 1,
+	}
+
 	setupEnvironmentStep := &Step{Name: "setup environment"}
 	finisher := p.StartStep(ctx, setupEnvironmentStep, 2)
-	defer finisher.Finish(false)
+	defer finisher.Finish(sr)
 
 	log.Println("Application:", p.options.ApplicationName)
 
@@ -386,14 +397,29 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 		return ctx, err
 	}
 
-	finisher.Finish(true)
+	sr.Success = true
+	sr.ExitCode = 0
 	return ctx, nil
 }
 
+// StepResult holds the info we need to report on steps
+type StepResult struct {
+	Success  bool
+	Artifact *Artifact
+	Message  string
+	ExitCode int
+}
+
 // RunStep runs a step and tosses error if it fails
-func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) error {
+func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) (*StepResult, error) {
 	finisher := p.StartStep(ctx, step, order)
-	defer finisher.Finish(false)
+	sr := &StepResult{
+		Success:  false,
+		Artifact: nil,
+		Message:  "",
+		ExitCode: 1,
+	}
+	defer finisher.Finish(sr)
 
 	step.InitEnv()
 	log.Println("Step Environment")
@@ -403,26 +429,43 @@ func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) error {
 
 	exit, err := step.Execute(ctx.sess)
 	if exit != 0 {
-		return fmt.Errorf("Build failed with exit code: %d", exit)
+		sr.ExitCode = exit
+	} else if err != nil {
+		return sr, err
+	} else {
+		sr.Success = true
+		sr.ExitCode = 0
 	}
+
+	// Grab the message
+	var message bytes.Buffer
+	err = step.CollectFile(ctx.sess, step.ReportPath(), "message.txt", &message)
 	if err != nil {
-		return err
+		if err != ErrEmptyTarball {
+			return sr, err
+		}
 	}
+	sr.Message = message.String()
+
+	// Grab artifacts if we want them
 	if p.options.ShouldArtifacts {
 		artifact, err := step.CollectArtifact(ctx.sess)
 		if err != nil {
-			return err
+			return sr, err
 		}
 
 		if artifact != nil {
 			artificer := NewArtificer(p.options)
 			err = artificer.Upload(artifact)
 			if err != nil {
-				return err
+				return sr, err
 			}
 		}
+		sr.Artifact = artifact
 	}
 
-	finisher.Finish(true)
-	return nil
+	if !sr.Success {
+		return sr, fmt.Errorf("Step failed with exit code: %d", sr.ExitCode)
+	}
+	return sr, nil
 }

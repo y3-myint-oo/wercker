@@ -5,7 +5,9 @@ build:
   steps:
     - script:
         name: "i am a display name"
-        code: "false"
+        code: |-
+          echo "i am the message for a fail" > $WERCKER_REPORT_MESSAGE_FILE
+          "false"
   after-steps:
     - script:
         code: |-

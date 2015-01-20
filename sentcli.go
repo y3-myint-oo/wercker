@@ -186,12 +186,11 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
-		err = p.RunStep(ctx, step, offset+i)
-
+		sr, err := p.RunStep(ctx, step, offset+i)
 		if err != nil {
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName
-			pr.FailedStepMessage = ""
+			pr.FailedStepMessage = sr.Message
 			log.Warnln("============== Step failed! ===============")
 			break
 		}
@@ -208,8 +207,14 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 
 	if options.ShouldPush {
 		err = func() error {
+			sr := &StepResult{
+				Success:  false,
+				Artifact: nil,
+				Message:  "",
+				ExitCode: 1,
+			}
 			finisher := p.StartStep(ctx, storeStep, storeStepOrder)
-			defer finisher.Finish(false)
+			defer finisher.Finish(sr)
 
 			pushOptions := &PushOptions{
 				Registry: options.Registry,
@@ -222,7 +227,8 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 			if err != nil {
 				return err
 			}
-			finisher.Finish(true)
+			sr.Success = true
+			sr.ExitCode = 0
 			return nil
 		}()
 
@@ -306,8 +312,7 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
-		err = p.RunStep(newCtx, step, offset+i)
-
+		_, err := p.RunStep(newCtx, step, offset+i)
 		if err != nil {
 			log.Warnln("=========== After Step failed! ============")
 			break

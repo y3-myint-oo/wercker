@@ -39,6 +39,37 @@ func fetchTarball(url string) (*http.Response, error) {
 	return resp, nil
 }
 
+// Write the contents up a single file to dst
+func untarOne(name string, dst io.Writer, src io.ReadCloser) error {
+	// ungzipped, err := gzip.NewReader(src)
+	// if err != nil {
+	//   return err
+	// }
+	tarball := tar.NewReader(src)
+	defer src.Close()
+	// defer tarball.Close()
+
+	for {
+		hdr, err := tarball.Next()
+		if err == io.EOF {
+			// finished the tar
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if hdr.Name != name {
+			continue
+		}
+
+		// We found the file we care about
+		_, err = io.Copy(dst, tarball)
+		break
+	}
+	return nil
+}
+
 // untargzip tries to untar-gzip stuff to a path
 func untargzip(path string, r io.Reader) error {
 	ungzipped, err := gzip.NewReader(r)
@@ -107,17 +138,17 @@ func untargzip(path string, r io.Reader) error {
 // Finisher is a helper class for running something either right away or
 // at `defer` time.
 type Finisher struct {
-	callback   func(bool)
+	callback   func(interface{})
 	isFinished bool
 }
 
 // NewFinisher returns a new Finisher with a callback.
-func NewFinisher(callback func(bool)) *Finisher {
+func NewFinisher(callback func(interface{})) *Finisher {
 	return &Finisher{callback: callback, isFinished: false}
 }
 
 // Finish executes the callback if it hasn't been run yet.
-func (f *Finisher) Finish(result bool) {
+func (f *Finisher) Finish(result interface{}) {
 	if f.isFinished {
 		return
 	}
