@@ -29,12 +29,14 @@ func (p *RawPipeline) ToBuild(options *GlobalOptions) (*Build, error) {
 	steps = append(steps, realSteps...)
 
 	// For after steps we again need werker-init
-	afterSteps = append(afterSteps, initStep)
 	realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps, options)
 	if err != nil {
 		return nil, err
 	}
-	afterSteps = append(afterSteps, realAfterSteps...)
+	if len(realAfterSteps) > 0 {
+		afterSteps = append(afterSteps, initStep)
+		afterSteps = append(afterSteps, realAfterSteps...)
+	}
 
 	build := &Build{NewBasePipeline(options, steps, afterSteps), options}
 	build.InitEnv()
