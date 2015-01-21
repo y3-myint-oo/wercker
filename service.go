@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
+	"os"
 	"strings"
 )
 
@@ -41,6 +43,31 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 
 	b.client.StartContainer(container.ID, &docker.HostConfig{})
 	b.container = container
+
+	go func() {
+		status, err := b.client.WaitContainer(container.ID)
+		if err != nil {
+			log.Errorln("Error waiting", err)
+		}
+		log.Debugln("Service container finished with status code:", status, container.ID)
+
+		if status != 0 {
+			// recv := make(chan string)
+			// outputStream := NewReceiver(recv)
+			opts := docker.LogsOptions{
+				Container:    container.ID,
+				Stdout:       true,
+				Stderr:       true,
+				ErrorStream:  os.Stderr,
+				OutputStream: os.Stdout,
+				RawTerminal:  false,
+			}
+			err = b.client.Logs(opts)
+			if err != nil {
+				log.Panicln(err)
+			}
+		}
+	}()
 
 	return container, nil
 }

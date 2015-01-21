@@ -88,6 +88,7 @@ func (s *Session) Attach() error {
 		Stdout:       true,
 		Stderr:       true,
 		Stream:       true,
+		Logs:         true,
 		Success:      started,
 		InputStream:  inputStream,
 		ErrorStream:  outputStream,
@@ -100,7 +101,7 @@ func (s *Session) Attach() error {
 		if err != nil {
 			log.Errorln("Error waiting", err)
 		}
-		log.Debugln("Container finished with status code:", status)
+		log.Debugln("Container finished with status code:", status, s.ContainerID)
 		s.exit <- status
 		close(s.exit)
 	}()
@@ -174,6 +175,7 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 			select {
 			case myline, ok := <-s.recv:
 				if !ok {
+					log.Errorln("Got !ok on s.recv")
 					return 1, recv, nil
 				}
 				line = myline
