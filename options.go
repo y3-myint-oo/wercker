@@ -311,7 +311,7 @@ func dumpOptions(options *GlobalOptions) {
 	for _, name := range names {
 		r := reflect.ValueOf(options)
 		f := reflect.Indirect(r).FieldByName(name)
-		log.Debugln(fmt.Sprintf("%s %s = %v", name, f.Type(), f.Interface()))
+		log.Debugln(fmt.Sprintf("  %s %s = %v", name, f.Type(), f.Interface()))
 	}
 }
 
