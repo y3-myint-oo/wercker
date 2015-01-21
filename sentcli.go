@@ -158,6 +158,9 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 
 	ctx, err := p.SetupEnvironment()
 	if ctx.box != nil {
+		if options.ShouldRemove {
+			defer ctx.box.Clean()
+		}
 		defer ctx.box.Stop()
 	}
 	if err != nil {

@@ -59,6 +59,7 @@ var (
 	// These flags affect our artifact interactions
 	artifactFlags = []cli.Flag{
 		cli.BoolFlag{Name: "no-artifacts", Usage: "don't upload artifacts"},
+		cli.BoolFlag{Name: "no-remove", Usage: "don't remove the containers"},
 	}
 
 	// These flags affect our local execution environment
@@ -199,6 +200,7 @@ type GlobalOptions struct {
 	Message      string
 
 	ShouldArtifacts bool
+	ShouldRemove    bool
 
 	ShouldReport bool
 	WerckerHost  string
@@ -438,6 +440,7 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		ShouldCommit:             c.GlobalBool("commit"),
 		ShouldKeenMetrics:        keenMetrics,
 		ShouldArtifacts:          !c.GlobalBool("no-artifacts"),
+		ShouldRemove:             !c.GlobalBool("no-remove"),
 		KeenProjectWriteKey:      keenProjectWriteKey,
 		KeenProjectID:            keenProjectID,
 		Tag:                      tag,

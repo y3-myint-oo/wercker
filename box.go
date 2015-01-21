@@ -145,6 +145,30 @@ func (b *Box) Run() (*docker.Container, error) {
 	return container, nil
 }
 
+// Clean up the containers
+func (b *Box) Clean() error {
+	containers := []string{b.container.ID}
+	for _, service := range b.services {
+		containers = append(containers, service.container.ID)
+	}
+
+	for _, container := range containers {
+		opts := docker.RemoveContainerOptions{
+			ID: container,
+			// God, if you exist, thank you for removing these containers,
+			// that their biological and cultural diversity is not added
+			// to our own but is expunged from us with fiery vengeance.
+			RemoveVolumes: true,
+			Force:         true,
+		}
+		err := b.client.RemoveContainer(opts)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Restart stops and starts the box
 func (b *Box) Restart() (*docker.Container, error) {
 	err := b.client.RestartContainer(b.container.ID, 1)
