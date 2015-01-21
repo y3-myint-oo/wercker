@@ -15,6 +15,7 @@ import (
 // Box is our wrapper for Box operations
 type Box struct {
 	Name            string
+	ShortName       string
 	networkDisabled bool
 	services        []*ServiceBox
 	options         *GlobalOptions
@@ -43,6 +44,12 @@ func NewBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*Box, 
 	repository := parts[0]
 	tag := "latest"
 
+	repoParts := strings.Split(repository, "/")
+	shortName := repository
+	if len(repoParts) > 1 {
+		shortName = repoParts[len(repoParts)-1]
+	}
+
 	if len(parts) > 1 {
 		tag = parts[1]
 	}
@@ -60,6 +67,7 @@ func NewBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*Box, 
 	return &Box{
 		client:          client,
 		Name:            name,
+		ShortName:       shortName,
 		options:         options,
 		repository:      repository,
 		tag:             tag,
@@ -71,7 +79,7 @@ func (b *Box) links() []string {
 	serviceLinks := []string{}
 
 	for _, service := range b.services {
-		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", service.container.Name, service.Name))
+		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", service.container.Name, service.ShortName))
 	}
 	log.Println("Creating links: ", serviceLinks)
 	return serviceLinks
