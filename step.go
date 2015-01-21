@@ -392,6 +392,7 @@ func (s *Step) CollectArtifact(sess *Session) (*Artifact, error) {
 		BuildID:       s.options.BuildID,
 		DeployID:      s.options.DeployID,
 		BuildStepID:   s.SafeID,
+		Bucket:        s.options.S3Bucket,
 	}
 
 	fullArtifact, err := artificer.Collect(artifact)
