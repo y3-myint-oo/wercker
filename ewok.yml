@@ -2,7 +2,7 @@ box: golang
 build:
   steps:
     - add-ssh-key:
-      keyname: REPORTER_KEY
+        keyname: REPORTER_KEY
     - termie/glide-build
     - script:
         name: go vet
