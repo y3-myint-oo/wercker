@@ -18,7 +18,7 @@ type Box struct {
 	networkDisabled bool
 	services        []*ServiceBox
 	options         *GlobalOptions
-	client          *docker.Client
+	client          *DockerClient
 	container       *docker.Container
 	repository      string
 	tag             string

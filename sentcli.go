@@ -61,6 +61,18 @@ func main() {
 			Flags: []cli.Flag{},
 		},
 		{
+			Name:      "inspect",
+			ShortName: "i",
+			Usage:     "inspect a recent container",
+			Action: func(c *cli.Context) {
+				err := inspect(c)
+				if err != nil {
+					log.Panicln(err)
+				}
+			},
+			Flags: []cli.Flag{},
+		},
+		{
 			Name:      "detect",
 			ShortName: "de",
 			Usage:     "detect the type of project",
@@ -356,6 +368,26 @@ func displayVersion(options *VersionOptions) {
 
 	os.Stdout.WriteString("\n")
 
+}
+
+func inspect(c *cli.Context) error {
+	// Parse CLI and local env
+	options, err := NewGlobalOptions(c, os.Environ())
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	// soft := &SoftExit{options}
+
+	repoName := fmt.Sprintf("%s/%s", options.ApplicationOwnerName, options.ApplicationName)
+	tag := options.Tag
+
+	client, err := NewDockerClient(options)
+	if err != nil {
+		return err
+	}
+
+	return client.RunAndAttach(fmt.Sprintf("%s:%s", repoName, tag))
 }
 
 // detectProject inspects the the current directory that sentcli is running in
