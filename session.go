@@ -69,6 +69,7 @@ func NewSession(options *GlobalOptions, containerID string) (*Session, error) {
 
 // Attach us to our container and set up read and write queues
 func (s *Session) Attach() error {
+	log.Debugln("Attaching to container: ", s.ContainerID)
 	started := make(chan struct{})
 
 	recv := make(chan string)
@@ -97,16 +98,6 @@ func (s *Session) Attach() error {
 	}
 
 	go func() {
-		status, err := s.client.WaitContainer(s.ContainerID)
-		if err != nil {
-			log.Errorln("Error waiting", err)
-		}
-		log.Debugln("Container finished with status code:", status, s.ContainerID)
-		s.exit <- status
-		close(s.exit)
-	}()
-
-	go func() {
 		err := s.client.AttachToContainer(opts)
 		if err != nil {
 			log.Panicln(err)
@@ -115,6 +106,15 @@ func (s *Session) Attach() error {
 
 	// Wait for attach
 	<-started
+	go func() {
+		status, err := s.client.WaitContainer(s.ContainerID)
+		if err != nil {
+			log.Errorln("Error waiting", err)
+		}
+		log.Warnln("Container finished with status code:", status, s.ContainerID)
+		s.exit <- status
+		close(s.exit)
+	}()
 	started <- struct{}{}
 	return nil
 }
