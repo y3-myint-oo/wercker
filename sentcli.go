@@ -284,8 +284,12 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 	}
 
 	// We're sending our build finished but we're not done yet,
-	// now is time to run after-steps
+	// now is time to run after-steps if we have any
 	buildFinisher.Finish(pr.Success)
+
+	if len(pipeline.AfterSteps()) == 0 {
+		return nil
+	}
 
 	log.Println("########## Starting After Steps ###########")
 	// The container may have died, either way we'll have a fresh env

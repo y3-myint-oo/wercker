@@ -29,10 +29,13 @@ func (p *RawPipeline) ToDeploy(options *GlobalOptions) (*Deploy, error) {
 	steps = append(steps, realSteps...)
 
 	// For after steps we again need werker-init
-	afterSteps = append(afterSteps, initStep)
 	realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps, options)
 	if err != nil {
 		return nil, err
+	}
+	if len(realAfterSteps) > 0 {
+		afterSteps = append(afterSteps, initStep)
+		afterSteps = append(afterSteps, realAfterSteps...)
 	}
 	afterSteps = append(afterSteps, realAfterSteps...)
 
