@@ -37,7 +37,6 @@ func (p *RawPipeline) ToDeploy(options *GlobalOptions) (*Deploy, error) {
 		afterSteps = append(afterSteps, initStep)
 		afterSteps = append(afterSteps, realAfterSteps...)
 	}
-	afterSteps = append(afterSteps, realAfterSteps...)
 
 	deploy := &Deploy{NewBasePipeline(options, steps, afterSteps), options}
 	deploy.InitEnv()
