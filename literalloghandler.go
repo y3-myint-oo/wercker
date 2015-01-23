@@ -11,7 +11,11 @@ import (
 func NewLiteralLogHandler(options *GlobalOptions) (*LiteralLogHandler, error) {
 	logger := log.New()
 
-	logger.Formatter = &reporter.LiteralFormatter{}
+	if options.Debug {
+		logger.Formatter = new(log.TextFormatter)
+	} else {
+		logger.Formatter = &reporter.LiteralFormatter{}
+	}
 	logger.Level = log.InfoLevel
 
 	return &LiteralLogHandler{l: logger, options: options}, nil
@@ -31,7 +35,7 @@ func (h *LiteralLogHandler) Logs(args *LogsArgs) {
 		if args.Hidden {
 			shown = "[ ] "
 		}
-		h.l.Print(shown, streamInfo, fmt.Sprintf("%q", args.Logs), "\n")
+		h.l.Print(shown, streamInfo, fmt.Sprintf("%q", args.Logs))
 	} else if !args.Hidden {
 		h.l.Print(args.Logs)
 	}

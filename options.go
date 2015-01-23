@@ -66,6 +66,7 @@ var (
 	devFlags = []cli.Flag{
 		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "specify additional environment variables in a file"},
 		cli.BoolFlag{Name: "debug", Usage: "print additional debug information"},
+		cli.BoolFlag{Name: "direct-mount", Usage: "mount our binds read-write to the pipeline path"},
 	}
 
 	// AWS bits
@@ -207,7 +208,8 @@ type GlobalOptions struct {
 	WerckerToken string
 
 	// Show stack traces on exit?
-	Debug bool
+	Debug       bool
+	DirectMount bool
 }
 
 // Some logic to guess the application name
@@ -449,6 +451,7 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		WerckerHost:              werckerHost,
 		WerckerToken:             werckerToken,
 		Debug:                    c.GlobalBool("debug"),
+		DirectMount:              c.GlobalBool("direct-mount"),
 	}, nil
 }
 

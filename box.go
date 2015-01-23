@@ -97,7 +97,14 @@ func (b *Box) binds() ([]string, error) {
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
-			binds = append(binds, fmt.Sprintf("%s:%s:ro", b.options.HostPath(entry.Name()), b.options.MntPath(entry.Name())))
+
+			// For local dev we can mount read-write and avoid a copy, so we'll mount
+			// directly in the pipeline path
+			if b.options.DirectMount {
+				binds = append(binds, fmt.Sprintf("%s:%s:rw", b.options.HostPath(entry.Name()), b.options.GuestPath(entry.Name())))
+			} else {
+				binds = append(binds, fmt.Sprintf("%s:%s:ro", b.options.HostPath(entry.Name()), b.options.MntPath(entry.Name())))
+			}
 			// volumes[b.options.MntPath(entry.Name())] = struct{}{}
 		}
 	}
@@ -107,6 +114,7 @@ func (b *Box) binds() ([]string, error) {
 // RunServices runs the services associated with this box
 func (b *Box) RunServices() error {
 	for _, serviceBox := range b.services {
+		log.Debugln("Starting service:", serviceBox.Name)
 		_, err := serviceBox.Run()
 		if err != nil {
 			return err
@@ -117,6 +125,7 @@ func (b *Box) RunServices() error {
 
 // Run creates the container and runs it.
 func (b *Box) Run() (*docker.Container, error) {
+	log.Debugln("Starting base box:", b.Name)
 	// Make and start the container
 	containerName := "wercker-pipeline-" + b.options.PipelineID
 	container, err := b.client.CreateContainer(

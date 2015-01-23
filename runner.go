@@ -336,6 +336,7 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	}
 
 	// Start setting up the pipeline dir
+	log.Debugln("Copying source to build directory")
 	err = p.CopySource()
 	if err != nil {
 		return ctx, err
@@ -384,6 +385,7 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 		}
 	}()
 
+	log.Debugln("Attaching session to base box")
 	// Start our session
 	sess, err := p.GetSession(container.ID)
 	if err != nil {
@@ -394,6 +396,7 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	// Some helpful logging
 	pipeline.LogEnvironment()
 
+	log.Debugln("Setting up guest (base box)")
 	err = pipeline.SetupGuest(sess)
 	if err != nil {
 		return ctx, err
