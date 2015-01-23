@@ -246,7 +246,7 @@ func (s *Step) Fetch() (string, error) {
 		return s.FetchScript()
 	}
 
-	stepPath := filepath.Join(s.options.StepDir, s.SafeID)
+	stepPath := filepath.Join(s.options.StepDir, s.CachedName())
 	stepExists, err := exists(stepPath)
 	if err != nil {
 		return "", err
@@ -443,6 +443,15 @@ func (s *Step) InitEnv() {
 		key = strings.ToUpper(key)
 		s.Env.Add(key, value)
 	}
+}
+
+// CachedName returns a name suitable for caching
+func (s *Step) CachedName() string {
+	name := fmt.Sprintf("%s-%s", s.Owner, s.Name)
+	if s.Version != "*" {
+		name = fmt.Sprintf("%s@%s", name, s.Version)
+	}
+	return name
 }
 
 // HostPath returns a path relative to the Step on the host.
