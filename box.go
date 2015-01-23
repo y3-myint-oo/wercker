@@ -107,6 +107,7 @@ func (b *Box) binds() ([]string, error) {
 // RunServices runs the services associated with this box
 func (b *Box) RunServices() error {
 	for _, serviceBox := range b.services {
+		log.Debugln("Starting service:", serviceBox.Name)
 		_, err := serviceBox.Run()
 		if err != nil {
 			return err
@@ -117,6 +118,7 @@ func (b *Box) RunServices() error {
 
 // Run creates the container and runs it.
 func (b *Box) Run() (*docker.Container, error) {
+	log.Debugln("Starting base box:", b.Name)
 	// Make and start the container
 	containerName := "wercker-pipeline-" + b.options.PipelineID
 	container, err := b.client.CreateContainer(
