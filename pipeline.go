@@ -142,16 +142,25 @@ func (p *BasePipeline) SetupGuest(sess *Session) error {
 	sess.HideLogs()
 	defer sess.ShowLogs()
 
-	cmds := []string{
-		// Make sure our guest path exists
-		fmt.Sprintf(`mkdir "%s"`, p.options.GuestPath()),
-		// Make sure the output path exists
+	cmds := []string{}
+
+	// If we're running in direct-mount mode we mounted stuff read-write and
+	// won't need to copy
+	if !p.options.DirectMount {
+		cmds = append(cmds, []string{
+			// Make sure our guest path exists
+			fmt.Sprintf(`mkdir "%s"`, p.options.GuestPath()),
+			// Make sure the output path exists
+			// Copy the source from the mounted directory to the pipeline dir
+			fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("source"), p.options.GuestPath("source")),
+		}...)
+	}
+
+	cmds = append(cmds, []string{
 		fmt.Sprintf(`mkdir "%s"`, p.options.GuestPath("output")),
 		// Make sure the cachedir exists
 		fmt.Sprintf(`mkdir "%s"`, "/cache"),
-		// Copy the source from the mounted directory to the pipeline dir
-		fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("source"), p.options.GuestPath("source")),
-	}
+	}...)
 
 	for _, cmd := range cmds {
 		exit, _, err := sess.SendChecked(cmd)
