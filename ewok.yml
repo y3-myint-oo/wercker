@@ -20,7 +20,7 @@ build:
     - golint
 deploy:
   steps:
-    scipt:
-      name: fake deploy
-      code: |-
-        ls
+    - script:
+        name: fake deploy
+        code: |-
+            ls
