@@ -53,14 +53,14 @@ func (art *Artifact) URL() string {
 
 // RemotePath returns the S3 path for an artifact
 func (art *Artifact) RemotePath() string {
-	path := fmt.Sprintf("project-artifacts/project-%s", art.ApplicationID)
+	path := fmt.Sprintf("project-artifacts/%s", art.ApplicationID)
 	if art.DeployID != "" {
-		path = fmt.Sprintf("%s/deploys/deploy-%s", path, art.DeployID)
+		path = fmt.Sprintf("%s/deploy/%s", path, art.DeployID)
 	} else {
-		path = fmt.Sprintf("%s/builds/build-%s", path, art.BuildID)
+		path = fmt.Sprintf("%s/build/%s", path, art.BuildID)
 	}
 	if art.BuildStepID != "" {
-		path = fmt.Sprintf("%s/buildStep-%s", path, art.BuildStepID)
+		path = fmt.Sprintf("%s/step/%s", path, art.BuildStepID)
 	}
 	path = fmt.Sprintf("%s/%s", path, filepath.Base(art.HostPath))
 	return path
