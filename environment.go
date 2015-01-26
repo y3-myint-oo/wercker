@@ -61,16 +61,8 @@ func (e *Environment) Ordered() [][]string {
 }
 
 var mirroredEnv = [...]string{
-	"WERCKER_GIT_DOMAIN",
-	"WERCKER_GIT_OWNER",
-	"WERCKER_GIT_REPOSITORY",
-	"WERCKER_GIT_BRANCH",
-	"WERCKER_GIT_COMMIT",
 	"WERCKER_STARTED_BY",
 	"WERCKER_MAIN_PIPELINE_STARTED",
-	// "WERCKER_APPLICATION_ID",
-	// "WERCKER_APPLICATION_NAME",
-	// "WERCKER_APPLICATION_OWNER_NAME",
 }
 
 // Collect passthru variables from the project

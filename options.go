@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"os"
+	"os/exec"
 	"os/user"
 	"path"
 	"path/filepath"
@@ -46,6 +48,14 @@ var (
 		cli.StringFlag{Name: "application-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
 		cli.StringFlag{Name: "application-owner-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
 		cli.StringFlag{Name: "application-started-by-name", Value: "", Usage: "application started by", EnvVar: "WERCKER_APPLICATION_STARTED_BY_NAME"},
+	}
+
+	gitFlags = []cli.Flag{
+		cli.StringFlag{Name: "git-domain", Value: "", Usage: "git domain", EnvVar: "WERCKER_GIT_DOMAIN"},
+		cli.StringFlag{Name: "git-owner", Value: "", Usage: "git owner", EnvVar: "WERCKER_GIT_OWNER"},
+		cli.StringFlag{Name: "git-repository", Value: "", Usage: "git repository", EnvVar: "WERCKER_GIT_REPOSITORY"},
+		cli.StringFlag{Name: "git-branch", Value: "", Usage: "git branch", EnvVar: "WERCKER_GIT_BRANCH"},
+		cli.StringFlag{Name: "git-commit", Value: "", Usage: "git commit", EnvVar: "WERCKER_GIT_COMMIT"},
 	}
 
 	// These flags affect our registry interactions
@@ -103,6 +113,7 @@ var (
 		endpointFlags,
 		internalPathFlags,
 		werckerFlags,
+		gitFlags,
 		registryFlags,
 		artifactFlags,
 		devFlags,
@@ -183,6 +194,13 @@ type GlobalOptions struct {
 	// For fetching code
 	ProjectURL string
 
+	// Git bits
+	GitDomain     string
+	GitOwner      string
+	GitRepository string
+	GitBranch     string
+	GitCommit     string
+
 	// AWS Bits
 	AWSSecretAccessKey string
 	AWSAccessKeyID     string
@@ -252,6 +270,9 @@ func guessApplicationName(c *cli.Context, env *Environment) (string, error) {
 
 func guessTag(c *cli.Context, env *Environment) string {
 	tag := c.GlobalString("tag")
+	if tag == "" {
+		tag = guessGitBranch(c, env)
+	}
 	return tag
 }
 
@@ -296,6 +317,69 @@ func guessDeployID(c *cli.Context, env *Environment) string {
 		return id
 	}
 	return id
+}
+
+func guessGitRepository(c *cli.Context, env *Environment) string {
+	repository := c.GlobalString("git-repository")
+	if repository != "" {
+		return repository
+	}
+
+	repository, err := guessApplicationName(c, env)
+	if err != nil {
+		return ""
+	}
+	return repository
+}
+
+func guessGitOwner(c *cli.Context, env *Environment) string {
+	owner := c.GlobalString("git-owner")
+	if owner != "" {
+		return owner
+	}
+	return guessApplicationOwnerName(c, env)
+}
+
+func guessGitBranch(c *cli.Context, env *Environment) string {
+	branch := c.GlobalString("git-branch")
+	if branch != "" {
+		return branch
+	}
+
+	git, err := exec.LookPath("git")
+	if err != nil {
+		return ""
+	}
+
+	var out bytes.Buffer
+	cmd := exec.Command(git, "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return ""
+	}
+	return strings.Trim(out.String(), "\n")
+}
+
+func guessGitCommit(c *cli.Context, env *Environment) string {
+	commit := c.GlobalString("git-commit")
+	if commit != "" {
+		return commit
+	}
+
+	git, err := exec.LookPath("git")
+	if err != nil {
+		return ""
+	}
+
+	var out bytes.Buffer
+	cmd := exec.Command(git, "rev-parse", "HEAD")
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return ""
+	}
+	return strings.Trim(out.String(), "\n")
 }
 
 // dumpOptions prints out a sorted list of options
@@ -368,6 +452,13 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 	tag := guessTag(c, env)
 	message := guessMessage(c, env)
 
+	// Git bits
+	gitDomain := c.GlobalString("git-domain")
+	gitOwner := guessGitOwner(c, env)
+	gitRepository := guessGitRepository(c, env)
+	gitBranch := guessGitBranch(c, env)
+	gitCommit := guessGitCommit(c, env)
+
 	// AWS bits
 	awsSecretAccessKey := c.GlobalString("aws-secret-key")
 	awsAccessKeyID := c.GlobalString("aws-access-key")
@@ -433,6 +524,11 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		ReportRoot:               c.GlobalString("report-root"),
 		ProjectPath:              projectPath,
 		ProjectURL:               projectURL,
+		GitDomain:                gitDomain,
+		GitOwner:                 gitOwner,
+		GitRepository:            gitRepository,
+		GitBranch:                gitBranch,
+		GitCommit:                gitCommit,
 		AWSSecretAccessKey:       awsSecretAccessKey,
 		AWSAccessKeyID:           awsAccessKeyID,
 		S3Bucket:                 c.GlobalString("s3-bucket"),
