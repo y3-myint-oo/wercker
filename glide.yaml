@@ -31,7 +31,6 @@ import:
     ref:     586ef24
     vcs:     git
   - package: github.com/wercker/reporter
-    ref:     20aeeb8
     repo:    git@github.com:wercker/reporter
     vcs:     git
   - package: github.com/inconshreveable/go-keen

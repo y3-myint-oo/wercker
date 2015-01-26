@@ -66,7 +66,15 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 	h.currentOrder = -1
 	h.currentBuildID = ""
 
-	h.reporter.StepFinished(args.Options.BuildID, args.Step.Name, args.Order, args.Successful)
+	h.reporter.StepFinished(
+		args.Options.BuildID,
+		args.Step.Name,
+		args.Order,
+		args.Successful,
+		args.ArtifactURL,
+		args.PackageURL,
+		args.Message,
+	)
 }
 
 // BuildStepsAdded will handle the BuildStepsAdded event.

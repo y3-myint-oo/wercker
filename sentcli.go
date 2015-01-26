@@ -222,15 +222,6 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 
 	if options.ShouldPush {
 		err = func() error {
-			sr := &StepResult{
-				Success:  false,
-				Artifact: nil,
-				Message:  "",
-				ExitCode: 1,
-			}
-			finisher := p.StartStep(ctx, storeStep, storeStepOrder)
-			defer finisher.Finish(sr)
-
 			pushOptions := &PushOptions{
 				Registry: options.Registry,
 				Name:     repoName,
@@ -242,8 +233,6 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 			if err != nil {
 				return err
 			}
-			sr.Success = true
-			sr.ExitCode = 0
 			return nil
 		}()
 
@@ -260,6 +249,16 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 
 	if pr.Success && options.ShouldArtifacts {
 		err = func() error {
+			sr := &StepResult{
+				Success:    false,
+				Artifact:   nil,
+				Message:    "",
+				PackageURL: "",
+				ExitCode:   1,
+			}
+			finisher := p.StartStep(ctx, storeStep, storeStepOrder)
+			defer finisher.Finish(sr)
+
 			artifact, err := pipeline.CollectArtifact(sess)
 			if err != nil {
 				return err
@@ -270,6 +269,9 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 			if err != nil {
 				return err
 			}
+			sr.PackageURL = artifact.URL()
+			sr.Success = true
+			sr.ExitCode = 0
 			return nil
 		}()
 		if err != nil {
