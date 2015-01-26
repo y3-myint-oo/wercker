@@ -77,6 +77,7 @@ var (
 		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "specify additional environment variables in a file"},
 		cli.BoolFlag{Name: "debug", Usage: "print additional debug information"},
 		cli.BoolFlag{Name: "direct-mount", Usage: "mount our binds read-write to the pipeline path"},
+		cli.StringFlag{Name: "wercker-yml", Value: "", Usage: "specify a specific yaml file"},
 	}
 
 	// AWS bits
@@ -228,6 +229,9 @@ type GlobalOptions struct {
 	// Show stack traces on exit?
 	Debug       bool
 	DirectMount bool
+
+	// Override wercker.yml location
+	WerckerYml string
 }
 
 // Some logic to guess the application name
@@ -548,6 +552,7 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		WerckerToken:             werckerToken,
 		Debug:                    c.GlobalBool("debug"),
 		DirectMount:              c.GlobalBool("direct-mount"),
+		WerckerYml:               c.GlobalString("wercker-yml"),
 	}, nil
 }
 

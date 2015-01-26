@@ -7,6 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/termie/go-shutil"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -152,9 +153,18 @@ func (p *Runner) EnsureCode() (string, error) {
 // GetConfig parses and returns the wercker.yml file.
 func (p *Runner) GetConfig() (*RawConfig, string, error) {
 	// Return a []byte of the yaml we find or create.
-	werckerYaml, err := ReadWerckerYaml([]string{p.ProjectDir()}, false)
-	if err != nil {
-		return nil, "", err
+	var werckerYaml []byte
+	var err error
+	if p.options.WerckerYml != "" {
+		werckerYaml, err = ioutil.ReadFile(p.options.WerckerYml)
+		if err != nil {
+			return nil, "", err
+		}
+	} else {
+		werckerYaml, err = ReadWerckerYaml([]string{p.ProjectDir()}, false)
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
 	// Parse that bad boy.
