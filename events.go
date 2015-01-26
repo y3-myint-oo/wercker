@@ -73,12 +73,15 @@ type BuildStepStartedArgs struct {
 // BuildStepFinishedArgs contains the args associated with the
 // "BuildStepFinished" event.
 type BuildStepFinishedArgs struct {
-	Box        string
-	Build      Pipeline
-	Options    *GlobalOptions
-	Order      int
-	Step       *Step
-	Successful bool
+	Box         string
+	Build       Pipeline
+	Options     *GlobalOptions
+	Order       int
+	Step        *Step
+	Successful  bool
+	Message     string
+	ArtifactURL string
+	PackageURL  string
 }
 
 // emitter contains the singleton emitter.
