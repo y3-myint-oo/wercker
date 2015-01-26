@@ -150,17 +150,17 @@ func (p *Runner) EnsureCode() (string, error) {
 }
 
 // GetConfig parses and returns the wercker.yml file.
-func (p *Runner) GetConfig() (*RawConfig, error) {
+func (p *Runner) GetConfig() (*RawConfig, string, error) {
 	// Return a []byte of the yaml we find or create.
 	werckerYaml, err := ReadWerckerYaml([]string{p.ProjectDir()}, false)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Parse that bad boy.
 	rawConfig, err := ConfigFromYaml(werckerYaml)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Add some options to the global config
@@ -168,7 +168,7 @@ func (p *Runner) GetConfig() (*RawConfig, error) {
 		p.options.SourceDir = rawConfig.SourceDir
 	}
 
-	return rawConfig, nil
+	return rawConfig, string(werckerYaml), nil
 }
 
 // GetBox fetches and returns the base box for the pipeline.
@@ -270,14 +270,15 @@ func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher 
 			artifactURL = r.Artifact.URL()
 		}
 		p.emitter.Emit(BuildStepFinished, &BuildStepFinishedArgs{
-			Build:       ctx.pipeline,
-			Options:     p.options,
-			Step:        step,
-			Order:       order,
-			Successful:  r.Success,
-			Message:     r.Message,
-			ArtifactURL: artifactURL,
-			PackageURL:  r.PackageURL,
+			Build:               ctx.pipeline,
+			Options:             p.options,
+			Step:                step,
+			Order:               order,
+			Successful:          r.Success,
+			Message:             r.Message,
+			ArtifactURL:         artifactURL,
+			PackageURL:          r.PackageURL,
+			WerckerYamlContents: r.WerckerYamlContents,
 		})
 	})
 }
@@ -318,11 +319,12 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	log.Println("Application:", p.options.ApplicationName)
 
 	// Grab our config
-	rawConfig, err := p.GetConfig()
+	rawConfig, stringConfig, err := p.GetConfig()
 	if err != nil {
 		return ctx, err
 	}
 	ctx.config = rawConfig
+	sr.WerckerYamlContents = stringConfig
 
 	box, err := p.GetBox(rawConfig)
 	if err != nil {
@@ -414,11 +416,12 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 
 // StepResult holds the info we need to report on steps
 type StepResult struct {
-	Success    bool
-	Artifact   *Artifact
-	PackageURL string
-	Message    string
-	ExitCode   int
+	Success             bool
+	Artifact            *Artifact
+	PackageURL          string
+	Message             string
+	ExitCode            int
+	WerckerYamlContents string
 }
 
 // RunStep runs a step and tosses error if it fails

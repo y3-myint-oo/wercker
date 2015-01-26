@@ -74,6 +74,7 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 		args.ArtifactURL,
 		args.PackageURL,
 		args.Message,
+		args.WerckerYamlContents,
 	)
 }
 

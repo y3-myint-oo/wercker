@@ -81,7 +81,10 @@ type BuildStepFinishedArgs struct {
 	Successful  bool
 	Message     string
 	ArtifactURL string
-	PackageURL  string
+	// Only applicable to the store step
+	PackageURL string
+	// Only applicable to the setup environment step
+	WerckerYamlContents string
 }
 
 // emitter contains the singleton emitter.
