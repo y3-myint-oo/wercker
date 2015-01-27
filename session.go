@@ -139,9 +139,10 @@ func (s *Session) Send(forceHidden bool, commands ...string) {
 		}
 
 		s.e.Emit(Logs, &LogsArgs{
-			Hidden: hidden,
-			Stream: "stdin",
-			Logs:   command,
+			Options: s.options,
+			Hidden:  hidden,
+			Stream:  "stdin",
+			Logs:    command,
 		})
 		s.send <- command
 	}
@@ -193,17 +194,19 @@ func (s *Session) SendChecked(commands ...string) (int, []string, error) {
 				_, err := fmt.Sscanf(line, "%s %d\n", &rand, &exitCode)
 				if err != nil {
 					s.e.Emit(Logs, &LogsArgs{
-						Hidden: true,
-						Logs:   line,
-						Stream: "stdout",
+						Options: s.options,
+						Hidden:  true,
+						Logs:    line,
+						Stream:  "stdout",
 					})
 					return exitCode, recv, err
 				}
 			} else {
 				s.e.Emit(Logs, &LogsArgs{
-					Hidden: s.logsHidden,
-					Logs:   line,
-					Stream: "stdout",
+					Options: s.options,
+					Hidden:  s.logsHidden,
+					Logs:    line,
+					Stream:  "stdout",
 				})
 				recv = append(recv, line)
 			}
