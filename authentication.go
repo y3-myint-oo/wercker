@@ -125,6 +125,7 @@ func getAccessToken(creds Credentials, url string) error {
 	}
 	if response.Success == false {
 		log.WithField("Error", err).Debug("Authentication failed")
+		log.Println(err)
 		return err
 	}
 	err = saveToken(response.Result.Token)
