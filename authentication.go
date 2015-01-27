@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -124,8 +125,8 @@ func getAccessToken(creds Credentials, url string) error {
 
 	}
 	if response.Success == false {
+		err := errors.New("Invalid credentials")
 		log.WithField("Error", err).Debug("Authentication failed")
-		log.Println(err)
 		return err
 	}
 	err = saveToken(response.Result.Token)
