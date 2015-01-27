@@ -11,6 +11,7 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/joho/godotenv"
 )
 
@@ -86,7 +87,22 @@ func main() {
 			ShortName: "l",
 			Usage:     "log into wercker",
 			Action: func(c *cli.Context) {
-				login(c)
+				err := login(c)
+				if err != nil {
+					os.Exit(1)
+				}
+			},
+			Flags: []cli.Flag{},
+		},
+		{
+			Name:      "pull",
+			ShortName: "p",
+			Usage:     "pull a build result",
+			Action: func(c *cli.Context) {
+				err := pull(c)
+				if err != nil {
+					os.Exit(1)
+				}
 			},
 			Flags: []cli.Flag{},
 		},
@@ -238,7 +254,16 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 				Message:  message,
 			}
 
-			_, err = box.Push(pushOptions)
+			auth := docker.AuthConfiguration{}
+			if options.AuthToken != "" {
+				auth = docker.AuthConfiguration{
+					Username:      options.AuthToken,
+					Password:      options.AuthToken,
+					ServerAddress: options.Registry,
+				}
+			}
+
+			_, err = box.Push(pushOptions, auth)
 			if err != nil {
 				return err
 			}
@@ -496,7 +521,7 @@ func getYml(detected string, options *GlobalOptions) {
 
 }
 
-func login(c *cli.Context) {
+func login(c *cli.Context) error {
 	// Parse CLI and local env
 	options, err := NewGlobalOptions(c, os.Environ())
 	if err != nil {
@@ -507,9 +532,62 @@ func login(c *cli.Context) {
 
 	log.Println("########### Logging into wercker! #############")
 	url := fmt.Sprintf("%s/api/1.0/%s", options.BaseURL, "oauth/basicauthaccesstoken")
-	err = performLogin(url)
+
+	username := readUsername()
+	password := readPassword()
+
+	token, err := getAccessToken(username, password, url)
 	if err != nil {
 		log.WithField("Error", err).Error("Unable to log into wercker")
-		soft.Exit(err)
+		return soft.Exit(err)
 	}
+
+	log.Println("Saving token to: ", options.AuthTokenStore)
+	return saveToken(options.AuthTokenStore, token)
+}
+
+func pull(c *cli.Context) error {
+	// Parse CLI and local env
+	options, err := NewGlobalOptions(c, os.Environ())
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	soft := &SoftExit{options}
+
+	dumpOptions(options)
+
+	client, err := NewDockerClient(options)
+	if err != nil {
+		return soft.Exit(err)
+	}
+
+	auth := docker.AuthConfiguration{}
+	if options.AuthToken != "" {
+		auth = docker.AuthConfiguration{
+			Username:      options.AuthToken,
+			Password:      options.AuthToken,
+			ServerAddress: options.Registry,
+		}
+	}
+
+	repo := c.Args().First()
+	tag := c.Args().Get(1)
+	log.Println("Repo: ", repo)
+	log.Println("Tag: ", tag)
+	opts := docker.PullImageOptions{
+		Repository:   fmt.Sprintf("%s/%s", options.Registry, repo),
+		Registry:     options.Registry,
+		OutputStream: os.Stdout,
+	}
+
+	if tag != "" {
+		opts.Tag = tag
+	}
+
+	err = client.PullImage(opts, auth)
+	if err != nil {
+		log.Panicln(err)
+	}
+	return nil
 }

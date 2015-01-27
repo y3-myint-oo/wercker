@@ -6,6 +6,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -56,6 +57,12 @@ var (
 		cli.StringFlag{Name: "git-repository", Value: "", Usage: "git repository", EnvVar: "WERCKER_GIT_REPOSITORY"},
 		cli.StringFlag{Name: "git-branch", Value: "", Usage: "git branch", EnvVar: "WERCKER_GIT_BRANCH"},
 		cli.StringFlag{Name: "git-commit", Value: "", Usage: "git commit", EnvVar: "WERCKER_GIT_COMMIT"},
+	}
+
+	// These flags let us auth to wercker services
+	authFlags = []cli.Flag{
+		cli.StringFlag{Name: "auth-token", Usage: "authentication token to use"},
+		cli.StringFlag{Name: "auth-token-store", Value: "~/.wercker/token", Usage: "where to store the token after a login"},
 	}
 
 	// These flags affect our registry interactions
@@ -115,6 +122,7 @@ var (
 		internalPathFlags,
 		werckerFlags,
 		gitFlags,
+		authFlags,
 		registryFlags,
 		artifactFlags,
 		devFlags,
@@ -194,6 +202,10 @@ type GlobalOptions struct {
 
 	// For fetching code
 	ProjectURL string
+
+	// Auth bits
+	AuthToken      string
+	AuthTokenStore string
 
 	// Git bits
 	GitDomain     string
@@ -386,6 +398,23 @@ func guessGitCommit(c *cli.Context, env *Environment) string {
 	return strings.Trim(out.String(), "\n")
 }
 
+// guessAuthToken will attempt to read from the token store location if
+// no auth token was provided
+func guessAuthToken(c *cli.Context, env *Environment) string {
+	token := c.GlobalString("auth-token")
+	if token != "" {
+		return token
+	}
+
+	tokenStore := expanduser(c.GlobalString("auth-token-store"))
+	tokenBytes, err := ioutil.ReadFile(tokenStore)
+	if err != nil {
+		log.Errorln(err)
+		return ""
+	}
+	return strings.TrimSpace(string(tokenBytes))
+}
+
 // dumpOptions prints out a sorted list of options
 func dumpOptions(options *GlobalOptions) {
 	s := reflect.ValueOf(options).Elem()
@@ -426,7 +455,8 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 
 	applicationName, err := guessApplicationName(c, env)
 	if err != nil {
-		return nil, err
+		log.Debugln("Error determining application name: ", err)
+		// return nil, err
 	}
 
 	applicationOwnerName := guessApplicationOwnerName(c, env)
@@ -505,6 +535,9 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		}
 	}
 
+	authToken := guessAuthToken(c, env)
+	authTokenStore := expanduser(c.GlobalString("auth-token-store"))
+
 	return &GlobalOptions{
 		Env:                      env,
 		BuildDir:                 buildDir,
@@ -528,6 +561,8 @@ func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
 		ReportRoot:               c.GlobalString("report-root"),
 		ProjectPath:              projectPath,
 		ProjectURL:               projectURL,
+		AuthToken:                authToken,
+		AuthTokenStore:           authTokenStore,
 		GitDomain:                gitDomain,
 		GitOwner:                 gitOwner,
 		GitRepository:            gitRepository,

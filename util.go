@@ -8,9 +8,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 )
+
+func expanduser(path string) string {
+	usr, _ := user.Current()
+	dir := usr.HomeDir
+	if path[:2] == "~/" {
+		path = strings.Replace(path, "~", dir, 1)
+	}
+	return path
+}
 
 // exists is like python's os.path.exists and too many lines in Go
 func exists(path string) (bool, error) {

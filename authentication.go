@@ -5,18 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/term"
 )
-
-const werckerConfig = "config"
-const werckerHome = ".wercker"
 
 // Credentials holds credentials and auth scope to authenticate with api
 type Credentials struct {
@@ -36,20 +33,7 @@ type Result struct {
 	Token string `json:"token"`
 }
 
-func performLogin(url string) error {
-	creds := Credentials{}
-	creds.Username = readUsername()
-	creds.Password = readPassword()
-	creds.Scope = "cli"
-
-	err := getAccessToken(creds, url)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func readUsername() (username string) {
+func readUsername() string {
 	print("Username: ")
 	var input string
 	_, err := fmt.Scanln(&input)
@@ -59,7 +43,7 @@ func readUsername() (username string) {
 	return input
 }
 
-func readPassword() (password string) {
+func readPassword() string {
 	var oldState *term.State
 	var input string
 	oldState, err := term.SetRawTerminal(os.Stdin.Fd())
@@ -70,34 +54,39 @@ func readPassword() (password string) {
 	print("Password: ")
 
 	term.DisableEcho(os.Stdin.Fd(), oldState)
+	defer term.RestoreTerminal(os.Stdin.Fd(), oldState)
 
 	_, err = fmt.Scanln(&input)
 	if err != nil {
 		log.WithField("Error", err).Debug("Unable to read password")
 	}
 
-	term.RestoreTerminal(os.Stdin.Fd(), oldState)
-
 	if input == "" {
 		log.Println("Password required")
 		os.Exit(1)
 	}
+	print("\n")
 	return input
 }
 
 // retrieves a basic access token from the wercker API
-func getAccessToken(creds Credentials, url string) error {
+func getAccessToken(username, password, url string) (string, error) {
+	creds := Credentials{
+		Username: username,
+		Password: password,
+		Scope:    "cli",
+	}
 
 	b, err := json.Marshal(creds)
 	if err != nil {
 		log.WithField("Error", err).Debug("Unable to serialize credentials")
-		return err
+		return "", err
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		log.WithField("Error", err).Debug("Unable to post request to wercker API")
-		return err
+		return "", err
 	}
 	req.SetBasicAuth(creds.Username, creds.Password)
 	req.Header.Set("Content-Type", "application/json")
@@ -107,72 +96,41 @@ func getAccessToken(creds Credentials, url string) error {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.WithField("Error", err).Debug("Unable read from wercker API")
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.WithField("Error", err).Debug("Unable to read response")
-		return err
+		return "", err
 	}
 
-	var response = Response{}
-	err = json.Unmarshal(body, &response)
+	var response = &Response{}
+	err = json.Unmarshal(body, response)
 	if err != nil {
 		log.WithField("Error", err).Debug("Unable to serialize response")
-		return err
+		return "", err
 
 	}
 	if response.Success == false {
 		err := errors.New("Invalid credentials")
 		log.WithField("Error", err).Debug("Authentication failed")
-		return err
+		return "", err
 	}
-	err = saveToken(response.Result.Token)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return strings.TrimSpace(response.Result.Token), nil
 }
 
-// saves a token to $HOME/.wercker/config
 // creates directory when needed, overwrites file when it already exists
-func saveToken(token string) error {
-	homePath := os.Getenv("HOME")
-	werckerHomePath := filepath.Join(homePath, werckerHome)
-	werckerConfigPath := filepath.Join(werckerHomePath, werckerConfig)
+func saveToken(path, token string) error {
+	path = expanduser(path)
 
-	err := createWerckerDir(werckerHomePath)
+	err := os.MkdirAll(filepath.Dir(path), 0700)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to create wercker folder")
+		log.WithField("Error", err).Debug("Unable to create auth store folder")
 		return err
 	}
 
-	fp, err := os.Create(werckerConfigPath)
-	if err != nil {
-		log.WithField("Error", err).Debug("Unable to create wercker config file")
-		return err
-	}
-	defer fp.Close()
-	_, err = io.WriteString(fp, token)
-	if err != nil {
-		log.WithField("Error", err).Debug("Unable to write wercker config")
-		return err
-	}
-	log.Println("Stored wercker config in", werckerConfigPath)
-	return nil
-}
-
-// helper function that creates the .wercker directory
-func createWerckerDir(dir string) error {
-	_, err := os.Stat(dir)
-	if err != nil {
-		err := os.Mkdir(dir, 0777)
-		if err != nil {
-			return err
-		}
-		return err
-	}
-	return err
+	return ioutil.WriteFile(path, []byte(token), 0600)
 }
