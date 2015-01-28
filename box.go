@@ -240,7 +240,7 @@ func (b *Box) Fetch() (*docker.Image, error) {
 	r, w := io.Pipe()
 
 	// emitStatusses in a different go routine
-	go emitStatus(r)
+	go emitStatus(r, b.options)
 
 	options := docker.PullImageOptions{
 		// changeme if we have a private registry
@@ -315,7 +315,7 @@ func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
 	r, w := io.Pipe()
 
 	// emitStatusses in a different go routine
-	go emitStatus(r)
+	go emitStatus(r, b.options)
 
 	pushOptions := docker.PushImageOptions{
 		Name:          imageName,
@@ -340,7 +340,7 @@ func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
 
 // emitStatus will decode the messages coming from r and decode these into
 // JSONMessage
-func emitStatus(r io.Reader) {
+func emitStatus(r io.Reader, options *GlobalOptions) {
 	e := GetEmitter()
 
 	s := NewJSONMessageProcessor()
@@ -356,9 +356,10 @@ func emitStatus(r io.Reader) {
 
 		line := s.ProcessJSONMessage(&m)
 		e.Emit(Logs, &LogsArgs{
-			Logs:   line,
-			Stream: "docker",
-			Hidden: false,
+			Options: options,
+			Logs:    line,
+			Stream:  "docker",
+			Hidden:  false,
 		})
 	}
 }

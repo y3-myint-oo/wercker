@@ -57,7 +57,14 @@ func (h *ReportHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 	h.currentBuildID = args.Options.BuildID
 	h.currentDeployID = args.Options.DeployID
 
-	h.reporter.StepStarted(args.Options.BuildID, args.Step.Name, args.Order)
+	opts := &reporter.PipelineStepStartedArgs{
+		BuildID:  args.Options.BuildID,
+		DeployID: args.Options.DeployID,
+		StepName: args.Step.Name,
+		Order:    args.Order,
+	}
+
+	h.reporter.PipelineStepStarted(opts)
 }
 
 // BuildStepFinished will handle the BuildStepFinished event.
@@ -66,36 +73,53 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 	h.currentOrder = -1
 	h.currentBuildID = ""
 
-	h.reporter.StepFinished(
-		args.Options.BuildID,
-		args.Step.Name,
-		args.Order,
-		args.Successful,
-		args.ArtifactURL,
-		args.PackageURL,
-		args.Message,
-		args.WerckerYamlContents,
-	)
+	opts := &reporter.PipelineStepFinishedArgs{
+		BuildID:               args.Options.BuildID,
+		DeployID:              args.Options.DeployID,
+		StepName:              args.Step.Name,
+		Order:                 args.Order,
+		Successful:            args.Successful,
+		ArtifactURL:           args.ArtifactURL,
+		PackageURL:            args.PackageURL,
+		Message:               args.Message,
+		WerckerYamlContents:   args.WerckerYamlContents,
+		WerckerConfigContents: args.WerckerYamlContents,
+	}
+
+	h.reporter.PipelineStepFinished(opts)
 }
 
 // BuildStepsAdded will handle the BuildStepsAdded event.
 func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
 	steps := mapBuildSteps(stepCounterOffset, args.Steps...)
 	storeStep := mapBuildSteps(len(args.Steps)+stepCounterOffset+1, args.StoreStep)
-
 	steps = append(steps, storeStep...)
 
-	h.reporter.ReportNewSteps(args.Options.BuildID, steps)
+	opts := &reporter.NewPipelineStepsArgs{
+		BuildID:  args.Options.BuildID,
+		DeployID: args.Options.DeployID,
+		Steps:    steps,
+	}
+
+	h.reporter.NewPipelineSteps(opts)
 }
 
 // getStepOutputWriter will check h.writers for a writer for the step, otherwise
 // it will create a new one.
-func (h *ReportHandler) getStepOutputWriter(buildID, stepName string, order int) (io.WriteCloser, error) {
-	key := fmt.Sprintf("%s_%s_%d", buildID, stepName, order)
-	writer, ok := h.writers[key]
+func (h *ReportHandler) getStepOutputWriter(args *LogsArgs) (io.WriteCloser, error) {
 
+	key := fmt.Sprintf("%s_%s_%d", args.Options.PipelineID, args.Step.Name, args.Order)
+
+	opts := &reporter.PipelineStepReporterArgs{
+		BuildID:  args.Options.BuildID,
+		DeployID: args.Options.DeployID,
+		StepName: args.Step.Name,
+		Order:    args.Order,
+	}
+
+	writer, ok := h.writers[key]
 	if !ok {
-		w, err := h.reporter.StepOutput(buildID, stepName, order)
+		w, err := h.reporter.PipelineStepReporter(opts)
 		if err != nil {
 			return nil, err
 		}
@@ -114,13 +138,15 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 
 	step := h.currentStep
 	order := h.currentOrder
-	buildID := h.currentBuildID
+
+	args.Step = step
+	args.Order = order
 
 	if step == nil {
 		return
 	}
 
-	w, err := h.getStepOutputWriter(buildID, step.Name, order)
+	w, err := h.getStepOutputWriter(args)
 	if err != nil {
 		log.WithField("Error", err).Error("Unable to create step output writer")
 		return
@@ -130,7 +156,12 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 
 // BuildFinished will handle the BuildFinished event. This will call h.Close.
 func (h *ReportHandler) BuildFinished(args *BuildFinishedArgs) {
-	h.reporter.BuildFinished(args.Options.BuildID, args.Result)
+	opts := &reporter.PipelineFinishedArgs{
+		BuildID:  args.Options.BuildID,
+		DeployID: args.Options.DeployID,
+		Result:   args.Result,
+	}
+	h.reporter.PipelineFinished(opts)
 
 	h.Close()
 }
