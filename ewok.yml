@@ -33,10 +33,9 @@ build:
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
 
 deploy:
-  # These will only work on wercker for now
   steps:
     - install-packages:
-        packages: openssh-client
+        packages: wget
     - s3sync:
         source-dir: "."
         delete-removed: false
