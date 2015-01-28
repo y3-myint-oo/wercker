@@ -35,7 +35,7 @@ build:
 deploy:
   steps:
     - install-packages:
-        packages: wget
+        packages: wget libmagic1 python-dateutil python-magic s3cmd
     - s3sync:
         source-dir: "."
         delete-removed: false
