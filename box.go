@@ -293,7 +293,7 @@ func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 
 // Push commits and tag a container. Then push the image to the registry.
 // Returns the new image, no cleanup is provided.
-func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
+func (b *Box) Push(options *PushOptions, auth docker.AuthConfiguration) (*docker.Image, error) {
 	log.WithFields(log.Fields{
 		"Registry": options.Registry,
 		"Name":     options.Name,
@@ -324,7 +324,6 @@ func (b *Box) Push(options *PushOptions) (*docker.Image, error) {
 		Registry:      options.Registry,
 		Tag:           options.Tag,
 	}
-	auth := docker.AuthConfiguration{}
 
 	err = b.client.PushImage(pushOptions, auth)
 	if err != nil {
