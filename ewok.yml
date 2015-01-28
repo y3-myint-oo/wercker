@@ -35,6 +35,8 @@ build:
 deploy:
   # These will only work on wercker for now
   steps:
+    - install-packages:
+        packages: openssh-client
     - s3sync:
         source-dir: "."
         delete-removed: false
