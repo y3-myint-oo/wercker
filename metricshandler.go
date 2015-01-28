@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"github.com/chuckpreslar/emission"
 	"github.com/inconshreveable/go-keen"
 	"time"
@@ -28,13 +27,14 @@ type MetricsApplicationPayload struct {
 type MetricsPayload struct {
 	MetricsApplicationPayload *MetricsApplicationPayload `json:"application"`
 	ApplicationStartedByName  string                     `json:"startedBy"`
-	BuildID                   string                     `json:"buildId"`
+	BuildID                   string                     `json:"buildID"`
 	DeployID                  string                     `json:"deployID"`
 	Event                     string                     `json:"event"`
 	Step                      *Step                      `json:"step"`
 	GitVersion                string                     `json:"GitVersion"`
 	StepOrder                 int                        `json:"stepOrder"`
-	TimeElapsed               string                     `json:"timeElapsed,omitempty"`
+	Successful                bool                       `json:"succesful,omitempty"`
+	TimeElapsed               float64                    `json:"timeElapsed,omitempty"`
 	Timestamp                 int32                      `json:"timestamp"`
 	VCS                       string                     `json:"versionControl"`
 	// Box                        string `json:"box"`       // todo
@@ -106,9 +106,10 @@ func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
 		GitVersion:               GitVersion,
 		Step:                     event.Step,
 		StepOrder:                event.Order,
-		TimeElapsed:              fmt.Sprintf("%s", elapsed),
+		TimeElapsed:              elapsed.Seconds(),
 		Timestamp:                int32(time.Now().Unix()),
 		VCS:                      "git",
+		Successful:               event.Successful,
 		// Box:     event.Box,
 		// Core:      "",
 		// JobID:     "",
