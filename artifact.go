@@ -4,14 +4,15 @@ import (
 	"archive/tar"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
-	"github.com/fsouza/go-dockerclient"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
+	"github.com/fsouza/go-dockerclient"
 )
 
 const (
@@ -20,7 +21,7 @@ const (
 
 // Artificer collects artifacts from containers and uploads them.
 type Artificer struct {
-	options *GlobalOptions
+	options *PipelineOptions
 }
 
 // Artifact holds the information required to extract a folder
@@ -42,7 +43,7 @@ var (
 )
 
 // NewArtificer returns an Artificer
-func NewArtificer(options *GlobalOptions) *Artificer {
+func NewArtificer(options *PipelineOptions) *Artificer {
 	return &Artificer{options: options}
 }
 
@@ -69,7 +70,7 @@ func (art *Artifact) RemotePath() string {
 // Collect an artifact from the container, if it doesn't have any files in
 // the tarball return ErrEmptyTarball
 func (a *Artificer) Collect(artifact *Artifact) (*Artifact, error) {
-	client, _ := NewDockerClient(a.options)
+	client, _ := NewDockerClient(a.options.DockerOptions)
 
 	if err := os.MkdirAll(filepath.Dir(artifact.HostPath), 0755); err != nil {
 		return nil, err

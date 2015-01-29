@@ -7,11 +7,11 @@ import (
 // Build is our basic wrapper for Build operations
 type Build struct {
 	*BasePipeline
-	options *GlobalOptions
+	options *PipelineOptions
 }
 
 // ToBuild converts a RawPipeline into a Build
-func (p *RawPipeline) ToBuild(options *GlobalOptions) (*Build, error) {
+func (p *RawPipeline) ToBuild(options *PipelineOptions) (*Build, error) {
 	var steps []*Step
 	var afterSteps []*Step
 

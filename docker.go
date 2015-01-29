@@ -1,31 +1,35 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"fmt"
+	"os"
+	"path"
+
+	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/term"
 	"github.com/fsouza/go-dockerclient"
-	"os"
-	"path"
 )
 
+// DockerClient is our wrapper for docker.Client
 type DockerClient struct {
 	*docker.Client
 }
 
 // NewDockerClient based on options and env
-func NewDockerClient(options *GlobalOptions) (*DockerClient, error) {
+func NewDockerClient(options *DockerOptions) (*DockerClient, error) {
 	dockerHost := options.DockerHost
-	tlsVerify, ok := options.Env.Map["DOCKER_TLS_VERIFY"]
+	tlsVerify := options.DockerTLSVerify
+
 	var (
 		client *docker.Client
 		err    error
 	)
-	if ok && tlsVerify == "1" {
+
+	if tlsVerify == "1" {
 		// We're using TLS, let's locate our certs and such
 		// boot2docker puts its certs at...
-		dockerCertPath := options.Env.Map["DOCKER_CERT_PATH"]
+		dockerCertPath := options.DockerCertPath
 
 		// TODO(termie): maybe fast-fail if these don't exist?
 		cert := path.Join(dockerCertPath, fmt.Sprintf("cert.pem"))
@@ -45,6 +49,7 @@ func NewDockerClient(options *GlobalOptions) (*DockerClient, error) {
 	return &DockerClient{client}, nil
 }
 
+// RunAndAttach gives us a raw connection to a newly run container
 func (c *DockerClient) RunAndAttach(name string) error {
 	container, err := c.CreateContainer(
 		docker.CreateContainerOptions{

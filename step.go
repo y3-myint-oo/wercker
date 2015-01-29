@@ -1,20 +1,20 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
-	"github.com/termie/go-shutil"
 	"io"
-
-	"gopkg.in/yaml.v1"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"code.google.com/p/go-uuid/uuid"
+	log "github.com/Sirupsen/logrus"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/termie/go-shutil"
+	"gopkg.in/yaml.v1"
 )
 
 // StepConfig represents a wercker-step.yml
@@ -73,12 +73,12 @@ type Step struct {
 	DisplayName string
 	url         string
 	data        RawStepData
-	options     *GlobalOptions
+	options     *PipelineOptions
 	stepConfig  *StepConfig
 }
 
 // ExtraRawStepsToSteps normalizes steps to RawSteps then calls ToStep on them
-func ExtraRawStepsToSteps(raws []interface{}, options *GlobalOptions) ([]*Step, error) {
+func ExtraRawStepsToSteps(raws []interface{}, options *PipelineOptions) ([]*Step, error) {
 	steps := []*Step{}
 	for _, raw := range raws {
 		rawStep, err := normalizeStep(raw)
@@ -136,7 +136,7 @@ func normalizeStep(raw interface{}) (*RawStep, error) {
 }
 
 // ToStep converts a RawStep into a Step.
-func (s *RawStep) ToStep(options *GlobalOptions) (*Step, error) {
+func (s *RawStep) ToStep(options *PipelineOptions) (*Step, error) {
 	// There should only be one step in the internal map
 	var stepID string
 	var stepData RawStepData
@@ -155,7 +155,7 @@ func (s *RawStep) ToStep(options *GlobalOptions) (*Step, error) {
 //   x wercker/hipchat-notify (fetches from api)
 //   x wercker/hipchat-notify "http://someurl/thingee.tar" (downloads tarball)
 //   x setup-go-environment "file:///some_path" (uses local path)
-func NewStep(stepID string, data RawStepData, options *GlobalOptions) (*Step, error) {
+func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, error) {
 	var identifier string
 	var owner string
 	var name string
@@ -352,7 +352,7 @@ func (s *Step) Execute(sess *Session) (int, error) {
 
 // CollectFile gets an individual file from the container
 func (s *Step) CollectFile(sess *Session, path, name string, dst io.Writer) error {
-	client, err := NewDockerClient(s.options)
+	client, err := NewDockerClient(s.options.DockerOptions)
 	if err != nil {
 		return err
 	}
@@ -480,7 +480,7 @@ func (s *Step) ReportPath(p ...string) string {
 }
 
 // NewWerckerInitStep returns our fake initial step
-func NewWerckerInitStep(options *GlobalOptions) (*Step, error) {
+func NewWerckerInitStep(options *PipelineOptions) (*Step, error) {
 	rawStepData := RawStepData{}
 	werckerInit := `wercker-init "https://api.github.com/repos/wercker/wercker-init/tarball"`
 	initStep, err := NewStep(werckerInit, rawStepData, options)

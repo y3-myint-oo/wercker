@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v1"
 	"io/ioutil"
 	"path"
+
+	"gopkg.in/yaml.v1"
 )
 
 // RawBox is the data type for a box in the wercker.yml
