@@ -201,16 +201,14 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 	tag := pipeline.DockerTag()
 	message := pipeline.DockerMessage()
 
-	// TODO(bvdberg):
-	storeStep := &Step{Name: "Store"}
-	// Package should be the last item, + "setup environemnt" and "get code"
-	storeStepOrder := len(pipeline.Steps()) + 1 + 2
+	storeStep := &Step{Name: "store"}
 
 	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
-		Build:     pipeline,
-		Steps:     pipeline.Steps(),
-		StoreStep: storeStep,
-		Options:   options,
+		Build:      pipeline,
+		Steps:      pipeline.Steps(),
+		StoreStep:  storeStep,
+		AfterSteps: pipeline.AfterSteps(),
+		Options:    options,
 	})
 
 	pr := &PipelineResult{
@@ -219,14 +217,16 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 		FailedStepMessage: "",
 	}
 
-	offset := 2
-	for i, step := range pipeline.Steps() {
+	// stepCounter starts at 3, step 1 is "get code", step 2 is "setup
+	// environment".
+	stepCounter := &Counter{Current: 3}
+	for _, step := range pipeline.Steps() {
 		log.Println()
 		log.Println("============== Running Step ===============")
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
-		sr, err := p.RunStep(ctx, step, offset+i)
+		sr, err := p.RunStep(ctx, step, stepCounter.Increment())
 		if err != nil {
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName
@@ -245,43 +245,10 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 		box.Commit(repoName, tag, message)
 	}
 
-	if options.ShouldPush {
-		err = func() error {
-			pushOptions := &PushOptions{
-				Registry: options.Registry,
-				Name:     repoName,
-				Tag:      tag,
-				Message:  message,
-			}
+	if options.ShouldPush || (pr.Success && options.ShouldArtifacts) {
+		// At this point the build has effectively passed but we can still mess it
+		// up by being unable to deliver the artifacts
 
-			auth := docker.AuthConfiguration{}
-			if options.AuthToken != "" {
-				auth = docker.AuthConfiguration{
-					Username:      options.AuthToken,
-					Password:      options.AuthToken,
-					ServerAddress: options.Registry,
-				}
-			}
-
-			_, err = box.Push(pushOptions, auth)
-			if err != nil {
-				return err
-			}
-			return nil
-		}()
-
-		if err != nil {
-			pr.Success = false
-			pr.FailedStepName = storeStep.Name
-			pr.FailedStepMessage = "Unable to push to registry"
-			log.WithField("Error", err).Error("Unable to push to registry")
-		}
-	}
-
-	// At this point the build has effectively passed but we can still mess it
-	// up by being unable to deliver the artifacts
-
-	if pr.Success && options.ShouldArtifacts {
 		err = func() error {
 			sr := &StepResult{
 				Success:    false,
@@ -290,28 +257,65 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 				PackageURL: "",
 				ExitCode:   1,
 			}
-			finisher := p.StartStep(ctx, storeStep, storeStepOrder)
+			finisher := p.StartStep(ctx, storeStep, stepCounter.Increment())
 			defer finisher.Finish(sr)
 
-			artifact, err := pipeline.CollectArtifact(sess)
-			if err != nil {
-				return err
+			pr.FailedStepName = storeStep.Name
+
+			if options.ShouldPush {
+				pr.FailedStepMessage = "Unable to push to registry"
+
+				pushOptions := &PushOptions{
+					Registry: options.Registry,
+					Name:     repoName,
+					Tag:      tag,
+					Message:  message,
+				}
+
+				auth := docker.AuthConfiguration{}
+				if options.AuthToken != "" {
+					auth = docker.AuthConfiguration{
+						Username:      options.AuthToken,
+						Password:      options.AuthToken,
+						ServerAddress: options.Registry,
+					}
+				}
+
+				_, err = box.Push(pushOptions, auth)
+				if err != nil {
+					return err
+				}
 			}
 
-			artificer := NewArtificer(options)
-			err = artificer.Upload(artifact)
-			if err != nil {
-				return err
+			if pr.Success && options.ShouldArtifacts {
+				pr.FailedStepMessage = "Unable to store pipeline output"
+
+				artifact, err := pipeline.CollectArtifact(sess)
+				if err != nil {
+					return err
+				}
+
+				artificer := NewArtificer(options)
+				err = artificer.Upload(artifact)
+				if err != nil {
+					return err
+				}
+
+				sr.PackageURL = artifact.URL()
 			}
-			sr.PackageURL = artifact.URL()
+
+			// Everything went ok, so reset failed related fields
+			pr.Success = true
+			pr.FailedStepName = ""
+			pr.FailedStepMessage = ""
+
 			sr.Success = true
 			sr.ExitCode = 0
+
 			return nil
 		}()
 		if err != nil {
 			pr.Success = false
-			pr.FailedStepName = storeStep.Name
-			pr.FailedStepMessage = "Unable to store pipeline output"
 			log.WithField("Error", err).Error("Unable to store pipeline output")
 		}
 	}
@@ -361,13 +365,13 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 		return err
 	}
 
-	for i, step := range pipeline.AfterSteps() {
+	for _, step := range pipeline.AfterSteps() {
 		log.Println()
 		log.Println("=========== Running After Step ============")
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
-		_, err := p.RunStep(newCtx, step, offset+i)
+		_, err := p.RunStep(newCtx, step, stepCounter.Increment())
 		if err != nil {
 			log.Warnln("=========== After Step failed! ============")
 			break
