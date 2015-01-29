@@ -101,7 +101,7 @@ func TestOptionsGuessAuthToken(t *testing.T) {
 	run(t, globalFlags, emptyFlags, test, args)
 }
 
-func TestOptionsEmptyBuildOptionsEmptyDir(t *testing.T) {
+func TestOptionsEmptyPipelineOptionsEmptyDir(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "empty-directory")
 	assert.Nil(t, err)
 	defer os.RemoveAll(tmpDir)
@@ -114,11 +114,8 @@ func TestOptionsEmptyBuildOptionsEmptyDir(t *testing.T) {
 	// Target the path
 	args := defaultArgs(tmpDir)
 	test := func(c *cli.Context) {
-		opts, err := NewBuildOptions(c, emptyEnv())
+		opts, err := NewPipelineOptions(c, emptyEnv())
 		assert.Nil(t, err)
-		assert.NotEqual(t, "", opts.BuildID)
-		assert.Equal(t, opts.BuildID, opts.PipelineID)
-		assert.Equal(t, "", opts.DeployID)
 		assert.Equal(t, basename, opts.ApplicationID)
 		assert.Equal(t, basename, opts.ApplicationName)
 		assert.Equal(t, username, opts.ApplicationOwnerName)
@@ -136,6 +133,18 @@ func TestOptionsEmptyBuildOptionsEmptyDir(t *testing.T) {
 	run(t, globalFlags, pipelineFlags, test, args)
 }
 
+func TestOptionsEmptyBuildOptions(t *testing.T) {
+	args := defaultArgs()
+	test := func(c *cli.Context) {
+		opts, err := NewBuildOptions(c, emptyEnv())
+		assert.Nil(t, err)
+		assert.NotEqual(t, "", opts.BuildID)
+		assert.Equal(t, opts.BuildID, opts.PipelineID)
+		assert.Equal(t, "", opts.DeployID)
+	}
+	run(t, globalFlags, pipelineFlags, test, args)
+}
+
 func TestOptionsBuildOptions(t *testing.T) {
 	args := defaultArgs("--build-id", "fake-build-id")
 	test := func(c *cli.Context) {
@@ -143,6 +152,111 @@ func TestOptionsBuildOptions(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, "fake-build-id", opts.PipelineID)
 		assert.Equal(t, "fake-build-id", opts.BuildID)
+		assert.Equal(t, "", opts.DeployID)
 	}
 	run(t, globalFlags, pipelineFlags, test, args)
+}
+
+func TestOptionsEmptyDeployOptions(t *testing.T) {
+	args := defaultArgs()
+	test := func(c *cli.Context) {
+		opts, err := NewDeployOptions(c, emptyEnv())
+		assert.Nil(t, err)
+		assert.NotEqual(t, "", opts.DeployID)
+		assert.Equal(t, opts.DeployID, opts.PipelineID)
+		assert.Equal(t, "", opts.BuildID)
+	}
+	run(t, globalFlags, pipelineFlags, test, args)
+}
+
+func TestOptionsDeployOptions(t *testing.T) {
+	args := defaultArgs("--deploy-id", "fake-deploy-id")
+	test := func(c *cli.Context) {
+		opts, err := NewDeployOptions(c, emptyEnv())
+		assert.Nil(t, err)
+		assert.Equal(t, "fake-deploy-id", opts.PipelineID)
+		assert.Equal(t, "fake-deploy-id", opts.DeployID)
+		assert.Equal(t, "", opts.BuildID)
+	}
+	run(t, globalFlags, pipelineFlags, test, args)
+}
+
+func TestOptionsKeenOptions(t *testing.T) {
+	args := defaultArgs(
+		"--keen-metrics",
+		"--keen-project-id", "test-id",
+		"--keen-project-write-key", "test-key",
+	)
+	test := func(c *cli.Context) {
+		e := emptyEnv()
+		gOpts, err := NewGlobalOptions(c, e)
+		opts, err := NewKeenOptions(c, e, gOpts)
+		assert.Nil(t, err)
+		assert.Equal(t, true, opts.ShouldKeenMetrics)
+		assert.Equal(t, "test-key", opts.KeenProjectWriteKey)
+		assert.Equal(t, "test-id", opts.KeenProjectID)
+	}
+	run(t, globalFlags, pipelineFlags, test, args)
+}
+
+func TestOptionsKeenMissingOptions(t *testing.T) {
+	test := func(c *cli.Context) {
+		e := emptyEnv()
+		gOpts, err := NewGlobalOptions(c, e)
+		_, err = NewKeenOptions(c, e, gOpts)
+		assert.NotNil(t, err)
+	}
+
+	missingID := defaultArgs(
+		"--keen-metrics",
+		"--keen-project-write-key", "test-key",
+	)
+
+	missingKey := defaultArgs(
+		"--keen-metrics",
+		"--keen-project-id", "test-id",
+	)
+
+	run(t, globalFlags, keenFlags, test, missingID)
+	run(t, globalFlags, keenFlags, test, missingKey)
+}
+
+func TestOptionsReporterOptions(t *testing.T) {
+	args := defaultArgs(
+		"--report",
+		"--wercker-host", "http://example.com/wercker-host",
+		"--wercker-token", "test-token",
+	)
+	test := func(c *cli.Context) {
+		e := emptyEnv()
+		gOpts, err := NewGlobalOptions(c, e)
+		opts, err := NewReporterOptions(c, e, gOpts)
+		assert.Nil(t, err)
+		assert.Equal(t, true, opts.ShouldReport)
+		assert.Equal(t, "http://example.com/wercker-host", opts.ReporterHost)
+		assert.Equal(t, "test-token", opts.ReporterKey)
+	}
+	run(t, globalFlags, pipelineFlags, test, args)
+}
+
+func TestOptionsReporterMissingOptions(t *testing.T) {
+	test := func(c *cli.Context) {
+		e := emptyEnv()
+		gOpts, err := NewGlobalOptions(c, e)
+		_, err = NewReporterOptions(c, e, gOpts)
+		assert.NotNil(t, err)
+	}
+
+	missingHost := defaultArgs(
+		"--report",
+		"--wercker-token", "test-token",
+	)
+
+	missingKey := defaultArgs(
+		"--report",
+		"--wercker-host", "http://example.com/wercker-host",
+	)
+
+	run(t, globalFlags, reporterFlags, test, missingHost)
+	run(t, globalFlags, reporterFlags, test, missingKey)
 }

@@ -140,6 +140,7 @@ var (
 	PipelineFlags = [][]cli.Flag{
 		localPathFlags,
 		werckerFlags,
+		dockerFlags,
 		gitFlags,
 		registryFlags,
 		artifactFlags,
@@ -602,7 +603,12 @@ func guessProjectURL(c *cli.Context, e *Environment) string {
 }
 
 // NewPipelineOptions big-ass constructor
-func NewPipelineOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*PipelineOptions, error) {
+func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+	globalOpts, err := NewGlobalOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+
 	dockerOpts, err := NewDockerOptions(c, e, globalOpts)
 	if err != nil {
 		return nil, err
@@ -780,11 +786,7 @@ func dumpOptions(options interface{}, indent ...string) {
 
 // NewBuildOptions constructor
 func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
-	globalOpts, err := NewGlobalOptions(c, e)
-	if err != nil {
-		return nil, err
-	}
-	pipelineOpts, err := NewPipelineOptions(c, e, globalOpts)
+	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
 		return nil, err
 	}
@@ -797,11 +799,7 @@ func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 
 // NewDeployOptions constructor
 func NewDeployOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
-	globalOpts, err := NewGlobalOptions(c, e)
-	if err != nil {
-		return nil, err
-	}
-	pipelineOpts, err := NewPipelineOptions(c, e, globalOpts)
+	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
 		return nil, err
 	}
@@ -833,11 +831,7 @@ type InspectOptions struct {
 
 // NewInspectOptions constructor
 func NewInspectOptions(c *cli.Context, e *Environment) (*InspectOptions, error) {
-	globalOpts, err := NewGlobalOptions(c, e)
-	if err != nil {
-		return nil, err
-	}
-	pipelineOpts, err := NewPipelineOptions(c, e, globalOpts)
+	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
 		return nil, err
 	}

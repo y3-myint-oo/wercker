@@ -53,7 +53,6 @@ func NewBox(name string, options *PipelineOptions, boxOptions *BoxOptions) (*Box
 	if len(parts) > 1 {
 		tag = parts[1]
 	}
-
 	client, err := NewDockerClient(options.DockerOptions)
 	if err != nil {
 		return nil, err
