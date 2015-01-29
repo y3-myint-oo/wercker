@@ -43,3 +43,4 @@ import:
     ref:     ead2e75
     vcs:     git
   - package: github.com/docker/docker/pkg/term
+  - package: github.com/stretchr/testify/assert
