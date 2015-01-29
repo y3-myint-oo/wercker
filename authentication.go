@@ -24,12 +24,12 @@ type Credentials struct {
 
 // Response from authentication endpoint
 type Response struct {
-	Result  Result `json:"result"`
-	Success bool   `json:"success"`
+	Result  AuthResult `json:"result"`
+	Success bool       `json:"success"`
 }
 
 // Result holds the auth token
-type Result struct {
+type AuthResult struct {
 	Token string `json:"token"`
 }
 
