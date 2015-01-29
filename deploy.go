@@ -99,6 +99,10 @@ func (d *Deploy) CollectArtifact(sess *Session) (*Artifact, error) {
 
 	// Get the output dir, if it is empty grab the source dir.
 	fullArtifact, err := artificer.Collect(artifact)
+	if err == ErrEmptyTarball {
+		return nil, nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
