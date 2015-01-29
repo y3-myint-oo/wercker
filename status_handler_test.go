@@ -16,6 +16,7 @@ type MySuite struct{}
 var _ = Suite(&MySuite{})
 
 func (m *MySuite) TestPullParallelDownloads(c *C) {
+	c.Skip("Race condition")
 	testSteps := []struct {
 		in       *utils.JSONMessage
 		expected string
