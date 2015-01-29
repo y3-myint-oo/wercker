@@ -82,11 +82,11 @@ func (d *Deploy) DockerMessage() string {
 	return message
 }
 
-// CollectArtifact copies the artifacts associated with the Build.
+// CollectArtifact copies the artifacts associated with the Deploy.
+// Unlike a Build, this will only collect the output directory if we made
+// a new one.
 func (d *Deploy) CollectArtifact(sess *Session) (*Artifact, error) {
 	artificer := NewArtificer(d.options)
-
-	// Ensure we have the host directory
 
 	artifact := &Artifact{
 		ContainerID:   sess.ContainerID,
@@ -97,25 +97,9 @@ func (d *Deploy) CollectArtifact(sess *Session) (*Artifact, error) {
 		Bucket:        d.options.S3Bucket,
 	}
 
-	sourceArtifact := &Artifact{
-		ContainerID:   sess.ContainerID,
-		GuestPath:     d.options.SourcePath(),
-		HostPath:      d.options.HostPath("build.tar"),
-		ApplicationID: d.options.ApplicationID,
-		DeployID:      d.options.DeployID,
-		Bucket:        d.options.S3Bucket,
-	}
-
 	// Get the output dir, if it is empty grab the source dir.
 	fullArtifact, err := artificer.Collect(artifact)
 	if err != nil {
-		if err == ErrEmptyTarball {
-			fullArtifact, err = artificer.Collect(sourceArtifact)
-			if err != nil {
-				return nil, err
-			}
-			return fullArtifact, nil
-		}
 		return nil, err
 	}
 
