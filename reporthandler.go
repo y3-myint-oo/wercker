@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/wercker/reporter"
-	"io"
 )
 
 const (
@@ -28,13 +29,13 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	return h, nil
 }
 
-func mapBuildSteps(offset int, steps ...*Step) []*reporter.NewStep {
+func mapBuildSteps(counter *Counter, steps ...*Step) []*reporter.NewStep {
 	buffer := make([]*reporter.NewStep, len(steps))
 	for i, s := range steps {
 		buffer[i] = &reporter.NewStep{
 			DisplayName: s.DisplayName,
 			Name:        s.Name,
-			Order:       offset + i,
+			Order:       counter.Increment(),
 		}
 	}
 	return buffer
@@ -91,9 +92,12 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 
 // BuildStepsAdded will handle the BuildStepsAdded event.
 func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
-	steps := mapBuildSteps(stepCounterOffset, args.Steps...)
-	storeStep := mapBuildSteps(len(args.Steps)+stepCounterOffset+1, args.StoreStep)
+	stepCounter := &Counter{Current: 3}
+	steps := mapBuildSteps(stepCounter, args.Steps...)
+	storeStep := mapBuildSteps(stepCounter, args.StoreStep)
+	afterSteps := mapBuildSteps(stepCounter, args.AfterSteps...)
 	steps = append(steps, storeStep...)
+	steps = append(steps, afterSteps...)
 
 	opts := &reporter.NewPipelineStepsArgs{
 		BuildID:  args.Options.BuildID,

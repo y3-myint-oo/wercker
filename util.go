@@ -11,6 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 func expanduser(path string) string {
@@ -183,4 +184,21 @@ func askForConfirmation() bool {
 		log.Println("Please type yes or no and then press enter:")
 		return askForConfirmation()
 	}
+}
+
+// Counter is a simple struct
+type Counter struct {
+	Current int
+	l       sync.Mutex
+}
+
+// Increment will return current and than increment c.Current.
+func (c *Counter) Increment() int {
+	c.l.Lock()
+	defer c.l.Unlock()
+
+	current := c.Current
+	c.Current = current + 1
+
+	return current
 }
