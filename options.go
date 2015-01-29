@@ -280,6 +280,17 @@ func guessGitBranch(c *cli.Context, e *Environment) string {
 		return branch
 	}
 
+	projectPath := guessProjectPath(c, e)
+	if projectPath == "" {
+		return ""
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	defer os.Chdir(cwd)
+	os.Chdir(projectPath)
+
 	git, err := exec.LookPath("git")
 	if err != nil {
 		return ""
@@ -300,6 +311,17 @@ func guessGitCommit(c *cli.Context, e *Environment) string {
 	if commit != "" {
 		return commit
 	}
+
+	projectPath := guessProjectPath(c, e)
+	if projectPath == "" {
+		return ""
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	defer os.Chdir(cwd)
+	os.Chdir(projectPath)
 
 	git, err := exec.LookPath("git")
 	if err != nil {
@@ -475,7 +497,6 @@ type PipelineOptions struct {
 func guessApplicationID(c *cli.Context, e *Environment, name string) string {
 	id := c.String("application-id")
 	if id == "" {
-		log.Warnln("No ApplicationID specified, using ", name)
 		id = name
 	}
 	return id
@@ -545,6 +566,41 @@ func guessTag(c *cli.Context, e *Environment) string {
 	return tag
 }
 
+func looksLikeURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
+}
+
+func guessProjectID(c *cli.Context, e *Environment) string {
+	projectID := c.String("project-id")
+	if projectID != "" {
+		return projectID
+	}
+
+	// If this was going to fail it already failed and we exited
+	name, _ := guessApplicationName(c, e)
+	return name
+}
+
+func guessProjectPath(c *cli.Context, e *Environment) string {
+	target := c.Args().First()
+	if looksLikeURL(target) {
+		return ""
+	}
+	if target == "" {
+		target = "."
+	}
+	abs, _ := filepath.Abs(target)
+	return abs
+}
+
+func guessProjectURL(c *cli.Context, e *Environment) string {
+	target := c.Args().First()
+	if !looksLikeURL(target) {
+		return ""
+	}
+	return target
+}
+
 // NewPipelineOptions big-ass constructor
 func NewPipelineOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*PipelineOptions, error) {
 	dockerOpts, err := NewDockerOptions(c, e, globalOpts)
@@ -588,6 +644,9 @@ func NewPipelineOptions(c *cli.Context, e *Environment, globalOpts *GlobalOption
 	applicationID := guessApplicationID(c, e, applicationName)
 	applicationOwnerName := guessApplicationOwnerName(c, e)
 	applicationStartedByName := c.String("application-started-by-name")
+	if applicationStartedByName == "" {
+		applicationStartedByName = applicationOwnerName
+	}
 
 	shouldPush := c.Bool("push")
 	shouldCommit := c.Bool("commit")
@@ -602,23 +661,9 @@ func NewPipelineOptions(c *cli.Context, e *Environment, globalOpts *GlobalOption
 	mntRoot := c.String("mnt-root")
 	reportRoot := c.String("report-root")
 
-	// Project URL and ID and Path
-	// TODO(termie): this feels messy
-	projectURL := ""
-	target := c.Args().First()
-	projectPath := target
-	if projectPath == "" {
-		projectPath = "."
-	}
-	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
-		projectURL = target
-		projectPath = ""
-	}
-
-	projectID := c.GlobalString("project-id")
-	if projectID == "" {
-		projectID = strings.Replace(c.Args().First(), "/", "_", -1)
-	}
+	projectID := guessProjectID(c, e)
+	projectPath := guessProjectPath(c, e)
+	projectURL := guessProjectURL(c, e)
 
 	commandTimeout := c.Int("command-timeout")
 	noResponseTimeout := c.Int("no-response-timeout")
@@ -702,7 +747,8 @@ func (o *PipelineOptions) ReportPath(s ...string) string {
 }
 
 // dumpOptions prints out a sorted list of options
-func dumpOptions(options interface{}) {
+func dumpOptions(options interface{}, indent ...string) {
+	indent = append(indent, "  ")
 	s := reflect.ValueOf(options).Elem()
 	typeOfT := s.Type()
 	names := []string{}
@@ -718,7 +764,15 @@ func dumpOptions(options interface{}) {
 	for _, name := range names {
 		r := reflect.ValueOf(options)
 		f := reflect.Indirect(r).FieldByName(name)
-		log.Debugln(fmt.Sprintf("  %s %s = %v", name, f.Type(), f.Interface()))
+		if strings.HasSuffix(name, "Options") {
+			if len(indent) > 1 && name == "GlobalOptions" {
+				continue
+			}
+			log.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
+			dumpOptions(f.Interface(), indent...)
+		} else {
+			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
+		}
 	}
 }
 
