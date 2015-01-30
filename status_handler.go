@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -85,11 +86,18 @@ func (s *JSONMessageProcessor) getOutput() string {
 		s.message = nil
 	}
 
-	buffer := make([]string, len(s.progressMessages))
 	pointer := 0
-	for _, message := range s.progressMessages {
-		buffer[pointer] = formatProgressOutput(message)
+	keys := make([]string, len(s.progressMessages))
+	for key, _ := range s.progressMessages {
+		keys[pointer] = key
 		pointer++
+	}
+
+	sort.Strings(keys)
+
+	buffer := make([]string, len(s.progressMessages))
+	for i, key := range keys {
+		buffer[i] = formatProgressOutput(s.progressMessages[key])
 	}
 
 	// Create progress message and optionally fill it to match previous message
