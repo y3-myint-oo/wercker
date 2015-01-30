@@ -291,17 +291,20 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 				pr.FailedStepMessage = "Unable to store pipeline output"
 
 				artifact, err := pipeline.CollectArtifact(sess)
-				if err != nil {
-					return err
-				}
+				// Ignore ErrEmptyTarball errors
+				if err != ErrEmptyTarball {
+					if err != nil {
+						return err
+					}
 
-				artificer := NewArtificer(options)
-				err = artificer.Upload(artifact)
-				if err != nil {
-					return err
-				}
+					artificer := NewArtificer(options)
+					err = artificer.Upload(artifact)
+					if err != nil {
+						return err
+					}
 
-				sr.PackageURL = artifact.URL()
+					sr.PackageURL = artifact.URL()
+				}
 			}
 
 			// Everything went ok, so reset failed related fields
