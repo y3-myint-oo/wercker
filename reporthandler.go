@@ -29,13 +29,14 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	return h, nil
 }
 
-func mapBuildSteps(counter *Counter, steps ...*Step) []*reporter.NewStep {
+func mapBuildSteps(counter *Counter, phase string, steps ...*Step) []*reporter.NewStep {
 	buffer := make([]*reporter.NewStep, len(steps))
 	for i, s := range steps {
 		buffer[i] = &reporter.NewStep{
 			DisplayName: s.DisplayName,
 			Name:        s.Name,
 			Order:       counter.Increment(),
+			Phase:       phase,
 		}
 	}
 	return buffer
@@ -93,9 +94,9 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 // BuildStepsAdded will handle the BuildStepsAdded event.
 func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
 	stepCounter := &Counter{Current: 3}
-	steps := mapBuildSteps(stepCounter, args.Steps...)
-	storeStep := mapBuildSteps(stepCounter, args.StoreStep)
-	afterSteps := mapBuildSteps(stepCounter, args.AfterSteps...)
+	steps := mapBuildSteps(stepCounter, "mainSteps", args.Steps...)
+	storeStep := mapBuildSteps(stepCounter, "mainSteps", args.StoreStep)
+	afterSteps := mapBuildSteps(stepCounter, "finalSteps", args.AfterSteps...)
 	steps = append(steps, storeStep...)
 	steps = append(steps, afterSteps...)
 
