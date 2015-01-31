@@ -342,6 +342,26 @@ func (b *Box) Push(options *PushOptions, auth docker.AuthConfiguration) (*docker
 	return i, nil
 }
 
+// ExportImageOptions are the options available for ExportImage.
+type ExportImageOptions struct {
+	Name         string
+	OutputStream io.Writer
+}
+
+// ExportImage will export the image to a temporary file and return the path to
+// the file.
+func (b *Box) ExportImage(options *ExportImageOptions) error {
+	logger := log.WithField("Name", options.Name)
+	logger.Info("Storing image")
+
+	exportImageOptions := docker.ExportImageOptions{
+		Name:         options.Name,
+		OutputStream: options.OutputStream,
+	}
+
+	return b.client.ExportImage(exportImageOptions)
+}
+
 // emitStatus will decode the messages coming from r and decode these into
 // JSONMessage
 func emitStatus(r io.Reader, options *PipelineOptions) {

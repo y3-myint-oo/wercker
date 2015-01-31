@@ -67,16 +67,12 @@ func (b *Build) InitEnv() {
 
 // DockerRepo calculates our repo name
 func (b *Build) DockerRepo() string {
-	return fmt.Sprintf("%s/%s", b.options.ApplicationOwnerName, b.options.ApplicationName)
+	return fmt.Sprintf("build-%s", b.options.BuildID)
 }
 
 // DockerTag calculates our tag
 func (b *Build) DockerTag() string {
-	tag := b.options.Tag
-	if tag == "" {
-		tag = fmt.Sprintf("build-%s", b.options.BuildID)
-	}
-	return tag
+	return ""
 }
 
 // DockerMessage calculates our message

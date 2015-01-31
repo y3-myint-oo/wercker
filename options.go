@@ -45,6 +45,7 @@ var (
 		cli.StringFlag{Name: "project-dir", Value: "./_projects", Usage: "path where downloaded projects live"},
 		cli.StringFlag{Name: "step-dir", Value: "./_steps", Usage: "path where downloaded steps live"},
 		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "path where created builds live"},
+		cli.StringFlag{Name: "container-dir", Value: "./_containers", Usage: "path where exported containers live"},
 	}
 
 	// These flags control paths on the guest and probably shouldn't change
@@ -74,7 +75,6 @@ var (
 
 	// These flags affect our registry interactions
 	registryFlags = []cli.Flag{
-		cli.BoolFlag{Name: "push", Usage: "push the build result to registry"},
 		cli.BoolFlag{Name: "commit", Usage: "commit the build result locally"},
 		cli.StringFlag{Name: "tag", Value: "", Usage: "tag for this build", EnvVar: "WERCKER_GIT_BRANCH"},
 		cli.StringFlag{Name: "message", Value: "", Usage: "message for this build"},
@@ -84,6 +84,8 @@ var (
 	artifactFlags = []cli.Flag{
 		cli.BoolFlag{Name: "no-artifacts", Usage: "don't upload artifacts"},
 		cli.BoolFlag{Name: "no-remove", Usage: "don't remove the containers"},
+		cli.BoolFlag{Name: "store-local", Usage: "store artifcats and containers locally"},
+		cli.BoolFlag{Name: "store-s3", Usage: "store artifcats and containers on s3"},
 	}
 
 	// These flags affect our local execution environment
@@ -125,6 +127,12 @@ var (
 		cli.Float64Flag{Name: "no-response-timeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
 		cli.Float64Flag{Name: "command-timeout", Value: 10, Usage: "timeout if command does not complete in this many minutes"},
 		cli.StringFlag{Name: "wercker-yml", Value: "", Usage: "specify a specific yaml file"},
+	}
+
+	pullFlags = [][]cli.Flag{
+		[]cli.Flag{
+			cli.StringFlag{Name: "build-id", Value: "", Usage: "build id to retrieve from wercker"},
+		},
 	}
 
 	GlobalFlags = [][]cli.Flag{
@@ -469,14 +477,16 @@ type PipelineOptions struct {
 	ApplicationOwnerName     string
 	ApplicationStartedByName string
 
-	ShouldPush   bool
-	ShouldCommit bool
-	Tag          string
-	Message      string
+	ShouldCommit     bool
+	Tag              string
+	Message          string
+	ShouldStoreLocal bool
+	ShouldStoreS3    bool
 
-	BuildDir   string
-	ProjectDir string
-	StepDir    string
+	BuildDir     string
+	ProjectDir   string
+	StepDir      string
+	ContainerDir string
 
 	GuestRoot  string
 	MntRoot    string
@@ -656,14 +666,16 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		applicationStartedByName = applicationOwnerName
 	}
 
-	shouldPush := c.Bool("push")
 	shouldCommit := c.Bool("commit")
 	tag := guessTag(c, e)
 	message := guessMessage(c, e)
+	shouldStoreLocal := c.Bool("store-local")
+	shouldStoreS3 := c.Bool("store-s3")
 
 	buildDir, _ := filepath.Abs(c.String("build-dir"))
 	projectDir, _ := filepath.Abs(c.String("project-dir"))
 	stepDir, _ := filepath.Abs(c.String("step-dir"))
+	containerDir, _ := filepath.Abs(c.String("container-dir"))
 
 	guestRoot := c.String("guest-root")
 	mntRoot := c.String("mnt-root")
@@ -702,14 +714,16 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		ApplicationOwnerName:     applicationOwnerName,
 		ApplicationStartedByName: applicationStartedByName,
 
-		Message:      message,
-		Tag:          tag,
-		ShouldCommit: shouldCommit,
-		ShouldPush:   shouldPush,
+		Message:          message,
+		Tag:              tag,
+		ShouldCommit:     shouldCommit,
+		ShouldStoreLocal: shouldStoreLocal,
+		ShouldStoreS3:    shouldStoreS3,
 
-		BuildDir:   buildDir,
-		ProjectDir: projectDir,
-		StepDir:    stepDir,
+		BuildDir:     buildDir,
+		ProjectDir:   projectDir,
+		StepDir:      stepDir,
+		ContainerDir: containerDir,
 
 		GuestRoot:  guestRoot,
 		MntRoot:    mntRoot,
@@ -859,6 +873,8 @@ func NewLoginOptions(c *cli.Context, e *Environment) (*LoginOptions, error) {
 type PullOptions struct {
 	*GlobalOptions
 	*DockerOptions
+
+	BuildID string
 }
 
 // NewPullOptions constructor
@@ -876,6 +892,7 @@ func NewPullOptions(c *cli.Context, e *Environment) (*PullOptions, error) {
 	return &PullOptions{
 		GlobalOptions: globalOpts,
 		DockerOptions: dockerOpts,
+		BuildID:       c.String("build-id"),
 	}, nil
 }
 

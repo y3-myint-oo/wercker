@@ -198,6 +198,7 @@ func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 	})
 }
 
+// BuildStepsAdded handles the BuildStepsAdded event.
 func (h *MetricsEventHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
 	if args.Options.BuildID != "" {
 		h.numBuildSteps = len(args.Steps)

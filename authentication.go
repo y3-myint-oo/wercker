@@ -28,7 +28,7 @@ type Response struct {
 	Success bool       `json:"success"`
 }
 
-// Result holds the auth token
+// AuthResult holds the auth token
 type AuthResult struct {
 	Token string `json:"token"`
 }

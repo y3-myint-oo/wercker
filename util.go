@@ -203,13 +203,13 @@ func (c *Counter) Increment() int {
 	return current
 }
 
-// GenerateUserAgent generate a useragent.
-func AddRequestHeaders(req *http.Request) {
-	userAgent := fmt.Sprintf("sentcli %s", FullVersion())
-
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("X-Wercker-Version", Version())
-	if GitCommit != "" {
-		req.Header.Set("X-Wercker-Git", GitCommit)
+// ContainsString checks if the array items contains the string target.
+// TODO(bvdberg): write units tests
+func ContainsString(items []string, target string) bool {
+	for _, item := range items {
+		if item == target {
+			return true
+		}
 	}
+	return false
 }

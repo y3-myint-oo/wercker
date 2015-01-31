@@ -279,8 +279,8 @@ func (s *Step) Fetch() (string, error) {
 			var stepInfo StepAPIInfo
 
 			// Grab the info about the step from the api
-			client := NewAPIClient(s.options.WerckerEndpoint)
-			apiBytes, err := client.Get("steps", s.Owner, s.Name, s.Version)
+			client := NewAPIClient(s.options.GlobalOptions)
+			apiBytes, err := client.GetBody("steps", s.Owner, s.Name, s.Version)
 			if err != nil {
 				return "", err
 			}

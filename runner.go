@@ -126,6 +126,13 @@ func (p *Runner) EnsureCode() (string, error) {
 	} else {
 		// We were pointed at a path with ProjectPath, copy it to projectDir
 
+		ignoreFiles := []string{
+			p.options.BuildDir,
+			p.options.ProjectDir,
+			p.options.StepDir,
+			p.options.ContainerDir,
+		}
+
 		// Make sure we don't accidentally recurse or copy extra files
 		ignoreFunc := func(src string, files []os.FileInfo) []string {
 			ignores := []string{}
@@ -135,7 +142,8 @@ func (p *Runner) EnsureCode() (string, error) {
 					// Something went sufficiently wrong
 					panic(err)
 				}
-				if abspath == p.options.BuildDir || abspath == p.options.ProjectDir || abspath == p.options.StepDir {
+
+				if ContainsString(ignoreFiles, abspath) {
 					ignores = append(ignores, file.Name())
 				}
 				// TODO(termie): maybe ignore .gitignore files?

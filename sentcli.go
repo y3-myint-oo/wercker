@@ -1,8 +1,12 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -12,6 +16,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/joho/godotenv"
+	"github.com/mreiferson/go-snappystream"
 	"golang.org/x/net/context"
 )
 
@@ -125,21 +130,19 @@ var (
 		ShortName: "p",
 		Usage:     "pull a recent build",
 		Action: func(c *cli.Context) {
-			// envfile := c.GlobalString("environment")
-			// _ = godotenv.Load(envfile)
-
 			opts, err := NewPullOptions(c, NewEnvironment(os.Environ()))
 			if err != nil {
 				log.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
+
 			err = cmdPull(c, opts)
 			if err != nil {
 				log.Errorln("Command failed\n", err)
 				os.Exit(1)
 			}
 		},
-		Flags: flagsFor(DockerFlags),
+		Flags: flagsFor(pullFlags, DockerFlags),
 	}
 
 	versionCommand = cli.Command{
@@ -298,38 +301,86 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 
 	dumpOptions(options)
 
-	client, err := NewDockerClient(options.DockerOptions)
+	client := NewAPIClient(options.GlobalOptions)
+
+	// Diagram of the various readers/writers
+	// res.body <-- tee <-- s <-- [io.Copy] --> file
+	//               |
+	//               +--> hash       *Legend: --> == write, <-- == read
+
+	log.Println("Creating temporary file")
+
+	file, err := ioutil.TempFile("", "wercker-repository-")
 	if err != nil {
+		log.WithField("Error", err).Error("Unable to create temporary file")
+		return soft.Exit(err)
+	}
+	defer os.Remove(file.Name())
+
+	p := fmt.Sprintf("builds/%s/docker", options.BuildID)
+
+	log.WithFields(log.Fields{
+		"RequestPath":   p,
+		"TemporaryFile": file.Name(),
+	}).Println("Downloading file")
+
+	res, err := client.Get(p)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to create request to API")
 		return soft.Exit(err)
 	}
 
-	auth := docker.AuthConfiguration{}
-	if options.AuthToken != "" {
-		auth = docker.AuthConfiguration{
-			Username:      options.AuthToken,
-			Password:      options.AuthToken,
-			ServerAddress: options.Registry,
-		}
+	if res.StatusCode != 200 {
+		return soft.Exit(fmt.Errorf("Login %d", res.StatusCode))
 	}
 
-	repo := c.Args().First()
-	tag := c.Args().Get(1)
-	log.Println("Repo: ", repo)
-	log.Println("Tag: ", tag)
-	opts := docker.PullImageOptions{
-		Repository:   fmt.Sprintf("%s/%s", options.Registry, repo),
-		Registry:     options.Registry,
-		OutputStream: os.Stdout,
-	}
+	hash := sha256.New()
+	tee := io.TeeReader(res.Body, hash)
+	defer res.Body.Close()
+	s := snappystream.NewReader(tee, true)
 
-	if tag != "" {
-		opts.Tag = tag
-	}
-
-	err = client.PullImage(opts, auth)
+	_, err = io.Copy(file, s)
 	if err != nil {
-		log.Panicln(err)
+		log.WithField("Error", err).Error("Unable to copy data from URL to file")
+		return soft.Exit(err)
 	}
+
+	log.Println("Download complete")
+
+	calculatedHash := hex.EncodeToString(hash.Sum(nil))
+	providedHash := res.Header.Get("x-amz-meta-sha256")
+
+	if calculatedHash != providedHash {
+		log.WithFields(log.Fields{
+			"CalculatedHash": calculatedHash,
+			"ProvidedHash":   providedHash,
+		}).Error("Calculated hash did not match provided hash")
+		return soft.Exit(errors.New("Calculated hash did not match provided hash"))
+	}
+
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to reset seeker")
+		return soft.Exit(err)
+	}
+
+	dockerClient, err := NewDockerClient(options.DockerOptions)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to create Docker client")
+		return soft.Exit(err)
+	}
+
+	log.Println("Importing into Docker")
+
+	importImageOptions := docker.LoadImageOptions{InputStream: file}
+	err = dockerClient.LoadImage(importImageOptions)
+	if err != nil {
+		log.WithField("Error", err).Error("Unable to load image")
+		return soft.Exit(err)
+	}
+
+	log.Println("Finished importing into Docker")
+
 	return nil
 }
 
@@ -475,7 +526,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		box.Commit(repoName, tag, message)
 	}
 
-	if options.ShouldPush || (pr.Success && options.ShouldArtifacts) {
+	shouldStore := options.ShouldStoreS3 || options.ShouldStoreLocal
+
+	if shouldStore || (pr.Success && options.ShouldArtifacts) {
 		// At this point the build has effectively passed but we can still mess it
 		// up by being unable to deliver the artifacts
 
@@ -492,28 +545,75 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 			pr.FailedStepName = storeStep.Name
 
-			if options.ShouldPush {
-				pr.FailedStepMessage = "Unable to push to registry"
+			if shouldStore {
+				pr.FailedStepMessage = "Unable to store container"
 
-				pushOptions := &PushOptions{
-					Registry: options.Registry,
-					Name:     repoName,
-					Tag:      tag,
-					Message:  message,
+				file, err := ioutil.TempFile("", "export-image-")
+				if err != nil {
+					log.WithField("Error", err).Error("Unable to create temporary file")
+					return err
+				}
+				defer os.Remove(file.Name())
+
+				hash := sha256.New()
+				w := snappystream.NewWriter(io.MultiWriter(file, hash))
+
+				log.WithField("RepositoryName", repoName).Println("Exporting image")
+
+				exportImageOptions := &ExportImageOptions{
+					Name:         repoName,
+					OutputStream: w,
+				}
+				err = box.ExportImage(exportImageOptions)
+				if err != nil {
+					log.WithField("Error", err).Error("Unable to export image")
+					return err
 				}
 
-				auth := docker.AuthConfiguration{}
-				if options.AuthToken != "" {
-					auth = docker.AuthConfiguration{
-						Username:      options.AuthToken,
-						Password:      options.AuthToken,
-						ServerAddress: options.Registry,
+				// Copy is done now, so close temporary file and set the calculatedHash
+				file.Close()
+
+				calculatedHash := hex.EncodeToString(hash.Sum(nil))
+
+				log.WithFields(log.Fields{
+					"SHA256":            calculatedHash,
+					"TemporaryLocation": file.Name(),
+				}).Println("Export image successful")
+
+				key := GenerateBaseKey(options)
+				key = fmt.Sprintf("%s/%s", key, "docker.tar.sz")
+
+				storeFromFileArgs := &StoreFromFileArgs{
+					ContentType: "application/x-snappy-framed",
+					Path:        file.Name(),
+					Key:         key,
+					Meta: map[string][]string{
+						"Sha256": []string{calculatedHash},
+					},
+				}
+
+				if options.ShouldStoreS3 {
+					log.Println("Storing docker repository on S3")
+
+					s3Store := NewS3Store(options.AWSOptions)
+
+					err = s3Store.StoreFromFile(storeFromFileArgs)
+					if err != nil {
+						log.WithField("Error", err).Error("Unable to store to S3 store")
+						return err
 					}
 				}
 
-				_, err = box.Push(pushOptions, auth)
-				if err != nil {
-					return err
+				if options.ShouldStoreLocal {
+					log.Println("Storing docker repository to local storage")
+
+					localStore := NewLocalStore(options.ContainerDir)
+
+					err = localStore.StoreFromFile(storeFromFileArgs)
+					if err != nil {
+						log.WithField("Error", err).Error("Unable to store to local store")
+						return err
+					}
 				}
 			}
 
