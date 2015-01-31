@@ -11,7 +11,8 @@ const (
 	// BuildStarted is the event when sentcli has started a build.
 	BuildStarted = "BuildStarted"
 
-	// BuildFinished is the event when sentcli has finished a build.
+	// BuildFinished occures when a pipeline finishes the main phase. It is
+	// possible that after-steps are run after this event.
 	BuildFinished = "BuildFinished"
 
 	// BuildStepsAdded is the event when sentcli has parsed the wercker.yml and
@@ -23,6 +24,10 @@ const (
 
 	// BuildStepFinished is the event when sentcli has finished a buildstep.
 	BuildStepFinished = "BuildStepFinished"
+
+	// FullPipelineFinished occurs when a pipeline finishes all it's steps,
+	// included after-steps.
+	FullPipelineFinished = "FullPipelineFinished"
 )
 
 // BuildStartedArgs contains the args associated with the "BuildStarted" event.
@@ -85,6 +90,15 @@ type BuildStepFinishedArgs struct {
 	PackageURL string
 	// Only applicable to the setup environment step
 	WerckerYamlContents string
+}
+
+// FullPipelineFinishedArgs contains the args associated with the
+// "FullPipelineFinished" event.
+type FullPipelineFinishedArgs struct {
+	Options             *GlobalOptions
+	MainSuccessful      bool
+	RanAfterSteps       bool
+	AfterStepSuccessful bool
 }
 
 // emitter contains the singleton emitter.

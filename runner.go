@@ -2,15 +2,16 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go-uuid/uuid"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/chuckpreslar/emission"
-	"github.com/termie/go-shutil"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
+
+	"code.google.com/p/go-uuid/uuid"
+	log "github.com/Sirupsen/logrus"
+	"github.com/chuckpreslar/emission"
+	"github.com/termie/go-shutil"
 )
 
 // GetPipeline is a function that will fetch the appropriate pipeline
@@ -306,6 +307,19 @@ func (p *Runner) StartBuild(options *GlobalOptions) *Finisher {
 			Options: options,
 			Result:  msg,
 		})
+	})
+}
+
+// StartFullPipeline emits a FullPipelineFinished when the Finisher is called.
+func (p *Runner) StartFullPipeline(options *GlobalOptions) *Finisher {
+	return NewFinisher(func(result interface{}) {
+		r, ok := result.(FullPipelineFinishedArgs)
+		if !ok {
+			return
+		}
+
+		r.Options = options
+		p.emitter.Emit(FullPipelineFinished, r)
 	})
 }
 

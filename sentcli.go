@@ -165,6 +165,11 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 	p := NewRunner(options, getter)
 	e := p.Emitter()
 
+	// All bool properties will be initialized on false
+	pipelineArgs := &FullPipelineFinishedArgs{}
+	fullPipelineFinished := p.StartFullPipeline(options)
+	defer fullPipelineFinished.Finish(pipelineArgs)
+
 	buildFinisher := p.StartBuild(options)
 
 	// This will be emitted at the end of the execution, we're going to be
@@ -332,10 +337,13 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 	// We're sending our build finished but we're not done yet,
 	// now is time to run after-steps if we have any
 	buildFinisher.Finish(pr.Success)
+	pipelineArgs.MainSuccessful = pr.Success
 
 	if len(pipeline.AfterSteps()) == 0 {
 		return nil
 	}
+
+	pipelineArgs.RanAfterSteps = true
 
 	log.Println("########## Starting After Steps ###########")
 	// The container may have died, either way we'll have a fresh env
@@ -391,6 +399,9 @@ func executePipeline(c *cli.Context, getter GetPipeline) error {
 	if !pr.Success {
 		return fmt.Errorf("Step failed: %s", pr.FailedStepName)
 	}
+
+	pipelineArgs.AfterStepSuccessful = pr.Success
+
 	return nil
 }
 
