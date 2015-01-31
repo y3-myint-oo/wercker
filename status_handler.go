@@ -88,7 +88,7 @@ func (s *JSONMessageProcessor) getOutput() string {
 
 	pointer := 0
 	keys := make([]string, len(s.progressMessages))
-	for key, _ := range s.progressMessages {
+	for key := range s.progressMessages {
 		keys[pointer] = key
 		pointer++
 	}
