@@ -14,8 +14,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/termie/go-shutil"
+	"golang.org/x/net/context"
 	"gopkg.in/yaml.v1"
 )
+
+// Step INterface GOes Here
 
 // StepConfig represents a wercker-step.yml
 type StepConfig struct {
@@ -310,30 +313,30 @@ func (s *Step) Fetch() (string, error) {
 }
 
 // SetupGuest ensures that the guest is ready to run a Step.
-func (s *Step) SetupGuest(sess *Session) error {
+func (s *Step) SetupGuest(sessionCtx context.Context, sess *Session) error {
 	// TODO(termie): can this even fail? i.e. exit code != 0
 	sess.HideLogs()
 	defer sess.ShowLogs()
-	_, _, err := sess.SendChecked(fmt.Sprintf(`mkdir -p "%s"`, s.ReportPath("artifacts")))
-	_, _, err = sess.SendChecked("set +e")
-	_, _, err = sess.SendChecked(fmt.Sprintf(`cp -r "%s" "%s"`, s.MntPath(), s.GuestPath()))
-	_, _, err = sess.SendChecked(fmt.Sprintf(`cd "%s"`, s.options.SourcePath()))
+	_, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`mkdir -p "%s"`, s.ReportPath("artifacts")))
+	_, _, err = sess.SendChecked(sessionCtx, "set +e")
+	_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cp -r "%s" "%s"`, s.MntPath(), s.GuestPath()))
+	_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cd "%s"`, s.options.SourcePath()))
 	return err
 }
 
 // Execute actually sends the commands for the step.
-func (s *Step) Execute(sess *Session) (int, error) {
-	err := s.SetupGuest(sess)
+func (s *Step) Execute(sessionCtx context.Context, sess *Session) (int, error) {
+	err := s.SetupGuest(sessionCtx, sess)
 	if err != nil {
 		return 1, err
 	}
-	_, _, err = sess.SendChecked(s.Env.Export()...)
+	_, _, err = sess.SendChecked(sessionCtx, s.Env.Export()...)
 	if err != nil {
 		return 1, err
 	}
 
 	if yes, _ := exists(s.HostPath("init.sh")); yes {
-		exit, _, err := sess.SendChecked(fmt.Sprintf(`source "%s"`, s.GuestPath("init.sh")))
+		exit, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`source "%s"`, s.GuestPath("init.sh")))
 		if exit != 0 {
 			return exit, errors.New("Ack!")
 		}
@@ -343,7 +346,7 @@ func (s *Step) Execute(sess *Session) (int, error) {
 	}
 
 	if yes, _ := exists(s.HostPath("run.sh")); yes {
-		exit, _, err := sess.SendChecked(fmt.Sprintf(`source "%s"`, s.GuestPath("run.sh")))
+		exit, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`source "%s"`, s.GuestPath("run.sh")))
 		return exit, err
 	}
 
@@ -351,7 +354,7 @@ func (s *Step) Execute(sess *Session) (int, error) {
 }
 
 // CollectFile gets an individual file from the container
-func (s *Step) CollectFile(sess *Session, path, name string, dst io.Writer) error {
+func (s *Step) CollectFile(containerID, path, name string, dst io.Writer) error {
 	client, err := NewDockerClient(s.options.DockerOptions)
 	if err != nil {
 		return err
@@ -360,7 +363,7 @@ func (s *Step) CollectFile(sess *Session, path, name string, dst io.Writer) erro
 	pipeReader, pipeWriter := io.Pipe()
 	opts := docker.CopyFromContainerOptions{
 		OutputStream: pipeWriter,
-		Container:    sess.ContainerID,
+		Container:    containerID,
 		Resource:     filepath.Join(path, name),
 	}
 
@@ -379,13 +382,13 @@ func (s *Step) CollectFile(sess *Session, path, name string, dst io.Writer) erro
 }
 
 // CollectArtifact copies the artifacts associated with the Step.
-func (s *Step) CollectArtifact(sess *Session) (*Artifact, error) {
+func (s *Step) CollectArtifact(containerID string) (*Artifact, error) {
 	artificer := NewArtificer(s.options)
 
 	// Ensure we have the host directory
 
 	artifact := &Artifact{
-		ContainerID:   sess.ContainerID,
+		ContainerID:   containerID,
 		GuestPath:     s.ReportPath("artifacts"),
 		HostPath:      s.options.HostPath("artifacts", s.SafeID, "artifacts.tar"),
 		ApplicationID: s.options.ApplicationID,

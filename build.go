@@ -89,13 +89,13 @@ func (b *Build) DockerMessage() string {
 }
 
 // CollectArtifact copies the artifacts associated with the Build.
-func (b *Build) CollectArtifact(sess *Session) (*Artifact, error) {
+func (b *Build) CollectArtifact(containerID string) (*Artifact, error) {
 	artificer := NewArtificer(b.options)
 
 	// Ensure we have the host directory
 
 	artifact := &Artifact{
-		ContainerID:   sess.ContainerID,
+		ContainerID:   containerID,
 		GuestPath:     b.options.GuestPath("output"),
 		HostPath:      b.options.HostPath("build.tar"),
 		ApplicationID: b.options.ApplicationID,
@@ -104,7 +104,7 @@ func (b *Build) CollectArtifact(sess *Session) (*Artifact, error) {
 	}
 
 	sourceArtifact := &Artifact{
-		ContainerID:   sess.ContainerID,
+		ContainerID:   containerID,
 		GuestPath:     b.options.SourcePath(),
 		HostPath:      b.options.HostPath("build.tar"),
 		ApplicationID: b.options.ApplicationID,

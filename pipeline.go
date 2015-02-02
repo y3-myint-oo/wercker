@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	log "github.com/Sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 // Pipeline is a set of steps to run, this is the interface shared by
@@ -20,9 +21,9 @@ type Pipeline interface {
 	PassthruEnv() [][]string // base
 	InitEnv()                // impl
 	FetchSteps() error
-	CollectArtifact(*Session) (*Artifact, error)
-	SetupGuest(*Session) error
-	ExportEnvironment(*Session) error
+	CollectArtifact(string) (*Artifact, error)
+	SetupGuest(context.Context, *Session) error
+	ExportEnvironment(context.Context, *Session) error
 
 	LogEnvironment()
 	DockerRepo() string
@@ -39,7 +40,7 @@ type PipelineResult struct {
 }
 
 // ExportEnvironment for this pipeline result (used in after-steps)
-func (pr *PipelineResult) ExportEnvironment(sess *Session) error {
+func (pr *PipelineResult) ExportEnvironment(sessionCtx context.Context, sess *Session) error {
 	e := &Environment{}
 	result := "failed"
 	if pr.Success {
@@ -51,7 +52,7 @@ func (pr *PipelineResult) ExportEnvironment(sess *Session) error {
 		e.Add("WERCKER_FAILED_STEP_MESSAGE", pr.FailedStepMessage)
 	}
 
-	exit, _, err := sess.SendChecked(e.Export()...)
+	exit, _, err := sess.SendChecked(sessionCtx, e.Export()...)
 	if err != nil {
 		return err
 	}
@@ -139,7 +140,7 @@ func (p *BasePipeline) FetchSteps() error {
 }
 
 // SetupGuest ensures that the guest is prepared to run the pipeline.
-func (p *BasePipeline) SetupGuest(sess *Session) error {
+func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) error {
 	sess.HideLogs()
 	defer sess.ShowLogs()
 
@@ -164,7 +165,7 @@ func (p *BasePipeline) SetupGuest(sess *Session) error {
 	}...)
 
 	for _, cmd := range cmds {
-		exit, _, err := sess.SendChecked(cmd)
+		exit, _, err := sess.SendChecked(sessionCtx, cmd)
 		if err != nil {
 			return err
 		}
@@ -177,8 +178,8 @@ func (p *BasePipeline) SetupGuest(sess *Session) error {
 }
 
 // ExportEnvironment to the session
-func (p *BasePipeline) ExportEnvironment(sess *Session) error {
-	exit, _, err := sess.SendChecked(p.env.Export()...)
+func (p *BasePipeline) ExportEnvironment(sessionCtx context.Context, sess *Session) error {
+	exit, _, err := sess.SendChecked(sessionCtx, p.env.Export()...)
 	if err != nil {
 		return err
 	}

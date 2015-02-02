@@ -1,4 +1,4 @@
-box: tcnksm/gox@0.1.0
+box: tcnksm/gox@0.2.0
 build:
   steps:
     - setup-go-workspace@1.0.4
@@ -19,12 +19,14 @@ build:
         code: go tool vet *.go
 
     - golint
-
     - script:
         name: get version
         code: |-
             sh -e ./version.sh "$(git rev-parse $WERCKER_GIT_COMMIT)"
-
+    - script:
+        name: go test
+        code: |-
+            go test
     - tcnksm/gox:
         os: "darwin linux"
         arch: "386 amd64"
@@ -35,10 +37,6 @@ build:
             echo $WERCKER_GIT_COMMIT > $WERCKER_OUTPUT_DIR/HEAD
             mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/latest
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
-  after-steps:
-    - script:
-        name: dump env
-        code: env
 
 deploy:
   steps:
@@ -48,8 +46,3 @@ deploy:
         bucket-url: $AWS_BUCKET_URL/$WERCKER_GIT_BRANCH/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
-  after-steps:
-    - script:
-        name: dump env
-        code: env
-

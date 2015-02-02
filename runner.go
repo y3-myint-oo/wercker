@@ -12,6 +12,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/termie/go-shutil"
+	"golang.org/x/net/context"
 )
 
 // GetPipeline is a function that will fetch the appropriate pipeline
@@ -239,17 +240,21 @@ func (p *Runner) CopySource() error {
 }
 
 // GetSession attaches to the container and returns a session.
-func (p *Runner) GetSession(containerID string) (*Session, error) {
-	sess, err := NewSession(p.options, containerID)
+func (p *Runner) GetSession(runnerContext context.Context, containerID string) (context.Context, *Session, error) {
+	dockerTransport, err := NewDockerTransport(p.options, containerID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	err = sess.Attach()
+	sess := NewSession(p.options, dockerTransport)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	sessionCtx, err := sess.Attach(runnerContext)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return sess, nil
+	return sessionCtx, sess, nil
 }
 
 // GetPipeline returns a pipeline based on the "build" config section
@@ -257,17 +262,19 @@ func (p *Runner) GetPipeline(rawConfig *RawConfig) (Pipeline, error) {
 	return p.pipelineGetter(rawConfig, p.options)
 }
 
-// RunnerContext holds on to the information we got from setting up our
+// RunnerShared holds on to the information we got from setting up our
 // environment.
-type RunnerContext struct {
-	box      *Box
-	pipeline Pipeline
-	sess     *Session
-	config   *RawConfig
+type RunnerShared struct {
+	box        *Box
+	pipeline   Pipeline
+	sess       *Session
+	config     *RawConfig
+	sessionCtx context.Context
+	containerID string
 }
 
 // StartStep emits BuildStepStarted and returns a Finisher for the end event.
-func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher {
+func (p *Runner) StartStep(ctx *RunnerShared, step *Step, order int) *Finisher {
 	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
 		Build:   ctx.pipeline,
 		Options: p.options,
@@ -326,8 +333,8 @@ func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
 // SetupEnvironment does a lot of boilerplate legwork and returns a pipeline,
 // box, and session. This is a bit of a long method, but it is pretty much
 // the entire "Setup Environment" step.
-func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
-	ctx := &RunnerContext{}
+func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, error) {
+	shared := &RunnerShared{}
 
 	sr := &StepResult{
 		Success:  false,
@@ -337,7 +344,7 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	}
 
 	setupEnvironmentStep := &Step{Name: "setup environment"}
-	finisher := p.StartStep(ctx, setupEnvironmentStep, 2)
+	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 
 	log.Println("Application:", p.options.ApplicationName)
@@ -345,52 +352,53 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 	// Grab our config
 	rawConfig, stringConfig, err := p.GetConfig()
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
-	ctx.config = rawConfig
+	shared.config = rawConfig
 	sr.WerckerYamlContents = stringConfig
 
 	box, err := p.GetBox(rawConfig)
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
-	ctx.box = box
+	shared.box = box
 
 	err = p.AddServices(rawConfig, box)
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
 
 	// Start setting up the pipeline dir
 	log.Debugln("Copying source to build directory")
 	err = p.CopySource()
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
 
 	pipeline, err := p.GetPipeline(rawConfig)
-	ctx.pipeline = pipeline
+	shared.pipeline = pipeline
 
 	log.Println("Steps:", len(pipeline.Steps()))
 
 	// Make sure we have the steps
 	err = pipeline.FetchSteps()
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
 
 	// Start booting up our services
 	// TODO(termie): maybe move this into box.Run?
 	err = box.RunServices()
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
 
 	// Boot up our main container
 	container, err := box.Run()
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
+	shared.containerID = container.ID
 
 	// Register our signal handler to clean the box up
 	// TODO(termie): we should probably make a little general purpose signal
@@ -413,29 +421,30 @@ func (p *Runner) SetupEnvironment() (*RunnerContext, error) {
 
 	log.Debugln("Attaching session to base box")
 	// Start our session
-	sess, err := p.GetSession(container.ID)
+	sessionCtx, sess, err := p.GetSession(runnerCtx, container.ID)
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
-	ctx.sess = sess
+	shared.sess = sess
+	shared.sessionCtx = sessionCtx
 
 	// Some helpful logging
 	pipeline.LogEnvironment()
 
 	log.Debugln("Setting up guest (base box)")
-	err = pipeline.SetupGuest(sess)
+	err = pipeline.SetupGuest(sessionCtx, sess)
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
 
-	err = pipeline.ExportEnvironment(sess)
+	err = pipeline.ExportEnvironment(sessionCtx, sess)
 	if err != nil {
-		return ctx, err
+		return shared, err
 	}
 
 	sr.Success = true
 	sr.ExitCode = 0
-	return ctx, nil
+	return shared, nil
 }
 
 // StepResult holds the info we need to report on steps
@@ -449,8 +458,8 @@ type StepResult struct {
 }
 
 // RunStep runs a step and tosses error if it fails
-func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) (*StepResult, error) {
-	finisher := p.StartStep(ctx, step, order)
+func (p *Runner) RunStep(shared *RunnerShared, step *Step, order int) (*StepResult, error) {
+	finisher := p.StartStep(shared, step, order)
 	sr := &StepResult{
 		Success:  false,
 		Artifact: nil,
@@ -465,7 +474,7 @@ func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) (*StepResult
 		log.Println(" ", pair[0], pair[1])
 	}
 
-	exit, err := step.Execute(ctx.sess)
+	exit, err := step.Execute(shared.sessionCtx, shared.sess)
 	if exit != 0 {
 		sr.ExitCode = exit
 	} else if err != nil {
@@ -477,7 +486,7 @@ func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) (*StepResult
 
 	// Grab the message
 	var message bytes.Buffer
-	err = step.CollectFile(ctx.sess, step.ReportPath(), "message.txt", &message)
+	err = step.CollectFile(shared.containerID, step.ReportPath(), "message.txt", &message)
 	if err != nil {
 		if err != ErrEmptyTarball {
 			return sr, err
@@ -487,7 +496,7 @@ func (p *Runner) RunStep(ctx *RunnerContext, step *Step, order int) (*StepResult
 
 	// Grab artifacts if we want them
 	if p.options.ShouldArtifacts {
-		artifact, err := step.CollectArtifact(ctx.sess)
+		artifact, err := step.CollectArtifact(shared.containerID)
 		if err != nil {
 			return sr, err
 		}
