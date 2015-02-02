@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -62,14 +63,14 @@ func (pr *PipelineResult) ExportEnvironment(sess *Session) error {
 
 // BasePipeline is the base class for Build and Deploy
 type BasePipeline struct {
-	options    *GlobalOptions
+	options    *PipelineOptions
 	env        *Environment
 	steps      []*Step
 	afterSteps []*Step
 }
 
 // NewBasePipeline returns a new BasePipeline
-func NewBasePipeline(options *GlobalOptions, steps []*Step, afterSteps []*Step) *BasePipeline {
+func NewBasePipeline(options *PipelineOptions, steps []*Step, afterSteps []*Step) *BasePipeline {
 	return &BasePipeline{options, &Environment{}, steps, afterSteps}
 }
 

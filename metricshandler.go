@@ -2,9 +2,10 @@ package main
 
 import (
 	"errors"
+	"time"
+
 	"github.com/chuckpreslar/emission"
 	"github.com/inconshreveable/go-keen"
-	"time"
 )
 
 // A MetricsEventHandler reporting to keen.io.
@@ -43,7 +44,7 @@ type MetricsPayload struct {
 }
 
 // NewMetricsHandler will create a new NewMetricsHandler.
-func NewMetricsHandler(opts *GlobalOptions) (*MetricsEventHandler, error) {
+func NewMetricsHandler(opts *PipelineOptions) (*MetricsEventHandler, error) {
 
 	if "" == opts.KeenProjectWriteKey {
 		return nil, errors.New("No KeenProjectWriteKey specified")

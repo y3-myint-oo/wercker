@@ -2,14 +2,14 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go-uuid/uuid"
 	"fmt"
+	"strings"
+	"time"
+
+	"code.google.com/p/go-uuid/uuid"
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/fsouza/go-dockerclient"
-	// "os"
-	"strings"
-	"time"
 )
 
 // Receiver is for reading from our session
@@ -48,7 +48,7 @@ func (s *Sender) Read(p []byte) (int, error) {
 
 // Session is our way to interact with the container
 type Session struct {
-	options     *GlobalOptions
+	options     *PipelineOptions
 	e           *emission.Emitter
 	client      *DockerClient
 	ContainerID string
@@ -59,8 +59,8 @@ type Session struct {
 }
 
 // NewSession returns a new interactive session to a container.
-func NewSession(options *GlobalOptions, containerID string) (*Session, error) {
-	client, err := NewDockerClient(options)
+func NewSession(options *PipelineOptions, containerID string) (*Session, error) {
+	client, err := NewDockerClient(options.DockerOptions)
 	if err != nil {
 		return nil, err
 	}

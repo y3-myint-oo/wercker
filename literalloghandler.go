@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/wercker/reporter"
 )
 
 // NewLiteralLogHandler will create a new LiteralLogHandler.
-func NewLiteralLogHandler(options *GlobalOptions) (*LiteralLogHandler, error) {
+func NewLiteralLogHandler(options *PipelineOptions) (*LiteralLogHandler, error) {
 	logger := log.New()
 
 	if options.Debug {
@@ -24,7 +25,7 @@ func NewLiteralLogHandler(options *GlobalOptions) (*LiteralLogHandler, error) {
 // A LiteralLogHandler logs all events using Logrus.
 type LiteralLogHandler struct {
 	l       *log.Logger
-	options *GlobalOptions
+	options *PipelineOptions
 }
 
 // Logs will handle the Logs event.

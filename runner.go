@@ -16,10 +16,10 @@ import (
 
 // GetPipeline is a function that will fetch the appropriate pipeline
 // object from the rawConfig.
-type GetPipeline func(*RawConfig, *GlobalOptions) (Pipeline, error)
+type GetPipeline func(*RawConfig, *PipelineOptions) (Pipeline, error)
 
 // GetBuildPipeline grabs the "build" section of the yaml.
-func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (Pipeline, error) {
+func GetBuildPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline, error) {
 	build, err := rawConfig.RawBuild.ToBuild(options)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func GetBuildPipeline(rawConfig *RawConfig, options *GlobalOptions) (Pipeline, e
 }
 
 // GetDeployPipeline gets the "deploy" section of the yaml.
-func GetDeployPipeline(rawConfig *RawConfig, options *GlobalOptions) (Pipeline, error) {
+func GetDeployPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline, error) {
 	build, err := rawConfig.RawDeploy.ToDeploy(options)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func GetDeployPipeline(rawConfig *RawConfig, options *GlobalOptions) (Pipeline, 
 
 // Runner is the base type for running the pipelines.
 type Runner struct {
-	options        *GlobalOptions
+	options        *PipelineOptions
 	emitter        *emission.Emitter
 	logger         *LogHandler
 	literalLogger  *LiteralLogHandler
@@ -48,7 +48,7 @@ type Runner struct {
 }
 
 // NewRunner from global options
-func NewRunner(options *GlobalOptions, pipelineGetter GetPipeline) *Runner {
+func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 
 	e := GetEmitter()
 
@@ -75,7 +75,7 @@ func NewRunner(options *GlobalOptions, pipelineGetter GetPipeline) *Runner {
 
 	var r *ReportHandler
 	if options.ShouldReport {
-		r, err := NewReportHandler(options.WerckerHost, options.WerckerToken)
+		r, err := NewReportHandler(options.ReporterHost, options.ReporterKey)
 		if err != nil {
 			log.WithField("Error", err).Panic("Unable to ReportHandler")
 		}
@@ -295,7 +295,7 @@ func (p *Runner) StartStep(ctx *RunnerContext, step *Step, order int) *Finisher 
 }
 
 // StartBuild emits a BuildStarted and returns for a Finisher for the end.
-func (p *Runner) StartBuild(options *GlobalOptions) *Finisher {
+func (p *Runner) StartBuild(options *PipelineOptions) *Finisher {
 	p.emitter.Emit(BuildStarted, &BuildStartedArgs{Options: options})
 	return NewFinisher(func(result interface{}) {
 		r := result.(bool)

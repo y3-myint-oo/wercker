@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
 	"os"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/fsouza/go-dockerclient"
 )
 
 // ServiceBox wraps a box as a service
@@ -14,12 +15,12 @@ type ServiceBox struct {
 }
 
 // ToServiceBox turns a box into a ServiceBox
-func (b *RawBox) ToServiceBox(options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+func (b *RawBox) ToServiceBox(options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
 	return NewServiceBox(string(*b), options, boxOptions)
 }
 
 // NewServiceBox from a name and other references
-func NewServiceBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+func NewServiceBox(name string, options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
 	box, err := NewBox(name, options, boxOptions)
 	return &ServiceBox{Box: box}, err
 }

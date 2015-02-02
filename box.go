@@ -18,7 +18,7 @@ type Box struct {
 	ShortName       string
 	networkDisabled bool
 	services        []*ServiceBox
-	options         *GlobalOptions
+	options         *PipelineOptions
 	client          *DockerClient
 	container       *docker.Container
 	repository      string
@@ -31,12 +31,12 @@ type BoxOptions struct {
 }
 
 // ToBox will convert a RawBox into a Box
-func (b *RawBox) ToBox(options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
+func (b *RawBox) ToBox(options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
 	return NewBox(string(*b), options, boxOptions)
 }
 
 // NewBox from a name and other references
-func NewBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*Box, error) {
+func NewBox(name string, options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
 	// TODO(termie): right now I am just tacking the version into the name
 	//               by replacing @ with _
 	name = strings.Replace(name, "@", "_", 1)
@@ -53,8 +53,7 @@ func NewBox(name string, options *GlobalOptions, boxOptions *BoxOptions) (*Box, 
 	if len(parts) > 1 {
 		tag = parts[1]
 	}
-
-	client, err := NewDockerClient(options)
+	client, err := NewDockerClient(options.DockerOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +338,7 @@ func (b *Box) Push(options *PushOptions, auth docker.AuthConfiguration) (*docker
 
 // emitStatus will decode the messages coming from r and decode these into
 // JSONMessage
-func emitStatus(r io.Reader, options *GlobalOptions) {
+func emitStatus(r io.Reader, options *PipelineOptions) {
 	e := GetEmitter()
 
 	s := NewJSONMessageProcessor()

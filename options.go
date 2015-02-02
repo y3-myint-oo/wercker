@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -15,23 +13,38 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"code.google.com/p/go-uuid/uuid"
+	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 )
 
 // Flags for setting these options from the CLI
 var (
+	// These flags tell us where to go for operations
+	endpointFlags = []cli.Flag{
+		cli.StringFlag{Name: "wercker-endpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
+		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
+		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
+	}
+
+	// These flags let us auth to wercker services
+	authFlags = []cli.Flag{
+		cli.StringFlag{Name: "auth-token", Usage: "authentication token to use"},
+		cli.StringFlag{Name: "auth-token-store", Value: "~/.wercker/token", Usage: "where to store the token after a login"},
+	}
+
+	dockerFlags = []cli.Flag{
+		cli.StringFlag{Name: "docker-host", Value: "tcp://127.0.0.1:2375", Usage: "docker api host", EnvVar: "DOCKER_HOST"},
+		cli.StringFlag{Name: "docker-tls-verify", Value: "0", Usage: "docker api tls verify", EnvVar: "DOCKER_TLS_VERIFY"},
+		cli.StringFlag{Name: "docker-cert-path", Value: "", Usage: "docker api cert path", EnvVar: "DOCKER_CERT_PATH"},
+	}
+
 	// These flags control where we store local files
 	localPathFlags = []cli.Flag{
 		cli.StringFlag{Name: "project-dir", Value: "./_projects", Usage: "path where downloaded projects live"},
 		cli.StringFlag{Name: "step-dir", Value: "./_steps", Usage: "path where downloaded steps live"},
 		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "path where created builds live"},
-	}
-
-	// These flags tell us where to go for operations
-	endpointFlags = []cli.Flag{
-		cli.StringFlag{Name: "docker-host", Value: "tcp://127.0.0.1:2375", Usage: "docker api host", EnvVar: "DOCKER_HOST"},
-		cli.StringFlag{Name: "wercker-endpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
-		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
-		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
 	}
 
 	// These flags control paths on the guest and probably shouldn't change
@@ -59,12 +72,6 @@ var (
 		cli.StringFlag{Name: "git-commit", Value: "", Usage: "git commit", EnvVar: "WERCKER_GIT_COMMIT"},
 	}
 
-	// These flags let us auth to wercker services
-	authFlags = []cli.Flag{
-		cli.StringFlag{Name: "auth-token", Usage: "authentication token to use"},
-		cli.StringFlag{Name: "auth-token-store", Value: "~/.wercker/token", Usage: "where to store the token after a login"},
-	}
-
 	// These flags affect our registry interactions
 	registryFlags = []cli.Flag{
 		cli.BoolFlag{Name: "push", Usage: "push the build result to registry"},
@@ -83,6 +90,10 @@ var (
 	devFlags = []cli.Flag{
 		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "specify additional environment variables in a file"},
 		cli.BoolFlag{Name: "debug", Usage: "print additional debug information"},
+	}
+
+	// These flags are advanced dev settings
+	internalDevFlags = []cli.Flag{
 		cli.BoolFlag{Name: "direct-mount", Usage: "mount our binds read-write to the pipeline path"},
 		cli.StringFlag{Name: "wercker-yml", Value: "", Usage: "specify a specific yaml file"},
 	}
@@ -116,141 +127,386 @@ var (
 		cli.IntFlag{Name: "command-timeout", Value: 10, Usage: "timeout if command does not complete in this many minutes"},
 	}
 
-	AllFlags = [][]cli.Flag{
-		localPathFlags,
+	GlobalFlags = [][]cli.Flag{
+		devFlags,
 		endpointFlags,
-		internalPathFlags,
-		werckerFlags,
-		gitFlags,
 		authFlags,
+	}
+
+	DockerFlags = [][]cli.Flag{
+		dockerFlags,
+	}
+
+	PipelineFlags = [][]cli.Flag{
+		localPathFlags,
+		werckerFlags,
+		dockerFlags,
+		gitFlags,
 		registryFlags,
 		artifactFlags,
-		devFlags,
 		awsFlags,
+		configFlags,
+	}
+
+	WerckerInternalFlags = [][]cli.Flag{
+		internalPathFlags,
 		keenFlags,
 		reporterFlags,
-		configFlags,
 	}
 )
 
-func allFlags() []cli.Flag {
+func flagsFor(flagSets ...[][]cli.Flag) []cli.Flag {
 	all := []cli.Flag{}
-
-	for _, x := range AllFlags {
-		all = append(all, x...)
+	for _, flagSet := range flagSets {
+		for _, x := range flagSet {
+			all = append(all, x...)
+		}
 	}
 	return all
 }
 
-// GlobalOptions is a shared data structure for global config.
+// GlobalOptions applicable to everything
 type GlobalOptions struct {
-	Env *Environment
+	Debug bool
 
-	ProjectDir string
-	StepDir    string
-	BuildDir   string
-
-	// Application ID for this operation
-	ApplicationID string
-
-	// Build ID for this operation
-	BuildID string
-
-	// Deploy ID for this operation
-	DeployID string
-
-	// Pipeline ID is either BuildID or DeployID dependent on which we got
-	PipelineID string
-
-	// Application name for this operation
-	ApplicationName string
-
-	// Application owner name for this operation
-	ApplicationOwnerName string
-
-	// Application starter name for this operation
-	ApplicationStartedByName string
-
-	// Base url template to see the results of this build
-	BaseURL string
-
-	DockerHost string
-
-	// Base endpoint for wercker api
+	// Endpoints
+	BaseURL         string
+	Registry        string
 	WerckerEndpoint string
 
-	// The read-write directory on the guest where all the work happens
-	GuestRoot string
-
-	// The read-only directory on the guest where volumes are mounted
-	MntRoot string
-
-	// The directory on the guest where reports will be written
-	ReportRoot string
-
-	// Source path relative to checkout root
-	SourceDir string
-
-	// Timeout if no response is received from a script in this many minutes
-	NoResponseTimeout int
-
-	// Timeout if the command doesn't complete in this many minutes
-	CommandTimeout int
-
-	// A path where the project lives
-	ProjectPath string
-
-	// For fetching code
-	ProjectURL string
-
-	// Auth bits
+	// Auth
 	AuthToken      string
 	AuthTokenStore string
+}
 
-	// Git bits
+// guessAuthToken will attempt to read from the token store location if
+// no auth token was provided
+func guessAuthToken(c *cli.Context, e *Environment, authTokenStore string) string {
+	token := c.GlobalString("auth-token")
+	if token != "" {
+		return token
+	}
+
+	tokenBytes, err := ioutil.ReadFile(authTokenStore)
+	if err != nil {
+		log.Errorln(err)
+		return ""
+	}
+	return strings.TrimSpace(string(tokenBytes))
+}
+
+// NewGlobalOptions constructor
+func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
+	debug := c.GlobalBool("debug")
+
+	baseURL := c.GlobalString("base-url")
+	registry := c.GlobalString("registry")
+	werckerEndpoint := c.GlobalString("wercker-endpoint")
+
+	authTokenStore := expanduser(c.GlobalString("auth-token-store"))
+	authToken := guessAuthToken(c, e, authTokenStore)
+
+	return &GlobalOptions{
+		Debug: debug,
+
+		BaseURL:         baseURL,
+		Registry:        registry,
+		WerckerEndpoint: werckerEndpoint,
+
+		AuthToken:      authToken,
+		AuthTokenStore: authTokenStore,
+	}, nil
+}
+
+// AWSOptions for our artifact storage
+type AWSOptions struct {
+	*GlobalOptions
+	AWSAccessKeyID     string
+	AWSSecretAccessKey string
+	AWSRegion          string
+	S3Bucket           string
+}
+
+// NewAWSOptions constructor
+func NewAWSOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*AWSOptions, error) {
+	awsAccessKeyID := c.String("aws-access-key")
+	awsRegion := c.String("aws-region")
+	awsSecretAccessKey := c.String("aws-secret-key")
+	s3Bucket := c.String("s3-bucket")
+
+	return &AWSOptions{
+		GlobalOptions:      globalOpts,
+		AWSAccessKeyID:     awsAccessKeyID,
+		AWSRegion:          awsRegion,
+		AWSSecretAccessKey: awsSecretAccessKey,
+		S3Bucket:           s3Bucket,
+	}, nil
+}
+
+// DockerOptions for our docker client
+type DockerOptions struct {
+	*GlobalOptions
+	DockerHost      string
+	DockerTLSVerify string
+	DockerCertPath  string
+}
+
+// NewDockerOptions constructor
+func NewDockerOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*DockerOptions, error) {
+	dockerHost := c.String("docker-host")
+	dockerTLSVerify := c.String("docker-tls-verify")
+	dockerCertPath := c.String("docker-cert-path")
+
+	return &DockerOptions{
+		GlobalOptions:   globalOpts,
+		DockerHost:      dockerHost,
+		DockerTLSVerify: dockerTLSVerify,
+		DockerCertPath:  dockerCertPath,
+	}, nil
+}
+
+// GitOptions for the users, mostly
+type GitOptions struct {
+	*GlobalOptions
+	GitBranch     string
+	GitCommit     string
 	GitDomain     string
 	GitOwner      string
 	GitRepository string
-	GitBranch     string
-	GitCommit     string
+}
 
-	// AWS Bits
-	AWSSecretAccessKey string
-	AWSAccessKeyID     string
-	AWSRegion          string
-	S3Bucket           string
+func guessGitBranch(c *cli.Context, e *Environment) string {
+	branch := c.String("git-branch")
+	if branch != "" {
+		return branch
+	}
 
-	// Keen Bits
-	ShouldKeenMetrics   bool
-	KeenProjectWriteKey string
+	projectPath := guessProjectPath(c, e)
+	if projectPath == "" {
+		return ""
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	defer os.Chdir(cwd)
+	os.Chdir(projectPath)
+
+	git, err := exec.LookPath("git")
+	if err != nil {
+		return ""
+	}
+
+	var out bytes.Buffer
+	cmd := exec.Command(git, "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return ""
+	}
+	return strings.Trim(out.String(), "\n")
+}
+
+func guessGitCommit(c *cli.Context, e *Environment) string {
+	commit := c.String("git-commit")
+	if commit != "" {
+		return commit
+	}
+
+	projectPath := guessProjectPath(c, e)
+	if projectPath == "" {
+		return ""
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	defer os.Chdir(cwd)
+	os.Chdir(projectPath)
+
+	git, err := exec.LookPath("git")
+	if err != nil {
+		return ""
+	}
+
+	var out bytes.Buffer
+	cmd := exec.Command(git, "rev-parse", "HEAD")
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return ""
+	}
+	return strings.Trim(out.String(), "\n")
+}
+
+func guessGitOwner(c *cli.Context, e *Environment) string {
+	owner := c.String("git-owner")
+	if owner != "" {
+		return owner
+	}
+
+	u, err := user.Current()
+	if err == nil {
+		owner = u.Username
+	}
+	return owner
+}
+
+func guessGitRepository(c *cli.Context, e *Environment) string {
+	repository := c.String("git-repository")
+	if repository != "" {
+		return repository
+	}
+	// repository, err := guessApplicationName(c, env)
+	// if err != nil {
+	//   return ""
+	// }
+	return repository
+}
+
+// NewGitOptions constructor
+func NewGitOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*GitOptions, error) {
+	gitBranch := guessGitBranch(c, e)
+	gitCommit := guessGitCommit(c, e)
+	gitDomain := c.String("git-domain")
+	gitOwner := guessGitOwner(c, e)
+	gitRepository := guessGitRepository(c, e)
+
+	return &GitOptions{
+		GlobalOptions: globalOpts,
+		GitBranch:     gitBranch,
+		GitCommit:     gitCommit,
+		GitDomain:     gitDomain,
+		GitOwner:      gitOwner,
+		GitRepository: gitRepository,
+	}, nil
+}
+
+// KeenOptions for our metrics
+type KeenOptions struct {
+	*GlobalOptions
 	KeenProjectID       string
+	KeenProjectWriteKey string
+	ShouldKeenMetrics   bool
+}
 
-	Registry     string
+// NewKeenOptions constructor
+func NewKeenOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*KeenOptions, error) {
+	keenMetrics := c.Bool("keen-metrics")
+	keenProjectWriteKey := c.String("keen-project-write-key")
+	keenProjectID := c.String("keen-project-id")
+
+	if keenMetrics {
+		if keenProjectWriteKey == "" {
+			return nil, errors.New("keen-project-write-key is required")
+		}
+
+		if keenProjectID == "" {
+			return nil, errors.New("keen-project-id is required")
+		}
+	}
+
+	return &KeenOptions{
+		GlobalOptions:       globalOpts,
+		KeenProjectID:       keenProjectID,
+		KeenProjectWriteKey: keenProjectWriteKey,
+		ShouldKeenMetrics:   keenMetrics,
+	}, nil
+}
+
+// ReporterOptions for our reporting
+type ReporterOptions struct {
+	*GlobalOptions
+	ReporterHost string
+	ReporterKey  string
+	ShouldReport bool
+}
+
+// NewReporterOptions constructor
+func NewReporterOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*ReporterOptions, error) {
+	shouldReport := c.Bool("report")
+	reporterHost := c.String("wercker-host")
+	reporterKey := c.String("wercker-token")
+
+	if shouldReport {
+		if reporterKey == "" {
+			return nil, errors.New("wercker-token is required")
+		}
+
+		if reporterHost == "" {
+			return nil, errors.New("wercker-host is required")
+		}
+	}
+
+	return &ReporterOptions{
+		GlobalOptions: globalOpts,
+		ReporterHost:  reporterHost,
+		ReporterKey:   reporterKey,
+		ShouldReport:  shouldReport,
+	}, nil
+}
+
+// PipelineOptions for builds and deploys
+type PipelineOptions struct {
+	*GlobalOptions
+	*AWSOptions
+	*DockerOptions
+	*GitOptions
+	*KeenOptions
+	*ReporterOptions
+
+	// TODO(termie): i'd like to remove this, it is only used in a couple
+	//               places by BasePipeline
+	Env *Environment
+
+	BuildID    string
+	DeployID   string
+	PipelineID string
+
+	ApplicationID            string
+	ApplicationName          string
+	ApplicationOwnerName     string
+	ApplicationStartedByName string
+
 	ShouldPush   bool
 	ShouldCommit bool
 	Tag          string
 	Message      string
 
-	ShouldArtifacts bool
-	ShouldRemove    bool
+	BuildDir   string
+	ProjectDir string
+	StepDir    string
 
-	ShouldReport bool
-	WerckerHost  string
-	WerckerToken string
+	GuestRoot  string
+	MntRoot    string
+	ReportRoot string
 
-	// Show stack traces on exit?
-	Debug       bool
+	ProjectID   string
+	ProjectURL  string
+	ProjectPath string
+
+	CommandTimeout    int
+	NoResponseTimeout int
+	ShouldArtifacts   bool
+	ShouldRemove      bool
+	SourceDir         string
+
 	DirectMount bool
+	WerckerYml  string
+}
 
-	// Override wercker.yml location
-	WerckerYml string
+func guessApplicationID(c *cli.Context, e *Environment, name string) string {
+	id := c.String("application-id")
+	if id == "" {
+		id = name
+	}
+	return id
 }
 
 // Some logic to guess the application name
-func guessApplicationName(c *cli.Context, env *Environment) (string, error) {
-	// If we explicitly were given an application name, use that
-	applicationName, ok := env.Map["WERCKER_APPLICATION_NAME"]
-	if ok {
+func guessApplicationName(c *cli.Context, e *Environment) (string, error) {
+	applicationName := c.String("application-name")
+	if applicationName != "" {
 		return applicationName, nil
 	}
 
@@ -284,21 +540,8 @@ func guessApplicationName(c *cli.Context, env *Environment) (string, error) {
 	return filepath.Base(abspath), nil
 }
 
-func guessTag(c *cli.Context, env *Environment) string {
-	tag := c.GlobalString("tag")
-	if tag == "" {
-		tag = guessGitBranch(c, env)
-	}
-	return tag
-}
-
-func guessMessage(c *cli.Context, env *Environment) string {
-	message := c.GlobalString("message")
-	return message
-}
-
-func guessApplicationOwnerName(c *cli.Context, env *Environment) string {
-	name := c.GlobalString("application-owner-name")
+func guessApplicationOwnerName(c *cli.Context, e *Environment) string {
+	name := c.String("application-owner-name")
 	if name == "" {
 		u, err := user.Current()
 		if err == nil {
@@ -311,112 +554,207 @@ func guessApplicationOwnerName(c *cli.Context, env *Environment) string {
 	return name
 }
 
-func guessBuildID(c *cli.Context, env *Environment) string {
-	id := c.GlobalString("build-id")
-	if id == "" {
-		id, ok := env.Map["WERCKER_BUILD_ID"]
-		if !ok {
-			return ""
-		}
-		return id
-	}
-	return id
+func guessMessage(c *cli.Context, e *Environment) string {
+	message := c.GlobalString("message")
+	return message
 }
 
-func guessDeployID(c *cli.Context, env *Environment) string {
-	id := c.GlobalString("deploy-id")
-	if id == "" {
-		id, ok := env.Map["WERCKER_DEPLOY_ID"]
-		if !ok {
-			return ""
-		}
-		return id
+func guessTag(c *cli.Context, e *Environment) string {
+	tag := c.GlobalString("tag")
+	if tag == "" {
+		tag = guessGitBranch(c, e)
 	}
-	return id
+	return tag
 }
 
-func guessGitRepository(c *cli.Context, env *Environment) string {
-	repository := c.GlobalString("git-repository")
-	if repository != "" {
-		return repository
-	}
-
-	repository, err := guessApplicationName(c, env)
-	if err != nil {
-		return ""
-	}
-	return repository
+func looksLikeURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 }
 
-func guessGitOwner(c *cli.Context, env *Environment) string {
-	owner := c.GlobalString("git-owner")
-	if owner != "" {
-		return owner
+func guessProjectID(c *cli.Context, e *Environment) string {
+	projectID := c.String("project-id")
+	if projectID != "" {
+		return projectID
 	}
-	return guessApplicationOwnerName(c, env)
+
+	// If this was going to fail it already failed and we exited
+	name, _ := guessApplicationName(c, e)
+	return name
 }
 
-func guessGitBranch(c *cli.Context, env *Environment) string {
-	branch := c.GlobalString("git-branch")
-	if branch != "" {
-		return branch
-	}
-
-	git, err := exec.LookPath("git")
-	if err != nil {
+func guessProjectPath(c *cli.Context, e *Environment) string {
+	target := c.Args().First()
+	if looksLikeURL(target) {
 		return ""
 	}
-
-	var out bytes.Buffer
-	cmd := exec.Command(git, "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Stdout = &out
-	err = cmd.Run()
-	if err != nil {
-		return ""
+	if target == "" {
+		target = "."
 	}
-	return strings.Trim(out.String(), "\n")
+	abs, _ := filepath.Abs(target)
+	return abs
 }
 
-func guessGitCommit(c *cli.Context, env *Environment) string {
-	commit := c.GlobalString("git-commit")
-	if commit != "" {
-		return commit
-	}
-
-	git, err := exec.LookPath("git")
-	if err != nil {
+func guessProjectURL(c *cli.Context, e *Environment) string {
+	target := c.Args().First()
+	if !looksLikeURL(target) {
 		return ""
 	}
-
-	var out bytes.Buffer
-	cmd := exec.Command(git, "rev-parse", "HEAD")
-	cmd.Stdout = &out
-	err = cmd.Run()
-	if err != nil {
-		return ""
-	}
-	return strings.Trim(out.String(), "\n")
+	return target
 }
 
-// guessAuthToken will attempt to read from the token store location if
-// no auth token was provided
-func guessAuthToken(c *cli.Context, env *Environment) string {
-	token := c.GlobalString("auth-token")
-	if token != "" {
-		return token
+// NewPipelineOptions big-ass constructor
+func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+	globalOpts, err := NewGlobalOptions(c, e)
+	if err != nil {
+		return nil, err
 	}
 
-	tokenStore := expanduser(c.GlobalString("auth-token-store"))
-	tokenBytes, err := ioutil.ReadFile(tokenStore)
+	dockerOpts, err := NewDockerOptions(c, e, globalOpts)
 	if err != nil {
-		log.Errorln(err)
-		return ""
+		return nil, err
 	}
-	return strings.TrimSpace(string(tokenBytes))
+
+	awsOpts, err := NewAWSOptions(c, e, globalOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	gitOpts, err := NewGitOptions(c, e, globalOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	keenOpts, err := NewKeenOptions(c, e, globalOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	reporterOpts, err := NewReporterOptions(c, e, globalOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	buildID := c.String("build-id")
+	deployID := c.String("deploy-id")
+	pipelineID := ""
+	if deployID != "" {
+		pipelineID = deployID
+	} else {
+		pipelineID = buildID
+	}
+
+	applicationName, err := guessApplicationName(c, e)
+	if err != nil {
+		return nil, err
+	}
+	applicationID := guessApplicationID(c, e, applicationName)
+	applicationOwnerName := guessApplicationOwnerName(c, e)
+	applicationStartedByName := c.String("application-started-by-name")
+	if applicationStartedByName == "" {
+		applicationStartedByName = applicationOwnerName
+	}
+
+	shouldPush := c.Bool("push")
+	shouldCommit := c.Bool("commit")
+	tag := guessTag(c, e)
+	message := guessMessage(c, e)
+
+	buildDir, _ := filepath.Abs(c.String("build-dir"))
+	projectDir, _ := filepath.Abs(c.String("project-dir"))
+	stepDir, _ := filepath.Abs(c.String("step-dir"))
+
+	guestRoot := c.String("guest-root")
+	mntRoot := c.String("mnt-root")
+	reportRoot := c.String("report-root")
+
+	projectID := guessProjectID(c, e)
+	projectPath := guessProjectPath(c, e)
+	projectURL := guessProjectURL(c, e)
+
+	commandTimeout := c.Int("command-timeout")
+	noResponseTimeout := c.Int("no-response-timeout")
+	shouldArtifacts := !c.Bool("no-artifacts")
+	shouldRemove := !c.Bool("no-remove")
+	sourceDir := c.String("source-dir")
+
+	directMount := c.Bool("direct-mount")
+	werckerYml := c.String("werkcer-yml")
+
+	return &PipelineOptions{
+		GlobalOptions:   globalOpts,
+		AWSOptions:      awsOpts,
+		DockerOptions:   dockerOpts,
+		GitOptions:      gitOpts,
+		KeenOptions:     keenOpts,
+		ReporterOptions: reporterOpts,
+
+		Env: e,
+
+		BuildID:    buildID,
+		DeployID:   deployID,
+		PipelineID: pipelineID,
+
+		ApplicationID:            applicationID,
+		ApplicationName:          applicationName,
+		ApplicationOwnerName:     applicationOwnerName,
+		ApplicationStartedByName: applicationStartedByName,
+
+		Message:      message,
+		Tag:          tag,
+		ShouldCommit: shouldCommit,
+		ShouldPush:   shouldPush,
+
+		BuildDir:   buildDir,
+		ProjectDir: projectDir,
+		StepDir:    stepDir,
+
+		GuestRoot:  guestRoot,
+		MntRoot:    mntRoot,
+		ReportRoot: reportRoot,
+
+		ProjectID:   projectID,
+		ProjectURL:  projectURL,
+		ProjectPath: projectPath,
+
+		CommandTimeout:    commandTimeout,
+		NoResponseTimeout: noResponseTimeout,
+		ShouldArtifacts:   shouldArtifacts,
+		ShouldRemove:      shouldRemove,
+		SourceDir:         sourceDir,
+
+		DirectMount: directMount,
+		WerckerYml:  werckerYml,
+	}, nil
+}
+
+// SourcePath returns the path to the source dir
+func (o *PipelineOptions) SourcePath() string {
+	return o.GuestPath("source", o.SourceDir)
+}
+
+// HostPath returns a path relative to the build root on the host.
+func (o *PipelineOptions) HostPath(s ...string) string {
+	return path.Join(o.BuildDir, o.PipelineID, path.Join(s...))
+}
+
+// GuestPath returns a path relative to the build root on the guest.
+func (o *PipelineOptions) GuestPath(s ...string) string {
+	return path.Join(o.GuestRoot, path.Join(s...))
+}
+
+// MntPath returns a path relative to the read-only mount root on the guest.
+func (o *PipelineOptions) MntPath(s ...string) string {
+	return path.Join(o.MntRoot, path.Join(s...))
+}
+
+// ReportPath returns a path relative to the report root on the guest.
+func (o *PipelineOptions) ReportPath(s ...string) string {
+	return path.Join(o.ReportRoot, path.Join(s...))
 }
 
 // dumpOptions prints out a sorted list of options
-func dumpOptions(options *GlobalOptions) {
+func dumpOptions(options interface{}, indent ...string) {
+	indent = append(indent, "  ")
 	s := reflect.ValueOf(options).Elem()
 	typeOfT := s.Type()
 	names := []string{}
@@ -432,188 +770,110 @@ func dumpOptions(options *GlobalOptions) {
 	for _, name := range names {
 		r := reflect.ValueOf(options)
 		f := reflect.Indirect(r).FieldByName(name)
-		log.Debugln(fmt.Sprintf("  %s %s = %v", name, f.Type(), f.Interface()))
+		if strings.HasSuffix(name, "Options") {
+			if len(indent) > 1 && name == "GlobalOptions" {
+				continue
+			}
+			log.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
+			dumpOptions(f.Interface(), indent...)
+		} else {
+			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
+		}
 	}
 }
 
-// NewGlobalOptions builds up GlobalOptions from the cli and environment.
-func NewGlobalOptions(c *cli.Context, e []string) (*GlobalOptions, error) {
-	env := NewEnvironment(e)
+// Options per Command
 
-	buildDir, _ := filepath.Abs(c.GlobalString("build-dir"))
-	projectDir, _ := filepath.Abs(c.GlobalString("project-dir"))
-	stepDir, _ := filepath.Abs(c.GlobalString("step-dir"))
-	buildID := guessBuildID(c, env)
-	deployID := guessDeployID(c, env)
-
-	pipelineID := ""
-	if deployID != "" {
-		pipelineID = deployID
-	} else {
-		pipelineID = buildID
-	}
-
-	applicationName, err := guessApplicationName(c, env)
+// NewBuildOptions constructor
+func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
-		log.Debugln("Error determining application name: ", err)
-		// return nil, err
+		return nil, err
+	}
+	if pipelineOpts.BuildID == "" {
+		pipelineOpts.BuildID = uuid.NewRandom().String()
+		pipelineOpts.PipelineID = pipelineOpts.BuildID
+	}
+	return pipelineOpts, nil
+}
+
+// NewDeployOptions constructor
+func NewDeployOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+	pipelineOpts, err := NewPipelineOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+	if pipelineOpts.DeployID == "" {
+		pipelineOpts.DeployID = uuid.NewRandom().String()
+		pipelineOpts.PipelineID = pipelineOpts.DeployID
+	}
+	return pipelineOpts, nil
+}
+
+// DetectOptions for detect command
+type DetectOptions struct {
+	*GlobalOptions
+}
+
+// NewDetectOptions constructor
+func NewDetectOptions(c *cli.Context, e *Environment) (*DetectOptions, error) {
+	globalOpts, err := NewGlobalOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+	return &DetectOptions{globalOpts}, nil
+}
+
+// InspectOptions for inspect command
+type InspectOptions struct {
+	*PipelineOptions
+}
+
+// NewInspectOptions constructor
+func NewInspectOptions(c *cli.Context, e *Environment) (*InspectOptions, error) {
+	pipelineOpts, err := NewPipelineOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+	return &InspectOptions{pipelineOpts}, nil
+}
+
+// LoginOptions for the login command
+type LoginOptions struct {
+	*GlobalOptions
+}
+
+// NewLoginOptions constructor
+func NewLoginOptions(c *cli.Context, e *Environment) (*LoginOptions, error) {
+	globalOpts, err := NewGlobalOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+	return &LoginOptions{globalOpts}, nil
+}
+
+// PullOptions for the pull command
+type PullOptions struct {
+	*GlobalOptions
+	*DockerOptions
+}
+
+// NewPullOptions constructor
+func NewPullOptions(c *cli.Context, e *Environment) (*PullOptions, error) {
+	globalOpts, err := NewGlobalOptions(c, e)
+	if err != nil {
+		return nil, err
 	}
 
-	applicationOwnerName := guessApplicationOwnerName(c, env)
-
-	applicationID, ok := env.Map["WERCKER_APPLICATION_ID"]
-	if !ok {
-		applicationID = applicationName
-		log.Warnln("No ApplicationID specified, using", applicationID)
+	dockerOpts, err := NewDockerOptions(c, e, globalOpts)
+	if err != nil {
+		return nil, err
 	}
 
-	projectURL := ""
-	target := c.Args().First()
-	projectPath := target
-	if projectPath == "" {
-		projectPath = "."
-	}
-	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
-		projectURL = target
-		projectPath = ""
-	}
-
-	projectID := c.GlobalString("project-id")
-	if projectID == "" {
-		projectID = strings.Replace(c.Args().First(), "/", "_", -1)
-	}
-
-	tag := guessTag(c, env)
-	message := guessMessage(c, env)
-
-	// Git bits
-	gitDomain := c.GlobalString("git-domain")
-	gitOwner := guessGitOwner(c, env)
-	gitRepository := guessGitRepository(c, env)
-	gitBranch := guessGitBranch(c, env)
-	gitCommit := guessGitCommit(c, env)
-
-	// AWS bits
-	awsSecretAccessKey := c.GlobalString("aws-secret-key")
-	awsAccessKeyID := c.GlobalString("aws-access-key")
-	if awsSecretAccessKey == "" {
-		if val, ok := env.Map["AWS_SECRET_ACCESS_KEY"]; ok {
-			awsSecretAccessKey = val
-		}
-	}
-	if awsAccessKeyID == "" {
-		if val, ok := env.Map["AWS_ACCESS_KEY_ID"]; ok {
-			awsAccessKeyID = val
-		}
-	}
-
-	keenMetrics := c.GlobalBool("keen-metrics")
-	keenProjectWriteKey := c.GlobalString("keen-project-write-key")
-	keenProjectID := c.GlobalString("keen-project-id")
-
-	if keenMetrics {
-		if keenProjectWriteKey == "" {
-			return nil, errors.New("keen-project-write-key is required")
-		}
-
-		if keenProjectID == "" {
-			return nil, errors.New("keen-project-id is required")
-		}
-	}
-
-	report := c.GlobalBool("report")
-	werckerHost := c.GlobalString("wercker-host")
-	werckerToken := c.GlobalString("wercker-token")
-
-	if report {
-		if werckerHost == "" {
-			return nil, errors.New("wercker-host is required")
-		}
-
-		if werckerToken == "" {
-			return nil, errors.New("wercker-token is required")
-		}
-	}
-
-	authToken := guessAuthToken(c, env)
-	authTokenStore := expanduser(c.GlobalString("auth-token-store"))
-
-	return &GlobalOptions{
-		Env:                      env,
-		BuildDir:                 buildDir,
-		BuildID:                  buildID,
-		DeployID:                 deployID,
-		PipelineID:               pipelineID,
-		ApplicationID:            applicationID,
-		ApplicationName:          applicationName,
-		ApplicationOwnerName:     applicationOwnerName,
-		ApplicationStartedByName: c.GlobalString("application-started-by-name"),
-		BaseURL:                  c.GlobalString("base-url"),
-		CommandTimeout:           c.GlobalInt("command-timeout"),
-		DockerHost:               c.GlobalString("docker-host"),
-		WerckerEndpoint:          c.GlobalString("wercker-endpoint"),
-		NoResponseTimeout:        c.GlobalInt("no-response-timeout"),
-		ProjectDir:               projectDir,
-		SourceDir:                c.GlobalString("source-dir"),
-		StepDir:                  stepDir,
-		GuestRoot:                c.GlobalString("guest-root"),
-		MntRoot:                  c.GlobalString("mnt-root"),
-		ReportRoot:               c.GlobalString("report-root"),
-		ProjectPath:              projectPath,
-		ProjectURL:               projectURL,
-		AuthToken:                authToken,
-		AuthTokenStore:           authTokenStore,
-		GitDomain:                gitDomain,
-		GitOwner:                 gitOwner,
-		GitRepository:            gitRepository,
-		GitBranch:                gitBranch,
-		GitCommit:                gitCommit,
-		AWSSecretAccessKey:       awsSecretAccessKey,
-		AWSAccessKeyID:           awsAccessKeyID,
-		S3Bucket:                 c.GlobalString("s3-bucket"),
-		AWSRegion:                c.GlobalString("aws-region"),
-		Registry:                 c.GlobalString("registry"),
-		ShouldPush:               c.GlobalBool("push"),
-		ShouldCommit:             c.GlobalBool("commit"),
-		ShouldKeenMetrics:        keenMetrics,
-		ShouldArtifacts:          !c.GlobalBool("no-artifacts"),
-		ShouldRemove:             !c.GlobalBool("no-remove"),
-		KeenProjectWriteKey:      keenProjectWriteKey,
-		KeenProjectID:            keenProjectID,
-		Tag:                      tag,
-		Message:                  message,
-		ShouldReport:             report,
-		WerckerHost:              werckerHost,
-		WerckerToken:             werckerToken,
-		Debug:                    c.GlobalBool("debug"),
-		DirectMount:              c.GlobalBool("direct-mount"),
-		WerckerYml:               c.GlobalString("wercker-yml"),
+	return &PullOptions{
+		GlobalOptions: globalOpts,
+		DockerOptions: dockerOpts,
 	}, nil
-}
-
-// SourcePath returns the path to the source dir
-func (o *GlobalOptions) SourcePath() string {
-	return o.GuestPath("source", o.SourceDir)
-}
-
-// HostPath returns a path relative to the build root on the host.
-func (o *GlobalOptions) HostPath(s ...string) string {
-	return path.Join(o.BuildDir, o.PipelineID, path.Join(s...))
-}
-
-// GuestPath returns a path relative to the build root on the guest.
-func (o *GlobalOptions) GuestPath(s ...string) string {
-	return path.Join(o.GuestRoot, path.Join(s...))
-}
-
-// MntPath returns a path relative to the read-only mount root on the guest.
-func (o *GlobalOptions) MntPath(s ...string) string {
-	return path.Join(o.MntRoot, path.Join(s...))
-}
-
-// ReportPath returns a path relative to the report root on the guest.
-func (o *GlobalOptions) ReportPath(s ...string) string {
-	return path.Join(o.ReportRoot, path.Join(s...))
 }
 
 // VersionOptions contains the options associated with the version
@@ -622,7 +882,8 @@ type VersionOptions struct {
 	OutputJSON bool
 }
 
-func createVersionOptions(c *cli.Context) (*VersionOptions, error) {
+// NewVersionOptions constructor
+func NewVersionOptions(c *cli.Context, e *Environment) (*VersionOptions, error) {
 	return &VersionOptions{
 		OutputJSON: c.Bool("json"),
 	}, nil

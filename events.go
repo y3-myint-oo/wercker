@@ -32,13 +32,13 @@ const (
 
 // BuildStartedArgs contains the args associated with the "BuildStarted" event.
 type BuildStartedArgs struct {
-	Options *GlobalOptions
+	Options *PipelineOptions
 }
 
 // BuildFinishedArgs contains the args associated with the "BuildFinished"
 // event.
 type BuildFinishedArgs struct {
-	Options *GlobalOptions
+	Options *PipelineOptions
 	Result  string
 }
 
@@ -46,7 +46,7 @@ type BuildFinishedArgs struct {
 type LogsArgs struct {
 	Box     string
 	Build   Pipeline
-	Options *GlobalOptions
+	Options *PipelineOptions
 	Order   int
 	Step    *Step
 	Logs    string
@@ -59,7 +59,7 @@ type LogsArgs struct {
 type BuildStepsAddedArgs struct {
 	Box        string
 	Build      Pipeline
-	Options    *GlobalOptions
+	Options    *PipelineOptions
 	Steps      []*Step
 	StoreStep  *Step
 	AfterSteps []*Step
@@ -70,7 +70,7 @@ type BuildStepsAddedArgs struct {
 type BuildStepStartedArgs struct {
 	Box     string
 	Build   Pipeline
-	Options *GlobalOptions
+	Options *PipelineOptions
 	Order   int
 	Step    *Step
 }
@@ -80,7 +80,7 @@ type BuildStepStartedArgs struct {
 type BuildStepFinishedArgs struct {
 	Box         string
 	Build       Pipeline
-	Options     *GlobalOptions
+	Options     *PipelineOptions
 	Order       int
 	Step        *Step
 	Successful  bool

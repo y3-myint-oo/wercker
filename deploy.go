@@ -7,11 +7,11 @@ import (
 // Deploy is our basic wrapper for Deploy operations
 type Deploy struct {
 	*BasePipeline
-	options *GlobalOptions
+	options *PipelineOptions
 }
 
 // ToDeploy converts a RawPipeline into a Deploy
-func (p *RawPipeline) ToDeploy(options *GlobalOptions) (*Deploy, error) {
+func (p *RawPipeline) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 	var steps []*Step
 	var afterSteps []*Step
 
