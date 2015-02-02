@@ -311,7 +311,7 @@ func (p *Runner) StartBuild(options *PipelineOptions) *Finisher {
 }
 
 // StartFullPipeline emits a FullPipelineFinished when the Finisher is called.
-func (p *Runner) StartFullPipeline(options *GlobalOptions) *Finisher {
+func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
 	return NewFinisher(func(result interface{}) {
 		r, ok := result.(FullPipelineFinishedArgs)
 		if !ok {

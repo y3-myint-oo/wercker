@@ -95,7 +95,7 @@ type BuildStepFinishedArgs struct {
 // FullPipelineFinishedArgs contains the args associated with the
 // "FullPipelineFinished" event.
 type FullPipelineFinishedArgs struct {
-	Options             *GlobalOptions
+	Options             *PipelineOptions
 	MainSuccessful      bool
 	RanAfterSteps       bool
 	AfterStepSuccessful bool
