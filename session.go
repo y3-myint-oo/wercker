@@ -165,13 +165,21 @@ func (s *Session) ShowLogs() {
 
 // Send an array of commands.
 func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ...string) error {
+	// Do a quick initial check whether we have a valid session first
+	select {
+	case <-sessionCtx.Done():
+		log.Errorln("Session finished before sending commands:", commands)
+		return sessionCtx.Err()
+	// Wait because if both cases are available golang will pick one randomly
+	case <-time.After(1 * time.Millisecond):
+		// Pass
+	}
+
 	for i := range commands {
 		command := commands[i] + "\n"
-
 		select {
 		case <-sessionCtx.Done():
 			log.Errorln("Session finished before sending command:", command)
-			// log.Errorln("Err: ", sessionCtx.Err())
 			return sessionCtx.Err()
 		case s.send <- command:
 			hidden := s.logsHidden
@@ -188,6 +196,10 @@ func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ..
 		}
 	}
 	return nil
+}
+
+var randomSentinel = func() string {
+	return uuid.NewRandom().String()
 }
 
 // CommandResult exists so that we can make a channel of them
@@ -208,17 +220,17 @@ type CommandResult struct {
 //  [ ] We received the sentinel echo with exit code 0
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
 	var exitCode int
-	rand := uuid.NewRandom().String()
+	rand := randomSentinel()
 	check := false
 	recv := []string{}
 
 	err := s.Send(sessionCtx, false, commands...)
 	if err != nil {
-		return 1, []string{}, err
+		return -1, []string{}, err
 	}
 	err = s.Send(sessionCtx, true, fmt.Sprintf("echo %s $?", rand))
 	if err != nil {
-		return 1, []string{}, err
+		return -1, []string{}, err
 	}
 
 	sendCtx, cancelSend := context.WithTimeout(sessionCtx, time.Duration(s.options.CommandTimeout)*time.Millisecond)

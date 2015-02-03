@@ -112,6 +112,7 @@ func TestOptionsGuessAuthToken(t *testing.T) {
 }
 
 func TestOptionsEmptyPipelineOptionsEmptyDir(t *testing.T) {
+	setup(t)
 	tmpDir, err := ioutil.TempDir("", "empty-directory")
 	assert.Nil(t, err)
 	defer os.RemoveAll(tmpDir)
