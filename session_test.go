@@ -19,7 +19,6 @@ type FakeTransport struct {
 
 	inchan  chan string
 	outchan chan string
-	stepper chan struct{}
 }
 
 func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdout, stderr io.Writer) (context.Context, error) {
@@ -33,7 +32,6 @@ func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdo
 	t.outchan = make(chan string)
 
 	go func() {
-		// time.Sleep(10 * time.Millisecond)
 		for {
 			var p []byte
 			p = make([]byte, 1024)
@@ -49,7 +47,6 @@ func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdo
 	}()
 
 	go func() {
-		// time.Sleep(10 * time.Millisecond)
 		for {
 			s := <-t.outchan
 			log.Println(fmt.Sprintf("(test) stdout: %q", s))
@@ -139,8 +136,10 @@ func TestSessionSendChecked(t *testing.T) {
 	setup(t)
 	sessionCtx, _, session, transport := FakeSession(t, nil)
 
+	stepper := NewStepper()
 	go func() {
 		transport.ListenAndRespond(0, []string{"foo\n"})
+		stepper.Wait()
 		transport.ListenAndRespond(1, []string{"bar\n"})
 	}()
 
@@ -150,9 +149,10 @@ func TestSessionSendChecked(t *testing.T) {
 	assert.Equal(t, 0, exit)
 	assert.Equal(t, "foo\n", recv[0])
 
+	stepper.Step()
 	// Non-zero Exit
 	exit, recv, err = session.SendChecked(sessionCtx, "lala")
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
 	assert.Equal(t, 1, exit)
 	assert.Equal(t, "bar\n", recv[0])
 }
@@ -169,8 +169,10 @@ func TestSessionSendCheckedCommandTimeout(t *testing.T) {
 
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
 	assert.NotNil(t, err)
-	assert.Equal(t, 1, exit)
-	assert.Equal(t, 0, len(recv))
+	// We timed out so -1
+	assert.Equal(t, -1, exit)
+	// We sent some text so we should have gotten that at least
+	assert.Equal(t, 1, len(recv))
 }
 
 func TestSessionSendCheckedNoResponseTimeout(t *testing.T) {
@@ -180,12 +182,15 @@ func TestSessionSendCheckedNoResponseTimeout(t *testing.T) {
 	sessionCtx, _, session, transport := FakeSession(t, opts)
 
 	go func() {
-		transport.ListenAndRespond(0, []string{"foo\n"})
+		// Just listen and never send anything
+		for {
+			<-transport.inchan
+		}
 	}()
 
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
 	assert.NotNil(t, err)
-	assert.Equal(t, 1, exit)
+	assert.Equal(t, -1, exit)
 	assert.Equal(t, 0, len(recv))
 }
 
@@ -194,7 +199,6 @@ func TestSessionSendCheckedEarlyExit(t *testing.T) {
 	sessionCtx, _, session, transport := FakeSession(t, nil)
 
 	stepper := NewStepper()
-
 	randomSentinel = fakeSentinel("test-sentinel")
 
 	go func() {
@@ -215,7 +219,7 @@ func TestSessionSendCheckedEarlyExit(t *testing.T) {
 
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
 	assert.NotNil(t, err)
-	assert.Equal(t, 1, exit)
+	assert.Equal(t, -1, exit)
 	assert.Equal(t, 2, len(recv), "should have gotten two lines of output")
 
 }
