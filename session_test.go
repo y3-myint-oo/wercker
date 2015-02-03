@@ -81,20 +81,26 @@ func (t *FakeTransport) ListenAndRespond(exit int, recv []string) {
 
 func FakeSessionOptions() *PipelineOptions {
 	return &PipelineOptions{
-		NoResponseTimeout: 1,
-		CommandTimeout:    1,
+		NoResponseTimeout: 50,
+		CommandTimeout:    50,
 	}
 }
 
-func TestSessionSend(t *testing.T) {
-	opts := FakeSessionOptions()
+func FakeSession(t *testing.T, opts *PipelineOptions) (context.Context, context.CancelFunc, *Session, *FakeTransport) {
+	if opts == nil {
+		opts = FakeSessionOptions()
+	}
 	transport := &FakeTransport{}
-
-	topCtx, _ := context.WithCancel(context.Background())
+	topCtx, cancel := context.WithCancel(context.Background())
 	session := NewSession(opts, transport)
 
 	sessionCtx, err := session.Attach(topCtx)
 	assert.Nil(t, err)
+	return sessionCtx, cancel, session, transport
+}
+
+func TestSessionSend(t *testing.T) {
+	sessionCtx, _, session, transport := FakeSession(t, nil)
 
 	go func() {
 		session.Send(sessionCtx, false, "foo")
@@ -105,15 +111,8 @@ func TestSessionSend(t *testing.T) {
 }
 
 func TestSessionSendCancelled(t *testing.T) {
-	opts := FakeSessionOptions()
-	transport := &FakeTransport{}
-
-	topCtx, cancel := context.WithCancel(context.Background())
+	sessionCtx, cancel, session, _ := FakeSession(t, nil)
 	cancel()
-	session := NewSession(opts, transport)
-
-	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
 
 	errchan := make(chan error)
 	go func() {
@@ -124,14 +123,7 @@ func TestSessionSendCancelled(t *testing.T) {
 }
 
 func TestSessionSendChecked(t *testing.T) {
-	opts := FakeSessionOptions()
-	transport := &FakeTransport{}
-
-	topCtx, _ := context.WithCancel(context.Background())
-	session := NewSession(opts, transport)
-
-	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
+	sessionCtx, _, session, transport := FakeSession(t, nil)
 
 	go func() {
 		transport.ListenAndRespond(0, []string{"foo\n"})
@@ -154,13 +146,7 @@ func TestSessionSendChecked(t *testing.T) {
 func TestSessionSendCheckedCommandTimeout(t *testing.T) {
 	opts := FakeSessionOptions()
 	opts.CommandTimeout = 0
-	transport := &FakeTransport{}
-
-	topCtx, _ := context.WithCancel(context.Background())
-	session := NewSession(opts, transport)
-
-	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
+	sessionCtx, _, session, transport := FakeSession(t, opts)
 
 	go func() {
 		transport.ListenAndRespond(0, []string{"foo\n"})
@@ -175,13 +161,7 @@ func TestSessionSendCheckedCommandTimeout(t *testing.T) {
 func TestSessionSendCheckedNoResponseTimeout(t *testing.T) {
 	opts := FakeSessionOptions()
 	opts.NoResponseTimeout = 0
-	transport := &FakeTransport{}
-
-	topCtx, _ := context.WithCancel(context.Background())
-	session := NewSession(opts, transport)
-
-	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
+	sessionCtx, _, session, transport := FakeSession(t, opts)
 
 	go func() {
 		transport.ListenAndRespond(0, []string{"foo\n"})

@@ -123,8 +123,8 @@ var (
 	// These options might be overwritten by the wercker.yml
 	configFlags = []cli.Flag{
 		cli.StringFlag{Name: "source-dir", Value: "", Usage: "source path relative to checkout root"},
-		cli.IntFlag{Name: "no-response-timeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
-		cli.IntFlag{Name: "command-timeout", Value: 10, Usage: "timeout if command does not complete in this many minutes"},
+		cli.Float64Flag{Name: "no-response-timeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
+		cli.Float64Flag{Name: "command-timeout", Value: 10, Usage: "timeout if command does not complete in this many minutes"},
 	}
 
 	GlobalFlags = [][]cli.Flag{
@@ -671,8 +671,9 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	projectPath := guessProjectPath(c, e)
 	projectURL := guessProjectURL(c, e)
 
-	commandTimeout := c.Int("command-timeout")
-	noResponseTimeout := c.Int("no-response-timeout")
+	// These timeouts are given in minutes but we store them as milliseconds
+	commandTimeout := int(c.Float64("command-timeout") * 1000 * 60)
+	noResponseTimeout := int(c.Float64("no-response-timeout") * 1000 * 60)
 	shouldArtifacts := !c.Bool("no-artifacts")
 	shouldRemove := !c.Bool("no-remove")
 	sourceDir := c.String("source-dir")

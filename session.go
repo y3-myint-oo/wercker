@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"code.google.com/p/go-uuid/uuid"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/fsouza/go-dockerclient"
@@ -83,7 +84,7 @@ func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, st
 		Stdout:       true,
 		Stderr:       true,
 		Stream:       true,
-		Logs:         true,
+		Logs:         false,
 		Success:      started,
 		InputStream:  stdin,
 		ErrorStream:  stdout,
@@ -198,6 +199,13 @@ type CommandResult struct {
 
 // SendChecked sends commands, waits for them to complete and returns the
 // exit status and output
+// Ways to know a command is done:
+//	[ ] We received the sentinel echo
+//  [ ] The container has exited and we've exhausted the incoming data
+//  [ ] The session has closed and we've exhaused the incoming data
+//  [ ] The command has timed out
+// Ways for a command to be successful:
+//  [ ] We received the sentinel echo with exit code 0
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
 	var exitCode int
 	rand := uuid.NewRandom().String()
@@ -208,12 +216,12 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 	if err != nil {
 		return 1, []string{}, err
 	}
-	s.Send(sessionCtx, true, fmt.Sprintf("echo %s $?", rand))
+	err = s.Send(sessionCtx, true, fmt.Sprintf("echo %s $?", rand))
 	if err != nil {
 		return 1, []string{}, err
 	}
 
-	sendCtx, cancelSend := context.WithTimeout(sessionCtx, time.Duration(s.options.CommandTimeout)*time.Minute)
+	sendCtx, cancelSend := context.WithTimeout(sessionCtx, time.Duration(s.options.CommandTimeout)*time.Millisecond)
 
 	c := make(chan CommandResult, 1)
 	checkFunc := func() (int, []string, error) {
@@ -223,7 +231,7 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 		// Cancel the timeout if we finish before it gets called
 		defer cancelSend()
 		for check != true {
-			checkCtx, cancelCheck := context.WithTimeout(sendCtx, time.Duration(s.options.NoResponseTimeout)*time.Minute)
+			checkCtx, cancelCheck := context.WithTimeout(sendCtx, time.Duration(s.options.NoResponseTimeout)*time.Millisecond)
 			line := ""
 			select {
 			case myline := <-s.recv:

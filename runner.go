@@ -41,7 +41,7 @@ func GetDeployPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline
 type Runner struct {
 	options        *PipelineOptions
 	emitter        *emission.Emitter
-	logger         *LogHandler
+	// logger         *LogHandler
 	literalLogger  *LiteralLogHandler
 	metrics        *MetricsEventHandler
 	reporter       *ReportHandler
@@ -53,11 +53,11 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 
 	e := GetEmitter()
 
-	h, err := NewLogHandler()
-	if err != nil {
-		log.WithField("Error", err).Panic("Unable to LogHandler")
-	}
-	h.ListenTo(e)
+	// h, err := NewLogHandler()
+	// if err != nil {
+	//   log.WithField("Error", err).Panic("Unable to LogHandler")
+	// }
+	// h.ListenTo(e)
 
 	l, err := NewLiteralLogHandler(options)
 	if err != nil {
@@ -86,7 +86,7 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 	return &Runner{
 		options:        options,
 		emitter:        e,
-		logger:         h,
+		// logger:         h,
 		literalLogger:  l,
 		metrics:        mh,
 		reporter:       r,
