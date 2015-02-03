@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 	"testing"
-	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -32,12 +32,13 @@ func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdo
 	t.outchan = make(chan string)
 
 	go func() {
-		time.Sleep(10 * time.Millisecond)
 		for {
 			var p []byte
 			p = make([]byte, 1024)
 			i, err := t.stdin.Read(p)
-			t.inchan <- string(p[:i])
+			s := string(p[:i])
+			log.Println(fmt.Sprintf("(test)  stdin: %q", s))
+			t.inchan <- s
 			if err != nil {
 				close(t.inchan)
 				return
@@ -46,9 +47,9 @@ func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdo
 	}()
 
 	go func() {
-		time.Sleep(10 * time.Millisecond)
 		for {
 			s := <-t.outchan
+			log.Println(fmt.Sprintf("(test) stdout: %q", s))
 			_, err := t.stdout.Write([]byte(s))
 			if err != nil {
 				close(t.outchan)
@@ -81,20 +82,34 @@ func (t *FakeTransport) ListenAndRespond(exit int, recv []string) {
 
 func FakeSessionOptions() *PipelineOptions {
 	return &PipelineOptions{
-		NoResponseTimeout: 1,
-		CommandTimeout:    1,
+		GlobalOptions:     &GlobalOptions{Debug: true},
+		NoResponseTimeout: 100,
+		CommandTimeout:    100,
 	}
 }
 
-func TestSessionSend(t *testing.T) {
-	opts := FakeSessionOptions()
+func FakeSession(t *testing.T, opts *PipelineOptions) (context.Context, context.CancelFunc, *Session, *FakeTransport) {
+	if opts == nil {
+		opts = FakeSessionOptions()
+	}
 	transport := &FakeTransport{}
-
-	topCtx, _ := context.WithCancel(context.Background())
+	topCtx, cancel := context.WithCancel(context.Background())
 	session := NewSession(opts, transport)
 
 	sessionCtx, err := session.Attach(topCtx)
 	assert.Nil(t, err)
+	return sessionCtx, cancel, session, transport
+}
+
+func fakeSentinel(s string) func() string {
+	return func() string {
+		return s
+	}
+}
+
+func TestSessionSend(t *testing.T) {
+	setup(t)
+	sessionCtx, _, session, transport := FakeSession(t, nil)
 
 	go func() {
 		session.Send(sessionCtx, false, "foo")
@@ -105,15 +120,9 @@ func TestSessionSend(t *testing.T) {
 }
 
 func TestSessionSendCancelled(t *testing.T) {
-	opts := FakeSessionOptions()
-	transport := &FakeTransport{}
-
-	topCtx, cancel := context.WithCancel(context.Background())
+	setup(t)
+	sessionCtx, cancel, session, _ := FakeSession(t, nil)
 	cancel()
-	session := NewSession(opts, transport)
-
-	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
 
 	errchan := make(chan error)
 	go func() {
@@ -124,17 +133,13 @@ func TestSessionSendCancelled(t *testing.T) {
 }
 
 func TestSessionSendChecked(t *testing.T) {
-	opts := FakeSessionOptions()
-	transport := &FakeTransport{}
+	setup(t)
+	sessionCtx, _, session, transport := FakeSession(t, nil)
 
-	topCtx, _ := context.WithCancel(context.Background())
-	session := NewSession(opts, transport)
-
-	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
-
+	stepper := NewStepper()
 	go func() {
 		transport.ListenAndRespond(0, []string{"foo\n"})
+		stepper.Wait()
 		transport.ListenAndRespond(1, []string{"bar\n"})
 	}()
 
@@ -144,23 +149,19 @@ func TestSessionSendChecked(t *testing.T) {
 	assert.Equal(t, 0, exit)
 	assert.Equal(t, "foo\n", recv[0])
 
+	stepper.Step()
 	// Non-zero Exit
 	exit, recv, err = session.SendChecked(sessionCtx, "lala")
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
 	assert.Equal(t, 1, exit)
 	assert.Equal(t, "bar\n", recv[0])
 }
 
 func TestSessionSendCheckedCommandTimeout(t *testing.T) {
+	setup(t)
 	opts := FakeSessionOptions()
 	opts.CommandTimeout = 0
-	transport := &FakeTransport{}
-
-	topCtx, _ := context.WithCancel(context.Background())
-	session := NewSession(opts, transport)
-
-	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
+	sessionCtx, _, session, transport := FakeSession(t, opts)
 
 	go func() {
 		transport.ListenAndRespond(0, []string{"foo\n"})
@@ -168,27 +169,57 @@ func TestSessionSendCheckedCommandTimeout(t *testing.T) {
 
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
 	assert.NotNil(t, err)
-	assert.Equal(t, 1, exit)
-	assert.Equal(t, 0, len(recv))
+	// We timed out so -1
+	assert.Equal(t, -1, exit)
+	// We sent some text so we should have gotten that at least
+	assert.Equal(t, 1, len(recv))
 }
 
 func TestSessionSendCheckedNoResponseTimeout(t *testing.T) {
+	setup(t)
 	opts := FakeSessionOptions()
 	opts.NoResponseTimeout = 0
-	transport := &FakeTransport{}
-
-	topCtx, _ := context.WithCancel(context.Background())
-	session := NewSession(opts, transport)
-
-	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
+	sessionCtx, _, session, transport := FakeSession(t, opts)
 
 	go func() {
-		transport.ListenAndRespond(0, []string{"foo\n"})
+		// Just listen and never send anything
+		for {
+			<-transport.inchan
+		}
 	}()
 
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
 	assert.NotNil(t, err)
-	assert.Equal(t, 1, exit)
+	assert.Equal(t, -1, exit)
 	assert.Equal(t, 0, len(recv))
+}
+
+func TestSessionSendCheckedEarlyExit(t *testing.T) {
+	setup(t)
+	sessionCtx, _, session, transport := FakeSession(t, nil)
+
+	stepper := NewStepper()
+	randomSentinel = fakeSentinel("test-sentinel")
+
+	go func() {
+		for {
+			stepper.Wait()
+			<-transport.inchan
+		}
+	}()
+
+	go func() {
+		stepper.Step() // "foo"
+		// Wait 5 milliseconds because Send has short delay
+		stepper.Step(5) // "echo test-sentinel $?"
+		transport.outchan <- "foo"
+		transport.Cancel()
+		transport.outchan <- "bar"
+	}()
+
+	exit, recv, err := session.SendChecked(sessionCtx, "foo")
+	assert.NotNil(t, err)
+	assert.Equal(t, -1, exit)
+	assert.Equal(t, 2, len(recv), "should have gotten two lines of output")
+
 }

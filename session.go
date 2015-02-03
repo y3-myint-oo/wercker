@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"code.google.com/p/go-uuid/uuid"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/fsouza/go-dockerclient"
@@ -83,7 +84,7 @@ func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, st
 		Stdout:       true,
 		Stderr:       true,
 		Stream:       true,
-		Logs:         true,
+		Logs:         false,
 		Success:      started,
 		InputStream:  stdin,
 		ErrorStream:  stdout,
@@ -164,13 +165,21 @@ func (s *Session) ShowLogs() {
 
 // Send an array of commands.
 func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ...string) error {
+	// Do a quick initial check whether we have a valid session first
+	select {
+	case <-sessionCtx.Done():
+		log.Errorln("Session finished before sending commands:", commands)
+		return sessionCtx.Err()
+	// Wait because if both cases are available golang will pick one randomly
+	case <-time.After(1 * time.Millisecond):
+		// Pass
+	}
+
 	for i := range commands {
 		command := commands[i] + "\n"
-
 		select {
 		case <-sessionCtx.Done():
 			log.Errorln("Session finished before sending command:", command)
-			// log.Errorln("Err: ", sessionCtx.Err())
 			return sessionCtx.Err()
 		case s.send <- command:
 			hidden := s.logsHidden
@@ -189,72 +198,120 @@ func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ..
 	return nil
 }
 
+var randomSentinel = func() string {
+	return uuid.NewRandom().String()
+}
+
 // CommandResult exists so that we can make a channel of them
 type CommandResult struct {
-	exitCode int
-	recv     []string
-	err      error
+	exit int
+	recv []string
+	err  error
+}
+
+func checkLine(line, sentinel string) (bool, int) {
+	if !strings.HasPrefix(line, sentinel) {
+		return false, -999
+	}
+	var rand string
+	var exit int
+	_, err := fmt.Sscanf(line, "%s %d\n", &rand, &exit)
+	if err != nil {
+		return false, -999
+	}
+	return true, exit
 }
 
 // SendChecked sends commands, waits for them to complete and returns the
 // exit status and output
+// Ways to know a command is done:
+//	[ ] We received the sentinel echo
+//  [ ] The container has exited and we've exhausted the incoming data
+//  [ ] The session has closed and we've exhaused the incoming data
+//  [ ] The command has timed out
+// Ways for a command to be successful:
+//  [ ] We received the sentinel echo with exit code 0
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
-	var exitCode int
-	rand := uuid.NewRandom().String()
-	check := false
 	recv := []string{}
+	sentinel := randomSentinel()
 
 	err := s.Send(sessionCtx, false, commands...)
 	if err != nil {
-		return 1, []string{}, err
+		return -1, []string{}, err
 	}
-	s.Send(sessionCtx, true, fmt.Sprintf("echo %s $?", rand))
+	err = s.Send(sessionCtx, true, fmt.Sprintf("echo %s $?", sentinel))
 	if err != nil {
-		return 1, []string{}, err
+		return -1, []string{}, err
 	}
 
-	sendCtx, cancelSend := context.WithTimeout(sessionCtx, time.Duration(s.options.CommandTimeout)*time.Minute)
+	sendCtx, _ := context.WithTimeout(sessionCtx, time.Duration(s.options.CommandTimeout)*time.Millisecond)
 
-	c := make(chan CommandResult, 1)
-	checkFunc := func() (int, []string, error) {
-		// BUG(termie): This is relatively naive and will break if the messages
-		// returned aren't complete lines, if this becomes a problem we'll have
-		// to buffer it.
-		// Cancel the timeout if we finish before it gets called
-		defer cancelSend()
-		for check != true {
-			checkCtx, cancelCheck := context.WithTimeout(sendCtx, time.Duration(s.options.NoResponseTimeout)*time.Minute)
-			line := ""
-			select {
-			case myline := <-s.recv:
-				// We got data so cancel the no-response timeout
-				cancelCheck()
-				line = myline
-			case <-checkCtx.Done():
-				log.Errorln("Session finished before receiving output.")
-				return 1, recv, checkCtx.Err()
-			// Exited "expectedly"
-			case status := <-s.exit:
-				return status, recv, nil
-				// Timed out
-				// case <-time.After(time.Duration(s.options.NoResponseTimeout) * time.Minute):
-				//   //close(s.ch)
-				//   return 1, recv, fmt.Errorf("Timeout: no response seen for %d minutes", s.options.NoResponseTimeout)
+	commandComplete := make(chan CommandResult)
+
+	// Signal channel to tell the reader to stop reading, this lets us
+	// keep it reading for a small amount of time after we know something
+	// has gone wrong, otherwise it misses some error messages.
+	stopReading := make(chan struct{}, 1)
+
+	// This is our main waiter, it will get an exit code, an error or a timeout
+	// and then complete the command, anything
+	exitChan := make(chan int)
+	errChan := make(chan error)
+	go func() {
+		select {
+		// We got an exit code because we got our sentinel, let's skiddaddle
+		case exit := <-exitChan:
+			err = nil
+			if exit != 0 {
+				err = fmt.Errorf("Command exited with exit code: %d", exit)
 			}
+			commandComplete <- CommandResult{exit: exit, recv: recv, err: err}
+		case err = <-errChan:
+			commandComplete <- CommandResult{exit: -1, recv: recv, err: err}
+		case <-sendCtx.Done():
+			// We timed out or something closed, try to read in the rest of the data
+			// over the next 100 milliseconds and then return
+			<-time.After(time.Duration(100) * time.Millisecond)
+			// close(stopReading)
+			stopReading <- struct{}{}
+			commandComplete <- CommandResult{exit: -1, recv: recv, err: sendCtx.Err()}
+		}
+	}()
 
-			if strings.HasPrefix(line, rand) {
-				check = true
-				_, err := fmt.Sscanf(line, "%s %d\n", &rand, &exitCode)
-				if err != nil {
+	// If we don't get a response in a certain amount of time, timeout
+	noResponseTimeout := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-noResponseTimeout:
+				continue
+			case <-time.After(time.Duration(s.options.NoResponseTimeout) * time.Millisecond):
+				stopReading <- struct{}{}
+				errChan <- fmt.Errorf("No response timeout")
+				return
+			}
+		}
+	}()
+
+	// Read in data until we get our sentinel or are asked to stop
+	go func() {
+		for {
+			select {
+			case line := <-s.recv:
+				// If we found a line reset the NoResponseTimeout timer
+				noResponseTimeout <- struct{}{}
+				// If we found the exit code, we're done
+				foundExit, exit := checkLine(line, sentinel)
+				if foundExit {
 					s.e.Emit(Logs, &LogsArgs{
 						Options: s.options,
 						Hidden:  true,
 						Logs:    line,
 						Stream:  "stdout",
 					})
-					return exitCode, recv, err
+					exitChan <- exit
+					return
 				}
-			} else {
 				s.e.Emit(Logs, &LogsArgs{
 					Options: s.options,
 					Hidden:  s.logsHidden,
@@ -262,25 +319,12 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 					Stream:  "stdout",
 				})
 				recv = append(recv, line)
+			case <-stopReading:
+				return
 			}
 		}
-		return exitCode, recv, nil
-	}
-
-	// Timeout for the whole command
-	go func() {
-		exitCode, recv, err := checkFunc()
-		c <- CommandResult{exitCode, recv, err}
 	}()
 
-	r := <-c
-	return r.exitCode, r.recv, r.err
-
-	// select {
-	// case r := <-c:
-	//   return r.exitCode, r.recv, r.err
-	// case <-time.After(time.Duration(s.options.CommandTimeout) * time.Minute):
-	//   //close(c)
-	//   return 1, []string{}, fmt.Errorf("Command timed out after %d minutes", s.options.CommandTimeout)
-	// }
+	r := <-commandComplete
+	return r.exit, r.recv, r.err
 }

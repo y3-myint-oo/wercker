@@ -586,11 +586,12 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 
 	newShared := &RunnerShared{
-		box:        shared.box,
-		pipeline:   shared.pipeline,
-		sess:       newSess,
-		sessionCtx: newSessCtx,
-		config:     shared.config,
+		box:         shared.box,
+		pipeline:    shared.pipeline,
+		sess:        newSess,
+		sessionCtx:  newSessCtx,
+		containerID: shared.containerID,
+		config:      shared.config,
 	}
 
 	// Set up the base environment
