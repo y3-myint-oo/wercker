@@ -21,11 +21,6 @@ build:
     - golint
 
     - script:
-        name: get version
-        code: |-
-            sh -e ./version.sh "$(git rev-parse $WERCKER_GIT_COMMIT)"
-
-    - script:
         name: go test
         code: |-
             go test
