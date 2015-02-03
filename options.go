@@ -95,7 +95,6 @@ var (
 	// These flags are advanced dev settings
 	internalDevFlags = []cli.Flag{
 		cli.BoolFlag{Name: "direct-mount", Usage: "mount our binds read-write to the pipeline path"},
-		cli.StringFlag{Name: "wercker-yml", Value: "", Usage: "specify a specific yaml file"},
 	}
 
 	// AWS bits
@@ -125,6 +124,7 @@ var (
 		cli.StringFlag{Name: "source-dir", Value: "", Usage: "source path relative to checkout root"},
 		cli.Float64Flag{Name: "no-response-timeout", Value: 5, Usage: "timeout if no script output is received in this many minutes"},
 		cli.Float64Flag{Name: "command-timeout", Value: 10, Usage: "timeout if command does not complete in this many minutes"},
+		cli.StringFlag{Name: "wercker-yml", Value: "", Usage: "specify a specific yaml file"},
 	}
 
 	GlobalFlags = [][]cli.Flag{
@@ -141,6 +141,7 @@ var (
 		localPathFlags,
 		werckerFlags,
 		dockerFlags,
+		internalDevFlags,
 		gitFlags,
 		registryFlags,
 		artifactFlags,
