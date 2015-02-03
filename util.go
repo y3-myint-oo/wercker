@@ -202,3 +202,14 @@ func (c *Counter) Increment() int {
 
 	return current
 }
+
+// GenerateUserAgent generate a useragent.
+func AddRequestHeaders(req *http.Request) {
+	userAgent := fmt.Sprintf("sentcli %s", FullVersion())
+
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("X-Wercker-Version", Version())
+	if GitCommit != "" {
+		req.Header.Set("X-Wercker-Git", GitCommit)
+	}
+}

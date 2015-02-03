@@ -88,8 +88,10 @@ func getAccessToken(username, password, url string) (string, error) {
 		log.WithField("Error", err).Debug("Unable to post request to wercker API")
 		return "", err
 	}
+
 	req.SetBasicAuth(creds.Username, creds.Password)
 	req.Header.Set("Content-Type", "application/json")
+	AddRequestHeaders(req)
 
 	client := &http.Client{}
 
