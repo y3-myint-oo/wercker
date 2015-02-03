@@ -171,7 +171,7 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 
 	app := cli.NewApp()
-	app.Version = Version
+	app.Version = FullVersion()
 	app.Flags = flagsFor(GlobalFlags)
 	app.Commands = []cli.Command{
 		buildCommand,
@@ -333,15 +333,10 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 	return nil
 }
 
-type versions struct {
-	Version   string `json:"version"`
-	GitCommit string `json:"gitCommit"`
-}
-
 func cmdVersion(options *VersionOptions) error {
 	v := &versions{
-		Version:   Version,
-		GitCommit: GitVersion,
+		Version:   Version(),
+		GitCommit: GitCommit,
 	}
 
 	if options.OutputJSON {
