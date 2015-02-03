@@ -12,6 +12,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/joho/godotenv"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -412,26 +413,27 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	dumpOptions(options)
 	log.Println("############################################")
 
+	runnerCtx := context.Background()
+
 	_, err := p.EnsureCode()
 	if err != nil {
 		soft.Exit(err)
 	}
 
-	ctx, err := p.SetupEnvironment()
-	if ctx.box != nil {
+	shared, err := p.SetupEnvironment(runnerCtx)
+	if shared.box != nil {
 		if options.ShouldRemove {
-			defer ctx.box.Clean()
+			defer shared.box.Clean()
 		}
-		defer ctx.box.Stop()
+		defer shared.box.Stop()
 	}
 	if err != nil {
 		return soft.Exit(err)
 	}
 
 	// Expand our context object
-	box := ctx.box
-	pipeline := ctx.pipeline
-	sess := ctx.sess
+	box := shared.box
+	pipeline := shared.pipeline
 
 	repoName := pipeline.DockerRepo()
 	tag := pipeline.DockerTag()
@@ -462,7 +464,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
-		sr, err := p.RunStep(ctx, step, stepCounter.Increment())
+		sr, err := p.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName
@@ -493,7 +495,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				PackageURL: "",
 				ExitCode:   1,
 			}
-			finisher := p.StartStep(ctx, storeStep, stepCounter.Increment())
+			finisher := p.StartStep(shared, storeStep, stepCounter.Increment())
 			defer finisher.Finish(sr)
 
 			pr.FailedStepName = storeStep.Name
@@ -526,7 +528,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			if pr.Success && options.ShouldArtifacts {
 				pr.FailedStepMessage = "Unable to store pipeline output"
 
-				artifact, err := pipeline.CollectArtifact(sess)
+				artifact, err := pipeline.CollectArtifact(shared.containerID)
 				// Ignore ErrEmptyTarball errors
 				if err != ErrEmptyTarball {
 					if err != nil {
@@ -583,26 +585,27 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		log.Panicln(err)
 	}
 
-	newSess, err := p.GetSession(container.ID)
+	newSessCtx, newSess, err := p.GetSession(runnerCtx, container.ID)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	newCtx := &RunnerContext{
-		box:      ctx.box,
-		pipeline: ctx.pipeline,
-		sess:     newSess,
-		config:   ctx.config,
+	newShared := &RunnerShared{
+		box:        shared.box,
+		pipeline:   shared.pipeline,
+		sess:       newSess,
+		sessionCtx: newSessCtx,
+		config:     shared.config,
 	}
 
 	// Set up the base environment
-	err = pipeline.ExportEnvironment(newSess)
+	err = pipeline.ExportEnvironment(newSessCtx, newSess)
 	if err != nil {
 		return err
 	}
 
 	// Add the After-Step parts
-	err = pr.ExportEnvironment(newSess)
+	err = pr.ExportEnvironment(newSessCtx, newSess)
 	if err != nil {
 		return err
 	}
@@ -613,7 +616,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		log.Println(step.Name, step.ID)
 		log.Println("===========================================")
 
-		_, err := p.RunStep(newCtx, step, stepCounter.Increment())
+		_, err := p.RunStep(newShared, step, stepCounter.Increment())
 		if err != nil {
 			log.Warnln("=========== After Step failed! ============")
 			break

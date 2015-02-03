@@ -85,11 +85,11 @@ func (d *Deploy) DockerMessage() string {
 // CollectArtifact copies the artifacts associated with the Deploy.
 // Unlike a Build, this will only collect the output directory if we made
 // a new one.
-func (d *Deploy) CollectArtifact(sess *Session) (*Artifact, error) {
+func (d *Deploy) CollectArtifact(containerID string) (*Artifact, error) {
 	artificer := NewArtificer(d.options)
 
 	artifact := &Artifact{
-		ContainerID:   sess.ContainerID,
+		ContainerID:   containerID,
 		GuestPath:     d.options.GuestPath("output"),
 		HostPath:      d.options.HostPath("build.tar"),
 		ApplicationID: d.options.ApplicationID,
