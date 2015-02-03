@@ -680,7 +680,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	sourceDir := c.String("source-dir")
 
 	directMount := c.Bool("direct-mount")
-	werckerYml := c.String("werkcer-yml")
+	werckerYml := c.String("wercker-yml")
 
 	return &PipelineOptions{
 		GlobalOptions:   globalOpts,
