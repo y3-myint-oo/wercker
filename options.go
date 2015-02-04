@@ -556,15 +556,16 @@ func guessApplicationOwnerName(c *cli.Context, e *Environment) string {
 }
 
 func guessMessage(c *cli.Context, e *Environment) string {
-	message := c.GlobalString("message")
+	message := c.String("message")
 	return message
 }
 
 func guessTag(c *cli.Context, e *Environment) string {
-	tag := c.GlobalString("tag")
+	tag := c.String("tag")
 	if tag == "" {
 		tag = guessGitBranch(c, e)
 	}
+	tag = strings.Replace(tag, "/", "_", -1)
 	return tag
 }
 
