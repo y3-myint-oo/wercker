@@ -271,3 +271,13 @@ func TestOptionsReporterMissingOptions(t *testing.T) {
 	run(t, globalFlags, reporterFlags, test, missingHost)
 	run(t, globalFlags, reporterFlags, test, missingKey)
 }
+
+func TestOptionsTagEscaping(t *testing.T) {
+	args := defaultArgs("--tag", "feature/foo")
+	test := func(c *cli.Context) {
+		opts, err := NewPipelineOptions(c, emptyEnv())
+		assert.Nil(t, err)
+		assert.Equal(t, "feature_foo", opts.Tag)
+	}
+	run(t, globalFlags, pipelineFlags, test, args)
+}
