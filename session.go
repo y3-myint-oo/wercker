@@ -234,15 +234,7 @@ func checkLine(line, sentinel string) (bool, int) {
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
 	recv := []string{}
 	sentinel := randomSentinel()
-
-	err := s.Send(sessionCtx, false, commands...)
-	if err != nil {
-		return -1, []string{}, err
-	}
-	err = s.Send(sessionCtx, true, fmt.Sprintf("echo %s $?", sentinel))
-	if err != nil {
-		return -1, []string{}, err
-	}
+	var err error
 
 	sendCtx, _ := context.WithTimeout(sessionCtx, time.Duration(s.options.CommandTimeout)*time.Millisecond)
 
@@ -324,6 +316,15 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 			}
 		}
 	}()
+
+	err = s.Send(sessionCtx, false, commands...)
+	if err != nil {
+		return -1, []string{}, err
+	}
+	err = s.Send(sessionCtx, true, fmt.Sprintf("echo %s $?", sentinel))
+	if err != nil {
+		return -1, []string{}, err
+	}
 
 	r := <-commandComplete
 	return r.exit, r.recv, r.err
