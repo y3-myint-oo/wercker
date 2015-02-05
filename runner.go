@@ -39,8 +39,8 @@ func GetDeployPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline
 
 // Runner is the base type for running the pipelines.
 type Runner struct {
-	options        *PipelineOptions
-	emitter        *emission.Emitter
+	options *PipelineOptions
+	emitter *emission.Emitter
 	// logger         *LogHandler
 	literalLogger  *LiteralLogHandler
 	metrics        *MetricsEventHandler
@@ -84,8 +84,8 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 	}
 
 	return &Runner{
-		options:        options,
-		emitter:        e,
+		options: options,
+		emitter: e,
 		// logger:         h,
 		literalLogger:  l,
 		metrics:        mh,
@@ -265,19 +265,20 @@ func (p *Runner) GetPipeline(rawConfig *RawConfig) (Pipeline, error) {
 // RunnerShared holds on to the information we got from setting up our
 // environment.
 type RunnerShared struct {
-	box        *Box
-	pipeline   Pipeline
-	sess       *Session
-	config     *RawConfig
-	sessionCtx context.Context
+	box         *Box
+	pipeline    Pipeline
+	sess        *Session
+	config      *RawConfig
+	sessionCtx  context.Context
 	containerID string
 }
 
 // StartStep emits BuildStepStarted and returns a Finisher for the end event.
 func (p *Runner) StartStep(ctx *RunnerShared, step *Step, order int) *Finisher {
 	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
-		Build:   ctx.pipeline,
 		Options: p.options,
+		Box:     ctx.box,
+		Build:   ctx.pipeline,
 		Step:    step,
 		Order:   order,
 	})
@@ -288,8 +289,9 @@ func (p *Runner) StartStep(ctx *RunnerShared, step *Step, order int) *Finisher {
 			artifactURL = r.Artifact.URL()
 		}
 		p.emitter.Emit(BuildStepFinished, &BuildStepFinishedArgs{
-			Build:               ctx.pipeline,
 			Options:             p.options,
+			Box:                 ctx.box,
+			Build:               ctx.pipeline,
 			Step:                step,
 			Order:               order,
 			Successful:          r.Success,
@@ -343,7 +345,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		ExitCode: 1,
 	}
 
-	setupEnvironmentStep := &Step{Name: "setup environment"}
+	setupEnvironmentStep := &Step{Owner: "wercker", Name: "setup environment", Version: Version()}
 	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 

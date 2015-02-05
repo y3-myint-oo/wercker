@@ -31,7 +31,16 @@ func FullVersion() string {
 	return fmt.Sprintf("%s (Git commit: %s)", semver, GitCommit)
 }
 
-type versions struct {
-	GitCommit string
-	Version   string
+// GetVersions returns a Versions struct filled with the current values.
+func GetVersions() *Versions {
+	return &Versions{
+		GitCommit: GitCommit,
+		Version:   Version(),
+	}
+}
+
+// Versions contains GitCommit and Version as a JSON marshall friendly struct.
+type Versions struct {
+	GitCommit string `json:"gitCommit,omitempty"`
+	Version   string `json:"version,omitempty"`
 }

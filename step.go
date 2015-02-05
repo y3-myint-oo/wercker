@@ -198,6 +198,7 @@ func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, 
 	// Script steps need unique IDs
 	if name == "script" {
 		stepID = uuid.NewRandom().String()
+		version = Version()
 	}
 
 	// If there is a name in data, make it our displayName and delete it

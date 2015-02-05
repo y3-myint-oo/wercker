@@ -334,10 +334,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 }
 
 func cmdVersion(options *VersionOptions) error {
-	v := &versions{
-		Version:   Version(),
-		GitCommit: GitCommit,
-	}
+	v := GetVersions()
 
 	if options.OutputJSON {
 		b, err := json.MarshalIndent(v, "", "  ")
@@ -434,7 +431,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	tag := pipeline.DockerTag()
 	message := pipeline.DockerMessage()
 
-	storeStep := &Step{Name: "store"}
+	storeStep := &Step{Owner: "wercker", Name: "store", Version: Version()}
 
 	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
 		Build:      pipeline,

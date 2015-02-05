@@ -44,7 +44,6 @@ type BuildFinishedArgs struct {
 
 // LogsArgs contains the args associated with the "Logs" event.
 type LogsArgs struct {
-	Box     string
 	Build   Pipeline
 	Options *PipelineOptions
 	Order   int
@@ -57,7 +56,6 @@ type LogsArgs struct {
 // BuildStepsAddedArgs contains the args associated with the
 // "BuildStepsAdded" event.
 type BuildStepsAddedArgs struct {
-	Box        string
 	Build      Pipeline
 	Options    *PipelineOptions
 	Steps      []*Step
@@ -68,9 +66,9 @@ type BuildStepsAddedArgs struct {
 // BuildStepStartedArgs contains the args associated with the
 // "BuildStepStarted" event.
 type BuildStepStartedArgs struct {
-	Box     string
-	Build   Pipeline
 	Options *PipelineOptions
+	Box     *Box
+	Build   Pipeline
 	Order   int
 	Step    *Step
 }
@@ -78,9 +76,9 @@ type BuildStepStartedArgs struct {
 // BuildStepFinishedArgs contains the args associated with the
 // "BuildStepFinished" event.
 type BuildStepFinishedArgs struct {
-	Box         string
-	Build       Pipeline
 	Options     *PipelineOptions
+	Box         *Box
+	Build       Pipeline
 	Order       int
 	Step        *Step
 	Successful  bool

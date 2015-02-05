@@ -2,50 +2,16 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/inconshreveable/go-keen"
 )
 
-// A MetricsEventHandler reporting to keen.io.
-type MetricsEventHandler struct {
-	keen  *keen.Client
-	start time.Time
-}
-
-// MetricsApplicationPayload is the app data we're reporting
-// to keen. Part of MetricsPayload.
-type MetricsApplicationPayload struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	OwnerName string `json:"ownerName"`
-}
-
-// MetricsPayload is the data we're sending to keen.
-// Identical to legacy pool but we've renamed
-// `sentinel` -> `core`.
-type MetricsPayload struct {
-	MetricsApplicationPayload *MetricsApplicationPayload `json:"application"`
-	ApplicationStartedByName  string                     `json:"startedBy"`
-	BuildID                   string                     `json:"buildID"`
-	DeployID                  string                     `json:"deployID"`
-	Event                     string                     `json:"event"`
-	Step                      *Step                      `json:"step"`
-	GitVersion                string                     `json:"GitVersion"`
-	StepOrder                 int                        `json:"stepOrder"`
-	Successful                bool                       `json:"succesful,omitempty"`
-	TimeElapsed               float64                    `json:"timeElapsed,omitempty"`
-	Timestamp                 int32                      `json:"timestamp"`
-	VCS                       string                     `json:"versionControl"`
-	// Box                        string `json:"box"`       // todo
-	// Core                       string `json:"core"`      // todo
-	// JobID                      string `json:"jobId"`     // todo
-}
-
 // NewMetricsHandler will create a new NewMetricsHandler.
 func NewMetricsHandler(opts *PipelineOptions) (*MetricsEventHandler, error) {
-
 	if "" == opts.KeenProjectWriteKey {
 		return nil, errors.New("No KeenProjectWriteKey specified")
 	}
@@ -54,71 +20,261 @@ func NewMetricsHandler(opts *PipelineOptions) (*MetricsEventHandler, error) {
 		return nil, errors.New("No KeenProjectID specified")
 	}
 
-	// todo(yoshuawuyts): replace with `keen batch client` + regular flushes
 	keenInstance := &keen.Client{
 		WriteKey:  opts.KeenProjectWriteKey,
 		ProjectID: opts.KeenProjectID,
 	}
 
-	return &MetricsEventHandler{keen: keenInstance}, nil
+	versions := GetVersions()
+
+	return &MetricsEventHandler{
+		keen:     keenInstance,
+		versions: versions,
+		start:    make(map[string]time.Time),
+	}, nil
+}
+
+// A MetricsEventHandler reporting to keen.io.
+type MetricsEventHandler struct {
+	keen                *keen.Client
+	start               map[string]time.Time
+	versions            *Versions
+	numBuildSteps       int
+	numBuildAfterSteps  int
+	numDeploySteps      int
+	numDeployAfterSteps int
+}
+
+func newMetricsKeenPayload(now time.Time) *metricsKeenPayload {
+	return &metricsKeenPayload{Timestamp: now.Format(time.RFC3339)}
+}
+
+type metricsKeenPayload struct {
+	Timestamp string `json:"timestamp"`
+}
+
+// metricsApplicationPayload is the app data we're reporting
+// to keen. Part of MetricsPayload.
+type metricsApplicationPayload struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	OwnerName string `json:"ownerName"`
+}
+
+func newMetricStepPayload(step *Step) *metricStepPayload {
+	return &metricStepPayload{
+		Owner:      step.Owner,
+		Name:       step.Name,
+		Version:    step.Version,
+		FullName:   fmt.Sprintf("%s/%s", step.Owner, step.Name),
+		UniqueName: formatUniqueStepName(step),
+	}
+}
+
+type metricStepPayload struct {
+	Owner   string `json:"owner,omitempty"`
+	Name    string `json:"name,omitempty"`
+	Version string `json:"version,omitempty"`
+
+	FullName   string `json:"uniqueName,omitempty"` // Contains owner/name
+	UniqueName string `json:"fullName,omitempty"`   // Contains owner/name@version
+}
+
+// MetricsPayload is the data we're sending to keen.
+type MetricsPayload struct {
+	Keen         *metricsKeenPayload `json:"keen"`
+	Timestamp    int64               `json:"timestamp"`
+	Event        string              `json:"event"`
+	Stack        int                 `json:"stack,omitempty"`
+	SentCli      *Versions           `json:"sentcli,omitempty"`
+	Grappler     *Versions           `json:"grappler,omitempty"`
+	PipelineName string              `json:"pipelineName,omitempty"`
+
+	BuildID  string `json:"buildID,omitempty"`
+	DeployID string `json:"deployID,omitempty"`
+
+	NumBuildSteps       int `json:"numBuildSteps,omitempty"`
+	NumBuildAfterSteps  int `json:"numBuildAfterSteps,omitempty"`
+	NumDeploySteps      int `json:"numDeploySteps,omitempty"`
+	NumDeployAfterSteps int `json:"numDeployAfterSteps,omitempty"`
+
+	BoxName string `json:"box,omitempty"`
+	BoxTag  string `json:"boxTag,omitempty"`
+
+	Step *metricStepPayload `json:"step,omitempty"`
+
+	// Required for backwards compatibility:
+	StepName  string `json:"stepName,omitempty"` // <- owner/name@version
+	StepOrder int    `json:"stepOrder,omitempty"`
+
+	Success   bool   `json:"success,omitempty"`
+	Duration  int64  `json:"duration,omitempty"`
+	StartedBy string `json:"startedBy,omitempty"`
+
+	VCS                       string                     `json:"versionControl,omitempty"`
+	MetricsApplicationPayload *metricsApplicationPayload `json:"application,omitempty"`
 }
 
 // BuildStepStarted responds to the BuildStepStarted event.
-func (h *MetricsEventHandler) BuildStepStarted(event *BuildStepStartedArgs) {
-	h.start = time.Now()
+func (h *MetricsEventHandler) BuildStepStarted(args *BuildStepStartedArgs) {
+	now := time.Now()
+	h.start[args.Step.SafeID] = now
 
-	h.keen.AddEvent("build-events-ewok", &MetricsPayload{
-		MetricsApplicationPayload: &MetricsApplicationPayload{
-			ID:        event.Options.ApplicationID,
-			Name:      event.Options.ApplicationName,
-			OwnerName: event.Options.ApplicationOwnerName,
+	pipelineName := getPipelineName(args.Options)
+	collection := getCollection(args.Options)
+	eventName := getStartEventName(args.Options)
+	boxName, boxTag := getBoxDetails(args.Box)
+
+	h.keen.AddEvent(collection, &MetricsPayload{
+		Keen:      newMetricsKeenPayload(now),
+		Timestamp: now.Unix(),
+		BuildID:   args.Options.BuildID,
+		DeployID:  args.Options.DeployID,
+		Event:     eventName,
+		StartedBy: args.Options.ApplicationStartedByName,
+		MetricsApplicationPayload: &metricsApplicationPayload{
+			ID:        args.Options.ApplicationID,
+			Name:      args.Options.ApplicationName,
+			OwnerName: args.Options.ApplicationOwnerName,
 		},
-		ApplicationStartedByName: event.Options.ApplicationStartedByName,
-		BuildID:                  event.Options.BuildID,
-		DeployID:                 event.Options.DeployID,
-		Event:                    "buildStepStarted",
-		Step:                     event.Step,
-		GitVersion:               GitCommit,
-		StepOrder:                event.Order,
-		Timestamp:                int32(time.Now().Unix()),
-		VCS:                      "git",
-		// Box:     event.Box,
-		// Core:      "",
-		// JobID:     "",
+		Step:                newMetricStepPayload(args.Step),
+		StepName:            formatUniqueStepName(args.Step),
+		StepOrder:           args.Order,
+		SentCli:             h.versions,
+		Stack:               5,
+		BoxName:             boxName,
+		BoxTag:              boxTag,
+		NumBuildSteps:       h.numBuildSteps,
+		NumBuildAfterSteps:  h.numBuildAfterSteps,
+		NumDeploySteps:      h.numDeploySteps,
+		NumDeployAfterSteps: h.numDeployAfterSteps,
+		PipelineName:        pipelineName,
 	})
 }
 
 // BuildStepFinished responds to the BuildStepFinished event.
-func (h *MetricsEventHandler) BuildStepFinished(event *BuildStepFinishedArgs) {
+func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
+	now := time.Now()
 
-	elapsed := time.Since(h.start)
-	h.start = time.Now()
+	pipelineName := getPipelineName(args.Options)
+	collection := getCollection(args.Options)
+	eventName := getFinishEventName(args.Options)
+	boxName, boxTag := getBoxDetails(args.Box)
 
-	h.keen.AddEvent("build-events-ewok", &MetricsPayload{
-		MetricsApplicationPayload: &MetricsApplicationPayload{
-			ID:        event.Options.ApplicationID,
-			Name:      event.Options.ApplicationName,
-			OwnerName: event.Options.ApplicationOwnerName,
+	var duration int64
+	begin, ok := h.start[args.Step.SafeID]
+	if ok {
+		elapsed := now.Sub(begin)
+		duration = elapsed.Nanoseconds() / 1000000
+		delete(h.start, args.Step.SafeID)
+	}
+
+	h.keen.AddEvent(collection, &MetricsPayload{
+		Keen:      newMetricsKeenPayload(now),
+		Timestamp: now.Unix(),
+		BuildID:   args.Options.BuildID,
+		DeployID:  args.Options.DeployID,
+		Duration:  duration,
+		Event:     eventName,
+		StartedBy: args.Options.ApplicationStartedByName,
+		MetricsApplicationPayload: &metricsApplicationPayload{
+			ID:        args.Options.ApplicationID,
+			Name:      args.Options.ApplicationName,
+			OwnerName: args.Options.ApplicationOwnerName,
 		},
-		ApplicationStartedByName: event.Options.ApplicationStartedByName,
-		BuildID:                  event.Options.BuildID,
-		DeployID:                 event.Options.DeployID,
-		Event:                    "buildStepFinished",
-		GitVersion:               GitCommit,
-		Step:                     event.Step,
-		StepOrder:                event.Order,
-		TimeElapsed:              elapsed.Seconds(),
-		Timestamp:                int32(time.Now().Unix()),
-		VCS:                      "git",
-		Successful:               event.Successful,
-		// Box:     event.Box,
-		// Core:      "",
-		// JobID:     "",
+		Step:                newMetricStepPayload(args.Step),
+		StepName:            formatUniqueStepName(args.Step),
+		StepOrder:           args.Order,
+		Success:             args.Successful,
+		SentCli:             h.versions,
+		Stack:               5,
+		BoxName:             boxName,
+		BoxTag:              boxTag,
+		NumBuildSteps:       h.numBuildSteps,
+		NumBuildAfterSteps:  h.numBuildAfterSteps,
+		NumDeploySteps:      h.numDeploySteps,
+		NumDeployAfterSteps: h.numDeployAfterSteps,
+		PipelineName:        pipelineName,
 	})
+}
+
+func (h *MetricsEventHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
+	if args.Options.BuildID != "" {
+		h.numBuildSteps = len(args.Steps)
+		h.numBuildAfterSteps = len(args.AfterSteps)
+	} else if args.Options.DeployID != "" {
+		h.numDeploySteps = len(args.Steps)
+		h.numDeployAfterSteps = len(args.AfterSteps)
+	}
 }
 
 // ListenTo will add eventhandlers to e.
 func (h *MetricsEventHandler) ListenTo(e *emission.Emitter) {
 	e.AddListener(BuildStepStarted, h.BuildStepStarted)
 	e.AddListener(BuildStepFinished, h.BuildStepFinished)
+	e.AddListener(BuildStepsAdded, h.BuildStepsAdded)
+}
+
+func getPipelineName(options *PipelineOptions) string {
+	if options.BuildID != "" {
+		return "build"
+	}
+
+	if options.DeployID != "" {
+		return "deploy"
+	}
+
+	log.Panic("Metrics is only able to send metrics for builds or deploys")
+	return ""
+}
+
+func getCollection(options *PipelineOptions) string {
+	if options.BuildID != "" {
+		return "build-events"
+	}
+
+	if options.DeployID != "" {
+		return "deploy-events"
+	}
+
+	log.Panic("Metrics is only able to send metrics for builds or deploys")
+	return ""
+}
+
+func getStartEventName(options *PipelineOptions) string {
+	if options.BuildID != "" {
+		return "buildStepStarted"
+	}
+
+	if options.DeployID != "" {
+		return "deployStepStarted"
+	}
+
+	log.Panic("Metrics is only able to send metrics for builds or deploys")
+	return ""
+}
+
+func getFinishEventName(options *PipelineOptions) string {
+	if options.BuildID != "" {
+		return "buildStepFinished"
+	}
+
+	if options.DeployID != "" {
+		return "deployStepFinished"
+	}
+
+	log.Panic("Metrics is only able to send metrics for builds or deploys")
+	return ""
+}
+
+func getBoxDetails(box *Box) (boxName string, boxTag string) {
+	if box == nil {
+		return
+	}
+
+	return box.Name, box.tag
+}
+
+func formatUniqueStepName(step *Step) string {
+	return fmt.Sprintf("%s/%s@%s", step.Owner, step.Name, step.Version)
 }
