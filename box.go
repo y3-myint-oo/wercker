@@ -163,9 +163,15 @@ func (b *Box) Run() (*docker.Container, error) {
 
 // Clean up the containers
 func (b *Box) Clean() error {
-	containers := []string{b.container.ID}
+	containers := []string{}
+	if b.container != nil {
+		containers = append(containers, b.container.ID)
+	}
+
 	for _, service := range b.services {
-		containers = append(containers, service.container.ID)
+		if service.container != nil {
+			containers = append(containers, service.container.ID)
+		}
 	}
 
 	for _, container := range containers {

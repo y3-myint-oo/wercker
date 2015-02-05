@@ -160,12 +160,11 @@ func (s *RawStep) ToStep(options *PipelineOptions) (*Step, error) {
 //   x setup-go-environment "file:///some_path" (uses local path)
 func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, error) {
 	var identifier string
-	var owner string
 	var name string
-	url := ""
+	var owner string
+	var version string
 
-	// TODO(termie): support other versions, "*" returns latest version
-	version := "*"
+	url := ""
 
 	// Check for urls
 	_, err := fmt.Sscanf(stepID, "%s %q", &identifier, &url)
@@ -185,6 +184,14 @@ func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, 
 		name = identifier
 	}
 
+	versionParts := strings.SplitN(name, "@", 2)
+	if len(versionParts) == 2 {
+		name = versionParts[0]
+		version = versionParts[1]
+	} else {
+		version = "*"
+	}
+
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
@@ -200,7 +207,17 @@ func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, 
 	}
 	delete(data, "name")
 
-	return &Step{ID: identifier, SafeID: stepSafeID, Owner: owner, Name: name, DisplayName: displayName, Version: version, url: url, data: data, options: options}, nil
+	return &Step{
+		DisplayName: displayName,
+		Name:        name,
+		Owner:       owner,
+		SafeID:      stepSafeID,
+		Version:     version,
+		data:        data,
+		ID:          identifier,
+		options:     options,
+		url:         url,
+	}, nil
 }
 
 // IsScript should probably not be exported.
