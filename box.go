@@ -23,6 +23,7 @@ type Box struct {
 	container       *docker.Container
 	repository      string
 	tag             string
+	images          []*docker.Image
 }
 
 // BoxOptions are box options, duh
@@ -188,6 +189,11 @@ func (b *Box) Clean() error {
 			return err
 		}
 	}
+
+	for i := len(b.images) - 1; i >= 0; i-- {
+		b.client.RemoveImage(b.images[i].ID)
+	}
+
 	return nil
 }
 
@@ -293,6 +299,9 @@ func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 		Author:     "wercker",
 	}
 	image, err := b.client.CommitContainer(commitOptions)
+
+	b.images = append(b.images, image)
+
 	return image, err
 }
 
