@@ -84,8 +84,8 @@ var (
 	artifactFlags = []cli.Flag{
 		cli.BoolFlag{Name: "no-artifacts", Usage: "don't upload artifacts"},
 		cli.BoolFlag{Name: "no-remove", Usage: "don't remove the containers"},
-		cli.BoolFlag{Name: "store-local", Usage: "store artifcats and containers locally"},
-		cli.BoolFlag{Name: "store-s3", Usage: "store artifcats and containers on s3"},
+		cli.BoolFlag{Name: "store-local", Usage: "store artifacts and containers locally"},
+		cli.BoolFlag{Name: "store-s3", Usage: "store artifacts and containers on s3"},
 	}
 
 	// These flags affect our local execution environment
