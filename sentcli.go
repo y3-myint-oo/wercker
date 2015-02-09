@@ -126,9 +126,11 @@ var (
 	}
 
 	pullCommand = cli.Command{
-		Name:      "pull",
-		ShortName: "p",
-		Usage:     "pull a recent build",
+		Name:        "pull",
+		ShortName:   "p",
+		Usage:       "pull <build id>",
+		Description: "download a Docker repository, and load it into Docker",
+		Flags:       flagsFor(DockerFlags),
 		Action: func(c *cli.Context) {
 			opts, err := NewPullOptions(c, NewEnvironment(os.Environ()))
 			if err != nil {
@@ -142,7 +144,6 @@ var (
 				os.Exit(1)
 			}
 		},
-		Flags: flagsFor(pullFlags, DockerFlags),
 	}
 
 	versionCommand = cli.Command{
@@ -299,16 +300,25 @@ func cmdLogin(options *LoginOptions) error {
 func cmdPull(c *cli.Context, options *PullOptions) error {
 	soft := &SoftExit{options.GlobalOptions}
 
-	dumpOptions(options)
+	if options.Debug {
+		dumpOptions(options)
+	}
+
+	if options.AuthToken == "" {
+		return soft.Exit(errors.New("You need to login before using this command"))
+	}
 
 	client := NewAPIClient(options.GlobalOptions)
+
+	log.WithField("BuildID", options.BuildID).
+		Info("Downloading Docker repository")
 
 	// Diagram of the various readers/writers
 	// res.body <-- tee <-- s <-- [io.Copy] --> file
 	//               |
 	//               +--> hash       *Legend: --> == write, <-- == read
 
-	log.Println("Creating temporary file")
+	log.Debug("Creating temporary file")
 
 	file, err := ioutil.TempFile("", "wercker-repository-")
 	if err != nil {
@@ -330,8 +340,16 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 		return soft.Exit(err)
 	}
 
+	if res.StatusCode == 404 {
+		return soft.Exit(errors.New("Docker repository was not found"))
+	}
+
+	if res.StatusCode == 401 || res.StatusCode == 403 {
+		return soft.Exit(errors.New("You are not authorized to access the Docker repository for this build"))
+	}
+
 	if res.StatusCode != 200 {
-		return soft.Exit(fmt.Errorf("Login %d", res.StatusCode))
+		return soft.Exit(fmt.Errorf("Server returned an unexpected status code: %d", res.StatusCode))
 	}
 
 	hash := sha256.New()
