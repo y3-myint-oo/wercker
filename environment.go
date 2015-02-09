@@ -42,6 +42,16 @@ func (e *Environment) Add(key, value string) {
 	e.Map[key] = value
 }
 
+// Get an individual record.
+func (e *Environment) Get(key string) string {
+	if e.Map != nil {
+		if val, ok := e.Map[key]; ok {
+			return val
+		}
+	}
+	return ""
+}
+
 // Export the environment as shell commands for use with Session.Send*
 func (e *Environment) Export() []string {
 	s := []string{}

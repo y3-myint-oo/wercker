@@ -126,8 +126,6 @@ func getAccessToken(username, password, url string) (string, error) {
 
 // creates directory when needed, overwrites file when it already exists
 func saveToken(path, token string) error {
-	path = expanduser(path)
-
 	err := os.MkdirAll(filepath.Dir(path), 0700)
 	if err != nil {
 		log.WithField("Error", err).Debug("Unable to create auth store folder")

@@ -212,7 +212,7 @@ func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
 	registry := c.GlobalString("registry")
 	werckerEndpoint := c.GlobalString("wercker-endpoint")
 
-	authTokenStore := expanduser(c.GlobalString("auth-token-store"))
+	authTokenStore := expandHomePath(c.GlobalString("auth-token-store"), e.Get("HOME"))
 	authToken := guessAuthToken(c, e, authTokenStore)
 
 	return &GlobalOptions{

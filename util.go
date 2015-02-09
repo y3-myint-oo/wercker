@@ -8,19 +8,21 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 )
 
-func expanduser(path string) string {
-	usr, _ := user.Current()
-	dir := usr.HomeDir
-	if path[:2] == "~/" {
-		path = strings.Replace(path, "~", dir, 1)
+const homePrefix = "~/"
+
+// expandHomePath will expand ~/ in p to home.
+func expandHomePath(p string, home string) string {
+	if strings.HasPrefix(p, homePrefix) {
+		return path.Join(home, strings.TrimPrefix(p, homePrefix))
 	}
-	return path
+
+	return p
 }
 
 // exists is like python's os.path.exists and too many lines in Go
