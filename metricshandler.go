@@ -107,7 +107,7 @@ type MetricsPayload struct {
 	StepName  string `json:"stepName,omitempty"` // <- owner/name@version
 	StepOrder int    `json:"stepOrder,omitempty"`
 
-	Success   bool   `json:"success,omitempty"`
+	Success   *bool  `json:"success,omitempty"`
 	Duration  int64  `json:"duration,omitempty"`
 	StartedBy string `json:"startedBy,omitempty"`
 
@@ -185,7 +185,7 @@ func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 		Step:                newMetricStepPayload(args.Step),
 		StepName:            formatUniqueStepName(args.Step),
 		StepOrder:           args.Order,
-		Success:             args.Successful,
+		Success:             &args.Successful,
 		SentCli:             h.versions,
 		Stack:               5,
 		BoxName:             boxName,
