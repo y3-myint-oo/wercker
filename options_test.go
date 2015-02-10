@@ -61,7 +61,6 @@ func defaultArgs(more ...string) []string {
 		"--debug",
 		"--wercker-endpoint", "http://example.com/wercker-endpoint",
 		"--base-url", "http://example.com/base-url",
-		"--registry", "example.com:3000",
 		"--auth-token", "test-token",
 		"--auth-token-store", "/tmp/.wercker/test-token",
 		"test",
@@ -77,7 +76,6 @@ func TestOptionsGlobalOptions(t *testing.T) {
 		assert.Equal(t, true, opts.Debug)
 		assert.Equal(t, "http://example.com/wercker-endpoint", opts.WerckerEndpoint)
 		assert.Equal(t, "http://example.com/base-url", opts.BaseURL)
-		assert.Equal(t, "example.com:3000", opts.Registry)
 		assert.Equal(t, "test-token", opts.AuthToken)
 		assert.Equal(t, "/tmp/.wercker/test-token", opts.AuthTokenStore)
 	}
