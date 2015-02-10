@@ -315,22 +315,19 @@ func (p *Runner) StartStep(ctx *RunnerShared, step *Step, order int) *Finisher {
 func (p *Runner) StartBuild(options *PipelineOptions) *Finisher {
 	p.emitter.Emit(BuildStarted, &BuildStartedArgs{Options: options})
 	return NewFinisher(func(result interface{}) {
-		r := result.(bool)
-		msg := "failed"
-		if r {
-			msg = "passed"
+		r, ok := result.(*BuildFinishedArgs)
+		if !ok {
+			return
 		}
-		p.emitter.Emit(BuildFinished, &BuildFinishedArgs{
-			Options: options,
-			Result:  msg,
-		})
+		r.Options = options
+		p.emitter.Emit(BuildFinished, r)
 	})
 }
 
 // StartFullPipeline emits a FullPipelineFinished when the Finisher is called.
 func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
 	return NewFinisher(func(result interface{}) {
-		r, ok := result.(FullPipelineFinishedArgs)
+		r, ok := result.(*FullPipelineFinishedArgs)
 		if !ok {
 			return
 		}
