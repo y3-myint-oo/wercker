@@ -63,7 +63,6 @@ func newMetricsKeenPayload(now time.Time) *metricsKeenPayload {
 // BuildStarted responds to the BuildStarted event.
 func (h *MetricsEventHandler) BuildStarted(args *BuildStartedArgs) {
 	now := time.Now()
-	eventName := getBuildStartEventName(args.Options)
 
 	h.startBuild = now
 
@@ -72,14 +71,13 @@ func (h *MetricsEventHandler) BuildStarted(args *BuildStartedArgs) {
 		p:         p,
 		options:   args.Options,
 		now:       now,
-		eventName: eventName,
+		eventName: "buildStarted",
 	})
 }
 
 // BuildFinished responds to the BuildFinished event.
 func (h *MetricsEventHandler) BuildFinished(args *BuildFinishedArgs) {
 	now := time.Now()
-	eventName := getBuildFinishedEventName(args.Options)
 
 	elapsed := now.Sub(h.startBuild)
 	duration := int64(elapsed.Seconds())
@@ -95,14 +93,13 @@ func (h *MetricsEventHandler) BuildFinished(args *BuildFinishedArgs) {
 		options:   args.Options,
 		box:       args.Box,
 		now:       now,
-		eventName: eventName,
+		eventName: "buildFinished",
 	})
 }
 
 // BuildStepStarted responds to the BuildStepStarted event.
 func (h *MetricsEventHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 	now := time.Now()
-	eventName := getStepStartEventName(args.Options)
 
 	h.startStep[args.Step.SafeID] = now
 
@@ -116,14 +113,13 @@ func (h *MetricsEventHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 		options:   args.Options,
 		box:       args.Box,
 		now:       now,
-		eventName: eventName,
+		eventName: "buildStepStarted",
 	})
 }
 
 // BuildStepFinished responds to the BuildStepFinished event.
 func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 	now := time.Now()
-	eventName := getStepFinishEventName(args.Options)
 
 	var duration int64
 	begin, ok := h.startStep[args.Step.SafeID]
@@ -145,7 +141,7 @@ func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 		options:   args.Options,
 		box:       args.Box,
 		now:       now,
-		eventName: eventName,
+		eventName: "buildStepFinished",
 	})
 }
 
@@ -285,58 +281,6 @@ func getCollection(options *PipelineOptions) string {
 
 	if options.DeployID != "" {
 		return "deploy-events"
-	}
-
-	log.Panic("Metrics is only able to send metrics for builds or deploys")
-	return ""
-}
-
-func getBuildStartEventName(options *PipelineOptions) string {
-	if options.BuildID != "" {
-		return "buildStarted"
-	}
-
-	if options.DeployID != "" {
-		return "deployStarted"
-	}
-
-	log.Panic("Metrics is only able to send metrics for builds or deploys")
-	return ""
-}
-
-func getBuildFinishedEventName(options *PipelineOptions) string {
-	if options.BuildID != "" {
-		return "buildFinished"
-	}
-
-	if options.DeployID != "" {
-		return "deployFinished"
-	}
-
-	log.Panic("Metrics is only able to send metrics for builds or deploys")
-	return ""
-}
-
-func getStepStartEventName(options *PipelineOptions) string {
-	if options.BuildID != "" {
-		return "buildStepStarted"
-	}
-
-	if options.DeployID != "" {
-		return "deployStepStarted"
-	}
-
-	log.Panic("Metrics is only able to send metrics for builds or deploys")
-	return ""
-}
-
-func getStepFinishEventName(options *PipelineOptions) string {
-	if options.BuildID != "" {
-		return "buildStepFinished"
-	}
-
-	if options.DeployID != "" {
-		return "deployStepFinished"
 	}
 
 	log.Panic("Metrics is only able to send metrics for builds or deploys")
