@@ -28,16 +28,17 @@ func NewMetricsHandler(opts *PipelineOptions) (*MetricsEventHandler, error) {
 	versions := GetVersions()
 
 	return &MetricsEventHandler{
-		keen:     keenInstance,
-		versions: versions,
-		start:    make(map[string]time.Time),
+		keen:      keenInstance,
+		versions:  versions,
+		startStep: make(map[string]time.Time),
 	}, nil
 }
 
 // A MetricsEventHandler reporting to keen.io.
 type MetricsEventHandler struct {
 	keen                *keen.Client
-	start               map[string]time.Time
+	startStep           map[string]time.Time
+	startBuild          time.Time
 	versions            *Versions
 	numBuildSteps       int
 	numBuildAfterSteps  int
@@ -45,8 +46,157 @@ type MetricsEventHandler struct {
 	numDeployAfterSteps int
 }
 
+// ListenTo will add eventhandlers to e.
+func (h *MetricsEventHandler) ListenTo(e *emission.Emitter) {
+	e.AddListener(BuildStepStarted, h.BuildStepStarted)
+	e.AddListener(BuildStepFinished, h.BuildStepFinished)
+	e.AddListener(BuildStepsAdded, h.BuildStepsAdded)
+
+	e.AddListener(BuildStarted, h.BuildStarted)
+	e.AddListener(BuildFinished, h.BuildFinished)
+}
+
 func newMetricsKeenPayload(now time.Time) *metricsKeenPayload {
 	return &metricsKeenPayload{Timestamp: now.Format(time.RFC3339)}
+}
+
+// BuildStarted responds to the BuildStarted event.
+func (h *MetricsEventHandler) BuildStarted(args *BuildStartedArgs) {
+	now := time.Now()
+	eventName := getBuildStartEventName(args.Options)
+
+	h.startBuild = now
+
+	p := &MetricsPayload{}
+	h.sendPayload(&sendPayloadArgs{
+		p:         p,
+		options:   args.Options,
+		now:       now,
+		eventName: eventName,
+	})
+}
+
+// BuildFinished responds to the BuildFinished event.
+func (h *MetricsEventHandler) BuildFinished(args *BuildFinishedArgs) {
+	now := time.Now()
+	eventName := getBuildFinishedEventName(args.Options)
+
+	elapsed := now.Sub(h.startBuild)
+	duration := int64(elapsed.Seconds())
+
+	success := args.Result == "passed"
+
+	p := &MetricsPayload{
+		Duration: &duration,
+		Success:  &success,
+	}
+	h.sendPayload(&sendPayloadArgs{
+		p:         p,
+		options:   args.Options,
+		box:       args.Box,
+		now:       now,
+		eventName: eventName,
+	})
+}
+
+// BuildStepStarted responds to the BuildStepStarted event.
+func (h *MetricsEventHandler) BuildStepStarted(args *BuildStepStartedArgs) {
+	now := time.Now()
+	eventName := getStepStartEventName(args.Options)
+
+	h.startStep[args.Step.SafeID] = now
+
+	p := &MetricsPayload{
+		Step:      newMetricStepPayload(args.Step),
+		StepName:  formatUniqueStepName(args.Step),
+		StepOrder: args.Order,
+	}
+	h.sendPayload(&sendPayloadArgs{
+		p:         p,
+		options:   args.Options,
+		box:       args.Box,
+		now:       now,
+		eventName: eventName,
+	})
+}
+
+// BuildStepFinished responds to the BuildStepFinished event.
+func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
+	now := time.Now()
+	eventName := getStepFinishEventName(args.Options)
+
+	var duration int64
+	begin, ok := h.startStep[args.Step.SafeID]
+	if ok {
+		elapsed := now.Sub(begin)
+		duration = int64(elapsed.Seconds())
+		delete(h.startStep, args.Step.SafeID)
+	}
+
+	p := &MetricsPayload{
+		Step:      newMetricStepPayload(args.Step),
+		StepName:  formatUniqueStepName(args.Step),
+		StepOrder: args.Order,
+		Duration:  &duration,
+		Success:   &args.Successful,
+	}
+	h.sendPayload(&sendPayloadArgs{
+		p:         p,
+		options:   args.Options,
+		box:       args.Box,
+		now:       now,
+		eventName: eventName,
+	})
+}
+
+// BuildStepsAdded handles the BuildStepsAdded event.
+func (h *MetricsEventHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
+	if args.Options.BuildID != "" {
+		h.numBuildSteps = len(args.Steps)
+		h.numBuildAfterSteps = len(args.AfterSteps)
+	} else if args.Options.DeployID != "" {
+		h.numDeploySteps = len(args.Steps)
+		h.numDeployAfterSteps = len(args.AfterSteps)
+	}
+}
+
+type sendPayloadArgs struct {
+	p         *MetricsPayload
+	options   *PipelineOptions
+	box       *Box
+	now       time.Time
+	eventName string
+}
+
+func (h *MetricsEventHandler) sendPayload(args *sendPayloadArgs) {
+	collection := getCollection(args.options)
+	pipelineName := getPipelineName(args.options)
+	boxName, boxTag := getBoxDetails(args.box)
+
+	p := args.p
+
+	p.Keen = newMetricsKeenPayload(args.now)
+	p.Timestamp = args.now.Unix()
+	p.BuildID = args.options.BuildID
+	p.DeployID = args.options.DeployID
+	p.Event = args.eventName
+	p.StartedBy = args.options.ApplicationStartedByName
+	p.MetricsApplicationPayload = &metricsApplicationPayload{
+		ID:        args.options.ApplicationID,
+		Name:      args.options.ApplicationName,
+		OwnerName: args.options.ApplicationOwnerName,
+	}
+	p.SentCli = h.versions
+	p.Stack = 5
+	p.NumBuildSteps = h.numBuildSteps
+	p.NumBuildAfterSteps = h.numBuildAfterSteps
+	p.NumDeploySteps = h.numDeploySteps
+	p.NumDeployAfterSteps = h.numDeployAfterSteps
+	p.PipelineName = pipelineName
+	p.BoxName = boxName
+	p.BoxTag = boxTag
+
+	h.keen.AddEvent(collection, p)
 }
 
 type metricsKeenPayload struct {
@@ -90,8 +240,8 @@ type MetricsPayload struct {
 	Grappler     *Versions           `json:"grappler,omitempty"`
 	PipelineName string              `json:"pipelineName,omitempty"`
 
-	BuildID  string `json:"buildID,omitempty"`
-	DeployID string `json:"deployID,omitempty"`
+	BuildID  string `json:"buildId,omitempty"`
+	DeployID string `json:"deployId,omitempty"`
 
 	NumBuildSteps       int `json:"numBuildSteps,omitempty"`
 	NumBuildAfterSteps  int `json:"numBuildAfterSteps,omitempty"`
@@ -108,112 +258,11 @@ type MetricsPayload struct {
 	StepOrder int    `json:"stepOrder,omitempty"`
 
 	Success   *bool  `json:"success,omitempty"`
-	Duration  int64  `json:"duration,omitempty"`
+	Duration  *int64 `json:"duration,omitempty"`
 	StartedBy string `json:"startedBy,omitempty"`
 
 	VCS                       string                     `json:"versionControl,omitempty"`
 	MetricsApplicationPayload *metricsApplicationPayload `json:"application,omitempty"`
-}
-
-// BuildStepStarted responds to the BuildStepStarted event.
-func (h *MetricsEventHandler) BuildStepStarted(args *BuildStepStartedArgs) {
-	now := time.Now()
-	h.start[args.Step.SafeID] = now
-
-	pipelineName := getPipelineName(args.Options)
-	collection := getCollection(args.Options)
-	eventName := getStartEventName(args.Options)
-	boxName, boxTag := getBoxDetails(args.Box)
-
-	h.keen.AddEvent(collection, &MetricsPayload{
-		Keen:      newMetricsKeenPayload(now),
-		Timestamp: now.Unix(),
-		BuildID:   args.Options.BuildID,
-		DeployID:  args.Options.DeployID,
-		Event:     eventName,
-		StartedBy: args.Options.ApplicationStartedByName,
-		MetricsApplicationPayload: &metricsApplicationPayload{
-			ID:        args.Options.ApplicationID,
-			Name:      args.Options.ApplicationName,
-			OwnerName: args.Options.ApplicationOwnerName,
-		},
-		Step:                newMetricStepPayload(args.Step),
-		StepName:            formatUniqueStepName(args.Step),
-		StepOrder:           args.Order,
-		SentCli:             h.versions,
-		Stack:               5,
-		BoxName:             boxName,
-		BoxTag:              boxTag,
-		NumBuildSteps:       h.numBuildSteps,
-		NumBuildAfterSteps:  h.numBuildAfterSteps,
-		NumDeploySteps:      h.numDeploySteps,
-		NumDeployAfterSteps: h.numDeployAfterSteps,
-		PipelineName:        pipelineName,
-	})
-}
-
-// BuildStepFinished responds to the BuildStepFinished event.
-func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
-	now := time.Now()
-
-	pipelineName := getPipelineName(args.Options)
-	collection := getCollection(args.Options)
-	eventName := getFinishEventName(args.Options)
-	boxName, boxTag := getBoxDetails(args.Box)
-
-	var duration int64
-	begin, ok := h.start[args.Step.SafeID]
-	if ok {
-		elapsed := now.Sub(begin)
-		duration = elapsed.Nanoseconds() / 1000000
-		delete(h.start, args.Step.SafeID)
-	}
-
-	h.keen.AddEvent(collection, &MetricsPayload{
-		Keen:      newMetricsKeenPayload(now),
-		Timestamp: now.Unix(),
-		BuildID:   args.Options.BuildID,
-		DeployID:  args.Options.DeployID,
-		Duration:  duration,
-		Event:     eventName,
-		StartedBy: args.Options.ApplicationStartedByName,
-		MetricsApplicationPayload: &metricsApplicationPayload{
-			ID:        args.Options.ApplicationID,
-			Name:      args.Options.ApplicationName,
-			OwnerName: args.Options.ApplicationOwnerName,
-		},
-		Step:                newMetricStepPayload(args.Step),
-		StepName:            formatUniqueStepName(args.Step),
-		StepOrder:           args.Order,
-		Success:             &args.Successful,
-		SentCli:             h.versions,
-		Stack:               5,
-		BoxName:             boxName,
-		BoxTag:              boxTag,
-		NumBuildSteps:       h.numBuildSteps,
-		NumBuildAfterSteps:  h.numBuildAfterSteps,
-		NumDeploySteps:      h.numDeploySteps,
-		NumDeployAfterSteps: h.numDeployAfterSteps,
-		PipelineName:        pipelineName,
-	})
-}
-
-// BuildStepsAdded handles the BuildStepsAdded event.
-func (h *MetricsEventHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
-	if args.Options.BuildID != "" {
-		h.numBuildSteps = len(args.Steps)
-		h.numBuildAfterSteps = len(args.AfterSteps)
-	} else if args.Options.DeployID != "" {
-		h.numDeploySteps = len(args.Steps)
-		h.numDeployAfterSteps = len(args.AfterSteps)
-	}
-}
-
-// ListenTo will add eventhandlers to e.
-func (h *MetricsEventHandler) ListenTo(e *emission.Emitter) {
-	e.AddListener(BuildStepStarted, h.BuildStepStarted)
-	e.AddListener(BuildStepFinished, h.BuildStepFinished)
-	e.AddListener(BuildStepsAdded, h.BuildStepsAdded)
 }
 
 func getPipelineName(options *PipelineOptions) string {
@@ -242,7 +291,33 @@ func getCollection(options *PipelineOptions) string {
 	return ""
 }
 
-func getStartEventName(options *PipelineOptions) string {
+func getBuildStartEventName(options *PipelineOptions) string {
+	if options.BuildID != "" {
+		return "buildStarted"
+	}
+
+	if options.DeployID != "" {
+		return "deployStarted"
+	}
+
+	log.Panic("Metrics is only able to send metrics for builds or deploys")
+	return ""
+}
+
+func getBuildFinishedEventName(options *PipelineOptions) string {
+	if options.BuildID != "" {
+		return "buildFinished"
+	}
+
+	if options.DeployID != "" {
+		return "deployFinished"
+	}
+
+	log.Panic("Metrics is only able to send metrics for builds or deploys")
+	return ""
+}
+
+func getStepStartEventName(options *PipelineOptions) string {
 	if options.BuildID != "" {
 		return "buildStepStarted"
 	}
@@ -255,7 +330,7 @@ func getStartEventName(options *PipelineOptions) string {
 	return ""
 }
 
-func getFinishEventName(options *PipelineOptions) string {
+func getStepFinishEventName(options *PipelineOptions) string {
 	if options.BuildID != "" {
 		return "buildStepFinished"
 	}

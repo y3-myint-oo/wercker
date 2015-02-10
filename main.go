@@ -458,9 +458,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	p := NewRunner(options, getter)
 	e := p.Emitter()
 
+	fullPipelineFinished := p.StartFullPipeline(options)
+
 	// All bool properties will be initialized on false
 	pipelineArgs := &FullPipelineFinishedArgs{}
-	fullPipelineFinished := p.StartFullPipeline(options)
 	defer fullPipelineFinished.Finish(pipelineArgs)
 
 	buildFinisher := p.StartBuild(options)
@@ -468,7 +469,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	// This will be emitted at the end of the execution, we're going to be
 	// pessimistic and report that we failed, unless overridden at the end of the
 	// execution.
-	defer buildFinisher.Finish(false)
+	buildFinishedArgs := &BuildFinishedArgs{Box: nil, Result: "failed"}
+	defer buildFinisher.Finish(buildFinishedArgs)
 
 	log.Println("############ Executing Pipeline ############")
 	dumpOptions(options)
@@ -495,6 +497,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	// Expand our context object
 	box := shared.box
 	pipeline := shared.pipeline
+
+	buildFinishedArgs.Box = box
 
 	repoName := pipeline.DockerRepo()
 	tag := pipeline.DockerTag()
@@ -679,7 +683,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	// We're sending our build finished but we're not done yet,
 	// now is time to run after-steps if we have any
-	buildFinisher.Finish(pr.Success)
+	if pr.Success {
+		buildFinishedArgs.Result = "passed"
+	}
+	buildFinisher.Finish(buildFinishedArgs)
 	pipelineArgs.MainSuccessful = pr.Success
 
 	if len(pipeline.AfterSteps()) == 0 {

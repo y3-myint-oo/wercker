@@ -38,6 +38,7 @@ type BuildStartedArgs struct {
 // BuildFinishedArgs contains the args associated with the "BuildFinished"
 // event.
 type BuildFinishedArgs struct {
+	Box     *Box
 	Options *PipelineOptions
 	Result  string
 }
