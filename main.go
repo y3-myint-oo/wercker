@@ -566,6 +566,16 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			if shouldStore {
 				pr.FailedStepMessage = "Unable to store container"
 
+				e.Emit(Logs, &LogsArgs{
+					Build:   pipeline,
+					Options: options,
+					Order:   stepCounter.Current,
+					Step:    storeStep,
+					Logs:    "Exporting container\n",
+					Stream:  "stdout",
+					Hidden:  false,
+				})
+
 				file, err := ioutil.TempFile("", "export-image-")
 				if err != nil {
 					log.WithField("Error", err).Error("Unable to create temporary file")
@@ -613,6 +623,16 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				if options.ShouldStoreS3 {
 					log.Println("Storing docker repository on S3")
 
+					e.Emit(Logs, &LogsArgs{
+						Build:   pipeline,
+						Options: options,
+						Order:   stepCounter.Current,
+						Step:    storeStep,
+						Logs:    "Storing container\n",
+						Stream:  "stdout",
+						Hidden:  false,
+					})
+
 					s3Store := NewS3Store(options.AWSOptions)
 
 					err = s3Store.StoreFromFile(storeFromFileArgs)
@@ -620,6 +640,16 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 						log.WithField("Error", err).Error("Unable to store to S3 store")
 						return err
 					}
+
+					e.Emit(Logs, &LogsArgs{
+						Build:   pipeline,
+						Options: options,
+						Order:   stepCounter.Current,
+						Step:    storeStep,
+						Logs:    "Storing container complete\n",
+						Stream:  "stdout",
+						Hidden:  false,
+					})
 				}
 
 				if options.ShouldStoreLocal {
@@ -638,6 +668,16 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			if pr.Success && options.ShouldArtifacts {
 				pr.FailedStepMessage = "Unable to store pipeline output"
 
+				e.Emit(Logs, &LogsArgs{
+					Build:   pipeline,
+					Options: options,
+					Order:   stepCounter.Current,
+					Step:    storeStep,
+					Logs:    "Storing artifacts\n",
+					Stream:  "stdout",
+					Hidden:  false,
+				})
+
 				artifact, err := pipeline.CollectArtifact(shared.containerID)
 				// Ignore ErrEmptyTarball errors
 				if err != ErrEmptyTarball {
@@ -653,6 +693,16 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 					sr.PackageURL = artifact.URL()
 				}
+
+				e.Emit(Logs, &LogsArgs{
+					Build:   pipeline,
+					Options: options,
+					Order:   stepCounter.Current,
+					Step:    storeStep,
+					Logs:    "Storing artifacts complete\n",
+					Stream:  "stdout",
+					Hidden:  false,
+				})
 			}
 
 			// Everything went ok, so reset failed related fields
