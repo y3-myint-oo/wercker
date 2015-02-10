@@ -534,10 +534,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			break
 		}
 		log.Println("============== Step passed! ===============")
-
-		if options.ShouldCommit {
-			box.Commit(repoName, tag, message)
-		}
 	}
 
 	if options.ShouldCommit {
