@@ -59,6 +59,11 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 	// }
 	// h.ListenTo(e)
 
+	if options.Debug {
+		dh := NewDebugHandler()
+		dh.ListenTo(e)
+	}
+
 	l, err := NewLiteralLogHandler(options)
 	if err != nil {
 		log.WithField("Error", err).Panic("Unable to LiteralLogHandler")

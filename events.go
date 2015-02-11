@@ -1,6 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"reflect"
+	"sort"
+	"strings"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 )
 
@@ -98,6 +104,67 @@ type FullPipelineFinishedArgs struct {
 	MainSuccessful      bool
 	RanAfterSteps       bool
 	AfterStepSuccessful bool
+}
+
+// dumpEvent prints out some debug info about an event
+func dumpEvent(event interface{}, indent ...string) {
+	indent = append(indent, "  ")
+	s := reflect.ValueOf(event).Elem()
+
+	typeOfT := s.Type()
+	names := []string{}
+	for i := 0; i < s.NumField(); i++ {
+		// f := s.Field(i)
+		fieldName := typeOfT.Field(i).Name
+		if fieldName != "Env" {
+			names = append(names, fieldName)
+		}
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+
+		r := reflect.ValueOf(event)
+		f := reflect.Indirect(r).FieldByName(name)
+		if name == "Options" {
+			continue
+		}
+		if name[:1] == strings.ToLower(name[:1]) {
+			// Not exported, skip it
+			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), "<not exported>"))
+			continue
+		}
+		if name == "Box" || name == "Step" {
+			log.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
+			if !f.IsNil() {
+				dumpEvent(f.Interface(), indent...)
+			}
+		} else {
+			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
+		}
+	}
+}
+
+type DebugHandler struct{}
+
+func NewDebugHandler() *DebugHandler {
+	return &DebugHandler{}
+}
+
+func (h *DebugHandler) Handler(name string) func(interface{}) {
+	return func(event interface{}) {
+		log.Debugln("Event: ", name)
+		dumpEvent(event)
+	}
+}
+
+func (h *DebugHandler) ListenTo(e *emission.Emitter) {
+	e.AddListener(BuildStarted, h.Handler("BuildStarted"))
+	e.AddListener(BuildFinished, h.Handler("BuildFinished"))
+	e.AddListener(BuildStepsAdded, h.Handler("BuildStepsAdded"))
+	e.AddListener(BuildStepStarted, h.Handler("BuildStepStarted"))
+	e.AddListener(BuildStepFinished, h.Handler("BuildStepFinished"))
+	e.AddListener(FullPipelineFinished, h.Handler("FullPipelineFinished"))
 }
 
 // emitter contains the singleton emitter.

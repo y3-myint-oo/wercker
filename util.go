@@ -5,13 +5,14 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const homePrefix = "~/"
