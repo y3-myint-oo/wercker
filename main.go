@@ -181,7 +181,7 @@ func main() {
 		buildCommand,
 		deployCommand,
 		detectCommand,
-		inspectCommand,
+		// inspectCommand,
 		loginCommand,
 		pullCommand,
 		versionCommand,
