@@ -175,6 +175,8 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 
 	app := cli.NewApp()
+	app.Author = "Team wercker"
+	app.Email = "pleasemailus@wercker.com"
 	app.Version = FullVersion()
 	app.Flags = flagsFor(GlobalFlags)
 	app.Commands = []cli.Command{
