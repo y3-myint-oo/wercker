@@ -546,6 +546,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		box.Commit(repoName, tag, message)
 	}
 
+	for stepCounter.Current <= (len(pipeline.Steps()) + 2) {
+		stepCounter.Increment()
+	}
+
 	shouldStore := options.ShouldStoreS3 || options.ShouldStoreLocal
 
 	if shouldStore || (pr.Success && options.ShouldArtifacts) {
