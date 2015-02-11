@@ -51,6 +51,11 @@ func (d *Deploy) InitEnv() {
 		[]string{"DEPLOY", "true"},
 		[]string{"WERCKER_DEPLOY_ID", d.options.DeployID},
 		[]string{"WERCKER_DEPLOY_URL", fmt.Sprintf("%s#deploy/%s", d.options.BaseURL, d.options.DeployID)},
+		[]string{"WERCKER_GIT_DOMAIN", d.options.GitDomain},
+		[]string{"WERCKER_GIT_OWNER", d.options.GitOwner},
+		[]string{"WERCKER_GIT_REPOSITORY", d.options.GitRepository},
+		[]string{"WERCKER_GIT_BRANCH", d.options.GitBranch},
+		[]string{"WERCKER_GIT_COMMIT", d.options.GitCommit},
 	}
 
 	env.Update(d.CommonEnv())
