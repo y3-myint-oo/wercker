@@ -15,9 +15,25 @@ type RawBox string
 type RawServices []RawBox
 
 // RawPipeline is the data type for builds and deploys in the wercker.yml
-type RawPipeline struct {
-	RawSteps      []interface{} `yaml:"steps"`
-	RawAfterSteps []interface{} `yaml:"after-steps"`
+type RawPipeline map[string][]interface{}
+
+// GetSteps retrieves the steps section for the build or deploy. Return nil if
+// not found.
+func (r RawPipeline) GetSteps(section string) []interface{} {
+	if s, ok := r[section]; ok {
+		return s
+	}
+	return nil
+}
+
+// RawSteps retrieves the "steps" section for the build or deploy.
+func (r *RawPipeline) RawSteps() []interface{} {
+	return r.GetSteps("steps")
+}
+
+// RawAfterSteps retrieves the "after-steps" section for the build or deploy.
+func (r *RawPipeline) RawAfterSteps() []interface{} {
+	return r.GetSteps("after-steps")
 }
 
 // RawConfig is the data type for wercker.yml
