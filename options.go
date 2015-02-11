@@ -25,7 +25,6 @@ var (
 	endpointFlags = []cli.Flag{
 		cli.StringFlag{Name: "wercker-endpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
 		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
-		cli.StringFlag{Name: "registry", Value: "127.0.0.1:3000", Usage: "registry endpoint to push images to"},
 	}
 
 	// These flags let us auth to wercker services
@@ -180,7 +179,6 @@ type GlobalOptions struct {
 
 	// Endpoints
 	BaseURL         string
-	Registry        string
 	WerckerEndpoint string
 
 	// Auth
@@ -209,7 +207,6 @@ func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
 	debug := c.GlobalBool("debug")
 
 	baseURL := c.GlobalString("base-url")
-	registry := c.GlobalString("registry")
 	werckerEndpoint := c.GlobalString("wercker-endpoint")
 
 	authTokenStore := expandHomePath(c.GlobalString("auth-token-store"), e.Get("HOME"))
@@ -219,7 +216,6 @@ func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
 		Debug: debug,
 
 		BaseURL:         baseURL,
-		Registry:        registry,
 		WerckerEndpoint: werckerEndpoint,
 
 		AuthToken:      authToken,
