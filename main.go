@@ -563,6 +563,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			finisher := p.StartStep(shared, storeStep, stepCounter.Increment())
 			defer finisher.Finish(sr)
 
+			originalFailedStepName := pr.FailedStepName
+			originalFailedStepMessage := pr.FailedStepMessage
+
 			pr.FailedStepName = storeStep.Name
 
 			if shouldStore {
@@ -708,9 +711,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			}
 
 			// Everything went ok, so reset failed related fields
-			pr.Success = true
-			pr.FailedStepName = ""
-			pr.FailedStepMessage = ""
+			pr.FailedStepName = originalFailedStepName
+			pr.FailedStepMessage = originalFailedStepMessage
 
 			sr.Success = true
 			sr.ExitCode = 0
