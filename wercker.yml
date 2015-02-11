@@ -45,3 +45,63 @@ deploy:
         bucket-url: $AWS_BUCKET_URL/$WERCKER_GIT_BRANCH/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
+
+  # This should be auto deployed when a commit is made to "master".
+  latest:
+    - script:
+        name: version
+        code: |
+            export WERCKER_VERSION=$(./latest/linux_amd64/sentcli --version | awk '{print $3}')
+            echo $WERCKER_VERSION
+
+    - script:
+        name: rename
+        code: |
+            mv ./latest/darwin_386/sentcli ./latest/darwin_386/wercker
+            mv ./latest/darwin_amd64/sentcli ./latest/darwin_amd64/wercker
+            mv ./latest/linux_386/sentcli ./latest/linux_386/wercker
+            mv ./latest/linux_amd64/sentcli ./latest/linux_amd64/wercker
+
+    - s3sync:
+        source-dir: "./latest"
+        delete-removed: false
+        bucket-url: $DOWNLOADS_BUCKET_URL/latest/
+        key-id: $AWS_ACCESS_KEY_ID
+        key-secret: $AWS_SECRET_ACCESS_KEY
+
+    - s3sync:
+        source-dir: "./latest"
+        delete-removed: false
+        bucket-url: $DOWNLOADS_BUCKET_URL/dev/$WERCKER_VERSION/
+        key-id: $AWS_ACCESS_KEY_ID
+        key-secret: $AWS_SECRET_ACCESS_KEY
+
+  # This should be manually deployed when we want to make new version available.
+  stable:
+    - script:
+        name: version
+        code: |
+            export WERCKER_VERSION=$(./latest/linux_amd64/sentcli --version | awk '{print $3}')
+            echo $WERCKER_VERSION
+
+    - script:
+        name: rename
+        code: |
+            mv ./latest/darwin_386/sentcli ./latest/darwin_386/wercker
+            mv ./latest/darwin_amd64/sentcli ./latest/darwin_amd64/wercker
+            mv ./latest/linux_386/sentcli ./latest/linux_386/wercker
+            mv ./latest/linux_amd64/sentcli ./latest/linux_amd64/wercker
+
+    - s3sync:
+        source-dir: "./latest"
+        delete-removed: false
+        bucket-url: $DOWNLOADS_BUCKET_URL/stable/
+        key-id: $AWS_ACCESS_KEY_ID
+        key-secret: $AWS_SECRET_ACCESS_KEY
+
+    - s3sync:
+        source-dir: "./latest"
+        delete-removed: false
+        bucket-url: $DOWNLOADS_BUCKET_URL/versions/$WERCKER_VERSION/
+        key-id: $AWS_ACCESS_KEY_ID
+        key-secret: $AWS_SECRET_ACCESS_KEY
