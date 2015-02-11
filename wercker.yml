@@ -53,6 +53,7 @@ deploy:
         code: |
             export WERCKER_VERSION=$(./latest/linux_amd64/sentcli --version | awk '{print $3}')
             echo $WERCKER_VERSION
+            ./latest/linux_amd64/sentcli version --json > ./latest/version.json
 
     - script:
         name: rename
@@ -83,6 +84,7 @@ deploy:
         code: |
             export WERCKER_VERSION=$(./latest/linux_amd64/sentcli --version | awk '{print $3}')
             echo $WERCKER_VERSION
+            ./latest/linux_amd64/sentcli version --json > ./latest/version.json
 
     - script:
         name: rename
