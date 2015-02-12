@@ -546,9 +546,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		box.Commit(repoName, tag, message)
 	}
 
-	for stepCounter.Current <= (len(pipeline.Steps()) + 2) {
-		stepCounter.Increment()
-	}
+	// We need to wind the counter to where it should be if we failed a step
+	// so that is the number of steps + get code + setup environment + store
+	// TODO(termie): remove all the this "order" stuff completely
+	stepCounter.Current = len(pipeline.Steps()) + 3
 
 	shouldStore := options.ShouldStoreS3 || options.ShouldStoreLocal
 
