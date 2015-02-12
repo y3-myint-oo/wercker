@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // APIClient is a very dumb client for the wercker API
@@ -14,14 +12,19 @@ type APIClient struct {
 	endpoint string
 	client   *http.Client
 	options  *GlobalOptions
+	murder   *LogEntry
 }
 
 // NewAPIClient returns our dumb client
 func NewAPIClient(options *GlobalOptions) *APIClient {
+	murder := rootLogger.WithFields(LogFields{
+		"Logger": "API",
+	})
 	return &APIClient{
 		endpoint: options.WerckerEndpoint,
 		client:   &http.Client{},
 		options:  options,
+		murder:   murder,
 	}
 }
 
@@ -37,7 +40,7 @@ func (c *APIClient) GetBody(parts ...string) ([]byte, error) {
 	res, err := c.Get(parts...)
 
 	if res.StatusCode != 200 {
-		log.Debugln(ioutil.ReadAll(res.Body))
+		c.murder.Debugln(ioutil.ReadAll(res.Body))
 		return nil, fmt.Errorf("Got non-200 response: %d", res.StatusCode)
 	}
 
@@ -54,11 +57,11 @@ func (c *APIClient) GetBody(parts ...string) ([]byte, error) {
 // some default headers.
 func (c *APIClient) Get(parts ...string) (*http.Response, error) {
 	url := c.URL(parts...)
-	log.Debugln("API Get:", url)
+	c.murder.Debugln("API Get:", url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to create request to wercker API")
+		c.murder.WithField("Error", err).Debug("Unable to create request to wercker API")
 		return nil, err
 	}
 

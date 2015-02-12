@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -37,7 +36,7 @@ func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdo
 			p = make([]byte, 1024)
 			i, err := t.stdin.Read(p)
 			s := string(p[:i])
-			log.Println(fmt.Sprintf("(test)  stdin: %q", s))
+			rootLogger.Println(fmt.Sprintf("(test)  stdin: %q", s))
 			t.inchan <- s
 			if err != nil {
 				close(t.inchan)
@@ -49,7 +48,7 @@ func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdo
 	go func() {
 		for {
 			s := <-t.outchan
-			log.Println(fmt.Sprintf("(test) stdout: %q", s))
+			rootLogger.Println(fmt.Sprintf("(test) stdout: %q", s))
 			_, err := t.stdout.Write([]byte(s))
 			if err != nil {
 				close(t.outchan)

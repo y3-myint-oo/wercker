@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"code.google.com/p/go-uuid/uuid"
-	log "github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/termie/go-shutil"
 	"golang.org/x/net/context"
@@ -78,6 +77,7 @@ type Step struct {
 	data        RawStepData
 	options     *PipelineOptions
 	stepConfig  *StepConfig
+	murder      *LogEntry
 }
 
 // ExtraRawStepsToSteps normalizes steps to RawSteps then calls ToStep on them
@@ -208,6 +208,11 @@ func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, 
 	}
 	delete(data, "name")
 
+	murder := rootLogger.WithFields(LogFields{
+		"Logger": "Step",
+		"SafeID": stepSafeID,
+	})
+
 	return &Step{
 		DisplayName: displayName,
 		Name:        name,
@@ -218,6 +223,7 @@ func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, 
 		ID:          identifier,
 		options:     options,
 		url:         url,
+		murder:      murder,
 	}, nil
 }
 
@@ -322,7 +328,7 @@ func (s *Step) Fetch() (string, error) {
 	cfg, err := ReadStepConfig(s.HostPath("wercker-step.yml"))
 	if err != nil && !os.IsNotExist(err) {
 		// TODO(termie): Log an error instead of printing
-		log.Println("ERROR: Reading wercker-step.yml:", err)
+		s.murder.Println("ERROR: Reading wercker-step.yml:", err)
 	}
 	if err == nil {
 		s.stepConfig = cfg
@@ -392,7 +398,7 @@ func (s *Step) CollectFile(containerID, path, name string, dst io.Writer) error 
 	}()
 
 	if err = client.CopyFromContainer(opts); err != nil {
-		log.Debugln(err)
+		s.murder.Debugln(err)
 		return ErrEmptyTarball
 	}
 

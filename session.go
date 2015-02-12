@@ -9,7 +9,6 @@ import (
 
 	"code.google.com/p/go-uuid/uuid"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/fsouza/go-dockerclient"
 	"golang.org/x/net/context"
@@ -58,6 +57,7 @@ type DockerTransport struct {
 	e           *emission.Emitter
 	client      *DockerClient
 	containerID string
+	murder      *LogEntry
 }
 
 func NewDockerTransport(options *PipelineOptions, containerID string) (Transport, error) {
@@ -65,13 +65,14 @@ func NewDockerTransport(options *PipelineOptions, containerID string) (Transport
 	if err != nil {
 		return nil, err
 	}
-	return &DockerTransport{options: options, e: GetEmitter(), client: client, containerID: containerID}, nil
+	murder := rootLogger.WithField("Logger", "DockerTransport")
+	return &DockerTransport{options: options, e: GetEmitter(), client: client, containerID: containerID, murder: murder}, nil
 }
 
 // Attach the given reader and writers to the transport, return a context
 // that will be closed when the transport dies
 func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdout, stderr io.Writer) (context.Context, error) {
-	log.Debugln("Attaching to container: ", t.containerID)
+	t.murder.Debugln("Attaching to container: ", t.containerID)
 	started := make(chan struct{})
 	transportCtx, cancel := context.WithCancel(sessionCtx)
 
@@ -96,7 +97,7 @@ func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, st
 		defer cancel()
 		err := t.client.AttachToContainer(opts)
 		if err != nil {
-			log.Panicln(err)
+			t.murder.Panicln(err)
 		}
 	}()
 
@@ -106,9 +107,9 @@ func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, st
 		defer cancel()
 		status, err := t.client.WaitContainer(t.containerID)
 		if err != nil {
-			log.Errorln("Error waiting", err)
+			t.murder.Errorln("Error waiting", err)
 		}
-		log.Warnln("Container finished with status code:", status, t.containerID)
+		t.murder.Warnln("Container finished with status code:", status, t.containerID)
 		// t.exit <- status
 		// close(t.exit)
 	}()
@@ -125,15 +126,18 @@ type Session struct {
 	send       chan string
 	recv       chan string
 	exit       chan int
+	murder     *LogEntry
 }
 
 // NewSession returns a new interactive session to a container.
 func NewSession(options *PipelineOptions, transport Transport) *Session {
+	murder := rootLogger.WithField("Logger", "Session")
 	return &Session{
 		options:    options,
 		e:          GetEmitter(),
 		transport:  transport,
 		logsHidden: false,
+		murder:     murder,
 	}
 }
 
@@ -168,7 +172,7 @@ func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ..
 	// Do a quick initial check whether we have a valid session first
 	select {
 	case <-sessionCtx.Done():
-		log.Errorln("Session finished before sending commands:", commands)
+		s.murder.Errorln("Session finished before sending commands:", commands)
 		return sessionCtx.Err()
 	// Wait because if both cases are available golang will pick one randomly
 	case <-time.After(1 * time.Millisecond):
@@ -179,7 +183,7 @@ func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ..
 		command := commands[i] + "\n"
 		select {
 		case <-sessionCtx.Done():
-			log.Errorln("Session finished before sending command:", command)
+			s.murder.Errorln("Session finished before sending command:", command)
 			return sessionCtx.Err()
 		case s.send <- command:
 			hidden := s.logsHidden

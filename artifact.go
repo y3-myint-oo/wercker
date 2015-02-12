@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"github.com/fsouza/go-dockerclient"
@@ -22,6 +21,7 @@ const (
 // Artificer collects artifacts from containers and uploads them.
 type Artificer struct {
 	options *PipelineOptions
+	murder  *LogEntry
 }
 
 // Artifact holds the information required to extract a folder
@@ -44,7 +44,8 @@ var (
 
 // NewArtificer returns an Artificer
 func NewArtificer(options *PipelineOptions) *Artificer {
-	return &Artificer{options: options}
+	murder := rootLogger.WithField("Logger", "Artificer")
+	return &Artificer{options: options, murder: murder}
 }
 
 // URL returns the artifact's S3 url
@@ -129,7 +130,7 @@ func (a *Artificer) Upload(artifact *Artifact) error {
 		return err
 	}
 
-	log.Println("Uploading artifact:", artifact.RemotePath())
+	a.murder.Println("Uploading artifact:", artifact.RemotePath())
 	region := aws.Regions[a.options.AWSRegion]
 
 	s := s3.New(auth, region)

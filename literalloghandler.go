@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/wercker/reporter"
@@ -10,33 +8,37 @@ import (
 
 // NewLiteralLogHandler will create a new LiteralLogHandler.
 func NewLiteralLogHandler(options *PipelineOptions) (*LiteralLogHandler, error) {
-	logger := log.New()
+	var logger *Logger
 
 	if options.Debug {
-		logger.Formatter = new(log.TextFormatter)
+		logger = rootLogger
 	} else {
+		logger = NewLogger()
 		logger.Formatter = &reporter.LiteralFormatter{}
+		logger.Level = log.InfoLevel
 	}
-	logger.Level = log.InfoLevel
 
 	return &LiteralLogHandler{l: logger, options: options}, nil
 }
 
 // A LiteralLogHandler logs all events using Logrus.
 type LiteralLogHandler struct {
-	l       *log.Logger
+	l       *Logger
 	options *PipelineOptions
 }
 
 // Logs will handle the Logs event.
 func (h *LiteralLogHandler) Logs(args *LogsArgs) {
 	if h.options.Debug {
-		streamInfo := fmt.Sprintf("%6s: ", args.Stream)
-		shown := "[x] "
+		shown := "[x]"
 		if args.Hidden {
-			shown = "[ ] "
+			shown = "[ ]"
 		}
-		h.l.Print(shown, streamInfo, fmt.Sprintf("%q", args.Logs))
+		h.l.WithFields(LogFields{
+			"Logger": "Literal",
+			"Hidden": args.Hidden,
+			"Stream": args.Stream,
+		}).Printf("%s %6s %q", shown, args.Stream, args.Logs)
 	} else if !args.Hidden {
 		h.l.Print(args.Logs)
 	}

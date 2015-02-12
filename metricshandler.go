@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/inconshreveable/go-keen"
 )
@@ -270,7 +269,7 @@ func getPipelineName(options *PipelineOptions) string {
 		return "deploy"
 	}
 
-	log.Panic("Metrics is only able to send metrics for builds or deploys")
+	rootLogger.WithField("Logger", "Metrics").Panic("Metrics is only able to send metrics for builds or deploys")
 	return ""
 }
 
@@ -283,7 +282,7 @@ func getCollection(options *PipelineOptions) string {
 		return "deploy-events"
 	}
 
-	log.Panic("Metrics is only able to send metrics for builds or deploys")
+	rootLogger.WithField("Logger", "Metrics").Panic("Metrics is only able to send metrics for builds or deploys")
 	return ""
 }
 

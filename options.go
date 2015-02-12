@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"code.google.com/p/go-uuid/uuid"
-	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 )
 
@@ -197,7 +196,7 @@ func guessAuthToken(c *cli.Context, e *Environment, authTokenStore string) strin
 
 	tokenBytes, err := ioutil.ReadFile(authTokenStore)
 	if err != nil {
-		log.Errorln(err)
+		rootLogger.WithField("Logger", "Options").Errorln(err)
 		return ""
 	}
 	return strings.TrimSpace(string(tokenBytes))
@@ -783,6 +782,7 @@ func dumpOptions(options interface{}, indent ...string) {
 		}
 	}
 	sort.Strings(names)
+	murder := rootLogger.WithField("Logger", "Options")
 
 	for _, name := range names {
 		r := reflect.ValueOf(options)
@@ -791,10 +791,10 @@ func dumpOptions(options interface{}, indent ...string) {
 			if len(indent) > 1 && name == "GlobalOptions" {
 				continue
 			}
-			log.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
+			murder.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
 			dumpOptions(f.Interface(), indent...)
 		} else {
-			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
+			murder.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
 		}
 	}
 }

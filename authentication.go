@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/term"
 )
 
@@ -33,12 +32,14 @@ type AuthResult struct {
 	Token string `json:"token"`
 }
 
+var authLogger = rootLogger.WithField("Logger", "Authentication")
+
 func readUsername() string {
 	print("Username: ")
 	var input string
 	_, err := fmt.Scanln(&input)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to read username")
+		authLogger.WithField("Error", err).Debug("Unable to read username")
 	}
 	return input
 }
@@ -48,7 +49,7 @@ func readPassword() string {
 	var input string
 	oldState, err := term.SetRawTerminal(os.Stdin.Fd())
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to Set Raw Terminal")
+		authLogger.WithField("Error", err).Debug("Unable to Set Raw Terminal")
 	}
 
 	print("Password: ")
@@ -58,11 +59,11 @@ func readPassword() string {
 
 	_, err = fmt.Scanln(&input)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to read password")
+		authLogger.WithField("Error", err).Debug("Unable to read password")
 	}
 
 	if input == "" {
-		log.Println("Password required")
+		authLogger.Println("Password required")
 		os.Exit(1)
 	}
 	print("\n")
@@ -79,13 +80,13 @@ func getAccessToken(username, password, url string) (string, error) {
 
 	b, err := json.Marshal(creds)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to serialize credentials")
+		authLogger.WithField("Error", err).Debug("Unable to serialize credentials")
 		return "", err
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to post request to wercker API")
+		authLogger.WithField("Error", err).Debug("Unable to post request to wercker API")
 		return "", err
 	}
 
@@ -97,27 +98,27 @@ func getAccessToken(username, password, url string) (string, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable read from wercker API")
+		authLogger.WithField("Error", err).Debug("Unable read from wercker API")
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to read response")
+		authLogger.WithField("Error", err).Debug("Unable to read response")
 		return "", err
 	}
 
 	var response = &Response{}
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to serialize response")
+		authLogger.WithField("Error", err).Debug("Unable to serialize response")
 		return "", err
 
 	}
 	if response.Success == false {
 		err := errors.New("Invalid credentials")
-		log.WithField("Error", err).Debug("Authentication failed")
+		authLogger.WithField("Error", err).Debug("Authentication failed")
 		return "", err
 	}
 
@@ -128,7 +129,7 @@ func getAccessToken(username, password, url string) (string, error) {
 func saveToken(path, token string) error {
 	err := os.MkdirAll(filepath.Dir(path), 0700)
 	if err != nil {
-		log.WithField("Error", err).Debug("Unable to create auth store folder")
+		authLogger.WithField("Error", err).Debug("Unable to create auth store folder")
 		return err
 	}
 

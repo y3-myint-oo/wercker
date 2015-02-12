@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 )
 
 // TestLogWriter writes our logs to the test output
@@ -25,16 +25,16 @@ func (l *TestLogWriter) Write(p []byte) (int, error) {
 
 // TestLogFormatter removes the last newline character
 type TestLogFormatter struct {
-	*log.TextFormatter
+	*logrus.TextFormatter
 }
 
 // NewTestLogFormatter constructor
 func NewTestLogFormatter() *TestLogFormatter {
-	return &TestLogFormatter{&log.TextFormatter{}}
+	return &TestLogFormatter{&logrus.TextFormatter{}}
 }
 
 // Format like a text log but strip the last newline
-func (f *TestLogFormatter) Format(entry *log.Entry) ([]byte, error) {
+func (f *TestLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	b, err := f.TextFormatter.Format(entry)
 	if err == nil {
 		b = b[:len(b)-1]
@@ -44,8 +44,8 @@ func (f *TestLogFormatter) Format(entry *log.Entry) ([]byte, error) {
 
 func setup(t *testing.T) {
 	writer := NewTestLogWriter(t)
-	log.SetOutput(writer)
-	log.SetFormatter(NewTestLogFormatter())
+	rootLogger.Out = writer
+	rootLogger.Formatter = NewTestLogFormatter()
 }
 
 // Stepper lets use step and sync goroutines

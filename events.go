@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 )
 
@@ -106,8 +105,17 @@ type FullPipelineFinishedArgs struct {
 	AfterStepSuccessful bool
 }
 
+type DebugHandler struct {
+	murder *LogEntry
+}
+
+func NewDebugHandler() *DebugHandler {
+	murder := rootLogger.WithField("Logger", "Events")
+	return &DebugHandler{murder: murder}
+}
+
 // dumpEvent prints out some debug info about an event
-func dumpEvent(event interface{}, indent ...string) {
+func (h *DebugHandler) dumpEvent(event interface{}, indent ...string) {
 	indent = append(indent, "  ")
 	s := reflect.ValueOf(event).Elem()
 
@@ -131,30 +139,24 @@ func dumpEvent(event interface{}, indent ...string) {
 		}
 		if name[:1] == strings.ToLower(name[:1]) {
 			// Not exported, skip it
-			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), "<not exported>"))
+			h.murder.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), "<not exported>"))
 			continue
 		}
 		if name == "Box" || name == "Step" {
-			log.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
+			h.murder.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
 			if !f.IsNil() {
-				dumpEvent(f.Interface(), indent...)
+				h.dumpEvent(f.Interface(), indent...)
 			}
 		} else {
-			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
+			h.murder.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
 		}
 	}
 }
 
-type DebugHandler struct{}
-
-func NewDebugHandler() *DebugHandler {
-	return &DebugHandler{}
-}
-
 func (h *DebugHandler) Handler(name string) func(interface{}) {
 	return func(event interface{}) {
-		log.Debugln("Event: ", name)
-		dumpEvent(event)
+		h.murder.Debugln("Event: ", name)
+		h.dumpEvent(event)
 	}
 }
 
