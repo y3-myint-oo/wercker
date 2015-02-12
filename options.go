@@ -782,7 +782,7 @@ func dumpOptions(options interface{}, indent ...string) {
 		}
 	}
 	sort.Strings(names)
-	murder := rootLogger.WithField("Logger", "Options")
+	logger := rootLogger.WithField("Logger", "Options")
 
 	for _, name := range names {
 		r := reflect.ValueOf(options)
@@ -791,10 +791,10 @@ func dumpOptions(options interface{}, indent ...string) {
 			if len(indent) > 1 && name == "GlobalOptions" {
 				continue
 			}
-			murder.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
+			logger.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
 			dumpOptions(f.Interface(), indent...)
 		} else {
-			murder.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
+			logger.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
 		}
 	}
 }

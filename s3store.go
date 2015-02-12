@@ -12,23 +12,23 @@ const defaultPartSize = 100 * 1024 * 1024
 
 // NewS3Store creates a new S3Store
 func NewS3Store(options *AWSOptions) *S3Store {
-	murder := rootLogger.WithField("Logger", "S3Store")
+	logger := rootLogger.WithField("Logger", "S3Store")
 	if options == nil {
-		murder.Panic("options cannot be nil")
+		logger.Panic("options cannot be nil")
 	}
 
-	return &S3Store{options, murder}
+	return &S3Store{options, logger}
 }
 
 // S3Store stores files in S3
 type S3Store struct {
 	options *AWSOptions
-	murder  *LogEntry
+	logger  *LogEntry
 }
 
 // StoreFromFile copies the file from args.Path to options.Bucket + args.Key.
 func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
-	s.murder.WithFields(LogFields{
+	s.logger.WithFields(LogFields{
 		"Bucket": s.options.S3Bucket,
 		"Path":   args.Path,
 		"Region": s.options.AWSRegion,
@@ -37,7 +37,7 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 
 	file, err := os.Open(args.Path)
 	if err != nil {
-		s.murder.WithField("Error", err).Error("Unable to open input file")
+		s.logger.WithField("Error", err).Error("Unable to open input file")
 		return err
 	}
 	defer file.Close()
@@ -48,14 +48,14 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 		"",
 		time.Now().Add(time.Minute*10))
 	if err != nil {
-		s.murder.WithField("Error", err).Error("Unable to create auth credentials")
+		s.logger.WithField("Error", err).Error("Unable to create auth credentials")
 		return err
 	}
 
 	region := aws.Regions[s.options.AWSRegion]
 	bucket := s3.New(auth, region).Bucket(s.options.S3Bucket)
 
-	s.murder.Println("Creating multipart upload")
+	s.logger.Println("Creating multipart upload")
 
 	multiOptions := s3.Options{
 		SSE:  true,
@@ -63,34 +63,34 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 	}
 	multi, err := bucket.Multi(args.Key, args.ContentType, s3.Private, multiOptions)
 	if err != nil {
-		s.murder.WithField("Error", err).Error("Unable to create multipart")
+		s.logger.WithField("Error", err).Error("Unable to create multipart")
 		return err
 	}
 
 	abort := true
 	defer func() {
 		if abort {
-			s.murder.Warn("Aborting multipart upload")
+			s.logger.Warn("Aborting multipart upload")
 			multi.Abort()
 		}
 	}()
 
-	s.murder.Println("Starting to upload to S3")
+	s.logger.Println("Starting to upload to S3")
 
 	parts, err := multi.PutAll(file, defaultPartSize)
 	if err != nil {
-		s.murder.WithField("Error", err).Error("Unable to upload multiparts")
+		s.logger.WithField("Error", err).Error("Unable to upload multiparts")
 		return err
 	}
 
 	if err = multi.Complete(parts); err != nil {
-		s.murder.WithField("Error", err).Error("Unable to complete multipart upload")
+		s.logger.WithField("Error", err).Error("Unable to complete multipart upload")
 		return err
 	}
 
 	// Reset abort flag
 	abort = false
 
-	s.murder.Println("Upload to S3 complete")
+	s.logger.Println("Upload to S3 complete")
 	return nil
 }

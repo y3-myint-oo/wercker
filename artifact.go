@@ -21,7 +21,7 @@ const (
 // Artificer collects artifacts from containers and uploads them.
 type Artificer struct {
 	options *PipelineOptions
-	murder  *LogEntry
+	logger  *LogEntry
 }
 
 // Artifact holds the information required to extract a folder
@@ -44,8 +44,8 @@ var (
 
 // NewArtificer returns an Artificer
 func NewArtificer(options *PipelineOptions) *Artificer {
-	murder := rootLogger.WithField("Logger", "Artificer")
-	return &Artificer{options: options, murder: murder}
+	logger := rootLogger.WithField("Logger", "Artificer")
+	return &Artificer{options: options, logger: logger}
 }
 
 // URL returns the artifact's S3 url
@@ -130,7 +130,7 @@ func (a *Artificer) Upload(artifact *Artifact) error {
 		return err
 	}
 
-	a.murder.Println("Uploading artifact:", artifact.RemotePath())
+	a.logger.Println("Uploading artifact:", artifact.RemotePath())
 	region := aws.Regions[a.options.AWSRegion]
 
 	s := s3.New(auth, region)

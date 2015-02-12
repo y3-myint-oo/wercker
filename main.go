@@ -178,9 +178,9 @@ var (
 )
 
 func main() {
-	// murder.SetLevel(murder.DebugLevel)
+	// logger.SetLevel(logger.DebugLevel)
 	rootLogger.SetLevel("debug")
-	// rootLogger.Formatter = &murder.JSONFormatter{}
+	// rootLogger.Formatter = &logger.JSONFormatter{}
 
 	app := cli.NewApp()
 	app.Author = "Team wercker"
@@ -226,22 +226,22 @@ func cmdDeploy(options *PipelineOptions) error {
 // and detects the project's programming language
 func cmdDetect(options *DetectOptions) error {
 	soft := &SoftExit{options.GlobalOptions}
-	murder := rootLogger.WithField("Logger", "Main")
+	logger := rootLogger.WithField("Logger", "Main")
 
-	murder.Println("########### Detecting your project! #############")
+	logger.Println("########### Detecting your project! #############")
 
 	detected := ""
 
 	d, err := os.Open(".")
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to open directory")
+		logger.WithField("Error", err).Error("Unable to open directory")
 		soft.Exit(err)
 	}
 	defer d.Close()
 
 	files, err := d.Readdir(-1)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to read directory")
+		logger.WithField("Error", err).Error("Unable to read directory")
 		soft.Exit(err)
 	}
 outer:
@@ -265,11 +265,11 @@ outer:
 		}
 	}
 	if detected == "" {
-		murder.Println("No stack detected, generating default wercker.yml")
+		logger.Println("No stack detected, generating default wercker.yml")
 		detected = "default"
 	} else {
-		murder.Println("Detected:", detected)
-		murder.Println("Generating wercker.yml")
+		logger.Println("Detected:", detected)
+		logger.Println("Generating wercker.yml")
 	}
 	getYml(detected, options)
 	return nil
@@ -290,9 +290,9 @@ func cmdInspect(options *InspectOptions) error {
 
 func cmdLogin(options *LoginOptions) error {
 	soft := &SoftExit{options.GlobalOptions}
-	murder := rootLogger.WithField("Logger", "Main")
+	logger := rootLogger.WithField("Logger", "Main")
 
-	murder.Println("########### Logging into wercker! #############")
+	logger.Println("########### Logging into wercker! #############")
 	url := fmt.Sprintf("%s/api/1.0/%s", options.BaseURL, "oauth/basicauthaccesstoken")
 
 	username := readUsername()
@@ -300,17 +300,17 @@ func cmdLogin(options *LoginOptions) error {
 
 	token, err := getAccessToken(username, password, url)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to log into wercker")
+		logger.WithField("Error", err).Error("Unable to log into wercker")
 		return soft.Exit(err)
 	}
 
-	murder.Println("Saving token to: ", options.AuthTokenStore)
+	logger.Println("Saving token to: ", options.AuthTokenStore)
 	return saveToken(options.AuthTokenStore, token)
 }
 
 func cmdPull(c *cli.Context, options *PullOptions) error {
 	soft := &SoftExit{options.GlobalOptions}
-	murder := rootLogger.WithField("Logger", "Main")
+	logger := rootLogger.WithField("Logger", "Main")
 
 	if options.Debug {
 		dumpOptions(options)
@@ -322,7 +322,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 
 	client := NewAPIClient(options.GlobalOptions)
 
-	murder.WithField("BuildID", options.BuildID).
+	logger.WithField("BuildID", options.BuildID).
 		Info("Downloading Docker repository")
 
 	// Diagram of the various readers/writers
@@ -330,25 +330,25 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 	//               |
 	//               +--> hash       *Legend: --> == write, <-- == read
 
-	murder.Debug("Creating temporary file")
+	logger.Debug("Creating temporary file")
 
 	file, err := ioutil.TempFile("", "wercker-repository-")
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to create temporary file")
+		logger.WithField("Error", err).Error("Unable to create temporary file")
 		return soft.Exit(err)
 	}
 	defer os.Remove(file.Name())
 
 	p := fmt.Sprintf("builds/%s/docker", options.BuildID)
 
-	murder.WithFields(LogFields{
+	logger.WithFields(LogFields{
 		"RequestPath":   p,
 		"TemporaryFile": file.Name(),
 	}).Println("Downloading file")
 
 	res, err := client.Get(p)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to create request to API")
+		logger.WithField("Error", err).Error("Unable to create request to API")
 		return soft.Exit(err)
 	}
 
@@ -371,17 +371,17 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 
 	_, err = io.Copy(file, s)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to copy data from URL to file")
+		logger.WithField("Error", err).Error("Unable to copy data from URL to file")
 		return soft.Exit(err)
 	}
 
-	murder.Println("Download complete")
+	logger.Println("Download complete")
 
 	calculatedHash := hex.EncodeToString(hash.Sum(nil))
 	providedHash := res.Header.Get("x-amz-meta-sha256")
 
 	if calculatedHash != providedHash {
-		murder.WithFields(LogFields{
+		logger.WithFields(LogFields{
 			"CalculatedHash": calculatedHash,
 			"ProvidedHash":   providedHash,
 		}).Error("Calculated hash did not match provided hash")
@@ -390,38 +390,38 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 
 	_, err = file.Seek(0, 0)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to reset seeker")
+		logger.WithField("Error", err).Error("Unable to reset seeker")
 		return soft.Exit(err)
 	}
 
 	dockerClient, err := NewDockerClient(options.DockerOptions)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to create Docker client")
+		logger.WithField("Error", err).Error("Unable to create Docker client")
 		return soft.Exit(err)
 	}
 
-	murder.Println("Importing into Docker")
+	logger.Println("Importing into Docker")
 
 	importImageOptions := docker.LoadImageOptions{InputStream: file}
 	err = dockerClient.LoadImage(importImageOptions)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to load image")
+		logger.WithField("Error", err).Error("Unable to load image")
 		return soft.Exit(err)
 	}
 
-	murder.Println("Finished importing into Docker")
+	logger.Println("Finished importing into Docker")
 
 	return nil
 }
 
 func cmdVersion(options *VersionOptions) error {
-	murder := rootLogger.WithField("Logger", "Main")
+	logger := rootLogger.WithField("Logger", "Main")
 	v := GetVersions()
 
 	if options.OutputJSON {
 		b, err := json.MarshalIndent(v, "", "  ")
 		if err != nil {
-			murder.WithField("Error", err).Panic("Unable to marshal versions")
+			logger.WithField("Error", err).Panic("Unable to marshal versions")
 		}
 		os.Stdout.Write(b)
 		os.Stdout.WriteString("\n")
@@ -442,31 +442,31 @@ func cmdVersion(options *VersionOptions) error {
 
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			murder.WithField("Error", err).Debug("Unable to create request to version endpoint")
+			logger.WithField("Error", err).Debug("Unable to create request to version endpoint")
 		}
 
 		res, err := client.Do(req)
 		if err != nil {
-			murder.WithField("Error", err).Debug("Unable to execute HTTP request to version endpoint")
+			logger.WithField("Error", err).Debug("Unable to execute HTTP request to version endpoint")
 		}
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			murder.WithField("Error", err).Debug("Unable to read response body")
+			logger.WithField("Error", err).Debug("Unable to read response body")
 		}
 
 		err = json.Unmarshal(body, &nv)
 		if err != nil {
-			murder.WithField("Error", err).Debug("Unable to unmarshal versions")
+			logger.WithField("Error", err).Debug("Unable to unmarshal versions")
 		}
 
 		vCurrent, err := semver.New(v.Version)
 		if err != nil {
-			murder.WithField("Error", err).Debug("Unable to get semver of current version")
+			logger.WithField("Error", err).Debug("Unable to get semver of current version")
 		}
 		vRetrieved, err := semver.New(nv.Version)
 		if err != nil {
-			murder.WithField("Error", err).Debug("Unable to get semver of retrieved version")
+			logger.WithField("Error", err).Debug("Unable to get semver of retrieved version")
 		}
 
 		upToDate := vCurrent.Compare(vRetrieved)
@@ -489,39 +489,39 @@ func cmdVersion(options *VersionOptions) error {
 
 // TODO(mies): maybe move to util.go at some point
 func getYml(detected string, options *DetectOptions) {
-	murder := rootLogger.WithField("Logger", "Main")
+	logger := rootLogger.WithField("Logger", "Main")
 
 	yml := "wercker.yml"
 	if _, err := os.Stat(yml); err == nil {
-		murder.Println(yml, "already exists. Do you want to overwrite? (yes/no)")
+		logger.Println(yml, "already exists. Do you want to overwrite? (yes/no)")
 		if !askForConfirmation() {
-			murder.Println("Exiting...")
+			logger.Println("Exiting...")
 			os.Exit(1)
 		}
 	}
 	url := fmt.Sprintf("%s/yml/%s", options.WerckerEndpoint, detected)
 	res, err := http.Get(url)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to reach wercker API")
+		logger.WithField("Error", err).Error("Unable to reach wercker API")
 		os.Exit(1)
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to read response")
+		logger.WithField("Error", err).Error("Unable to read response")
 	}
 
 	err = ioutil.WriteFile("wercker.yml", body, 0644)
 	if err != nil {
-		murder.WithField("Error", err).Error("Unable to write wercker.yml file")
+		logger.WithField("Error", err).Error("Unable to write wercker.yml file")
 	}
 
 }
 
 func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	soft := &SoftExit{options.GlobalOptions}
-	murder := rootLogger.WithField("Logger", "Main")
+	logger := rootLogger.WithField("Logger", "Main")
 
 	// Build our common pipeline
 	p := NewRunner(options, getter)
@@ -541,9 +541,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	buildFinishedArgs := &BuildFinishedArgs{Box: nil, Result: "failed"}
 	defer buildFinisher.Finish(buildFinishedArgs)
 
-	murder.Println("############ Executing Pipeline ############")
+	logger.Println("############ Executing Pipeline ############")
 	dumpOptions(options)
-	murder.Println("############################################")
+	logger.Println("############################################")
 
 	runnerCtx := context.Background()
 
@@ -593,20 +593,20 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	// environment".
 	stepCounter := &Counter{Current: 3}
 	for _, step := range pipeline.Steps() {
-		murder.Println()
-		murder.Println("============== Running Step ===============")
-		murder.Println(step.Name, step.ID)
-		murder.Println("===========================================")
+		logger.Println()
+		logger.Println("============== Running Step ===============")
+		logger.Println(step.Name, step.ID)
+		logger.Println("===========================================")
 
 		sr, err := p.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName
 			pr.FailedStepMessage = sr.Message
-			murder.Warnln("============== Step failed! ===============")
+			logger.Warnln("============== Step failed! ===============")
 			break
 		}
-		murder.Println("============== Step passed! ===============")
+		logger.Println("============== Step passed! ===============")
 	}
 
 	if options.ShouldCommit {
@@ -655,7 +655,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 				file, err := ioutil.TempFile("", "export-image-")
 				if err != nil {
-					murder.WithField("Error", err).Error("Unable to create temporary file")
+					logger.WithField("Error", err).Error("Unable to create temporary file")
 					return err
 				}
 				defer os.Remove(file.Name())
@@ -663,7 +663,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				hash := sha256.New()
 				w := snappystream.NewWriter(io.MultiWriter(file, hash))
 
-				murder.WithField("RepositoryName", repoName).Println("Exporting image")
+				logger.WithField("RepositoryName", repoName).Println("Exporting image")
 
 				exportImageOptions := &ExportImageOptions{
 					Name:         repoName,
@@ -671,7 +671,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				}
 				err = box.ExportImage(exportImageOptions)
 				if err != nil {
-					murder.WithField("Error", err).Error("Unable to export image")
+					logger.WithField("Error", err).Error("Unable to export image")
 					return err
 				}
 
@@ -680,7 +680,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 				calculatedHash := hex.EncodeToString(hash.Sum(nil))
 
-				murder.WithFields(LogFields{
+				logger.WithFields(LogFields{
 					"SHA256":            calculatedHash,
 					"TemporaryLocation": file.Name(),
 				}).Println("Export image successful")
@@ -698,7 +698,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				}
 
 				if options.ShouldStoreS3 {
-					murder.Println("Storing docker repository on S3")
+					logger.Println("Storing docker repository on S3")
 
 					e.Emit(Logs, &LogsArgs{
 						Build:   pipeline,
@@ -714,7 +714,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 					err = s3Store.StoreFromFile(storeFromFileArgs)
 					if err != nil {
-						murder.WithField("Error", err).Error("Unable to store to S3 store")
+						logger.WithField("Error", err).Error("Unable to store to S3 store")
 						return err
 					}
 
@@ -730,13 +730,13 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				}
 
 				if options.ShouldStoreLocal {
-					murder.Println("Storing docker repository to local storage")
+					logger.Println("Storing docker repository to local storage")
 
 					localStore := NewLocalStore(options.ContainerDir)
 
 					err = localStore.StoreFromFile(storeFromFileArgs)
 					if err != nil {
-						murder.WithField("Error", err).Error("Unable to store to local store")
+						logger.WithField("Error", err).Error("Unable to store to local store")
 						return err
 					}
 				}
@@ -793,14 +793,14 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		}()
 		if err != nil {
 			pr.Success = false
-			murder.WithField("Error", err).Error("Unable to store pipeline output")
+			logger.WithField("Error", err).Error("Unable to store pipeline output")
 		}
 	}
 
 	if pr.Success {
-		murder.Println("########### Pipeline passed! ##############")
+		logger.Println("########### Pipeline passed! ##############")
 	} else {
-		murder.Warnln("########### Pipeline failed! ##############")
+		logger.Warnln("########### Pipeline failed! ##############")
 	}
 
 	// We're sending our build finished but we're not done yet,
@@ -817,16 +817,16 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	pipelineArgs.RanAfterSteps = true
 
-	murder.Println("########## Starting After Steps ###########")
+	logger.Println("########## Starting After Steps ###########")
 	// The container may have died, either way we'll have a fresh env
 	container, err := box.Restart()
 	if err != nil {
-		murder.Panicln(err)
+		logger.Panicln(err)
 	}
 
 	newSessCtx, newSess, err := p.GetSession(runnerCtx, container.ID)
 	if err != nil {
-		murder.Panicln(err)
+		logger.Panicln(err)
 	}
 
 	newShared := &RunnerShared{
@@ -851,23 +851,23 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 
 	for _, step := range pipeline.AfterSteps() {
-		murder.Println()
-		murder.Println("=========== Running After Step ============")
-		murder.Println(step.Name, step.ID)
-		murder.Println("===========================================")
+		logger.Println()
+		logger.Println("=========== Running After Step ============")
+		logger.Println(step.Name, step.ID)
+		logger.Println("===========================================")
 
 		_, err := p.RunStep(newShared, step, stepCounter.Increment())
 		if err != nil {
-			murder.Warnln("=========== After Step failed! ============")
+			logger.Warnln("=========== After Step failed! ============")
 			break
 		}
-		murder.Println("=========== After Step passed! ============")
+		logger.Println("=========== After Step passed! ============")
 	}
 
 	if pr.Success {
-		murder.Println("########### Pipeline passed! ##############")
+		logger.Println("########### Pipeline passed! ##############")
 	} else {
-		murder.Warnln("########### Pipeline failed! ##############")
+		logger.Warnln("########### Pipeline failed! ##############")
 	}
 
 	if !pr.Success {

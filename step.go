@@ -77,7 +77,7 @@ type Step struct {
 	data        RawStepData
 	options     *PipelineOptions
 	stepConfig  *StepConfig
-	murder      *LogEntry
+	logger      *LogEntry
 }
 
 // ExtraRawStepsToSteps normalizes steps to RawSteps then calls ToStep on them
@@ -208,7 +208,7 @@ func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, 
 	}
 	delete(data, "name")
 
-	murder := rootLogger.WithFields(LogFields{
+	logger := rootLogger.WithFields(LogFields{
 		"Logger": "Step",
 		"SafeID": stepSafeID,
 	})
@@ -223,7 +223,7 @@ func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, 
 		ID:          identifier,
 		options:     options,
 		url:         url,
-		murder:      murder,
+		logger:      logger,
 	}, nil
 }
 
@@ -328,7 +328,7 @@ func (s *Step) Fetch() (string, error) {
 	cfg, err := ReadStepConfig(s.HostPath("wercker-step.yml"))
 	if err != nil && !os.IsNotExist(err) {
 		// TODO(termie): Log an error instead of printing
-		s.murder.Println("ERROR: Reading wercker-step.yml:", err)
+		s.logger.Println("ERROR: Reading wercker-step.yml:", err)
 	}
 	if err == nil {
 		s.stepConfig = cfg
@@ -398,7 +398,7 @@ func (s *Step) CollectFile(containerID, path, name string, dst io.Writer) error 
 	}()
 
 	if err = client.CopyFromContainer(opts); err != nil {
-		s.murder.Debugln(err)
+		s.logger.Debugln(err)
 		return ErrEmptyTarball
 	}
 

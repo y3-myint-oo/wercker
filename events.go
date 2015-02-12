@@ -106,12 +106,12 @@ type FullPipelineFinishedArgs struct {
 }
 
 type DebugHandler struct {
-	murder *LogEntry
+	logger *LogEntry
 }
 
 func NewDebugHandler() *DebugHandler {
-	murder := rootLogger.WithField("Logger", "Events")
-	return &DebugHandler{murder: murder}
+	logger := rootLogger.WithField("Logger", "Events")
+	return &DebugHandler{logger: logger}
 }
 
 // dumpEvent prints out some debug info about an event
@@ -139,23 +139,23 @@ func (h *DebugHandler) dumpEvent(event interface{}, indent ...string) {
 		}
 		if name[:1] == strings.ToLower(name[:1]) {
 			// Not exported, skip it
-			h.murder.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), "<not exported>"))
+			h.logger.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), "<not exported>"))
 			continue
 		}
 		if name == "Box" || name == "Step" {
-			h.murder.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
+			h.logger.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
 			if !f.IsNil() {
 				h.dumpEvent(f.Interface(), indent...)
 			}
 		} else {
-			h.murder.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
+			h.logger.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
 		}
 	}
 }
 
 func (h *DebugHandler) Handler(name string) func(interface{}) {
 	return func(event interface{}) {
-		h.murder.Debugln("Event: ", name)
+		h.logger.Debugln("Event: ", name)
 		h.dumpEvent(event)
 	}
 }

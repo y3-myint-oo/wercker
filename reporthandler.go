@@ -15,11 +15,11 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	}
 
 	writers := make(map[string]*reporter.LogWriter)
-	murder := rootLogger.WithField("Logger", "Reporter")
+	logger := rootLogger.WithField("Logger", "Reporter")
 	h := &ReportHandler{
 		reporter: r,
 		writers:  writers,
-		murder:   murder,
+		logger:   logger,
 	}
 	return h, nil
 }
@@ -45,7 +45,7 @@ type ReportHandler struct {
 	currentOrder    int
 	currentBuildID  string
 	currentDeployID string
-	murder          *LogEntry
+	logger          *LogEntry
 }
 
 // BuildStepStarted will handle the BuildStepStarted event.
@@ -164,7 +164,7 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 
 	w, err := h.getStepOutputWriter(args)
 	if err != nil {
-		h.murder.WithField("Error", err).Error("Unable to create step output writer")
+		h.logger.WithField("Error", err).Error("Unable to create step output writer")
 		return
 	}
 	w.Write([]byte(args.Logs))

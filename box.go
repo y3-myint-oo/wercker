@@ -23,7 +23,7 @@ type Box struct {
 	repository      string
 	tag             string
 	images          []*docker.Image
-	murder          *LogEntry
+	logger          *LogEntry
 }
 
 // BoxOptions are box options, duh
@@ -64,7 +64,7 @@ func NewBox(name string, options *PipelineOptions, boxOptions *BoxOptions) (*Box
 		networkDisabled = boxOptions.NetworkDisabled
 	}
 
-	murder := rootLogger.WithFields(LogFields{
+	logger := rootLogger.WithFields(LogFields{
 		"Logger":    "Box",
 		"Name":      name,
 		"ShortName": shortName,
@@ -78,7 +78,7 @@ func NewBox(name string, options *PipelineOptions, boxOptions *BoxOptions) (*Box
 		repository:      repository,
 		tag:             tag,
 		networkDisabled: networkDisabled,
-		murder:          murder,
+		logger:          logger,
 	}, nil
 }
 
@@ -88,7 +88,7 @@ func (b *Box) links() []string {
 	for _, service := range b.services {
 		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", service.container.Name, service.ShortName))
 	}
-	b.murder.Println("Creating links:", serviceLinks)
+	b.logger.Println("Creating links:", serviceLinks)
 	return serviceLinks
 }
 
@@ -121,7 +121,7 @@ func (b *Box) binds() ([]string, error) {
 // RunServices runs the services associated with this box
 func (b *Box) RunServices() error {
 	for _, serviceBox := range b.services {
-		b.murder.Debugln("Starting service:", serviceBox.Name)
+		b.logger.Debugln("Starting service:", serviceBox.Name)
 		_, err := serviceBox.Run()
 		if err != nil {
 			return err
@@ -132,7 +132,7 @@ func (b *Box) RunServices() error {
 
 // Run creates the container and runs it.
 func (b *Box) Run() (*docker.Container, error) {
-	b.murder.Debugln("Starting base box:", b.Name)
+	b.logger.Debugln("Starting base box:", b.Name)
 	// Make and start the container
 	containerName := "wercker-pipeline-" + b.options.PipelineID
 	container, err := b.client.CreateContainer(
@@ -154,7 +154,7 @@ func (b *Box) Run() (*docker.Container, error) {
 		return nil, err
 	}
 
-	b.murder.Println("Docker Container:", container.ID)
+	b.logger.Println("Docker Container:", container.ID)
 
 	binds, err := b.binds()
 	if err != nil {
@@ -221,26 +221,26 @@ func (b *Box) AddService(service *ServiceBox) {
 // Stop the box and all its services
 func (b *Box) Stop() {
 	for _, service := range b.services {
-		b.murder.Println("Stopping service", service.Box.container.ID)
+		b.logger.Println("Stopping service", service.Box.container.ID)
 		err := b.client.StopContainer(service.Box.container.ID, 1)
 
 		if err != nil {
 			if _, ok := err.(*docker.ContainerNotRunning); ok {
-				b.murder.Warnln("Service container has already stopped.")
+				b.logger.Warnln("Service container has already stopped.")
 			} else {
-				b.murder.WithField("Error", err).Warnln("Wasn't able to stop service container", service.Box.container.ID)
+				b.logger.WithField("Error", err).Warnln("Wasn't able to stop service container", service.Box.container.ID)
 			}
 		}
 	}
 	if b.container != nil {
-		b.murder.Println("Stopping container", b.container.ID)
+		b.logger.Println("Stopping container", b.container.ID)
 		err := b.client.StopContainer(b.container.ID, 1)
 
 		if err != nil {
 			if _, ok := err.(*docker.ContainerNotRunning); ok {
-				b.murder.Warnln("Box container has already stopped.")
+				b.logger.Warnln("Box container has already stopped.")
 			} else {
-				b.murder.WithField("Error", err).Warnln("Wasn't able to stop box container", b.container.ID)
+				b.logger.WithField("Error", err).Warnln("Wasn't able to stop box container", b.container.ID)
 			}
 		}
 	}
@@ -252,7 +252,7 @@ func (b *Box) Fetch() (*docker.Image, error) {
 		return image, nil
 	}
 
-	b.murder.Println("Couldn't find image locally, fetching.")
+	b.logger.Println("Couldn't find image locally, fetching.")
 
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
@@ -293,7 +293,7 @@ type PushOptions struct {
 
 // Commit the current running Docker container to an Docker image.
 func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
-	b.murder.WithFields(LogFields{
+	b.logger.WithFields(LogFields{
 		"Name": name,
 		"Tag":  tag,
 	}).Debug("Commit container")
@@ -315,7 +315,7 @@ func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 // Push commits and tag a container. Then push the image to the registry.
 // Returns the new image, no cleanup is provided.
 func (b *Box) Push(options *PushOptions, auth docker.AuthConfiguration) (*docker.Image, error) {
-	b.murder.WithFields(LogFields{
+	b.logger.WithFields(LogFields{
 		"Registry": options.Registry,
 		"Name":     options.Name,
 		"Tag":      options.Tag,
@@ -350,7 +350,7 @@ func (b *Box) Push(options *PushOptions, auth docker.AuthConfiguration) (*docker
 	if err != nil {
 		return nil, err
 	}
-	b.murder.WithField("Image", i).Debug("Commit completed")
+	b.logger.WithField("Image", i).Debug("Commit completed")
 
 	// Cleanup the go routine by closing the writer.
 	w.Close()
@@ -367,7 +367,7 @@ type ExportImageOptions struct {
 // ExportImage will export the image to a temporary file and return the path to
 // the file.
 func (b *Box) ExportImage(options *ExportImageOptions) error {
-	b.murder.WithField("ExportName", options.Name).Info("Storing image")
+	b.logger.WithField("ExportName", options.Name).Info("Storing image")
 
 	exportImageOptions := docker.ExportImageOptions{
 		Name:         options.Name,

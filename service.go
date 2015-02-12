@@ -11,7 +11,7 @@ import (
 // ServiceBox wraps a box as a service
 type ServiceBox struct {
 	*Box
-	murder *LogEntry
+	logger *LogEntry
 }
 
 // ToServiceBox turns a box into a ServiceBox
@@ -22,8 +22,8 @@ func (b *RawBox) ToServiceBox(options *PipelineOptions, boxOptions *BoxOptions) 
 // NewServiceBox from a name and other references
 func NewServiceBox(name string, options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
 	box, err := NewBox(name, options, boxOptions)
-	murder := rootLogger.WithField("Logger", "Service")
-	return &ServiceBox{Box: box, murder: murder}, err
+	logger := rootLogger.WithField("Logger", "Service")
+	return &ServiceBox{Box: box, logger: logger}, err
 }
 
 // Run executes the service
@@ -49,9 +49,9 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 	go func() {
 		status, err := b.client.WaitContainer(container.ID)
 		if err != nil {
-			b.murder.Errorln("Error waiting", err)
+			b.logger.Errorln("Error waiting", err)
 		}
-		b.murder.Debugln("Service container finished with status code:", status, container.ID)
+		b.logger.Debugln("Service container finished with status code:", status, container.ID)
 
 		if status != 0 {
 			// recv := make(chan string)
@@ -66,7 +66,7 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 			}
 			err = b.client.Logs(opts)
 			if err != nil {
-				b.murder.Panicln(err)
+				b.logger.Panicln(err)
 			}
 		}
 	}()

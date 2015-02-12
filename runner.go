@@ -44,17 +44,17 @@ type Runner struct {
 	metrics        *MetricsEventHandler
 	reporter       *ReportHandler
 	pipelineGetter GetPipeline
-	murder         *LogEntry
+	logger         *LogEntry
 }
 
 // NewRunner from global options
 func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 
 	e := GetEmitter()
-	murder := rootLogger.WithField("Logger", "Runner")
+	logger := rootLogger.WithField("Logger", "Runner")
 	// h, err := NewLogHandler()
 	// if err != nil {
-	//   p.murder.WithField("Error", err).Panic("Unable to LogHandler")
+	//   p.logger.WithField("Error", err).Panic("Unable to LogHandler")
 	// }
 	// h.ListenTo(e)
 
@@ -65,7 +65,7 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 
 	l, err := NewLiteralLogHandler(options)
 	if err != nil {
-		murder.WithField("Error", err).Panic("Unable to LiteralLogHandler")
+		logger.WithField("Error", err).Panic("Unable to LiteralLogHandler")
 	}
 	l.ListenTo(e)
 
@@ -73,7 +73,7 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 	if options.ShouldKeenMetrics {
 		mh, err = NewMetricsHandler(options)
 		if err != nil {
-			murder.WithField("Error", err).Panic("Unable to MetricsHandler")
+			logger.WithField("Error", err).Panic("Unable to MetricsHandler")
 		}
 		mh.ListenTo(e)
 	}
@@ -82,7 +82,7 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 	if options.ShouldReport {
 		r, err := NewReportHandler(options.ReporterHost, options.ReporterKey)
 		if err != nil {
-			murder.WithField("Error", err).Panic("Unable to ReportHandler")
+			logger.WithField("Error", err).Panic("Unable to ReportHandler")
 		}
 		r.ListenTo(e)
 	}
@@ -94,7 +94,7 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 		metrics:        mh,
 		reporter:       r,
 		pipelineGetter: pipelineGetter,
-		murder:         murder,
+		logger:         logger,
 	}
 }
 
@@ -203,21 +203,21 @@ func (p *Runner) GetBox(rawConfig *RawConfig) (*Box, error) {
 		return nil, err
 	}
 
-	p.murder.Println("Box:", box.Name)
+	p.logger.Println("Box:", box.Name)
 
 	// Make sure we have the box available
 	image, err := box.Fetch()
 	if err != nil {
 		return nil, err
 	}
-	p.murder.Println("Docker Image:", image.ID)
+	p.logger.Println("Docker Image:", image.ID)
 	return box, nil
 }
 
 // AddServices fetches and links the services to the base box.
 func (p *Runner) AddServices(rawConfig *RawConfig, box *Box) error {
 	for _, rawService := range rawConfig.RawServices {
-		p.murder.Println("Fetching service:", rawService)
+		p.logger.Println("Fetching service:", rawService)
 
 		serviceBox, err := rawService.ToServiceBox(p.options, nil)
 		if err != nil {
@@ -358,7 +358,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 
-	p.murder.Println("Application:", p.options.ApplicationName)
+	p.logger.Println("Application:", p.options.ApplicationName)
 
 	// Grab our config
 	rawConfig, stringConfig, err := p.GetConfig()
@@ -380,7 +380,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 
 	// Start setting up the pipeline dir
-	p.murder.Debugln("Copying source to build directory")
+	p.logger.Debugln("Copying source to build directory")
 	err = p.CopySource()
 	if err != nil {
 		return shared, err
@@ -389,7 +389,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	pipeline, err := p.GetPipeline(rawConfig)
 	shared.pipeline = pipeline
 
-	p.murder.Println("Steps:", len(pipeline.Steps()))
+	p.logger.Println("Steps:", len(pipeline.Steps()))
 
 	// Make sure we have the steps
 	err = pipeline.FetchSteps()
@@ -430,7 +430,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		}
 	}()
 
-	p.murder.Debugln("Attaching session to base box")
+	p.logger.Debugln("Attaching session to base box")
 	// Start our session
 	sessionCtx, sess, err := p.GetSession(runnerCtx, container.ID)
 	if err != nil {
@@ -442,7 +442,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Some helpful logging
 	pipeline.LogEnvironment()
 
-	p.murder.Debugln("Setting up guest (base box)")
+	p.logger.Debugln("Setting up guest (base box)")
 	err = pipeline.SetupGuest(sessionCtx, sess)
 	if err != nil {
 		return shared, err
@@ -480,9 +480,9 @@ func (p *Runner) RunStep(shared *RunnerShared, step *Step, order int) (*StepResu
 	defer finisher.Finish(sr)
 
 	step.InitEnv()
-	p.murder.Println("Step Environment")
+	p.logger.Println("Step Environment")
 	for _, pair := range step.Env.Ordered() {
-		p.murder.Println(" ", pair[0], pair[1])
+		p.logger.Println(" ", pair[0], pair[1])
 	}
 
 	exit, err := step.Execute(shared.sessionCtx, shared.sess)

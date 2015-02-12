@@ -12,19 +12,19 @@ type APIClient struct {
 	endpoint string
 	client   *http.Client
 	options  *GlobalOptions
-	murder   *LogEntry
+	logger   *LogEntry
 }
 
 // NewAPIClient returns our dumb client
 func NewAPIClient(options *GlobalOptions) *APIClient {
-	murder := rootLogger.WithFields(LogFields{
+	logger := rootLogger.WithFields(LogFields{
 		"Logger": "API",
 	})
 	return &APIClient{
 		endpoint: options.WerckerEndpoint,
 		client:   &http.Client{},
 		options:  options,
-		murder:   murder,
+		logger:   logger,
 	}
 }
 
@@ -40,7 +40,7 @@ func (c *APIClient) GetBody(parts ...string) ([]byte, error) {
 	res, err := c.Get(parts...)
 
 	if res.StatusCode != 200 {
-		c.murder.Debugln(ioutil.ReadAll(res.Body))
+		c.logger.Debugln(ioutil.ReadAll(res.Body))
 		return nil, fmt.Errorf("Got non-200 response: %d", res.StatusCode)
 	}
 
@@ -57,11 +57,11 @@ func (c *APIClient) GetBody(parts ...string) ([]byte, error) {
 // some default headers.
 func (c *APIClient) Get(parts ...string) (*http.Response, error) {
 	url := c.URL(parts...)
-	c.murder.Debugln("API Get:", url)
+	c.logger.Debugln("API Get:", url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		c.murder.WithField("Error", err).Debug("Unable to create request to wercker API")
+		c.logger.WithField("Error", err).Debug("Unable to create request to wercker API")
 		return nil, err
 	}
 
