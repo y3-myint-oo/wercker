@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/blang/semver"
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/joho/godotenv"
@@ -413,12 +415,59 @@ func cmdVersion(options *VersionOptions) error {
 			log.WithField("Error", err).Panic("Unable to marshal versions")
 		}
 		os.Stdout.Write(b)
+		os.Stdout.WriteString("\n")
 	} else {
+
 		os.Stdout.WriteString(fmt.Sprintf("Version: %s\n", v.Version))
-		os.Stdout.WriteString(fmt.Sprintf("Git commit: %s", v.GitCommit))
+		os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
+
+		nv := Versions{}
+		client := &http.Client{}
+
+		req, err := http.NewRequest("GET", "http://downloads.wercker.com/cli/stable/version.json", nil)
+		if err != nil {
+			log.WithField("Error", err).Debug("Unable to create request to version endpoint")
+		}
+
+		res, err := client.Do(req)
+		if err != nil {
+			log.WithField("Error", err).Debug("Unable to execute HTTP request to version endpoint")
+		}
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			log.WithField("Error", err).Debug("Unable to read response body")
+		}
+
+		err = json.Unmarshal(body, &nv)
+		if err != nil {
+			log.WithField("Error", err).Debug("Unable to unmarshal versions")
+		}
+
+		vCurrent, err := semver.New(v.Version)
+		if err != nil {
+			log.WithField("Error", err).Debug("Unable to get semver of current version")
+		}
+		vRetrieved, err := semver.New(nv.Version)
+		if err != nil {
+			log.WithField("Error", err).Debug("Unable to get semver of retrieved version")
+		}
+
+		upToDate := vCurrent.Compare(vRetrieved)
+
+		dlURL := fmt.Sprintf("http://downloads.wercker.com/cli/stable/%s_amd64/wercker", runtime.GOOS)
+
+		if upToDate == -1 {
+			os.Stdout.WriteString(fmt.Sprintf("A new version is available: %s\n", nv.Version))
+			os.Stdout.WriteString(fmt.Sprintf("Download it from: %s\n", dlURL))
+		}
+
+		if upToDate == 0 {
+			os.Stdout.WriteString(fmt.Sprintf("No new version available\n"))
+		}
+
 	}
 
-	os.Stdout.WriteString("\n")
 	return nil
 }
 
