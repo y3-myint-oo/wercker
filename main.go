@@ -157,6 +157,10 @@ var (
 				Name:  "json",
 				Usage: "Output version information as JSON",
 			},
+			cli.BoolFlag{
+				Name:  "unstable",
+				Usage: "Checks for the latest unstable version",
+			},
 		},
 		Action: func(c *cli.Context) {
 			opts, err := NewVersionOptions(c, NewEnvironment(os.Environ()))
@@ -421,10 +425,17 @@ func cmdVersion(options *VersionOptions) error {
 		os.Stdout.WriteString(fmt.Sprintf("Version: %s\n", v.Version))
 		os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
 
+		channel := "stable"
+		if options.UnstableChannel {
+			channel = "unstable"
+		}
+
+		url := fmt.Sprintf("http://downloads.wercker.com/cli/%s/version.json", channel)
+
 		nv := Versions{}
 		client := &http.Client{}
 
-		req, err := http.NewRequest("GET", "http://downloads.wercker.com/cli/stable/version.json", nil)
+		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			log.WithField("Error", err).Debug("Unable to create request to version endpoint")
 		}
@@ -455,7 +466,7 @@ func cmdVersion(options *VersionOptions) error {
 
 		upToDate := vCurrent.Compare(vRetrieved)
 
-		dlURL := fmt.Sprintf("http://downloads.wercker.com/cli/stable/%s_amd64/wercker", runtime.GOOS)
+		dlURL := fmt.Sprintf("http://downloads.wercker.com/cli/%s/%s_amd64/wercker", channel, runtime.GOOS)
 
 		if upToDate == -1 {
 			os.Stdout.WriteString(fmt.Sprintf("A new version is available: %s\n", nv.Version))
