@@ -58,6 +58,7 @@ var (
 	werckerFlags = []cli.Flag{
 		cli.StringFlag{Name: "build-id", Value: "", Usage: "build id", EnvVar: "WERCKER_BUILD_ID"},
 		cli.StringFlag{Name: "deploy-id", Value: "", Usage: "deploy id", EnvVar: "WERCKER_DEPLOY_ID"},
+		cli.StringFlag{Name: "deploy-target", Value: "", Usage: "deploy target name", EnvVar: "WERCKER_DEPLOYTARGET_NAME"},
 		cli.StringFlag{Name: "application-id", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_ID"},
 		cli.StringFlag{Name: "application-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
 		cli.StringFlag{Name: "application-owner-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
@@ -464,9 +465,10 @@ type PipelineOptions struct {
 	//               places by BasePipeline
 	Env *Environment
 
-	BuildID    string
-	DeployID   string
-	PipelineID string
+	BuildID      string
+	DeployID     string
+	PipelineID   string
+	DeployTarget string
 
 	ApplicationID            string
 	ApplicationName          string
@@ -650,6 +652,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	} else {
 		pipelineID = buildID
 	}
+	deployTarget := c.String("deploy-target")
 
 	applicationName, err := guessApplicationName(c, e)
 	if err != nil {
@@ -701,9 +704,10 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 
 		Env: e,
 
-		BuildID:    buildID,
-		DeployID:   deployID,
-		PipelineID: pipelineID,
+		BuildID:      buildID,
+		DeployID:     deployID,
+		PipelineID:   pipelineID,
+		DeployTarget: deployTarget,
 
 		ApplicationID:            applicationID,
 		ApplicationName:          applicationName,

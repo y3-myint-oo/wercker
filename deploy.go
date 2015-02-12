@@ -22,25 +22,41 @@ func (p *RawPipeline) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 	}
 	steps = append(steps, initStep)
 
-	realSteps, err := ExtraRawStepsToSteps(p.RawSteps, options)
-	if err != nil {
-		return nil, err
-	}
-	steps = append(steps, realSteps...)
+	// If p is nil it means no Deploy section was found
+	// TODO(bvdberg): fail the build, fall back to default steps, idk. Just run
+	// init for now.
+	if p != nil {
+		realSteps, err := ExtraRawStepsToSteps(rawDeploySteps(p, options), options)
+		if err != nil {
+			return nil, err
+		}
+		steps = append(steps, realSteps...)
 
-	// For after steps we again need werker-init
-	realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps, options)
-	if err != nil {
-		return nil, err
-	}
-	if len(realAfterSteps) > 0 {
-		afterSteps = append(afterSteps, initStep)
-		afterSteps = append(afterSteps, realAfterSteps...)
+		// For after steps we again need werker-init
+		realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps(), options)
+		if err != nil {
+			return nil, err
+		}
+		if len(realAfterSteps) > 0 {
+			afterSteps = append(afterSteps, initStep)
+			afterSteps = append(afterSteps, realAfterSteps...)
+		}
 	}
 
 	deploy := &Deploy{NewBasePipeline(options, steps, afterSteps), options}
 	deploy.InitEnv()
 	return deploy, nil
+}
+
+func rawDeploySteps(p *RawPipeline, options *PipelineOptions) []interface{} {
+	if options.DeployTarget != "" {
+		section := p.GetSteps(options.DeployTarget)
+		if section != nil {
+			return section
+		}
+	}
+
+	return p.RawSteps()
 }
 
 // InitEnv sets up the internal state of the environment for the build
@@ -56,6 +72,10 @@ func (d *Deploy) InitEnv() {
 		[]string{"WERCKER_GIT_REPOSITORY", d.options.GitRepository},
 		[]string{"WERCKER_GIT_BRANCH", d.options.GitBranch},
 		[]string{"WERCKER_GIT_COMMIT", d.options.GitCommit},
+	}
+
+	if d.options.DeployTarget != "" {
+		a = append(a, []string{"WERCKER_DEPLOYTARGET_NAME", d.options.DeployTarget})
 	}
 
 	env.Update(d.CommonEnv())

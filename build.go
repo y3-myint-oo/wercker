@@ -22,14 +22,14 @@ func (p *RawPipeline) ToBuild(options *PipelineOptions) (*Build, error) {
 	}
 	steps = append(steps, initStep)
 
-	realSteps, err := ExtraRawStepsToSteps(p.RawSteps, options)
+	realSteps, err := ExtraRawStepsToSteps(p.RawSteps(), options)
 	if err != nil {
 		return nil, err
 	}
 	steps = append(steps, realSteps...)
 
 	// For after steps we again need werker-init
-	realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps, options)
+	realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps(), options)
 	if err != nil {
 		return nil, err
 	}
