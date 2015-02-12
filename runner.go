@@ -38,9 +38,8 @@ func GetDeployPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline
 
 // Runner is the base type for running the pipelines.
 type Runner struct {
-	options *PipelineOptions
-	emitter *emission.Emitter
-	// logger         *LogHandler
+	options        *PipelineOptions
+	emitter        *emission.Emitter
 	literalLogger  *LiteralLogHandler
 	metrics        *MetricsEventHandler
 	reporter       *ReportHandler
