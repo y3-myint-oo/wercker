@@ -29,7 +29,7 @@ var (
 	// These flags let us auth to wercker services
 	authFlags = []cli.Flag{
 		cli.StringFlag{Name: "auth-token", Usage: "authentication token to use"},
-		cli.StringFlag{Name: "auth-token-store", Value: "~/.wercker/token", Usage: "where to store the token after a login"},
+		cli.StringFlag{Name: "auth-token-store", Value: "~/.wercker/token", Usage: "where to store the token after a login", Hidden: true},
 	}
 
 	dockerFlags = []cli.Flag{
@@ -108,16 +108,16 @@ var (
 
 	// keen.io bits
 	keenFlags = []cli.Flag{
-		cli.BoolFlag{Name: "keen-metrics", Usage: "report metrics to keen.io"},
-		cli.StringFlag{Name: "keen-project-write-key", Value: "", Usage: "keen write key"},
-		cli.StringFlag{Name: "keen-project-id", Value: "", Usage: "keen project id"},
+		cli.BoolFlag{Name: "keen-metrics", Usage: "report metrics to keen.io", Hidden: true},
+		cli.StringFlag{Name: "keen-project-write-key", Value: "", Usage: "keen write key", Hidden: true},
+		cli.StringFlag{Name: "keen-project-id", Value: "", Usage: "keen project id", Hidden: true},
 	}
 
 	// Wercker Reporter settings
 	reporterFlags = []cli.Flag{
-		cli.BoolFlag{Name: "report", Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token)"},
-		cli.StringFlag{Name: "wercker-host", Usage: "Wercker host to use for wercker reporter"},
-		cli.StringFlag{Name: "wercker-token", Usage: "Wercker token to use for wercker reporter"},
+		cli.BoolFlag{Name: "report", Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token)", Hidden: true},
+		cli.StringFlag{Name: "wercker-host", Usage: "Wercker host to use for wercker reporter", Hidden: true},
+		cli.StringFlag{Name: "wercker-token", Usage: "Wercker token to use for wercker reporter", Hidden: true},
 	}
 
 	// These options might be overwritten by the wercker.yml

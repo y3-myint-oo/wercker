@@ -10,7 +10,8 @@ import:
     ref:     844911c
     vcs:     git
   - package: github.com/codegangsta/cli
-    ref:     bf4a526
+    repo:    git@github.com:wercker/codegangsta-cli
+    ref:     863dc328534d8e22f36386bce3da48dc572a8ddf
     vcs:     git
   - package: github.com/crowdmob/goamz
     ref:     8234579
