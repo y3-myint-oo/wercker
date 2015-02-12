@@ -606,6 +606,11 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		box.Commit(repoName, tag, message)
 	}
 
+	// We need to wind the counter to where it should be if we failed a step
+	// so that is the number of steps + get code + setup environment + store
+	// TODO(termie): remove all the this "order" stuff completely
+	stepCounter.Current = len(pipeline.Steps()) + 3
+
 	shouldStore := options.ShouldStoreS3 || options.ShouldStoreLocal
 
 	if shouldStore || (pr.Success && options.ShouldArtifacts) {
@@ -622,6 +627,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			}
 			finisher := p.StartStep(shared, storeStep, stepCounter.Increment())
 			defer finisher.Finish(sr)
+
+			originalFailedStepName := pr.FailedStepName
+			originalFailedStepMessage := pr.FailedStepMessage
 
 			pr.FailedStepName = storeStep.Name
 
@@ -768,9 +776,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			}
 
 			// Everything went ok, so reset failed related fields
-			pr.Success = true
-			pr.FailedStepName = ""
-			pr.FailedStepMessage = ""
+			pr.FailedStepName = originalFailedStepName
+			pr.FailedStepMessage = originalFailedStepMessage
 
 			sr.Success = true
 			sr.ExitCode = 0
