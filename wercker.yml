@@ -47,7 +47,7 @@ deploy:
         key-secret: $AWS_SECRET_ACCESS_KEY
 
   # This should be auto deployed when a commit is made to "master".
-  unstable:
+  beta:
     - script:
         name: version
         code: |
@@ -66,7 +66,7 @@ deploy:
     - s3sync:
         source-dir: "./latest"
         delete-removed: false
-        bucket-url: $DOWNLOADS_BUCKET_URL/unstable/
+        bucket-url: $DOWNLOADS_BUCKET_URL/beta/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
 
