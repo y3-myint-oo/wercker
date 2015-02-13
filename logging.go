@@ -19,31 +19,38 @@ type Logger struct {
 
 type LogFields logrus.Fields
 
+// NewLogger constructor
 func NewLogger() *Logger {
 	l := &Logger{logrus.New()}
 	return l
 }
 
+// SetLevel to set using strings
 func (l *Logger) SetLevel(level string) {
 	l.Level, _ = logrus.ParseLevel(level)
 }
 
+// WithFields wraps logrus
 func (l *Logger) WithFields(fields LogFields) *LogEntry {
 	return &LogEntry{l.Logger.WithFields(logrus.Fields(fields))}
 }
 
+// WithField wraps logrus
 func (l *Logger) WithField(key string, value interface{}) *LogEntry {
 	return &LogEntry{l.Logger.WithField(key, value)}
 }
 
+// LogEntry wraps logrus
 type LogEntry struct {
 	*logrus.Entry
 }
 
+// WithField wraps logrus
 func (e *LogEntry) WithField(key string, value interface{}) *LogEntry {
 	return &LogEntry{e.Entry.WithField(key, value)}
 }
 
+// WithFields wraps logrus
 func (e *LogEntry) WithFields(fields LogFields) *LogEntry {
 	return &LogEntry{e.Entry.WithFields(logrus.Fields(fields))}
 }
@@ -55,6 +62,7 @@ var rootLogger = NewLogger()
 //               copy-paste from logrus, it doesn't offer a very easy way
 //               to modify the output template
 
+// TerseFormatter gives us very basic output
 type TerseFormatter struct {
 	// Set to true to bypass checking for a TTY before outputting colors.
 	ForceColors   bool
@@ -64,6 +72,7 @@ type TerseFormatter struct {
 	DisableTimestamp bool
 }
 
+// Format tersely
 func (f *TerseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	var keys []string
@@ -154,6 +163,7 @@ func miniTS() int {
 	return int(time.Since(baseTimestamp) / time.Second)
 }
 
+// VerboseFormatter gives us very informative output
 type VerboseFormatter struct {
 	// Set to true to bypass checking for a TTY before outputting colors.
 	ForceColors   bool
@@ -163,6 +173,7 @@ type VerboseFormatter struct {
 	DisableTimestamp bool
 }
 
+// Format verbosely
 func (f *VerboseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	var keys []string

@@ -892,12 +892,12 @@ func NewPullOptions(c *cli.Context, e *Environment) (*PullOptions, error) {
 	if len(c.Args()) != 1 {
 		return nil, errors.New("Pull requires buildId as the only argument: wercker [global options] pull [command options] <build id>")
 	}
-	buildId := c.Args().First()
+	buildID := c.Args().First()
 
 	return &PullOptions{
 		GlobalOptions: globalOpts,
 		DockerOptions: dockerOpts,
-		BuildID:       buildId,
+		BuildID:       buildID,
 	}, nil
 }
 

@@ -48,10 +48,12 @@ func (s *Sender) Read(p []byte) (int, error) {
 	return i, nil
 }
 
+// Transport interface for talking to containervisors
 type Transport interface {
 	Attach(context.Context, io.Reader, io.Writer, io.Writer) (context.Context, error)
 }
 
+// DockerTransport for docker containers
 type DockerTransport struct {
 	options     *PipelineOptions
 	e           *emission.Emitter
@@ -60,6 +62,7 @@ type DockerTransport struct {
 	logger      *LogEntry
 }
 
+// NewDockerTransport constructor
 func NewDockerTransport(options *PipelineOptions, containerID string) (Transport, error) {
 	client, err := NewDockerClient(options.DockerOptions)
 	if err != nil {
@@ -117,7 +120,7 @@ func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, st
 	return transportCtx, nil
 }
 
-// DockerSession is our way to interact with the docker container
+// Session is our way to interact with the docker container
 type Session struct {
 	options    *PipelineOptions
 	e          *emission.Emitter

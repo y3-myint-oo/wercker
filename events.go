@@ -105,10 +105,12 @@ type FullPipelineFinishedArgs struct {
 	AfterStepSuccessful bool
 }
 
+// DebugHandler dumps events
 type DebugHandler struct {
 	logger *LogEntry
 }
 
+// NewDebugHandler constructor
 func NewDebugHandler() *DebugHandler {
 	logger := rootLogger.WithField("Logger", "Events")
 	return &DebugHandler{logger: logger}
@@ -153,6 +155,7 @@ func (h *DebugHandler) dumpEvent(event interface{}, indent ...string) {
 	}
 }
 
+// Handler returns a per-event dumpEvent
 func (h *DebugHandler) Handler(name string) func(interface{}) {
 	return func(event interface{}) {
 		h.logger.Debugln(name)
@@ -160,6 +163,7 @@ func (h *DebugHandler) Handler(name string) func(interface{}) {
 	}
 }
 
+// ListenTo attaches to the emitter
 func (h *DebugHandler) ListenTo(e *emission.Emitter) {
 	e.AddListener(BuildStarted, h.Handler("BuildStarted"))
 	e.AddListener(BuildFinished, h.Handler("BuildFinished"))

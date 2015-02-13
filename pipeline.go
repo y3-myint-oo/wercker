@@ -125,14 +125,14 @@ func (p *BasePipeline) PassthruEnv() [][]string {
 // FetchSteps makes sure we have all the steps
 func (p *BasePipeline) FetchSteps() error {
 	for _, step := range p.steps {
-		p.logger.Println("Fetching Step:", step.Name)
+		p.logger.Println("Preparing Step:", step.Name)
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}
 	}
 
 	for _, step := range p.afterSteps {
-		p.logger.Println("Fetching After Step:", step.Name)
+		p.logger.Println("Preparing After Step:", step.Name)
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}
