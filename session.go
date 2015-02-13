@@ -112,9 +112,7 @@ func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, st
 		if err != nil {
 			t.logger.Errorln("Error waiting", err)
 		}
-		t.logger.Warnln("Container finished with status code:", status, t.containerID)
-		// t.exit <- status
-		// close(t.exit)
+		t.logger.Debugln("Container finished with status code:", status, t.containerID)
 	}()
 	started <- struct{}{}
 	return transportCtx, nil
