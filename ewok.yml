@@ -47,12 +47,13 @@ deploy:
         key-secret: $AWS_SECRET_ACCESS_KEY
 
   # This should be auto deployed when a commit is made to "master".
-  latest:
+  beta:
     - script:
         name: version
         code: |
             export WERCKER_VERSION=$(./latest/linux_amd64/sentcli --version | awk '{print $3}')
             echo $WERCKER_VERSION
+            ./latest/linux_amd64/sentcli version --json > ./latest/version.json
 
     - script:
         name: rename
@@ -65,7 +66,7 @@ deploy:
     - s3sync:
         source-dir: "./latest"
         delete-removed: false
-        bucket-url: $DOWNLOADS_BUCKET_URL/latest/
+        bucket-url: $DOWNLOADS_BUCKET_URL/beta/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
 
@@ -83,6 +84,7 @@ deploy:
         code: |
             export WERCKER_VERSION=$(./latest/linux_amd64/sentcli --version | awk '{print $3}')
             echo $WERCKER_VERSION
+            ./latest/linux_amd64/sentcli version --json > ./latest/version.json
 
     - script:
         name: rename
@@ -105,4 +107,3 @@ deploy:
         bucket-url: $DOWNLOADS_BUCKET_URL/versions/$WERCKER_VERSION/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
-
