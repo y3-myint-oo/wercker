@@ -179,7 +179,7 @@ var (
 
 func main() {
 	// logger.SetLevel(logger.DebugLevel)
-	rootLogger.SetLevel("debug")
+	// rootLogger.SetLevel("debug")
 	// rootLogger.Formatter = &logger.JSONFormatter{}
 
 	app := cli.NewApp()
@@ -195,6 +195,16 @@ func main() {
 		loginCommand,
 		pullCommand,
 		versionCommand,
+	}
+	app.Before = func(ctx *cli.Context) error {
+		if ctx.GlobalBool("debug") {
+			rootLogger.Formatter = &VerboseFormatter{}
+			rootLogger.SetLevel("debug")
+		} else {
+			rootLogger.Formatter = &TerseFormatter{}
+			rootLogger.SetLevel("info")
+		}
+		return nil
 	}
 	app.Run(os.Args)
 }
@@ -552,6 +562,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		soft.Exit(err)
 	}
 
+	logger.Println()
+	logger.Println("============== Running Step ===============")
+	logger.Println("setup environment")
+	logger.Println("===========================================")
 	shared, err := p.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
 		if options.ShouldRemove {
@@ -560,8 +574,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		defer shared.box.Stop()
 	}
 	if err != nil {
+		logger.Warnln("============== Step failed! ===============")
 		return soft.Exit(err)
 	}
+	logger.Println("============== Step passed! ===============")
 
 	// Expand our context object
 	box := shared.box
@@ -595,7 +611,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	for _, step := range pipeline.Steps() {
 		logger.Println()
 		logger.Println("============== Running Step ===============")
-		logger.Println(step.Name, step.ID)
+		logger.Println(step.DisplayName)
 		logger.Println("===========================================")
 
 		sr, err := p.RunStep(shared, step, stepCounter.Increment())
@@ -853,7 +869,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	for _, step := range pipeline.AfterSteps() {
 		logger.Println()
 		logger.Println("=========== Running After Step ============")
-		logger.Println(step.Name, step.ID)
+		logger.Println(step.DisplayName)
 		logger.Println("===========================================")
 
 		_, err := p.RunStep(newShared, step, stepCounter.Increment())

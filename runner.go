@@ -203,21 +203,21 @@ func (p *Runner) GetBox(rawConfig *RawConfig) (*Box, error) {
 		return nil, err
 	}
 
-	p.logger.Println("Box:", box.Name)
+	p.logger.Debugln("Box:", box.Name)
 
 	// Make sure we have the box available
 	image, err := box.Fetch()
 	if err != nil {
 		return nil, err
 	}
-	p.logger.Println("Docker Image:", image.ID)
+	p.logger.Debugln("Docker Image:", image.ID)
 	return box, nil
 }
 
 // AddServices fetches and links the services to the base box.
 func (p *Runner) AddServices(rawConfig *RawConfig, box *Box) error {
 	for _, rawService := range rawConfig.RawServices {
-		p.logger.Println("Fetching service:", rawService)
+		p.logger.Debugln("Fetching service:", rawService)
 
 		serviceBox, err := rawService.ToServiceBox(p.options, nil)
 		if err != nil {
@@ -358,7 +358,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 
-	p.logger.Println("Application:", p.options.ApplicationName)
+	p.logger.Debugln("Application:", p.options.ApplicationName)
 
 	// Grab our config
 	rawConfig, stringConfig, err := p.GetConfig()
@@ -389,7 +389,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	pipeline, err := p.GetPipeline(rawConfig)
 	shared.pipeline = pipeline
 
-	p.logger.Println("Steps:", len(pipeline.Steps()))
+	p.logger.Debugln("Steps:", len(pipeline.Steps()))
 
 	// Make sure we have the steps
 	err = pipeline.FetchSteps()
@@ -480,9 +480,9 @@ func (p *Runner) RunStep(shared *RunnerShared, step *Step, order int) (*StepResu
 	defer finisher.Finish(sr)
 
 	step.InitEnv()
-	p.logger.Println("Step Environment")
+	p.logger.Debugln("Step Environment")
 	for _, pair := range step.Env.Ordered() {
-		p.logger.Println(" ", pair[0], pair[1])
+		p.logger.Debugln(" ", pair[0], pair[1])
 	}
 
 	exit, err := step.Execute(shared.sessionCtx, shared.sess)

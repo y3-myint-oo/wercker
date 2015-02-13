@@ -21,7 +21,6 @@ type LogFields logrus.Fields
 
 func NewLogger() *Logger {
 	l := &Logger{logrus.New()}
-	l.Formatter = &TerseFormatter{}
 	return l
 }
 
@@ -55,6 +54,53 @@ var rootLogger = NewLogger()
 // NOTE(termie): Pretty much everything below here is slightly modified
 //               copy-paste from logrus, it doesn't offer a very easy way
 //               to modify the output template
+
+type TerseFormatter struct {
+	// Set to true to bypass checking for a TTY before outputting colors.
+	ForceColors   bool
+	DisableColors bool
+	// Set to true to disable timestamp logging (useful when the output
+	// is redirected to a logging system already adding a timestamp)
+	DisableTimestamp bool
+}
+
+func (f *TerseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+
+	var keys []string
+	for k := range entry.Data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	b := &bytes.Buffer{}
+
+	isColored := (f.ForceColors || isTerminal) && !f.DisableColors
+	showLevel := true
+
+	var levelColor int
+	switch entry.Level {
+	case logrus.WarnLevel:
+		levelColor = yellow
+	case logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel:
+		levelColor = red
+	default:
+		showLevel = false
+		levelColor = nocolor
+	}
+
+	levelText := strings.ToUpper(entry.Level.String())
+	if showLevel {
+		if isColored {
+			fmt.Fprintf(b, "\x1b[%dm%s\x1b[0m ", levelColor, levelText)
+		} else {
+			fmt.Fprintf(b, "%s ", levelText)
+		}
+	}
+	fmt.Fprintf(b, entry.Message)
+
+	b.WriteByte('\n')
+	return b.Bytes(), nil
+}
 
 const (
 	nocolor = 0
@@ -108,7 +154,7 @@ func miniTS() int {
 	return int(time.Since(baseTimestamp) / time.Second)
 }
 
-type TerseFormatter struct {
+type VerboseFormatter struct {
 	// Set to true to bypass checking for a TTY before outputting colors.
 	ForceColors   bool
 	DisableColors bool
@@ -117,7 +163,7 @@ type TerseFormatter struct {
 	DisableTimestamp bool
 }
 
-func (f *TerseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+func (f *VerboseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	var keys []string
 	for k := range entry.Data {
@@ -189,7 +235,7 @@ func needsQuoting(text string) bool {
 	return true
 }
 
-func (f *TerseFormatter) appendKeyValue(b *bytes.Buffer, key, value interface{}) {
+func (f *VerboseFormatter) appendKeyValue(b *bytes.Buffer, key, value interface{}) {
 	switch value.(type) {
 	case string:
 		if needsQuoting(value.(string)) {

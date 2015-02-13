@@ -125,14 +125,14 @@ func (p *BasePipeline) PassthruEnv() [][]string {
 // FetchSteps makes sure we have all the steps
 func (p *BasePipeline) FetchSteps() error {
 	for _, step := range p.steps {
-		p.logger.Println("Fetching Step:", step.Name, step.ID)
+		p.logger.Println("Fetching Step:", step.Name)
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}
 	}
 
 	for _, step := range p.afterSteps {
-		p.logger.Println("Fetching After Step:", step.Name, step.ID)
+		p.logger.Println("Fetching After Step:", step.Name)
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}
@@ -192,8 +192,8 @@ func (p *BasePipeline) ExportEnvironment(sessionCtx context.Context, sess *Sessi
 
 // LogEnvironment dumps the base environment
 func (p *BasePipeline) LogEnvironment() {
-	p.logger.Println("Base Pipeline Environment:")
+	p.logger.Debugln("Base Pipeline Environment:")
 	for _, pair := range p.env.Ordered() {
-		p.logger.Println(" ", pair[0], pair[1])
+		p.logger.Debugln(" ", pair[0], pair[1])
 	}
 }

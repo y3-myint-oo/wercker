@@ -88,7 +88,7 @@ func (b *Box) links() []string {
 	for _, service := range b.services {
 		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", service.container.Name, service.ShortName))
 	}
-	b.logger.Println("Creating links:", serviceLinks)
+	b.logger.Debugln("Creating links:", serviceLinks)
 	return serviceLinks
 }
 

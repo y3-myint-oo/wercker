@@ -398,7 +398,7 @@ func (s *Step) CollectFile(containerID, path, name string, dst io.Writer) error 
 	}()
 
 	if err = client.CopyFromContainer(opts); err != nil {
-		s.logger.Debugln(err)
+		s.logger.Debug("Probably expected error:", err)
 		return ErrEmptyTarball
 	}
 
