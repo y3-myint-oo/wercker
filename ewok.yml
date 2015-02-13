@@ -2,7 +2,8 @@ box: tcnksm/gox:1.3.3
 build:
   steps:
     - install-packages:
-        packages: openssh-client
+        packages: openssh-client rsync
+    - setup-go-workspace@1.0.4
     - add-ssh-key:
         keyname: REPORTER_KEY
         host: github.com
@@ -104,3 +105,4 @@ deploy:
         bucket-url: $DOWNLOADS_BUCKET_URL/versions/$WERCKER_VERSION/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
+
