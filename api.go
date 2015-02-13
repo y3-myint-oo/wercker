@@ -40,7 +40,8 @@ func (c *APIClient) GetBody(parts ...string) ([]byte, error) {
 	res, err := c.Get(parts...)
 
 	if res.StatusCode != 200 {
-		c.logger.Debugln(ioutil.ReadAll(res.Body))
+		body, _ := ioutil.ReadAll(res.Body)
+		c.logger.Debugln(string(body))
 		return nil, fmt.Errorf("Got non-200 response: %d", res.StatusCode)
 	}
 

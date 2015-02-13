@@ -155,7 +155,7 @@ func (h *DebugHandler) dumpEvent(event interface{}, indent ...string) {
 
 func (h *DebugHandler) Handler(name string) func(interface{}) {
 	return func(event interface{}) {
-		h.logger.Debugln("Event: ", name)
+		h.logger.Debugln(name)
 		h.dumpEvent(event)
 	}
 }
