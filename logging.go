@@ -106,6 +106,17 @@ func (f *TerseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		}
 	}
 	fmt.Fprintf(b, entry.Message)
+	for _, k := range keys {
+		if k != "Error" {
+			continue
+		}
+		v := entry.Data[k]
+		if isColored {
+			fmt.Fprintf(b, " \x1b[%dm%s\x1b[0m=%v", levelColor, k, v)
+		} else {
+			fmt.Fprintf(b, "%s=%v", k, v)
+		}
+	}
 
 	b.WriteByte('\n')
 	return b.Bytes(), nil
