@@ -3,7 +3,8 @@ build:
   steps:
     - install-packages:
         packages: openssh-client rsync
-    - setup-go-workspace@1.0.4
+    - setup-go-workspace@1.0.4:
+        package-dir: github.com/wercker/sentcli
     - add-ssh-key:
         keyname: REPORTER_KEY
         host: github.com

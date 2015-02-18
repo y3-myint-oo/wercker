@@ -222,3 +222,36 @@ func TestSessionSendCheckedEarlyExit(t *testing.T) {
 	assert.Equal(t, 2, len(recv), "should have gotten two lines of output")
 
 }
+
+func TestSessionSmartSplitLines(t *testing.T) {
+	sentinel := "FOO9000"
+	sentinelLine := "FOO9000 1\n"
+	testLine := "some garbage\n"
+
+	// Test easy normal return
+	simpleLine := sentinelLine
+	simpleLines := smartSplitLines(simpleLine, sentinel)
+	assert.Equal(t, 1, len(simpleLines))
+	assert.Equal(t, sentinelLine, simpleLines[0])
+	simpleFound, simpleExit := checkLine(simpleLines[0], sentinel)
+	assert.Equal(t, true, simpleFound)
+	assert.Equal(t, 1, simpleExit)
+
+	// Test return on same logical line as other stuff
+	mixedLine := fmt.Sprintf("%s%s", testLine, sentinelLine)
+	mixedLines := smartSplitLines(mixedLine, sentinel)
+	assert.Equal(t, 2, len(mixedLines))
+	assert.Equal(t, testLine, mixedLines[0])
+	assert.Equal(t, sentinelLine, mixedLines[1])
+	mixedFound, mixedExit := checkLine(mixedLines[1], sentinel)
+	assert.Equal(t, true, mixedFound)
+	assert.Equal(t, 1, mixedExit)
+
+	// Test no return
+	uselessLine := fmt.Sprintf("%s%s", testLine, testLine)
+	uselessLines := smartSplitLines(uselessLine, sentinel)
+	assert.Equal(t, 1, len(uselessLines))
+	assert.Equal(t, uselessLine, uselessLines[0])
+	uselessFound, _ := checkLine(uselessLines[0], sentinel)
+	assert.Equal(t, false, uselessFound)
+}
