@@ -19,6 +19,9 @@ build:
             go vet *.go
     - golint
     - script:
+        name: go test
+        code: go test
+    - script:
         name: clear out the build binaries
         code: |-
             rm -rf $GOPATH/pkg
