@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -68,11 +67,13 @@ type BasePipeline struct {
 	env        *Environment
 	steps      []*Step
 	afterSteps []*Step
+	logger     *LogEntry
 }
 
 // NewBasePipeline returns a new BasePipeline
 func NewBasePipeline(options *PipelineOptions, steps []*Step, afterSteps []*Step) *BasePipeline {
-	return &BasePipeline{options, &Environment{}, steps, afterSteps}
+	logger := rootLogger.WithField("Logger", "Pipeline")
+	return &BasePipeline{options, &Environment{}, steps, afterSteps, logger}
 }
 
 // Steps is a getter for steps
@@ -124,14 +125,14 @@ func (p *BasePipeline) PassthruEnv() [][]string {
 // FetchSteps makes sure we have all the steps
 func (p *BasePipeline) FetchSteps() error {
 	for _, step := range p.steps {
-		log.Println("Fetching Step:", step.Name, step.ID)
+		p.logger.Println("Preparing Step:", step.Name)
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}
 	}
 
 	for _, step := range p.afterSteps {
-		log.Println("Fetching After Step:", step.Name, step.ID)
+		p.logger.Println("Preparing After Step:", step.Name)
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}
@@ -189,11 +190,10 @@ func (p *BasePipeline) ExportEnvironment(sessionCtx context.Context, sess *Sessi
 	return nil
 }
 
-// LogEnvironment dumps the base environment to our logs
+// LogEnvironment dumps the base environment
 func (p *BasePipeline) LogEnvironment() {
-	// Some helpful logging
-	log.Println("Base Pipeline Environment:")
+	p.logger.Debugln("Base Pipeline Environment:")
 	for _, pair := range p.env.Ordered() {
-		log.Println(" ", pair[0], pair[1])
+		p.logger.Debugln(" ", pair[0], pair[1])
 	}
 }

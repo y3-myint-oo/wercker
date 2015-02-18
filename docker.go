@@ -6,7 +6,6 @@ import (
 	"path"
 
 	"code.google.com/p/go-uuid/uuid"
-	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/term"
 	"github.com/fsouza/go-dockerclient"
 )
@@ -14,12 +13,15 @@ import (
 // DockerClient is our wrapper for docker.Client
 type DockerClient struct {
 	*docker.Client
+	logger *LogEntry
 }
 
 // NewDockerClient based on options and env
 func NewDockerClient(options *DockerOptions) (*DockerClient, error) {
 	dockerHost := options.DockerHost
 	tlsVerify := options.DockerTLSVerify
+
+	logger := rootLogger.WithField("Logger", "Docker")
 
 	var (
 		client *docker.Client
@@ -35,7 +37,7 @@ func NewDockerClient(options *DockerOptions) (*DockerClient, error) {
 		cert := path.Join(dockerCertPath, fmt.Sprintf("cert.pem"))
 		ca := path.Join(dockerCertPath, fmt.Sprintf("ca.pem"))
 		key := path.Join(dockerCertPath, fmt.Sprintf("key.pem"))
-		log.Println("key path", key)
+		logger.Println("key path", key)
 		client, err = docker.NewVersionnedTLSClient(dockerHost, cert, key, ca, "")
 		if err != nil {
 			return nil, err
@@ -46,7 +48,7 @@ func NewDockerClient(options *DockerOptions) (*DockerClient, error) {
 			return nil, err
 		}
 	}
-	return &DockerClient{client}, nil
+	return &DockerClient{Client: client, logger: logger}, nil
 }
 
 // RunAndAttach gives us a raw connection to a newly run container
@@ -95,7 +97,7 @@ func (c *DockerClient) RunAndAttach(name string) error {
 	go func() {
 		err := c.AttachToContainer(opts)
 		if err != nil {
-			log.Panicln("attach panic", err)
+			c.logger.Panicln("attach panic", err)
 		}
 	}()
 

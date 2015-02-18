@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"code.google.com/p/go-uuid/uuid"
-	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,7 +32,7 @@ func emptyEnv() *Environment {
 }
 
 func run(t *testing.T, gFlags []cli.Flag, cFlags []cli.Flag, action func(c *cli.Context), args []string) {
-	log.SetLevel(log.DebugLevel)
+	rootLogger.SetLevel("debug")
 	clearTheEnvironment()
 	app := cli.NewApp()
 	app.Flags = gFlags

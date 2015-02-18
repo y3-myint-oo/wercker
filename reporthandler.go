@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 	"github.com/wercker/reporter"
 )
@@ -16,10 +15,11 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	}
 
 	writers := make(map[string]*reporter.LogWriter)
-
+	logger := rootLogger.WithField("Logger", "Reporter")
 	h := &ReportHandler{
 		reporter: r,
 		writers:  writers,
+		logger:   logger,
 	}
 	return h, nil
 }
@@ -37,7 +37,7 @@ func mapBuildSteps(counter *Counter, phase string, steps ...*Step) []*reporter.N
 	return buffer
 }
 
-// A ReportHandler logs all events to the wercker-api.
+// A ReportHandler reports all events to the wercker-api.
 type ReportHandler struct {
 	reporter        *reporter.Reporter
 	writers         map[string]*reporter.LogWriter
@@ -45,6 +45,7 @@ type ReportHandler struct {
 	currentOrder    int
 	currentBuildID  string
 	currentDeployID string
+	logger          *LogEntry
 }
 
 // BuildStepStarted will handle the BuildStepStarted event.
@@ -163,7 +164,7 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 
 	w, err := h.getStepOutputWriter(args)
 	if err != nil {
-		log.WithField("Error", err).Error("Unable to create step output writer")
+		h.logger.WithField("Error", err).Error("Unable to create step output writer")
 		return
 	}
 	w.Write([]byte(args.Logs))

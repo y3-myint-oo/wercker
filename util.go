@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 const homePrefix = "~/"
@@ -176,7 +174,7 @@ func askForConfirmation() bool {
 	var response string
 	_, err := fmt.Scanln(&response)
 	if err != nil {
-		log.Fatal(err)
+		rootLogger.WithField("Logger", "Util").Fatal(err)
 	}
 	response = strings.ToLower(response)
 	if strings.HasPrefix(response, "y") {
@@ -184,7 +182,7 @@ func askForConfirmation() bool {
 	} else if strings.HasPrefix(response, "n") {
 		return false
 	} else {
-		log.Println("Please type yes or no and then press enter:")
+		println("Please type yes or no and then press enter:")
 		return askForConfirmation()
 	}
 }

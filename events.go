@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/chuckpreslar/emission"
 )
 
@@ -106,8 +105,19 @@ type FullPipelineFinishedArgs struct {
 	AfterStepSuccessful bool
 }
 
+// DebugHandler dumps events
+type DebugHandler struct {
+	logger *LogEntry
+}
+
+// NewDebugHandler constructor
+func NewDebugHandler() *DebugHandler {
+	logger := rootLogger.WithField("Logger", "Events")
+	return &DebugHandler{logger: logger}
+}
+
 // dumpEvent prints out some debug info about an event
-func dumpEvent(event interface{}, indent ...string) {
+func (h *DebugHandler) dumpEvent(event interface{}, indent ...string) {
 	indent = append(indent, "  ")
 	s := reflect.ValueOf(event).Elem()
 
@@ -131,33 +141,29 @@ func dumpEvent(event interface{}, indent ...string) {
 		}
 		if name[:1] == strings.ToLower(name[:1]) {
 			// Not exported, skip it
-			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), "<not exported>"))
+			h.logger.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), "<not exported>"))
 			continue
 		}
 		if name == "Box" || name == "Step" {
-			log.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
+			h.logger.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
 			if !f.IsNil() {
-				dumpEvent(f.Interface(), indent...)
+				h.dumpEvent(f.Interface(), indent...)
 			}
 		} else {
-			log.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
+			h.logger.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
 		}
 	}
 }
 
-type DebugHandler struct{}
-
-func NewDebugHandler() *DebugHandler {
-	return &DebugHandler{}
-}
-
+// Handler returns a per-event dumpEvent
 func (h *DebugHandler) Handler(name string) func(interface{}) {
 	return func(event interface{}) {
-		log.Debugln("Event: ", name)
-		dumpEvent(event)
+		h.logger.Debugln(name)
+		h.dumpEvent(event)
 	}
 }
 
+// ListenTo attaches to the emitter
 func (h *DebugHandler) ListenTo(e *emission.Emitter) {
 	e.AddListener(BuildStarted, h.Handler("BuildStarted"))
 	e.AddListener(BuildFinished, h.Handler("BuildFinished"))
