@@ -92,6 +92,7 @@ var (
 	devFlags = []cli.Flag{
 		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "specify additional environment variables in a file"},
 		cli.BoolFlag{Name: "debug", Usage: "print additional debug information"},
+		cli.BoolFlag{Name: "journal", Usage: "Send logs to systemd-journald. Suppresses stdout logging."},
 	}
 
 	// These flags are advanced dev settings
@@ -178,6 +179,7 @@ func flagsFor(flagSets ...[][]cli.Flag) []cli.Flag {
 type GlobalOptions struct {
 	Debug   bool
 	BaseURL string
+	Journal bool
 
 	// Auth
 	AuthToken      string
@@ -206,6 +208,7 @@ func guessAuthToken(c *cli.Context, e *Environment, authTokenStore string) strin
 // NewGlobalOptions constructor
 func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
 	debug := c.GlobalBool("debug")
+	journal := c.GlobalBool("journal")
 
 	baseURL := c.GlobalString("base-url")
 
@@ -215,6 +218,7 @@ func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
 	return &GlobalOptions{
 		Debug:   debug,
 		BaseURL: baseURL,
+		Journal: journal,
 
 		AuthToken:      authToken,
 		AuthTokenStore: authTokenStore,
