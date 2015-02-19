@@ -363,6 +363,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Grab our config
 	rawConfig, stringConfig, err := p.GetConfig()
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 	shared.config = rawConfig
@@ -370,12 +371,14 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 
 	box, err := p.GetBox(rawConfig)
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 	shared.box = box
 
 	err = p.AddServices(rawConfig, box)
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 
@@ -383,6 +386,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	p.logger.Debugln("Copying source to build directory")
 	err = p.CopySource()
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 
@@ -394,6 +398,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Make sure we have the steps
 	err = pipeline.FetchSteps()
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 
@@ -401,12 +406,14 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// TODO(termie): maybe move this into box.Run?
 	err = box.RunServices()
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 
 	// Boot up our main container
 	container, err := box.Run()
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 	shared.containerID = container.ID
@@ -434,6 +441,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Start our session
 	sessionCtx, sess, err := p.GetSession(runnerCtx, container.ID)
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 	shared.sess = sess
@@ -445,14 +453,17 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	p.logger.Debugln("Setting up guest (base box)")
 	err = pipeline.SetupGuest(sessionCtx, sess)
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 
 	err = pipeline.ExportEnvironment(sessionCtx, sess)
 	if err != nil {
+		sr.Message = err.Error()
 		return shared, err
 	}
 
+	sr.Message = ""
 	sr.Success = true
 	sr.ExitCode = 0
 	return shared, nil
