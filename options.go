@@ -193,6 +193,9 @@ func guessAuthToken(c *cli.Context, e *Environment, authTokenStore string) strin
 	if token != "" {
 		return token
 	}
+	if foundToken, _ := exists(authTokenStore); !foundToken {
+		return ""
+	}
 
 	tokenBytes, err := ioutil.ReadFile(authTokenStore)
 	if err != nil {
