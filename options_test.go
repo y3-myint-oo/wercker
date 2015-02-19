@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -19,21 +18,13 @@ var (
 	emptyFlags    = []cli.Flag{}
 )
 
-func clearTheEnvironment() {
-	env := os.Environ()
-	for _, x := range env {
-		parts := strings.Split(x, "=")
-		_ = os.Unsetenv(parts[0])
-	}
-}
-
 func emptyEnv() *Environment {
 	return NewEnvironment([]string{})
 }
 
 func run(t *testing.T, gFlags []cli.Flag, cFlags []cli.Flag, action func(c *cli.Context), args []string) {
 	rootLogger.SetLevel("debug")
-	clearTheEnvironment()
+	os.Clearenv()
 	app := cli.NewApp()
 	app.Flags = gFlags
 	app.Commands = []cli.Command{
