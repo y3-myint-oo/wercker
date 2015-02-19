@@ -227,15 +227,52 @@ func checkLine(line, sentinel string) (bool, int) {
 	return true, exit
 }
 
+// smartSplitLines tries really hard to make sure our sentinel string
+// ends up on its own line
+func smartSplitLines(line, sentinel string) []string {
+	// NOTE(termie): we have to do some string mangling here to find the
+	//               sentinel when stuff manages to squeeze it on to the
+	//               same logical output line, it isn't pretty and makes
+	//               me sad
+	lines := []string{}
+	splitLines := strings.Split(line, "\n")
+	// If the line at least ends with a newline
+	if len(splitLines) > 1 {
+		// Check the second to last element
+		// (the newline at the end makes an empty final element)
+		possibleSentinel := splitLines[len(splitLines)-2]
+		// And we expect a newline at the end
+		possibleSentinel = fmt.Sprintf("%s\n", possibleSentinel)
+		foundExit, _ := checkLine(possibleSentinel, sentinel)
+		// If we found the exit code, make sure it gets read as a separate line
+		if foundExit {
+			// If we weren't the only line to begin with, add the rest
+			if len(splitLines) > 2 {
+				otherLines := strings.Join(splitLines[:len(splitLines)-2], "\n")
+				otherLines = fmt.Sprintf("%s\n", otherLines)
+				lines = append(lines, otherLines)
+			}
+			// Add the line we split off
+			lines = append(lines, possibleSentinel)
+		} else {
+			// Otherwise if no exit was found just return the whole thing
+			lines = append(lines, line)
+		}
+	} else {
+		lines = append(lines, line)
+	}
+	return lines
+}
+
 // SendChecked sends commands, waits for them to complete and returns the
 // exit status and output
 // Ways to know a command is done:
-//	[ ] We received the sentinel echo
-//  [ ] The container has exited and we've exhausted the incoming data
-//  [ ] The session has closed and we've exhaused the incoming data
-//  [ ] The command has timed out
+//  [x] We received the sentinel echo
+//  [x] The container has exited and we've exhausted the incoming data
+//  [x] The session has closed and we've exhaused the incoming data
+//  [x] The command has timed out
 // Ways for a command to be successful:
-//  [ ] We received the sentinel echo with exit code 0
+//  [x] We received the sentinel echo with exit code 0
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
 	recv := []string{}
 	sentinel := randomSentinel()
@@ -297,25 +334,29 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 			case line := <-s.recv:
 				// If we found a line reset the NoResponseTimeout timer
 				noResponseTimeout <- struct{}{}
-				// If we found the exit code, we're done
-				foundExit, exit := checkLine(line, sentinel)
-				if foundExit {
+				lines := smartSplitLines(line, sentinel)
+				for _, subline := range lines {
+					// subline = fmt.Sprintf("%s\n", subline)
+					// If we found the exit code, we're done
+					foundExit, exit := checkLine(subline, sentinel)
+					if foundExit {
+						s.e.Emit(Logs, &LogsArgs{
+							Options: s.options,
+							Hidden:  true,
+							Logs:    subline,
+							Stream:  "stdout",
+						})
+						exitChan <- exit
+						return
+					}
 					s.e.Emit(Logs, &LogsArgs{
 						Options: s.options,
-						Hidden:  true,
-						Logs:    line,
+						Hidden:  s.logsHidden,
+						Logs:    subline,
 						Stream:  "stdout",
 					})
-					exitChan <- exit
-					return
+					recv = append(recv, subline)
 				}
-				s.e.Emit(Logs, &LogsArgs{
-					Options: s.options,
-					Hidden:  s.logsHidden,
-					Logs:    line,
-					Stream:  "stdout",
-				})
-				recv = append(recv, line)
 			case <-stopReading:
 				return
 			}
