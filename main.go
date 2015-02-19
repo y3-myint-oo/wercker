@@ -184,6 +184,8 @@ func main() {
 
 	app := cli.NewApp()
 	app.Author = "Team wercker"
+	app.Name = "wercker"
+	app.Usage = "build and deploy from the command line"
 	app.Email = "pleasemailus@wercker.com"
 	app.Version = FullVersion()
 	app.Flags = flagsFor(GlobalFlags)
