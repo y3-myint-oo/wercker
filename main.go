@@ -569,13 +569,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	logger.Println("setup environment")
 	logger.Println("===========================================")
 
-	e.Emit(Logs, &LogsArgs{
-		Options: options,
-		Logs:    fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
-		Stream:  "stdout",
-		Hidden:  false,
-	})
-
 	shared, err := p.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
 		if options.ShouldRemove {
