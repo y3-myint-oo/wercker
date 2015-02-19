@@ -10,6 +10,32 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
+func requireDockerEndpoint(options *DockerOptions) error {
+	client, err := NewDockerClient(options)
+	if err != nil {
+		if err == docker.ErrInvalidEndpoint {
+			return fmt.Errorf(`The given docker endpoint seems invalid:
+  %s
+To specify a different endpoint use the DOCKER_HOST environment variable,
+or the --docker-host command-line flag.
+`, options.DockerHost)
+		}
+		return err
+	}
+	_, err = client.Version()
+	if err != nil {
+		if err == docker.ErrConnectionRefused {
+			return fmt.Errorf(`Can't connect to the Docker endpoint:
+  %s
+To specify a different endpoint use the DOCKER_HOST environment variable,
+or the --docker-host command-line flag.
+`, options.DockerHost)
+		}
+		return err
+	}
+	return nil
+}
+
 // DockerClient is our wrapper for docker.Client
 type DockerClient struct {
 	*docker.Client

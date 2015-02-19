@@ -38,7 +38,6 @@ var (
 			}
 			err = cmdBuild(opts)
 			if err != nil {
-				cliLogger.Errorln("Command failed\n", err)
 				os.Exit(1)
 			}
 		},
@@ -60,7 +59,6 @@ var (
 			}
 			err = cmdDeploy(opts)
 			if err != nil {
-				cliLogger.Errorln("Command failed\n", err)
 				os.Exit(1)
 			}
 		},
@@ -80,7 +78,6 @@ var (
 			}
 			err = cmdDetect(opts)
 			if err != nil {
-				cliLogger.Errorln("Command failed\n", err)
 				os.Exit(1)
 			}
 		},
@@ -101,7 +98,6 @@ var (
 			}
 			err = cmdInspect(opts)
 			if err != nil {
-				cliLogger.Errorln("Command failed\n", err)
 				os.Exit(1)
 			}
 		},
@@ -121,7 +117,6 @@ var (
 			}
 			err = cmdLogin(opts)
 			if err != nil {
-				cliLogger.Errorln("Command failed\n", err)
 				os.Exit(1)
 			}
 		},
@@ -142,7 +137,6 @@ var (
 
 			err = cmdPull(c, opts)
 			if err != nil {
-				cliLogger.Errorln("Command failed\n", err)
 				os.Exit(1)
 			}
 		},
@@ -170,7 +164,6 @@ var (
 			}
 			err = cmdVersion(opts)
 			if err != nil {
-				cliLogger.Errorln("Command failed\n", err)
 				os.Exit(1)
 			}
 		},
@@ -553,13 +546,18 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	buildFinishedArgs := &BuildFinishedArgs{Box: nil, Result: "failed"}
 	defer buildFinisher.Finish(buildFinishedArgs)
 
-	logger.Println("############ Executing Pipeline ############")
 	dumpOptions(options)
-	logger.Println("############################################")
+
+	// Do some sanity checks before starting
+	err := requireDockerEndpoint(options.DockerOptions)
+	if err != nil {
+		return soft.Exit(err)
+	}
 
 	runnerCtx := context.Background()
 
-	_, err := p.EnsureCode()
+	logger.Println("############ Executing Pipeline ############")
+	_, err = p.EnsureCode()
 	if err != nil {
 		soft.Exit(err)
 	}
