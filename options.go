@@ -81,7 +81,7 @@ var (
 
 	// These flags affect our artifact interactions
 	artifactFlags = []cli.Flag{
-		cli.BoolFlag{Name: "no-artifacts", Usage: "don't upload artifacts"},
+		cli.BoolFlag{Name: "artifacts", Usage: "store artifacts"},
 		cli.BoolFlag{Name: "no-remove", Usage: "don't remove the containers"},
 		cli.BoolFlag{Name: "store-local", Usage: "store artifacts and containers locally"},
 		cli.BoolFlag{Name: "store-s3", Usage: "store artifacts and containers on s3"},
@@ -689,7 +689,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	// These timeouts are given in minutes but we store them as milliseconds
 	commandTimeout := int(c.Float64("command-timeout") * 1000 * 60)
 	noResponseTimeout := int(c.Float64("no-response-timeout") * 1000 * 60)
-	shouldArtifacts := !c.Bool("no-artifacts")
+	shouldArtifacts := c.Bool("artifacts")
 	shouldRemove := !c.Bool("no-remove")
 	sourceDir := c.String("source-dir")
 
