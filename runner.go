@@ -196,7 +196,10 @@ func (p *Runner) GetConfig() (*RawConfig, string, error) {
 }
 
 // GetBox fetches and returns the base box for the pipeline.
-func (p *Runner) GetBox(rawConfig *RawConfig) (*Box, error) {
+func (p *Runner) GetBox(pipeline Pipeline, rawConfig *RawConfig) (*Box, error) {
+	if pipeline.Box() != nil {
+		return pipeline.Box(), nil
+	}
 	// Promote RawBox to a real Box. We believe in you, Box!
 	box, err := rawConfig.RawBox.ToBox(p.options, nil)
 	if err != nil {
@@ -377,7 +380,10 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	shared.config = rawConfig
 	sr.WerckerYamlContents = stringConfig
 
-	box, err := p.GetBox(rawConfig)
+	pipeline, err := p.GetPipeline(rawConfig)
+	shared.pipeline = pipeline
+
+	box, err := p.GetBox(pipeline, rawConfig)
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err
@@ -397,9 +403,6 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		sr.Message = err.Error()
 		return shared, err
 	}
-
-	pipeline, err := p.GetPipeline(rawConfig)
-	shared.pipeline = pipeline
 
 	p.logger.Debugln("Steps:", len(pipeline.Steps()))
 

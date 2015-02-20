@@ -1,5 +1,6 @@
-box: tcnksm/gox:1.3.3
+# box: tcnksm/gox:1.3.3
 build:
+  box: tcnksm/gox:1.3.3
   steps:
     - install-packages:
         packages: openssh-client rsync
@@ -42,6 +43,7 @@ build:
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
 
 deploy:
+  box: golang
   steps:
     - s3sync:
         source-dir: "."

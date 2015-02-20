@@ -12,6 +12,16 @@ type Deploy struct {
 
 // ToDeploy converts a RawPipeline into a Deploy
 func (p *RawPipeline) ToDeploy(options *PipelineOptions) (*Deploy, error) {
+	var box *Box
+	var err error
+	rawBox := p.GetBox()
+	if rawBox != nil {
+		box, err = rawBox.ToBox(options, &BoxOptions{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var steps []*Step
 	var afterSteps []*Step
 
@@ -43,7 +53,7 @@ func (p *RawPipeline) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 		}
 	}
 
-	deploy := &Deploy{NewBasePipeline(options, steps, afterSteps), options}
+	deploy := &Deploy{NewBasePipeline(options, box, steps, afterSteps), options}
 	deploy.InitEnv()
 	return deploy, nil
 }

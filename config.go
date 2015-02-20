@@ -15,13 +15,21 @@ type RawBox string
 type RawServices []RawBox
 
 // RawPipeline is the data type for builds and deploys in the wercker.yml
-type RawPipeline map[string][]interface{}
+type RawPipeline map[string]interface{}
+
+func (r RawPipeline) GetBox() *RawBox {
+	if s, ok := r["box"]; ok {
+		box := RawBox(s.(string))
+		return &box
+	}
+	return nil
+}
 
 // GetSteps retrieves the steps section for the build or deploy. Return nil if
 // not found.
 func (r RawPipeline) GetSteps(section string) []interface{} {
 	if s, ok := r[section]; ok {
-		return s
+		return s.([]interface{})
 	}
 	return nil
 }
