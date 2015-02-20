@@ -344,7 +344,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 	}
 	defer os.Remove(file.Name())
 
-	p := fmt.Sprintf("builds/%s/docker", options.BuildID)
+	p := fmt.Sprintf("api/v2/builds/%s/docker", options.BuildID)
 
 	logger.WithFields(LogFields{
 		"RequestPath":   p,
@@ -504,7 +504,7 @@ func getYml(detected string, options *DetectOptions) {
 			os.Exit(1)
 		}
 	}
-	url := fmt.Sprintf("%s/yml/%s", options.WerckerEndpoint, detected)
+	url := fmt.Sprintf("%s/api/v2/yml/%s", options.BaseURL, detected)
 	res, err := http.Get(url)
 	if err != nil {
 		logger.WithField("Error", err).Error("Unable to reach wercker API")

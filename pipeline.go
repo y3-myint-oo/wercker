@@ -105,7 +105,7 @@ func (p *BasePipeline) CommonEnv() [][]string {
 		[]string{"WERCKER_APPLICATION_ID", p.options.ApplicationID},
 		[]string{"WERCKER_APPLICATION_NAME", p.options.ApplicationName},
 		[]string{"WERCKER_APPLICATION_OWNER_NAME", p.options.ApplicationOwnerName},
-		[]string{"WERCKER_APPLICATION_URL", fmt.Sprintf("%s#application/%s", p.options.BaseURL, p.options.ApplicationID)},
+		[]string{"WERCKER_APPLICATION_URL", fmt.Sprintf("%s/#application/%s", p.options.BaseURL, p.options.ApplicationID)},
 		//[]string{"WERCKER_STARTED_BY", ...},
 		[]string{"TERM", "xterm-256color"},
 	}

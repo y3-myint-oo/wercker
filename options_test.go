@@ -64,7 +64,6 @@ func TestOptionsGlobalOptions(t *testing.T) {
 		opts, err := NewGlobalOptions(c, emptyEnv())
 		assert.Nil(t, err)
 		assert.Equal(t, true, opts.Debug)
-		assert.Equal(t, "http://example.com/wercker-endpoint", opts.WerckerEndpoint)
 		assert.Equal(t, "http://example.com/base-url", opts.BaseURL)
 		assert.Equal(t, "test-token", opts.AuthToken)
 		assert.Equal(t, "/tmp/.wercker/test-token", opts.AuthTokenStore)

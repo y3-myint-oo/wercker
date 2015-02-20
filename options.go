@@ -22,8 +22,9 @@ import (
 var (
 	// These flags tell us where to go for operations
 	endpointFlags = []cli.Flag{
-		cli.StringFlag{Name: "wercker-endpoint", Value: "https://app.wercker.com/api/v2", Usage: "wercker api endpoint"},
-		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com/", Usage: "base url for the web app"},
+		// deprecated
+		cli.StringFlag{Name: "wercker-endpoint", Value: "", Usage: "deprecated", Hidden: true},
+		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com", Usage: "base url for the wercker app", Hidden: true},
 	}
 
 	// These flags let us auth to wercker services
@@ -175,11 +176,8 @@ func flagsFor(flagSets ...[][]cli.Flag) []cli.Flag {
 
 // GlobalOptions applicable to everything
 type GlobalOptions struct {
-	Debug bool
-
-	// Endpoints
-	BaseURL         string
-	WerckerEndpoint string
+	Debug   bool
+	BaseURL string
 
 	// Auth
 	AuthToken      string
@@ -210,16 +208,13 @@ func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
 	debug := c.GlobalBool("debug")
 
 	baseURL := c.GlobalString("base-url")
-	werckerEndpoint := c.GlobalString("wercker-endpoint")
 
 	authTokenStore := expandHomePath(c.GlobalString("auth-token-store"), e.Get("HOME"))
 	authToken := guessAuthToken(c, e, authTokenStore)
 
 	return &GlobalOptions{
-		Debug: debug,
-
-		BaseURL:         baseURL,
-		WerckerEndpoint: werckerEndpoint,
+		Debug:   debug,
+		BaseURL: baseURL,
 
 		AuthToken:      authToken,
 		AuthTokenStore: authTokenStore,
