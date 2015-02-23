@@ -132,7 +132,11 @@ var (
 
 	pullFlags = [][]cli.Flag{
 		[]cli.Flag{
-			cli.StringFlag{Name: "build-id", Value: "", Usage: "build id to retrieve from wercker"},
+			cli.StringFlag{Name: "branch", Value: "", Usage: ""},
+			cli.StringFlag{Name: "result", Value: "", Usage: ""},
+			cli.StringFlag{Name: "output", Value: "./repository.tar", Usage: "asd"},
+			cli.BoolFlag{Name: "load", Usage: "load the container into docker after downloading"},
+			cli.BoolFlag{Name: "f, force", Usage: "override output if it already exists"},
 		},
 	}
 
@@ -899,7 +903,14 @@ type PullOptions struct {
 	*GlobalOptions
 	*DockerOptions
 
-	BuildID string
+	Repository string
+	Branch     string
+	Commit     string
+	Status     string
+	Result     string
+	Output     string
+	Load       bool
+	Force      bool
 }
 
 // NewPullOptions constructor
@@ -915,14 +926,26 @@ func NewPullOptions(c *cli.Context, e *Environment) (*PullOptions, error) {
 	}
 
 	if len(c.Args()) != 1 {
-		return nil, errors.New("Pull requires buildId as the only argument: wercker [global options] pull [command options] <build id>")
+		return nil, errors.New("Pull requires the repository or the build ID as the only argument")
 	}
-	buildID := c.Args().First()
+	repository := c.Args().First()
+
+	output, err := filepath.Abs(c.String("output"))
+	if err != nil {
+		return nil, err
+	}
 
 	return &PullOptions{
 		GlobalOptions: globalOpts,
 		DockerOptions: dockerOpts,
-		BuildID:       buildID,
+
+		Repository: repository,
+		Branch:     c.String("branch"),
+		Status:     c.String("status"),
+		Result:     c.String("result"),
+		Output:     output,
+		Load:       c.Bool("load"),
+		Force:      c.Bool("force"),
 	}, nil
 }
 
