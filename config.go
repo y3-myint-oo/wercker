@@ -93,6 +93,10 @@ func ConfigFromYaml(file []byte) (*RawConfig, error) {
 
 	err := yaml.Unmarshal(file, &m)
 	if err != nil {
+		errStr := err.Error()
+		err = fmt.Errorf(`Error parsing your wercker.yml:
+  %s
+`, errStr)
 		return nil, err
 	}
 

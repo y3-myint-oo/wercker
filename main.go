@@ -559,7 +559,13 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	logger.Println("############ Executing Pipeline ############")
 	_, err = p.EnsureCode()
 	if err != nil {
-		soft.Exit(err)
+		e.Emit(Logs, &LogsArgs{
+			Options: options,
+			Hidden:  false,
+			Stream:  "stderr",
+			Logs:    err.Error(),
+		})
+		return soft.Exit(err)
 	}
 
 	logger.Println()
@@ -576,6 +582,12 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 	if err != nil {
 		logger.Warnln("============== Step failed! ===============")
+		e.Emit(Logs, &LogsArgs{
+			Options: options,
+			Hidden:  false,
+			Stream:  "stderr",
+			Logs:    err.Error(),
+		})
 		return soft.Exit(err)
 	}
 	logger.Println("============== Step passed! ===============")
