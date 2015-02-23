@@ -9,10 +9,10 @@ import (
 
 // APIClient is a very dumb client for the wercker API
 type APIClient struct {
-	endpoint string
-	client   *http.Client
-	options  *GlobalOptions
-	logger   *LogEntry
+	baseURL string
+	client  *http.Client
+	options *GlobalOptions
+	logger  *LogEntry
 }
 
 // NewAPIClient returns our dumb client
@@ -21,17 +21,16 @@ func NewAPIClient(options *GlobalOptions) *APIClient {
 		"Logger": "API",
 	})
 	return &APIClient{
-		endpoint: options.WerckerEndpoint,
-		client:   &http.Client{},
-		options:  options,
-		logger:   logger,
+		baseURL: options.BaseURL,
+		client:  &http.Client{},
+		options: options,
+		logger:  logger,
 	}
 }
 
 // URL joins some strings to the endpoint
 func (c *APIClient) URL(parts ...string) string {
-	allParts := append([]string{c.endpoint}, parts...)
-	return strings.Join(allParts, "/")
+	return c.baseURL + strings.Join(parts, "/")
 }
 
 // GetBody does a GET request. If the status code is 200, it will return the

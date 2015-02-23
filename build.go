@@ -51,7 +51,7 @@ func (b *Build) InitEnv() {
 		[]string{"BUILD", "true"},
 		[]string{"CI", "true"},
 		[]string{"WERCKER_BUILD_ID", b.options.BuildID},
-		[]string{"WERCKER_BUILD_URL", fmt.Sprintf("%s#build/%s", b.options.BaseURL, b.options.BuildID)},
+		[]string{"WERCKER_BUILD_URL", fmt.Sprintf("%s/#build/%s", b.options.BaseURL, b.options.BuildID)},
 		[]string{"WERCKER_GIT_DOMAIN", b.options.GitDomain},
 		[]string{"WERCKER_GIT_OWNER", b.options.GitOwner},
 		[]string{"WERCKER_GIT_REPOSITORY", b.options.GitRepository},
