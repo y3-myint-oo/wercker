@@ -358,6 +358,13 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 
+	e := p.Emitter()
+	e.Emit(Logs, &LogsArgs{
+		Logs:   fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
+		Stream: "stdout",
+		Hidden: false,
+	})
+
 	p.logger.Debugln("Application:", p.options.ApplicationName)
 
 	// Grab our config

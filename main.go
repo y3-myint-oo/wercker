@@ -566,6 +566,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	logger.Println("============== Running Step ===============")
 	logger.Println("setup environment")
 	logger.Println("===========================================")
+
 	shared, err := p.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
 		if options.ShouldRemove {
