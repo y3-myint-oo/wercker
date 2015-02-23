@@ -880,6 +880,20 @@ func NewLoginOptions(c *cli.Context, e *Environment) (*LoginOptions, error) {
 	return &LoginOptions{globalOpts}, nil
 }
 
+// LogoutOptions for the login command
+type LogoutOptions struct {
+	*GlobalOptions
+}
+
+// NewLoginOptions constructor
+func NewLogoutOptions(c *cli.Context, e *Environment) (*LogoutOptions, error) {
+	globalOpts, err := NewGlobalOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+	return &LogoutOptions{globalOpts}, nil
+}
+
 // PullOptions for the pull command
 type PullOptions struct {
 	*GlobalOptions

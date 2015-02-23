@@ -144,6 +144,24 @@ var (
 		},
 	}
 
+	logoutCommand = cli.Command{
+		Name:      "logout",
+		ShortName: "l",
+		Usage:     "logout from wercker",
+		Flags:     []cli.Flag{},
+		Action: func(c *cli.Context) {
+			opts, err := NewLogoutOptions(c, NewEnvironment(os.Environ()))
+			if err != nil {
+				cliLogger.Errorln("Invalid options\n", err)
+				os.Exit(1)
+			}
+			err = cmdLogout(opts)
+			if err != nil {
+				os.Exit(1)
+			}
+		},
+	}
+
 	pullCommand = cli.Command{
 		Name:        "pull",
 		ShortName:   "p",
@@ -211,6 +229,7 @@ func main() {
 		detectCommand,
 		// inspectCommand,
 		loginCommand,
+		logoutCommand,
 		pullCommand,
 		versionCommand,
 	}
@@ -397,6 +416,19 @@ func cmdLogin(options *LoginOptions) error {
 
 	logger.Println("Saving token to: ", options.AuthTokenStore)
 	return saveToken(options.AuthTokenStore, token)
+}
+
+func cmdLogout(options *LogoutOptions) error {
+	soft := &SoftExit{options.GlobalOptions}
+	logger := rootLogger.WithField("Logger", "Main")
+
+	logger.Println("Logging out")
+
+	err := removeToken(options.GlobalOptions)
+	if err != nil {
+		return soft.Exit(err)
+	}
+	return nil
 }
 
 func cmdPull(c *cli.Context, options *PullOptions) error {
