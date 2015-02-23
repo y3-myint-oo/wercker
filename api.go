@@ -30,7 +30,8 @@ func NewAPIClient(options *GlobalOptions) *APIClient {
 
 // URL joins some strings to the endpoint
 func (c *APIClient) URL(parts ...string) string {
-	return c.baseURL + strings.Join(parts, "/")
+	realParts := append([]string{c.baseURL}, parts...)
+	return strings.Join(realParts, "/")
 }
 
 // GetBody does a GET request. If the status code is 200, it will return the
