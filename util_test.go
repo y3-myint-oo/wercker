@@ -27,3 +27,65 @@ func TestCounterIncrement2(t *testing.T) {
 	n2 := counter.Increment()
 	assert.Equal(t, 4, n2, "expected second increment to be 4")
 }
+
+func TestParseApplicationIDValid(t *testing.T) {
+	applicationID := "wercker/foobar"
+
+	username, name, ok := ParseApplicationID(applicationID)
+
+	assert.Equal(t, true, ok)
+	assert.Equal(t, "wercker", username)
+	assert.Equal(t, "foobar", name)
+}
+
+func TestParseApplicationIDInvalid(t *testing.T) {
+	applicationID := "foofoo"
+
+	username, name, ok := ParseApplicationID(applicationID)
+
+	assert.Equal(t, false, ok)
+	assert.Equal(t, "", username)
+	assert.Equal(t, "", name)
+}
+
+func TestParseApplicationIDInvalid2(t *testing.T) {
+	applicationID := "wercker/foobar/bla"
+
+	username, name, ok := ParseApplicationID(applicationID)
+
+	assert.Equal(t, false, ok)
+	assert.Equal(t, "", username)
+	assert.Equal(t, "", name)
+}
+
+func TestIsBuildIDValid(t *testing.T) {
+	buildID := "54e5dde34e104f675e007e3b"
+
+	ok := IsBuildID(buildID)
+
+	assert.Equal(t, true, ok)
+}
+
+func TestIsBuildIDInvalid(t *testing.T) {
+	buildID := "54e5dde34e104f675e007e3"
+
+	ok := IsBuildID(buildID)
+
+	assert.Equal(t, false, ok)
+}
+
+func TestIsBuildIDInvalid2(t *testing.T) {
+	buildID := "invalidinvalidinvalidinv"
+
+	ok := IsBuildID(buildID)
+
+	assert.Equal(t, false, ok)
+}
+
+func TestIsBuildIDInvalid3(t *testing.T) {
+	buildID := "invalid"
+
+	ok := IsBuildID(buildID)
+
+	assert.Equal(t, false, ok)
+}

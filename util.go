@@ -3,12 +3,16 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -213,4 +217,97 @@ func ContainsString(items []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func queryString(opts interface{}) map[string]interface{} {
+	items := map[string]interface{}{}
+	if opts == nil {
+		return items
+	}
+	value := reflect.ValueOf(opts)
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+	if value.Kind() != reflect.Struct {
+		return items
+	}
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Type().Field(i)
+		if field.PkgPath != "" {
+			continue
+		}
+		key := field.Tag.Get("qs")
+		if key == "" {
+			key = strings.ToLower(field.Name)
+		} else if key == "-" {
+			continue
+		}
+		v := value.Field(i)
+		switch v.Kind() {
+		case reflect.Bool:
+			if v.Bool() {
+				items[key] = "1"
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			if v.Int() > 0 {
+				items[key] = strconv.FormatInt(v.Int(), 10)
+			}
+		case reflect.Float32, reflect.Float64:
+			if v.Float() > 0 {
+				items[key] = strconv.FormatFloat(v.Float(), 'f', -1, 64)
+			}
+		case reflect.String:
+			if v.String() != "" {
+				items[key] = v.String()
+			}
+		case reflect.Ptr:
+			if !v.IsNil() {
+				if b, err := json.Marshal(v.Interface()); err == nil {
+					items[key] = string(b)
+				}
+			}
+		case reflect.Map:
+			if len(v.MapKeys()) > 0 {
+				if b, err := json.Marshal(v.Interface()); err == nil {
+					items[key] = string(b)
+				}
+			}
+		}
+	}
+	return items
+}
+
+var buildRegex *regexp.Regexp = regexp.MustCompile("^[0-9a-fA-F]{24}$")
+
+func IsBuildID(input string) bool {
+	return buildRegex.Match([]byte(input))
+}
+
+func ParseApplicationID(input string) (username, name string, ok bool) {
+	split := strings.Split(input, "/")
+	if len(split) == 2 {
+		return split[0], split[1], true
+	}
+	return "", "", false
+}
+
+type CounterReader struct {
+	r io.Reader
+	c int64
+}
+
+func NewCounterReader(r io.Reader) *CounterReader {
+	return &CounterReader{r: r}
+}
+
+func (c *CounterReader) Read(p []byte) (int, error) {
+	read, err := c.r.Read(p)
+
+	c.c += int64(read)
+
+	return read, err
+}
+
+func (c *CounterReader) Count() int64 {
+	return c.c
 }
