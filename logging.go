@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/wercker/reporter"
 )
 
 // Logger is a wrapper for logrus so that we don't have to keep referring
@@ -22,6 +23,13 @@ type LogFields logrus.Fields
 // NewLogger constructor
 func NewLogger() *Logger {
 	l := &Logger{logrus.New()}
+	return l
+}
+
+// NewRawLogger constructor
+func NewRawLogger() *Logger {
+	l := &Logger{logrus.New()}
+	l.Formatter = &reporter.LiteralFormatter{}
 	return l
 }
 
