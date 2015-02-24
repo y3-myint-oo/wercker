@@ -18,6 +18,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/joho/godotenv"
 	"github.com/mreiferson/go-snappystream"
+	"github.com/wercker/journalhook"
 	"golang.org/x/net/context"
 )
 
@@ -198,6 +199,10 @@ func main() {
 		} else {
 			rootLogger.Formatter = &TerseFormatter{}
 			rootLogger.SetLevel("info")
+		}
+		if ctx.GlobalBool("journal") {
+			rootLogger.Hooks.Add(&journalhook.JournalHook{})
+			rootLogger.Out = ioutil.Discard
 		}
 		return nil
 	}

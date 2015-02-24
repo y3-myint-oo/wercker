@@ -48,3 +48,4 @@ import:
   - package: golang.org/x/net/context
   - package: github.com/mreiferson/go-snappystream
   - package: github.com/blang/semver
+  - package: github.com/wercker/journalhook
