@@ -19,8 +19,10 @@ type RawPipeline map[string]interface{}
 
 func (r RawPipeline) GetBox() *RawBox {
 	if s, ok := r["box"]; ok {
-		box := RawBox(s.(string))
-		return &box
+		if boxstring, ok := s.(string); ok {
+			box := RawBox(boxstring)
+			return &box
+		}
 	}
 	return nil
 }
@@ -29,7 +31,9 @@ func (r RawPipeline) GetBox() *RawBox {
 // not found.
 func (r RawPipeline) GetSteps(section string) []interface{} {
 	if s, ok := r[section]; ok {
-		return s.([]interface{})
+		if steps, ok := s.([]interface{}); ok {
+			return steps
+		}
 	}
 	return nil
 }
