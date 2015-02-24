@@ -446,7 +446,12 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 
 	if IsBuildID(options.Repository) {
 		buildID = options.Repository
-	} else if username, applicationName, ok := ParseApplicationID(options.Repository); ok {
+	} else {
+		username, applicationName, err := ParseApplicationID(options.Repository)
+		if err != nil {
+			return soft.Exit(err)
+		}
+
 		logger.Println("Fetching build information for application", options.Repository)
 
 		opts := &GetBuildsOptions{
@@ -465,8 +470,10 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 			return soft.Exit(errors.New("No finished builds found for this application"))
 		}
 
-		buildID = builds[0].Id
-	} else {
+		buildID = builds[0].ID
+	}
+
+	if buildID == "" {
 		return soft.Exit(errors.New("Unable to parse argument as application or build-id"))
 	}
 
@@ -567,7 +574,7 @@ func emitProgress(counter *CounterReader, total int64, logger *LogEntry) chan<- 
 				current := counter.Count()
 				percentage := (100 * current) / total
 				if percentage != prev {
-					logger.Infof("Downloading: %d%%\r", percentage)
+					logger.Infof("\rDownloading: %d%%%%", percentage)
 					prev = percentage
 				}
 				time.Sleep(1 * time.Second)

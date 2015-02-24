@@ -12,7 +12,7 @@ import (
 )
 
 // routes is a map containing all UriTemplates indexed by name.
-var routes map[string]*uritemplates.UriTemplate = make(map[string]*uritemplates.UriTemplate)
+var routes = make(map[string]*uritemplates.UriTemplate)
 
 func init() {
 	// Add templates to the route map
@@ -108,14 +108,14 @@ type GetBuildsOptions struct {
 
 // APIBuild represents a build from wercker api.
 type APIBuild struct {
-	Id         string
-	Url        string
-	Status     string
-	Result     string
-	CreatedAt  string
-	UpdatedAt  string
-	FinishedAt string
-	Progress   float64
+	ID         string  `json:"id"`
+	URL        string  `json:"url"`
+	Status     string  `json:"status"`
+	Result     string  `json:"result"`
+	CreatedAt  string  `json:"createdAt"`
+	UpdatedAt  string  `json:"updatedAt"`
+	FinishedAt string  `json:"finishedAt"`
+	Progress   float64 `json:"progress"`
 }
 
 // GetBuilds will fetch multiple builds for application username/name.
@@ -229,7 +229,7 @@ func (e *APIError) Error() string {
 
 // parseError will check if res.Body contains a wercker generated error and
 // return that, otherwise it will return a generic message based on statuscode.
-func (a *APIClient) parseError(res *http.Response) error {
+func (c *APIClient) parseError(res *http.Response) error {
 	// Check if the Body contains a wercker JSON error.
 	if res.ContentLength > 0 {
 		contentType := strings.Trim(res.Header.Get("Content-Type"), " ")

@@ -214,7 +214,7 @@ func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
 	debug := c.GlobalBool("debug")
 	journal := c.GlobalBool("journal")
 
-	baseURL := c.GlobalString("base-url")
+	baseURL := strings.TrimRight(c.GlobalString("base-url"), "/")
 
 	authTokenStore := expandHomePath(c.GlobalString("auth-token-store"), e.Get("HOME"))
 	authToken := guessAuthToken(c, e, authTokenStore)
@@ -926,7 +926,7 @@ func NewPullOptions(c *cli.Context, e *Environment) (*PullOptions, error) {
 	}
 
 	if len(c.Args()) != 1 {
-		return nil, errors.New("Pull requires the repository or the build ID as the only argument")
+		return nil, errors.New("Pull requires the application ID or the build ID as the only argument")
 	}
 	repository := c.Args().First()
 

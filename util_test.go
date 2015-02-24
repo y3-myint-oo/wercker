@@ -31,9 +31,9 @@ func TestCounterIncrement2(t *testing.T) {
 func TestParseApplicationIDValid(t *testing.T) {
 	applicationID := "wercker/foobar"
 
-	username, name, ok := ParseApplicationID(applicationID)
+	username, name, err := ParseApplicationID(applicationID)
 
-	assert.Equal(t, true, ok)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, "wercker", username)
 	assert.Equal(t, "foobar", name)
 }
@@ -41,9 +41,9 @@ func TestParseApplicationIDValid(t *testing.T) {
 func TestParseApplicationIDInvalid(t *testing.T) {
 	applicationID := "foofoo"
 
-	username, name, ok := ParseApplicationID(applicationID)
+	username, name, err := ParseApplicationID(applicationID)
 
-	assert.Equal(t, false, ok)
+	assert.Error(t, err)
 	assert.Equal(t, "", username)
 	assert.Equal(t, "", name)
 }
@@ -51,9 +51,9 @@ func TestParseApplicationIDInvalid(t *testing.T) {
 func TestParseApplicationIDInvalid2(t *testing.T) {
 	applicationID := "wercker/foobar/bla"
 
-	username, name, ok := ParseApplicationID(applicationID)
+	username, name, err := ParseApplicationID(applicationID)
 
-	assert.Equal(t, false, ok)
+	assert.Error(t, err)
 	assert.Equal(t, "", username)
 	assert.Equal(t, "", name)
 }
