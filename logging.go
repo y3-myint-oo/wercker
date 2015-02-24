@@ -113,7 +113,7 @@ func (f *TerseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 			fmt.Fprintf(b, "%s ", levelText)
 		}
 	}
-	fmt.Fprintf(b, entry.Message)
+	fmt.Fprint(b, entry.Message)
 	for _, k := range keys {
 		if k != "Error" {
 			continue
