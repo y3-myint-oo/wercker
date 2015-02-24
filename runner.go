@@ -20,6 +20,9 @@ type GetPipeline func(*RawConfig, *PipelineOptions) (Pipeline, error)
 
 // GetBuildPipeline grabs the "build" section of the yaml.
 func GetBuildPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline, error) {
+	if rawConfig.RawBuild == nil {
+		return nil, fmt.Errorf("No build pipeline definition in wercker.yml")
+	}
 	build, err := rawConfig.RawBuild.ToBuild(options)
 	if err != nil {
 		return nil, err
@@ -29,6 +32,9 @@ func GetBuildPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline,
 
 // GetDeployPipeline gets the "deploy" section of the yaml.
 func GetDeployPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline, error) {
+	if rawConfig.RawDeploy == nil {
+		return nil, fmt.Errorf("No deploy pipeline definition in wercker.yml")
+	}
 	build, err := rawConfig.RawDeploy.ToDeploy(options)
 	if err != nil {
 		return nil, err
