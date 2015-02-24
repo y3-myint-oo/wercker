@@ -12,6 +12,16 @@ type Build struct {
 
 // ToBuild converts a RawPipeline into a Build
 func (p *RawPipeline) ToBuild(options *PipelineOptions) (*Build, error) {
+	var box *Box
+	var err error
+	rawBox := p.GetBox()
+	if rawBox != nil {
+		box, err = rawBox.ToBox(options, &BoxOptions{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var steps []*Step
 	var afterSteps []*Step
 
@@ -38,7 +48,7 @@ func (p *RawPipeline) ToBuild(options *PipelineOptions) (*Build, error) {
 		afterSteps = append(afterSteps, realAfterSteps...)
 	}
 
-	build := &Build{NewBasePipeline(options, steps, afterSteps), options}
+	build := &Build{NewBasePipeline(options, box, steps, afterSteps), options}
 	build.InitEnv()
 	return build, nil
 }

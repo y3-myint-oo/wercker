@@ -816,6 +816,15 @@ func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	return pipelineOpts, nil
 }
 
+// NewBuildOptions constructor
+func NewCheckConfigOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+	pipelineOpts, err := NewPipelineOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+	return pipelineOpts, nil
+}
+
 // NewDeployOptions constructor
 func NewDeployOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	pipelineOpts, err := NewPipelineOptions(c, e)

@@ -11,6 +11,7 @@ import (
 type Pipeline interface {
 	// Getters
 	Env() *Environment   // base
+	Box() *Box           // base
 	Steps() []*Step      // base
 	AfterSteps() []*Step // base
 
@@ -65,15 +66,28 @@ func (pr *PipelineResult) ExportEnvironment(sessionCtx context.Context, sess *Se
 type BasePipeline struct {
 	options    *PipelineOptions
 	env        *Environment
+	box        *Box
 	steps      []*Step
 	afterSteps []*Step
 	logger     *LogEntry
 }
 
 // NewBasePipeline returns a new BasePipeline
-func NewBasePipeline(options *PipelineOptions, steps []*Step, afterSteps []*Step) *BasePipeline {
+func NewBasePipeline(options *PipelineOptions, box *Box, steps []*Step, afterSteps []*Step) *BasePipeline {
 	logger := rootLogger.WithField("Logger", "Pipeline")
-	return &BasePipeline{options, &Environment{}, steps, afterSteps, logger}
+	return &BasePipeline{
+		options:    options,
+		env:        &Environment{},
+		box:        box,
+		steps:      steps,
+		afterSteps: afterSteps,
+		logger:     logger,
+	}
+}
+
+// Box is a getter for steps
+func (p *BasePipeline) Box() *Box {
+	return p.box
 }
 
 // Steps is a getter for steps

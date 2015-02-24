@@ -45,6 +45,27 @@ var (
 		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
 	}
 
+	checkConfigCommand = cli.Command{
+		Name: "check-config",
+		// ShortName: "b",
+		Usage: "check the project's yaml",
+		Action: func(c *cli.Context) {
+			envfile := c.GlobalString("environment")
+			_ = godotenv.Load(envfile)
+
+			opts, err := NewCheckConfigOptions(c, NewEnvironment(os.Environ()))
+			if err != nil {
+				cliLogger.Errorln("Invalid options\n", err)
+				os.Exit(1)
+			}
+			err = cmdCheckConfig(opts)
+			if err != nil {
+				os.Exit(1)
+			}
+		},
+		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
+	}
+
 	deployCommand = cli.Command{
 		Name:      "deploy",
 		ShortName: "d",
@@ -185,6 +206,7 @@ func main() {
 	app.Flags = flagsFor(GlobalFlags)
 	app.Commands = []cli.Command{
 		buildCommand,
+		checkConfigCommand,
 		deployCommand,
 		detectCommand,
 		// inspectCommand,
@@ -230,6 +252,65 @@ func cmdBuild(options *PipelineOptions) error {
 
 func cmdDeploy(options *PipelineOptions) error {
 	return executePipeline(options, GetDeployPipeline)
+}
+
+func cmdCheckConfig(options *PipelineOptions) error {
+	soft := &SoftExit{options.GlobalOptions}
+	logger := rootLogger.WithField("Logger", "Main")
+
+	// TODO(termie): this is pretty much copy-paste from the
+	//               runner.GetConfig step, we should probably refactor
+	var werckerYaml []byte
+	var err error
+	if options.WerckerYml != "" {
+		werckerYaml, err = ioutil.ReadFile(options.WerckerYml)
+		if err != nil {
+			return soft.Exit(err)
+		}
+	} else {
+		werckerYaml, err = ReadWerckerYaml([]string{"."}, false)
+		if err != nil {
+			return soft.Exit(err)
+		}
+	}
+
+	// Parse that bad boy.
+	rawConfig, err := ConfigFromYaml(werckerYaml)
+	if err != nil {
+		return soft.Exit(err)
+	}
+
+	if rawConfig.RawBox != nil {
+		box, err := rawConfig.RawBox.ToBox(options, &BoxOptions{})
+		if err != nil {
+			return soft.Exit(err)
+		}
+		logger.Println("Found box:", box.Name)
+	}
+
+	if rawConfig.RawBuild != nil {
+		build, err := rawConfig.RawBuild.ToBuild(options)
+		if err != nil {
+			return soft.Exit(err)
+		}
+		logger.Println("Found build section")
+		if build.box != nil {
+			logger.Println("  with box:", build.box.Name)
+		}
+	}
+
+	if rawConfig.RawDeploy != nil {
+		deploy, err := rawConfig.RawDeploy.ToDeploy(options)
+		if err != nil {
+			return soft.Exit(err)
+		}
+		logger.Println("Found deploy section")
+		if deploy.box != nil {
+			logger.Println("  with box:", deploy.box.Name)
+		}
+	}
+
+	return nil
 }
 
 // detectProject inspects the the current directory that sentcli is running in
