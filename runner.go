@@ -386,6 +386,13 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	pipeline, err := p.GetPipeline(rawConfig)
 	shared.pipeline = pipeline
 
+	e.Emit(Logs, &LogsArgs{
+		Options: p.options,
+		Logs:    fmt.Sprintf("Using config:\n%s\n", stringConfig),
+		Stream:  "stdout",
+		Hidden:  false,
+	})
+
 	box, err := p.GetBox(pipeline, rawConfig)
 	if err != nil {
 		sr.Message = err.Error()
