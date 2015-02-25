@@ -3,12 +3,17 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -213,4 +218,109 @@ func ContainsString(items []string, target string) bool {
 		}
 	}
 	return false
+}
+
+// queryString converts a struct to a map. It looks for items with a qs tag.
+// This code was taken from the fsouza/go-dockerclient, and then slightly
+// modified. See: https://github.com/fsouza/go-dockerclient/blob/5fa67ac8b52afe9430a490391a639085e9357e1e/client.go#L535
+func queryString(opts interface{}) map[string]interface{} {
+	items := map[string]interface{}{}
+	if opts == nil {
+		return items
+	}
+	value := reflect.ValueOf(opts)
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+	if value.Kind() != reflect.Struct {
+		return items
+	}
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Type().Field(i)
+		if field.PkgPath != "" {
+			continue
+		}
+		key := field.Tag.Get("qs")
+		if key == "" {
+			key = strings.ToLower(field.Name)
+		} else if key == "-" {
+			continue
+		}
+		v := value.Field(i)
+		switch v.Kind() {
+		case reflect.Bool:
+			if v.Bool() {
+				items[key] = "1"
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			if v.Int() > 0 {
+				items[key] = strconv.FormatInt(v.Int(), 10)
+			}
+		case reflect.Float32, reflect.Float64:
+			if v.Float() > 0 {
+				items[key] = strconv.FormatFloat(v.Float(), 'f', -1, 64)
+			}
+		case reflect.String:
+			if v.String() != "" {
+				items[key] = v.String()
+			}
+		case reflect.Ptr:
+			if !v.IsNil() {
+				if b, err := json.Marshal(v.Interface()); err == nil {
+					items[key] = string(b)
+				}
+			}
+		case reflect.Map:
+			if len(v.MapKeys()) > 0 {
+				if b, err := json.Marshal(v.Interface()); err == nil {
+					items[key] = string(b)
+				}
+			}
+		}
+	}
+	return items
+}
+
+var buildRegex = regexp.MustCompile("^[0-9a-fA-F]{24}$")
+
+// IsBuildID checks if input is a BuildID. BuildID is defined as a 24 character
+// hex string.
+func IsBuildID(input string) bool {
+	return buildRegex.Match([]byte(input))
+}
+
+// ParseApplicationID parses input and returns the username and application
+// name. A valid application ID is two strings separated by a /.
+func ParseApplicationID(input string) (username, name string, err error) {
+	split := strings.Split(input, "/")
+	if len(split) == 2 {
+		return split[0], split[1], nil
+	}
+	return "", "", errors.New("Unable to parse applicationID")
+}
+
+// CounterReader is a io.Reader which wraps a other io.Reader and stores the
+// bytes reader from it.
+type CounterReader struct {
+	r io.Reader
+	c int64
+}
+
+// NewCounterReader creates a new CounterReader.
+func NewCounterReader(r io.Reader) *CounterReader {
+	return &CounterReader{r: r}
+}
+
+// Read proxy's the request to r, and stores the bytes read as reported by r.
+func (c *CounterReader) Read(p []byte) (int, error) {
+	read, err := c.r.Read(p)
+
+	c.c += int64(read)
+
+	return read, err
+}
+
+// Count returns the bytes read from r.
+func (c *CounterReader) Count() int64 {
+	return c.c
 }

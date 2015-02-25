@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/codegangsta/cli"
@@ -144,12 +145,30 @@ var (
 		},
 	}
 
+	logoutCommand = cli.Command{
+		Name:      "logout",
+		ShortName: "l",
+		Usage:     "logout from wercker",
+		Flags:     []cli.Flag{},
+		Action: func(c *cli.Context) {
+			opts, err := NewLogoutOptions(c, NewEnvironment(os.Environ()))
+			if err != nil {
+				cliLogger.Errorln("Invalid options\n", err)
+				os.Exit(1)
+			}
+			err = cmdLogout(opts)
+			if err != nil {
+				os.Exit(1)
+			}
+		},
+	}
+
 	pullCommand = cli.Command{
 		Name:        "pull",
 		ShortName:   "p",
 		Usage:       "pull <build id>",
 		Description: "download a Docker repository, and load it into Docker",
-		Flags:       flagsFor(DockerFlags),
+		Flags:       flagsFor(DockerFlags, pullFlags),
 		Action: func(c *cli.Context) {
 			opts, err := NewPullOptions(c, NewEnvironment(os.Environ()))
 			if err != nil {
@@ -211,6 +230,7 @@ func main() {
 		detectCommand,
 		// inspectCommand,
 		loginCommand,
+		logoutCommand,
 		pullCommand,
 		versionCommand,
 	}
@@ -399,6 +419,19 @@ func cmdLogin(options *LoginOptions) error {
 	return saveToken(options.AuthTokenStore, token)
 }
 
+func cmdLogout(options *LogoutOptions) error {
+	soft := &SoftExit{options.GlobalOptions}
+	logger := rootLogger.WithField("Logger", "Main")
+
+	logger.Println("Logging out")
+
+	err := removeToken(options.GlobalOptions)
+	if err != nil {
+		return soft.Exit(err)
+	}
+	return nil
+}
+
 func cmdPull(c *cli.Context, options *PullOptions) error {
 	soft := &SoftExit{options.GlobalOptions}
 	logger := rootLogger.WithField("Logger", "Main")
@@ -407,57 +440,80 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 		dumpOptions(options)
 	}
 
-	if options.AuthToken == "" {
-		return soft.Exit(errors.New("You need to login before using this command"))
-	}
-
 	client := NewAPIClient(options.GlobalOptions)
 
-	logger.WithField("BuildID", options.BuildID).
-		Info("Downloading Docker repository")
+	var buildID string
+
+	if IsBuildID(options.Repository) {
+		buildID = options.Repository
+	} else {
+		username, applicationName, err := ParseApplicationID(options.Repository)
+		if err != nil {
+			return soft.Exit(err)
+		}
+
+		logger.Println("Fetching build information for application", options.Repository)
+
+		opts := &GetBuildsOptions{
+			Limit:  1,
+			Branch: options.Branch,
+			Result: options.Status,
+			Status: "finished",
+		}
+
+		builds, err := client.GetBuilds(username, applicationName, opts)
+		if err != nil {
+			return soft.Exit(err)
+		}
+
+		if len(builds) != 1 {
+			return soft.Exit(errors.New("No finished builds found for this application"))
+		}
+
+		buildID = builds[0].ID
+	}
+
+	if buildID == "" {
+		return soft.Exit(errors.New("Unable to parse argument as application or build-id"))
+	}
+
+	logger.Println("Downloading Docker repository for build", buildID)
+
+	if !options.Force {
+		outputExists, err := exists(options.Output)
+		if err != nil {
+			logger.WithField("Error", err).Error("Unable to create output file")
+			return soft.Exit(err)
+		}
+
+		if outputExists {
+			return soft.Exit(errors.New("Output already exists"))
+		}
+	}
+
+	file, err := os.Create(options.Output)
+	if err != nil {
+		logger.WithField("Error", err).Error("Unable to create output file")
+		return soft.Exit(err)
+	}
+
+	repository, err := client.GetDockerRepository(buildID)
+	if err != nil {
+		return soft.Exit(err)
+	}
+	defer repository.Content.Close()
 
 	// Diagram of the various readers/writers
-	// res.body <-- tee <-- s <-- [io.Copy] --> file
+	//   repository <-- tee <-- s <-- [io.Copy] --> file
 	//               |
 	//               +--> hash       *Legend: --> == write, <-- == read
 
-	logger.Debug("Creating temporary file")
+	counter := NewCounterReader(repository.Content)
 
-	file, err := ioutil.TempFile("", "wercker-repository-")
-	if err != nil {
-		logger.WithField("Error", err).Error("Unable to create temporary file")
-		return soft.Exit(err)
-	}
-	defer os.Remove(file.Name())
-
-	p := fmt.Sprintf("api/v2/builds/%s/docker", options.BuildID)
-
-	logger.WithFields(LogFields{
-		"RequestPath":   p,
-		"TemporaryFile": file.Name(),
-	}).Println("Downloading file")
-
-	res, err := client.Get(p)
-	if err != nil {
-		logger.WithField("Error", err).Error("Unable to create request to API")
-		return soft.Exit(err)
-	}
-
-	if res.StatusCode == 404 {
-		return soft.Exit(errors.New("Docker repository was not found"))
-	}
-
-	if res.StatusCode == 401 || res.StatusCode == 403 {
-		return soft.Exit(errors.New("You are not authorized to access the Docker repository for this build"))
-	}
-
-	if res.StatusCode != 200 {
-		return soft.Exit(fmt.Errorf("Server returned an unexpected status code: %d", res.StatusCode))
-	}
+	stopEmit := emitProgress(counter, repository.Size, NewRawLogger())
 
 	hash := sha256.New()
-	tee := io.TeeReader(res.Body, hash)
-	defer res.Body.Close()
+	tee := io.TeeReader(counter, hash)
 	s := snappystream.NewReader(tee, true)
 
 	_, err = io.Copy(file, s)
@@ -466,43 +522,68 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 		return soft.Exit(err)
 	}
 
+	stopEmit <- true
+
 	logger.Println("Download complete")
 
 	calculatedHash := hex.EncodeToString(hash.Sum(nil))
-	providedHash := res.Header.Get("x-amz-meta-sha256")
-
-	if calculatedHash != providedHash {
-		logger.WithFields(LogFields{
-			"CalculatedHash": calculatedHash,
-			"ProvidedHash":   providedHash,
-		}).Error("Calculated hash did not match provided hash")
-		return soft.Exit(errors.New("Calculated hash did not match provided hash"))
+	if calculatedHash != repository.Sha256 {
+		return soft.Exit(fmt.Errorf("Calculated hash did not match provided hash (calculated: %s ; expected: %s)", calculatedHash, repository.Sha256))
 	}
 
-	_, err = file.Seek(0, 0)
-	if err != nil {
-		logger.WithField("Error", err).Error("Unable to reset seeker")
-		return soft.Exit(err)
+	if options.Load {
+		_, err = file.Seek(0, 0)
+		if err != nil {
+			logger.WithField("Error", err).Error("Unable to reset seeker")
+			return soft.Exit(err)
+		}
+
+		dockerClient, err := NewDockerClient(options.DockerOptions)
+		if err != nil {
+			logger.WithField("Error", err).Error("Unable to create Docker client")
+			return soft.Exit(err)
+		}
+
+		logger.Println("Importing into Docker")
+
+		importImageOptions := docker.LoadImageOptions{InputStream: file}
+		err = dockerClient.LoadImage(importImageOptions)
+		if err != nil {
+			logger.WithField("Error", err).Error("Unable to load image")
+			return soft.Exit(err)
+		}
+
+		logger.Println("Finished importing into Docker")
 	}
-
-	dockerClient, err := NewDockerClient(options.DockerOptions)
-	if err != nil {
-		logger.WithField("Error", err).Error("Unable to create Docker client")
-		return soft.Exit(err)
-	}
-
-	logger.Println("Importing into Docker")
-
-	importImageOptions := docker.LoadImageOptions{InputStream: file}
-	err = dockerClient.LoadImage(importImageOptions)
-	if err != nil {
-		logger.WithField("Error", err).Error("Unable to load image")
-		return soft.Exit(err)
-	}
-
-	logger.Println("Finished importing into Docker")
 
 	return nil
+}
+
+// emitProgress will keep emitting progress until a value is send into the
+// returned channel.
+func emitProgress(counter *CounterReader, total int64, logger *Logger) chan<- bool {
+	stop := make(chan bool)
+	go func(stop chan bool, counter *CounterReader, total int64) {
+		// e := GetEmitter()
+		prev := int64(-1)
+		for {
+			current := counter.Count()
+			percentage := (100 * current) / total
+
+			select {
+			case <-stop:
+				logger.Infof("\rDownloading: %3d%%\n", percentage)
+				return
+			default:
+				if percentage != prev {
+					logger.Infof("\rDownloading: %3d%%", percentage)
+					prev = percentage
+				}
+				time.Sleep(1 * time.Second)
+			}
+		}
+	}(stop, counter, total)
+	return stop
 }
 
 func cmdVersion(options *VersionOptions) error {

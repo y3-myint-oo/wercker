@@ -135,3 +135,11 @@ func saveToken(path, token string) error {
 
 	return ioutil.WriteFile(path, []byte(token), 0600)
 }
+
+func removeToken(options *GlobalOptions) error {
+	err := os.Remove(options.AuthTokenStore)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}

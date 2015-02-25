@@ -49,3 +49,4 @@ import:
   - package: github.com/mreiferson/go-snappystream
   - package: github.com/blang/semver
   - package: github.com/wercker/journalhook
+  - package: github.com/jtacoma/uritemplates

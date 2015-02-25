@@ -50,7 +50,7 @@ func defaultArgs(more ...string) []string {
 		"wercker",
 		"--debug",
 		"--wercker-endpoint", "http://example.com/wercker-endpoint",
-		"--base-url", "http://example.com/base-url",
+		"--base-url", "http://example.com/base-url/",
 		"--auth-token", "test-token",
 		"--auth-token-store", "/tmp/.wercker/test-token",
 		"test",
