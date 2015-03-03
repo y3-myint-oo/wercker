@@ -321,7 +321,7 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 				continue
 			case <-time.After(time.Duration(s.options.NoResponseTimeout) * time.Millisecond):
 				stopReading <- struct{}{}
-				errChan <- fmt.Errorf("No response timeout")
+				errChan <- fmt.Errorf("Command timed out after no response")
 				return
 			}
 		}
@@ -373,5 +373,11 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 	}
 
 	r := <-commandComplete
+	// Pretty up the error messages
+	if r.err == context.DeadlineExceeded {
+		r.err = fmt.Errorf("Command timed out")
+	} else if r.err == context.Canceled {
+		r.err = fmt.Errorf("Command cancelled due to error")
+	}
 	return r.exit, r.recv, r.err
 }
