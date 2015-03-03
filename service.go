@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
@@ -54,20 +54,35 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 		b.logger.Debugln("Service container finished with status code:", status, container.ID)
 
 		if status != 0 {
+			var errstream bytes.Buffer
+			var outstream bytes.Buffer
 			// recv := make(chan string)
 			// outputStream := NewReceiver(recv)
 			opts := docker.LogsOptions{
 				Container:    container.ID,
 				Stdout:       true,
 				Stderr:       true,
-				ErrorStream:  os.Stderr,
-				OutputStream: os.Stdout,
+				ErrorStream:  &errstream,
+				OutputStream: &outstream,
 				RawTerminal:  false,
 			}
 			err = b.client.Logs(opts)
 			if err != nil {
 				b.logger.Panicln(err)
 			}
+			e := GetEmitter()
+			e.Emit(Logs, &LogsArgs{
+				Options: b.options,
+				Hidden:  false,
+				Stream:  fmt.Sprintf("%s-stdout", b.Name),
+				Logs:    outstream.String(),
+			})
+			e.Emit(Logs, &LogsArgs{
+				Options: b.options,
+				Hidden:  false,
+				Stream:  fmt.Sprintf("%s-stderr", b.Name),
+				Logs:    errstream.String(),
+			})
 		}
 	}()
 
