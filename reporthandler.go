@@ -24,12 +24,12 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	return h, nil
 }
 
-func mapBuildSteps(counter *Counter, phase string, steps ...*Step) []*reporter.NewStep {
+func mapBuildSteps(counter *Counter, phase string, steps ...IStep) []*reporter.NewStep {
 	buffer := make([]*reporter.NewStep, len(steps))
 	for i, s := range steps {
 		buffer[i] = &reporter.NewStep{
-			DisplayName: s.DisplayName,
-			Name:        s.Name,
+			DisplayName: s.DisplayName(),
+			Name:        s.Name(),
 			Order:       counter.Increment(),
 			Phase:       phase,
 		}
@@ -41,7 +41,7 @@ func mapBuildSteps(counter *Counter, phase string, steps ...*Step) []*reporter.N
 type ReportHandler struct {
 	reporter        *reporter.Reporter
 	writers         map[string]*reporter.LogWriter
-	currentStep     *Step
+	currentStep     IStep
 	currentOrder    int
 	currentBuildID  string
 	currentDeployID string
@@ -58,7 +58,7 @@ func (h *ReportHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 	opts := &reporter.PipelineStepStartedArgs{
 		BuildID:  args.Options.BuildID,
 		DeployID: args.Options.DeployID,
-		StepName: args.Step.Name,
+		StepName: args.Step.Name(),
 		Order:    args.Order,
 	}
 
@@ -85,12 +85,12 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 	h.currentOrder = -1
 	h.currentBuildID = ""
 
-	h.flushLogs(args.Options.PipelineID, args.Step.Name, args.Order)
+	h.flushLogs(args.Options.PipelineID, args.Step.Name(), args.Order)
 
 	opts := &reporter.PipelineStepFinishedArgs{
 		BuildID:               args.Options.BuildID,
 		DeployID:              args.Options.DeployID,
-		StepName:              args.Step.Name,
+		StepName:              args.Step.Name(),
 		Order:                 args.Order,
 		Successful:            args.Successful,
 		ArtifactURL:           args.ArtifactURL,
@@ -124,12 +124,12 @@ func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
 // getStepOutputWriter will check h.writers for a writer for the step, otherwise
 // it will create a new one.
 func (h *ReportHandler) getStepOutputWriter(args *LogsArgs) (*reporter.LogWriter, error) {
-	key := h.generateKey(args.Options.PipelineID, args.Step.Name, args.Order)
+	key := h.generateKey(args.Options.PipelineID, args.Step.Name(), args.Order)
 
 	opts := &reporter.PipelineStepReporterArgs{
 		BuildID:  args.Options.BuildID,
 		DeployID: args.Options.DeployID,
-		StepName: args.Step.Name,
+		StepName: args.Step.Name(),
 		Order:    args.Order,
 	}
 

@@ -100,7 +100,7 @@ func (h *MetricsEventHandler) BuildFinished(args *BuildFinishedArgs) {
 func (h *MetricsEventHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 	now := time.Now()
 
-	h.startStep[args.Step.SafeID] = now
+	h.startStep[args.Step.SafeID()] = now
 
 	p := &MetricsPayload{
 		Step:      newMetricStepPayload(args.Step),
@@ -121,11 +121,11 @@ func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 	now := time.Now()
 
 	var duration int64
-	begin, ok := h.startStep[args.Step.SafeID]
+	begin, ok := h.startStep[args.Step.SafeID()]
 	if ok {
 		elapsed := now.Sub(begin)
 		duration = int64(elapsed.Seconds())
-		delete(h.startStep, args.Step.SafeID)
+		delete(h.startStep, args.Step.SafeID())
 	}
 
 	p := &MetricsPayload{
@@ -206,12 +206,12 @@ type metricsApplicationPayload struct {
 	OwnerName string `json:"ownerName"`
 }
 
-func newMetricStepPayload(step *Step) *metricStepPayload {
+func newMetricStepPayload(step IStep) *metricStepPayload {
 	return &metricStepPayload{
-		Owner:      step.Owner,
-		Name:       step.Name,
-		Version:    step.Version,
-		FullName:   fmt.Sprintf("%s/%s", step.Owner, step.Name),
+		Owner:      step.Owner(),
+		Name:       step.Name(),
+		Version:    step.Version(),
+		FullName:   fmt.Sprintf("%s/%s", step.Owner(), step.Name()),
 		UniqueName: formatUniqueStepName(step),
 	}
 }
@@ -294,6 +294,6 @@ func getBoxDetails(box *Box) (boxName string, boxTag string) {
 	return box.Name, box.tag
 }
 
-func formatUniqueStepName(step *Step) string {
-	return fmt.Sprintf("%s/%s@%s", step.Owner, step.Name, step.Version)
+func formatUniqueStepName(step IStep) string {
+	return fmt.Sprintf("%s/%s@%s", step.Owner(), step.Name(), step.Version())
 }

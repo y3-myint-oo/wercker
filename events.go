@@ -53,7 +53,7 @@ type LogsArgs struct {
 	Build   Pipeline
 	Options *PipelineOptions
 	Order   int
-	Step    *Step
+	Step    IStep
 	Logs    string
 	Stream  string
 	Hidden  bool
@@ -64,9 +64,9 @@ type LogsArgs struct {
 type BuildStepsAddedArgs struct {
 	Build      Pipeline
 	Options    *PipelineOptions
-	Steps      []*Step
-	StoreStep  *Step
-	AfterSteps []*Step
+	Steps      []IStep
+	StoreStep  IStep
+	AfterSteps []IStep
 }
 
 // BuildStepStartedArgs contains the args associated with the
@@ -76,7 +76,7 @@ type BuildStepStartedArgs struct {
 	Box     *Box
 	Build   Pipeline
 	Order   int
-	Step    *Step
+	Step    IStep
 }
 
 // BuildStepFinishedArgs contains the args associated with the
@@ -86,7 +86,7 @@ type BuildStepFinishedArgs struct {
 	Box         *Box
 	Build       Pipeline
 	Order       int
-	Step        *Step
+	Step        IStep
 	Successful  bool
 	Message     string
 	ArtifactURL string

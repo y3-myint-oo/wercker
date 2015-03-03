@@ -41,6 +41,19 @@ build:
             echo $WERCKER_GIT_COMMIT > $WERCKER_OUTPUT_DIR/HEAD
             mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/latest
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
+    #
+    # - internal/docker-push:
+    #     username: $DOCKER_USERNAME_HUB
+    #     password: $DOCKER_PASSWORD_HUB
+    #     tag: foo-test
+    #     repo: termiefoo/goxxer
+    #     # registry: https://registry.hub.docker.com/
+    # - internal/docker-push:
+    #     username: $DOCKER_USERNAME
+    #     password: $DOCKER_PASSWORD
+    #     tag: foo-test
+    #     repo: quay.io/wercker/goxxxer
+    #     registry: https://quay.io/v1/
 
 deploy:
   box: golang
