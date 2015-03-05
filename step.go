@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -258,13 +257,6 @@ func (s *Step) FetchScript() (string, error) {
 	return hostStepPath, nil
 }
 
-// StepAPIInfo is the data structure for the JSON returned by the wercker API.
-type StepAPIInfo struct {
-	TarballURL  string
-	Version     string
-	Description string
-}
-
 // Fetch grabs the Step content (or calls FetchScript for script steps).
 func (s *Step) Fetch() (string, error) {
 	// NOTE(termie): polymorphism based on kind, we could probably do something
@@ -282,19 +274,14 @@ func (s *Step) Fetch() (string, error) {
 	if !stepExists {
 		// If we don't have a url already
 		if s.url == "" {
-			var stepInfo StepAPIInfo
-
 			// Grab the info about the step from the api
 			client := NewAPIClient(s.options.GlobalOptions)
-			apiBytes, err := client.GetBody("api", "v2", "steps", s.Owner, s.Name, s.Version)
+
+			stepInfo, err := client.GetStepVersion(s.Owner, s.Name, s.Version)
 			if err != nil {
 				return "", err
 			}
 
-			err = json.Unmarshal(apiBytes, &stepInfo)
-			if err != nil {
-				return "", err
-			}
 			s.url = stepInfo.TarballURL
 		}
 

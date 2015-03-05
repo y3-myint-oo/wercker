@@ -459,6 +459,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 			Branch: options.Branch,
 			Result: options.Status,
 			Status: "finished",
+			Stack:  5,
 		}
 
 		builds, err := client.GetBuilds(username, applicationName, opts)
