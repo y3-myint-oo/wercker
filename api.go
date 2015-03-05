@@ -18,6 +18,7 @@ func init() {
 	// Add templates to the route map
 	addURITemplate("GetBuilds", "/api/v3/applications{/username,name}/builds{?commit,branch,status,limit,skip,sort,result,stack}")
 	addURITemplate("GetDockerRepository", "/api/v2/builds{/buildId}/docker")
+	addURITemplate("GetStepVersion", "/api/v2/steps{/owner,name,version}")
 }
 
 // addURITemplate adds rawTemplate to routes using name as the key. Should only
@@ -51,16 +52,19 @@ func NewAPIClient(options *GlobalOptions) *APIClient {
 	}
 }
 
-// URL joins some strings to the endpoint
-func (c *APIClient) URL(parts ...string) string {
-	realParts := append([]string{c.baseURL}, parts...)
-	return strings.Join(realParts, "/")
+// URL joins a path with the baseurl. If path doesn't have a leading slash, it
+// will be added.
+func (c *APIClient) URL(path string) string {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return c.baseURL + path
 }
 
 // GetBody does a GET request. If the status code is 200, it will return the
 // body.
-func (c *APIClient) GetBody(parts ...string) ([]byte, error) {
-	res, err := c.Get(parts...)
+func (c *APIClient) GetBody(path string) ([]byte, error) {
+	res, err := c.Get(path)
 
 	if res.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(res.Body)
@@ -79,8 +83,8 @@ func (c *APIClient) GetBody(parts ...string) ([]byte, error) {
 
 // Get will do a GET http request, it adds the wercker endpoint and will add
 // some default headers.
-func (c *APIClient) Get(parts ...string) (*http.Response, error) {
-	url := c.URL(parts...)
+func (c *APIClient) Get(path string) (*http.Response, error) {
+	url := c.URL(path)
 	c.logger.Debugln("API Get:", url)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -148,8 +152,11 @@ func (c *APIClient) GetBuilds(username, name string, options *GetBuildsOptions) 
 
 	var payload []*APIBuild
 	err = json.Unmarshal(buf, &payload)
+	if err != nil {
+		return nil, err
+	}
 
-	return payload, err
+	return payload, nil
 }
 
 // DockerRepository represents the meta information of a downloadable docker
@@ -191,6 +198,50 @@ func (c *APIClient) GetDockerRepository(buildID string) (*DockerRepository, erro
 		Sha256:  res.Header.Get("x-amz-meta-Sha256"),
 		Size:    res.ContentLength,
 	}, nil
+}
+
+// APIStepVersion is the data structure for the JSON returned by the wercker
+// API.
+type APIStepVersion struct {
+	TarballURL  string `json:"tarballUrl"`
+	Version     string `json:"version"`
+	Description string `json:"description"`
+}
+
+func (c *APIClient) GetStepVersion(owner, name, version string) (*APIStepVersion, error) {
+	urlModel := make(map[string]interface{})
+	urlModel["owner"] = owner
+	urlModel["name"] = name
+	urlModel["version"] = version
+
+	template := routes["GetStepVersion"]
+	url, err := template.Expand(urlModel)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := c.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, c.parseError(res)
+	}
+
+	buf, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	var payload *APIStepVersion
+	err = json.Unmarshal(buf, &payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return payload, nil
 }
 
 // addAuthToken adds the authentication token to the querystring if available.
