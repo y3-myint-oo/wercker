@@ -16,7 +16,7 @@ var routes = make(map[string]*uritemplates.UriTemplate)
 
 func init() {
 	// Add templates to the route map
-	addURITemplate("GetBuilds", "/api/v3/applications{/username,name}/builds{?commit,branch,status,limit,skip,sort,result}")
+	addURITemplate("GetBuilds", "/api/v3/applications{/username,name}/builds{?commit,branch,status,limit,skip,sort,result,stack}")
 	addURITemplate("GetDockerRepository", "/api/v2/builds{/buildId}/docker")
 }
 
@@ -104,6 +104,7 @@ type GetBuildsOptions struct {
 	Branch string `qs:"branch"`
 	Status string `qs:"status"`
 	Result string `qs:"result"`
+	Stack  int    `qs:"stack"`
 }
 
 // APIBuild represents a build from wercker api.
