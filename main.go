@@ -193,8 +193,8 @@ var (
 				Usage: "Output version information as JSON",
 			},
 			cli.BoolFlag{
-				Name:  "unstable",
-				Usage: "Checks for the latest unstable version",
+				Name:  "beta",
+				Usage: "Checks for the latest beta version",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -604,8 +604,8 @@ func cmdVersion(options *VersionOptions) error {
 		os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
 
 		channel := "stable"
-		if options.UnstableChannel {
-			channel = "unstable"
+		if options.BetaChannel {
+			channel = "beta"
 		}
 
 		url := fmt.Sprintf("http://downloads.wercker.com/cli/%s/version.json", channel)
