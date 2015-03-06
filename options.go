@@ -952,14 +952,14 @@ func NewPullOptions(c *cli.Context, e *Environment) (*PullOptions, error) {
 // VersionOptions contains the options associated with the version
 // command.
 type VersionOptions struct {
-	OutputJSON      bool
-	UnstableChannel bool
+	OutputJSON  bool
+	BetaChannel bool
 }
 
 // NewVersionOptions constructor
 func NewVersionOptions(c *cli.Context, e *Environment) (*VersionOptions, error) {
 	return &VersionOptions{
-		OutputJSON:      c.Bool("json"),
-		UnstableChannel: c.Bool("unstable"),
+		OutputJSON:  c.Bool("json"),
+		BetaChannel: c.Bool("beta"),
 	}, nil
 }
