@@ -21,8 +21,14 @@ var (
 	PatchVersion = "0"
 
 	// Compiled is the unix timestamp when this binary got compiled.
-	Compiled = strconv.FormatInt(time.Now().Unix(), 10)
+	Compiled = ""
 )
+
+func init() {
+	if Compiled == "" {
+		Compiled = strconv.FormatInt(time.Now().Unix(), 10)
+	}
+}
 
 // Version returns a semver compatible version for this build.
 func Version() string {
