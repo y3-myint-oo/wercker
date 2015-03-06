@@ -132,9 +132,9 @@ var (
 
 	pullFlags = [][]cli.Flag{
 		[]cli.Flag{
-			cli.StringFlag{Name: "branch", Value: "", Usage: ""},
-			cli.StringFlag{Name: "result", Value: "", Usage: ""},
-			cli.StringFlag{Name: "output", Value: "./repository.tar", Usage: "asd"},
+			cli.StringFlag{Name: "branch", Value: "", Usage: "filter on this branch"},
+			cli.StringFlag{Name: "result", Value: "", Usage: "filter on this result (passed or failed)"},
+			cli.StringFlag{Name: "output", Value: "./repository.tar", Usage: "path to repository"},
 			cli.BoolFlag{Name: "load", Usage: "load the container into docker after downloading"},
 			cli.BoolFlag{Name: "f, force", Usage: "override output if it already exists"},
 		},
