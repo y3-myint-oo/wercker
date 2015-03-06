@@ -26,7 +26,7 @@ build:
             go test
 
     - tcnksm/gox:
-        ldflags: -X main.GitCommit $WERCKER_GIT_COMMIT -X main.PatchVersion $(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) ))
+        ldflags: -X main.GitCommit $WERCKER_GIT_COMMIT -X main.PatchVersion $(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X main.Compiled $(date +%s)
         os: "darwin linux"
         arch: "386 amd64"
 

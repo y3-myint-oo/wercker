@@ -601,7 +601,11 @@ func cmdVersion(options *VersionOptions) error {
 	} else {
 
 		os.Stdout.WriteString(fmt.Sprintf("Version: %s\n", v.Version))
-		os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
+		os.Stdout.WriteString(fmt.Sprintf("Compiled at: %s\n", v.CompiledAt))
+
+		if v.GitCommit != "" {
+			os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
+		}
 
 		channel := "stable"
 		if options.BetaChannel {
