@@ -601,7 +601,7 @@ func cmdVersion(options *VersionOptions) error {
 	} else {
 
 		os.Stdout.WriteString(fmt.Sprintf("Version: %s\n", v.Version))
-		os.Stdout.WriteString(fmt.Sprintf("Compiled at: %s\n", v.CompiledAt))
+		os.Stdout.WriteString(fmt.Sprintf("Compiled at: %s\n", v.CompiledAt.Format(time.RFC3339)))
 
 		if v.GitCommit != "" {
 			os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
