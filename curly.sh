@@ -1,5 +1,17 @@
 #!/bin/bash
 
+cat << "EOF"
+                              __        
+ _      __ ___   _____ _____ / /__ ___   _____
+| | /| / // _ \ / ___// ___// //_// _ \ / ___/
+| |/ |/ //  __// /   / /__ / ,<  /  __// /    
+|__/|__/ \___//_/    \___//_/|_| \___//_/     
+
+EOF
+echo "-----> Installing the wercker CLI"
+
+
+
 ## Detect platform
 PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
 
@@ -64,7 +76,7 @@ function check_darwin {
     echo ""
     echo "You seem to know what you are doing, so just keep in mind"
     echo "that you will need a docker server running at that location"
-    echo "for the wercker command-line tool to work."
+    echo "for the wercker command-line interface to work."
     echo ""
   fi
 
@@ -82,24 +94,76 @@ function check_darwin {
 
 
   if [[ $found_versions -ne 0 ]]; then
+    echo "Found the following docker versions:"
     echo "docker server version: ${server_version}"
     echo "docker api version: ${api_version}"
+    echo
+    download_cli darwin
   else
-    echo "We weren't able to get any version information about docker."
+    echo "Unable to determine docker version"
+    echo
+    echo "You can install boot2docker via homebrew by running:"
+    echo "brew install boot2docker"
+    echo
+    echo "Alternatively you can download the boot2docker installer from: https://github.com/boot2docker/osx-installer/releases"
+    echo
+    echo "Installation of the wercker CLI failed. Visit http://devcenter.wercker.com for more information."
+    exit 1
   fi
+}
 
-  #if [ -n "$found_docker" ]; then
-  #  echo "checking for docker: ${found_docker}"
-  #else
-  #  echo "checking for docker: ${found_docker}"
-  #fi
+function download_cli {
+    platform=$1
+    url=$(printf 'http://downloads.wercker.com/cli/stable/%s%s/wercker' "$platform" "_amd64")
+    
+    if [[ :$PATH: == *:"/usr/local/bin":* ]] ; then
+        # O.K., the directory is on the path
+        location="/usr/local/bin/wercker"
+        echo "The directory $location is available in the PATH"
+        echo "We will install the wercker command inside this directory"
+        
 
-  #if
-  #  echo "checking for boot2docker: ${found_b2d}
+        status=$(curl -w '%{http_code}' $url -o $location)
+        
+        if [[ "$status" != "200" ]]; then
+            echo "Unable to download CLI from http://downloads.wercker.com"
+            exit 1
+        else
+            make_executable $location
+        fi
+    elif [[ :$PATH: == *:"/usr/bin":* ]] ; then
+        # do we have /usr/bin available in PATH
+        echo "The directory /usr/bin is available in the PATH"
+        echo "We will install the wercker command inside this directory"
+        
+        location="/usr/bin/wercker"
+        
+        status=$(curl -w '%{http_code}' $url -o $location)
+        if [[ "$status" != "200" ]]; then
+            echo "Unable to download CLI from http://downloads.wercker.com"
+            exit 1
+        else
+            make_executable $location
+        fi
+    else
+        echo "None of the preferred paths available, we're downloading wercker in the current folder"
+        curl -w '%{http_code}' $url -o wercker
+    fi
+}
+
+
+function make_executable {
+    # TODO: probably check if this command is succesful or not
+    chmod +x $1
+}
+
+function check_linux {
+    echo "You are running linux."
+    download_cli linux
 }
 
 if [[ "darwin" = "$PLATFORM" ]]; then
   check_darwin
 elif [[ "linux" = "$PLATFORM" ]]; then
-  check_darwin
+  check_linux
 fi
