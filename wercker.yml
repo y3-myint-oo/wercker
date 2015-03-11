@@ -107,3 +107,10 @@ deploy:
         bucket-url: $DOWNLOADS_BUCKET_URL/versions/$WERCKER_VERSION/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
+  
+  installsh:
+    - s3sync:
+        source-dir: "./install_script"
+        bucket-url: $INSTALLSH_BUCKET_URL
+        key-id: $AWS_ACCESS_KEY_ID
+        key-secret: $AWS_SECRET_ACCESS_KEY

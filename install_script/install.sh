@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 cat << "EOF"
                               __        
@@ -17,14 +17,13 @@ PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
 
 found_python=$(which python)
 
-function python_parse_docker_version {
-  local docker_host
-  docker_host=$1
+python_parse_docker_version() {
+  local docker_host=$1
   curl -s ${docker_host}/version | python -c "import json,sys;obj=json.load(sys.stdin);print '%s %s' % (obj['Version'], obj['ApiVersion'])" 2>/dev/null
 }
 
 
-function check_darwin {
+check_darwin() {
   found_docker=$(which docker)
   found_env=$DOCKER_HOST
   found_b2d=$(which boot2docker)
@@ -108,56 +107,44 @@ function check_darwin {
     echo "Alternatively you can download the boot2docker installer from: https://github.com/boot2docker/osx-installer/releases"
     echo
     echo "Installation of the wercker CLI failed. Visit http://devcenter.wercker.com for more information."
-    exit 1
   fi
 }
 
-function download_cli {
+download_cli() {
     platform=$1
-    url=$(printf 'http://downloads.wercker.com/cli/stable/%s%s/wercker' "$platform" "_amd64")
+    url="http://downloads.wercker.com/cli/stable/${platform}_amd64/wercker"
     
     if [[ :$PATH: == *:"/usr/local/bin":* ]] ; then
-        # O.K., the directory is on the path
+        # is /usr/local/bin available in the PATH
         location="/usr/local/bin/wercker"
         echo "The directory $location is available in the PATH"
         echo "We will install the wercker command inside this directory"
-        
-
-        status=$(curl -w '%{http_code}' $url -o $location)
-        
-        if [[ "$status" != "200" ]]; then
-            echo "Unable to download CLI from http://downloads.wercker.com"
-            exit 1
-        else
-            make_executable $location
-        fi
     elif [[ :$PATH: == *:"/usr/bin":* ]] ; then
-        # do we have /usr/bin available in PATH
+        # is /usr/bin available in the PATH
+        location="/usr/bin/wercker"
         echo "The directory /usr/bin is available in the PATH"
         echo "We will install the wercker command inside this directory"
-        
-        location="/usr/bin/wercker"
-        
-        status=$(curl -w '%{http_code}' $url -o $location)
-        if [[ "$status" != "200" ]]; then
-            echo "Unable to download CLI from http://downloads.wercker.com"
-            exit 1
-        else
-            make_executable $location
-        fi
     else
         echo "None of the preferred paths available, we're downloading wercker in the current folder"
         curl -w '%{http_code}' $url -o wercker
     fi
+    
+    status=$(curl -w '%{http_code}' $url -o $location)
+    if [[ "$status" != "200" ]]; then
+        echo "Unable to download CLI from http://downloads.wercker.com"
+        exit 1
+    else
+        make_executable $location
+    fi
 }
 
 
-function make_executable {
+make_executable() {
     # TODO: probably check if this command is succesful or not
     chmod +x $1
 }
 
-function check_linux {
+check_linux() {
     echo "You are running linux."
     download_cli linux
 }
@@ -166,4 +153,7 @@ if [[ "darwin" = "$PLATFORM" ]]; then
   check_darwin
 elif [[ "linux" = "$PLATFORM" ]]; then
   check_linux
+else
+  echo "We were unable to detect your platform."
+  echo "Currently we only support Mac OSX and Linux"
 fi
