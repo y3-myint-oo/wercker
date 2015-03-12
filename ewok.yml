@@ -4,7 +4,7 @@ build:
   steps:
     - install-packages:
         packages: openssh-client
-    - setup-go-workspace@1.2.0:
+    - setup-go-workspace:
         package-dir: github.com/wercker/sentcli
     - add-ssh-key:
         keyname: REPORTER_KEY

@@ -1,7 +1,7 @@
 box: tcnksm/gox@0.2.0
 build:
   steps:
-    - setup-go-workspace@1.0.4
+    - setup-go-workspace
 
     - wercker/add-ssh-key:
         keyname: REPORTER_KEY
