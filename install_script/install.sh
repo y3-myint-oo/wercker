@@ -1,14 +1,14 @@
 #!/bin/sh
 
 cat << "EOF"
-                       _             
-__      _____ _ __ ___| | _____ _ __ 
+                       _
+__      _____ _ __ ___| | _____ _ __
 \ \ /\ / / _ \ '__/ __| |/ / _ \ '__|
- \ V  V /  __/ | | (__|   <  __/ |   
-  \_/\_/ \___|_|  \___|_|\_\___|_|   
-   
+ \ V  V /  __/ | | (__|   <  __/ |
+  \_/\_/ \___|_|  \___|_|\_\___|_|
+
 EOF
-echo "-----> Installing the wercker CLI"
+echo "Installing the wercker CLI..."
 
 
 
@@ -30,10 +30,10 @@ check_darwin() {
 
   found_versions=0
   # If we found docker installed, try to check the server version with it
-  if [[ -n "$found_docker" ]]; then
+  if [ -n "$found_docker" ]; then
     version_response=$(${found_docker} version 2>/dev/null)
     status=$?
-    if [[ $status -eq 0 ]]; then
+    if [ $status -eq 0 ]; then
       server_version=$(${found_docker} version | grep "Server version" | cut -f 3 -d " ")
       api_version=$(${found_docker} version | grep "Server API version" | cut -f 4 -d " ")
       found_versions=1
@@ -42,10 +42,10 @@ check_darwin() {
 
   # If docker wasn't there, that's not the end of the world, let's check for
   # the DOCKER_HOST envvar
-  if [[ $found_versions -eq 0 ]] && [[ -n "$found_env" ]]; then
+  if [ $found_versions -eq 0 ] && [ -n "$found_env" ]; then
     version_response=$(python_parse_docker_version "$found_env")
     status=$?
-    if [[ $status -eq 0 ]]; then
+    if [ $status -eq 0 ]; then
       server_version=$(echo ${version_response} | cut -d " " -f 1)
       api_version=$(echo ${version_response} | cut -d " " -f 2)
       found_versions=1
@@ -54,7 +54,7 @@ check_darwin() {
 
   # If neither of those were around but boot2docker was maybe they have
   # boot2docker installed and just haven't really set it up correctly
-  if [[ $found_versions -eq 0 ]] && [[ -n "$found_b2d" ]]; then
+  if [ $found_versions -eq 0 ] && [ -n "$found_b2d" ]; then
     echo "You seem to have boot2docker installed but are not currently"
     echo "running it (or at least don't have any environment variables"
     echo "set in your shell.)"
@@ -63,14 +63,15 @@ check_darwin() {
     echo ""
     echo "  boot2docker up"
     echo "  \$(boot2docker shellinit)"
-    echo
+    echo ""
+
   fi
 
   # If we found other things, but they failed to connect, give some nice
   # error messages about them before suggesting an install
 
   # We had an envvar but no boot2docker and no docker
-  if [[ $found_versions -eq 0 ]] && [[ -n "$found_env" ]] && [[ -z "$found_docker" ]] && [[ -z "$found_b2d" ]]; then
+  if [ $found_versions -eq 0 ] && [ -n "$found_env" ] && [ -z "$found_docker" ] && [ -z "$found_b2d" ]; then
     echo "You seem to have a DOCKER_HOST environment variable set but"
     echo "no server running (at least we can't connect to it.)"
     echo ""
@@ -81,7 +82,7 @@ check_darwin() {
   fi
 
   # We had an docker client but no boot2docker
-  if [[ $found_versions -eq 0 ]] && [[ -n "$found_docker" ]] && [[ -z "$found_b2d" ]]; then
+  if [ $found_versions -eq 0 ] && [ -n "$found_docker" ] && [ -z "$found_b2d" ]; then
     echo "You seem to have a docker client installed but no server running"
     echo "(at least we can't connect to it.)"
     echo ""
@@ -93,51 +94,44 @@ check_darwin() {
   fi
 
 
-  if [[ $found_versions -ne 0 ]]; then
+  if [ $found_versions -ne 0 ]; then
     echo "Found the following docker versions:"
     echo "docker server version: ${server_version}"
     echo "docker api version: ${api_version}"
-    echo
+    echo ""
     download_cli darwin
   else
     echo "Unable to determine docker version"
-    echo
-    echo "You can install boot2docker via homebrew by running:"
-    echo "brew install boot2docker"
-    echo
-    echo "Alternatively you can download the boot2docker installer from: https://github.com/boot2docker/osx-installer/releases"
-    echo
-    echo "Installation of the wercker CLI failed. Visit http://devcenter.wercker.com for more information."
+    echo ""
+    download_cli darwin
   fi
 }
 
 download_cli() {
     platform=$1
+    location="/usr/local/bin/wercker"
     url="http://downloads.wercker.com/cli/stable/${platform}_amd64/wercker"
-    
-    if [[ :$PATH: == *:"/usr/local/bin":* ]] ; then
-        # is /usr/local/bin available in the PATH
-        location="/usr/local/bin/wercker"
-        echo "The directory $location is available in the PATH"
-        echo "We will install the wercker command inside this directory"
-        echo
-    elif [[ :$PATH: == *:"/usr/bin":* ]] ; then
-        # is /usr/bin available in the PATH
-        location="/usr/bin/wercker"
-        echo "The directory /usr/bin is available in the PATH"
-        echo "We will install the wercker command inside this directory"
-    else
-        echo "None of the preferred paths available, we're downloading wercker in the current folder"
-        curl -w '%{http_code}' $url -o wercker
-    fi
-    
+
     status=$(curl -w '%{http_code}' $url -o $location)
-    if [[ "$status" != "200" ]]; then
+    if [ "$status" != "200" ]; then
         echo "Unable to download CLI from http://downloads.wercker.com"
         exit 1
     else
         make_executable $location
     fi
+
+    # remind the user to add to $PATH if they don't already have it
+    case "$PATH" in
+      */usr/local/bin*)
+        echo "Installation complete"
+        ;;
+      *)
+        echo "Add the wercker CLI to your PATH using:"
+        echo "$ echo 'PATH=\"/usr/local/bin:\$PATH\"' >> ~/.profile"
+        ;;
+    esac
+
+
 }
 
 
@@ -158,10 +152,10 @@ check_linux() {
 
   found_versions=0
   # If we found docker installed, try to check the server version with it
-  if [[ -n "$found_docker" ]]; then
+  if [ -n "$found_docker" ]; then
     version_response=$(${found_docker} version 2>/dev/null)
     status=$?
-    if [[ $status -eq 0 ]]; then
+    if [ $status -eq 0 ]; then
       server_version=$(${found_docker} version | grep "Server version" | cut -f 3 -d " ")
       api_version=$(${found_docker} version | grep "Server API version" | cut -f 4 -d " ")
       found_versions=1
@@ -170,10 +164,10 @@ check_linux() {
 
   # If docker wasn't there, that's not the end of the world, let's check for
   # the DOCKER_HOST envvar
-  if [[ $found_versions -eq 0 ]] && [[ -n "$found_env" ]]; then
+  if [ $found_versions -eq 0 ] && [ -n "$found_env" ]; then
     version_response=$(python_parse_docker_version "$found_env")
     status=$?
-    if [[ $status -eq 0 ]]; then
+    if [ $status -eq 0 ]; then
       server_version=$(echo ${version_response} | cut -d " " -f 1)
       api_version=$(echo ${version_response} | cut -d " " -f 2)
       found_versions=1
@@ -182,9 +176,9 @@ check_linux() {
   download_cli linux
 }
 
-if [[ "darwin" = "$PLATFORM" ]]; then
+if [ "darwin" = "$PLATFORM" ]; then
   check_darwin
-elif [[ "linux" = "$PLATFORM" ]]; then
+elif [ "linux" = "$PLATFORM" ]; then
   check_linux
 else
   echo "We were unable to detect your platform."
