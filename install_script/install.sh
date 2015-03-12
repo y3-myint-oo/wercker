@@ -63,6 +63,7 @@ check_darwin() {
     echo ""
     echo "  boot2docker up"
     echo "  \$(boot2docker shellinit)"
+    echo
   fi
 
   # If we found other things, but they failed to connect, give some nice
@@ -119,6 +120,7 @@ download_cli() {
         location="/usr/local/bin/wercker"
         echo "The directory $location is available in the PATH"
         echo "We will install the wercker command inside this directory"
+        echo
     elif [[ :$PATH: == *:"/usr/bin":* ]] ; then
         # is /usr/bin available in the PATH
         location="/usr/bin/wercker"
@@ -141,12 +143,43 @@ download_cli() {
 
 make_executable() {
     # TODO: probably check if this command is succesful or not
-    chmod +x $1
+    if chmod +x $1; then
+        echo
+        echo "Succesfully made wercker command executable"
+    else
+        echo "Unable to make wercker command executable."
+        echo "Try to run chmod +x $1 ."
+    fi
 }
 
 check_linux() {
-    echo "You are running linux."
-    download_cli linux
+  found_docker=$(which docker)
+  found_env=$DOCKER_HOST
+
+  found_versions=0
+  # If we found docker installed, try to check the server version with it
+  if [[ -n "$found_docker" ]]; then
+    version_response=$(${found_docker} version 2>/dev/null)
+    status=$?
+    if [[ $status -eq 0 ]]; then
+      server_version=$(${found_docker} version | grep "Server version" | cut -f 3 -d " ")
+      api_version=$(${found_docker} version | grep "Server API version" | cut -f 4 -d " ")
+      found_versions=1
+    fi
+  fi
+
+  # If docker wasn't there, that's not the end of the world, let's check for
+  # the DOCKER_HOST envvar
+  if [[ $found_versions -eq 0 ]] && [[ -n "$found_env" ]]; then
+    version_response=$(python_parse_docker_version "$found_env")
+    status=$?
+    if [[ $status -eq 0 ]]; then
+      server_version=$(echo ${version_response} | cut -d " " -f 1)
+      api_version=$(echo ${version_response} | cut -d " " -f 2)
+      found_versions=1
+    fi
+  fi
+  download_cli linux
 }
 
 if [[ "darwin" = "$PLATFORM" ]]; then
