@@ -38,6 +38,7 @@ install() {
   local location="/usr/local/bin/wercker"
 
   read install_script << EOF
+  echo "Downloading the CLI..."
 status=\$(curl -# -w '%{http_code}' "$url" -o "$location");
 if [ "\$status" != "200" ]; then
   echo "Unable to download CLI from http://downloads.wercker.com";
@@ -48,7 +49,7 @@ if chmod +x "$location"; then
   echo "done.";
 else
   echo "Unable to make wercker command executable.";
-  echo "Try to run chmod +x $1 .";
+  echo "Try to run chmod +x $location .";
 fi
 EOF
 
