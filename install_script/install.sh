@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 main() {
   cat << "EOF"
                        _
@@ -21,13 +19,15 @@ EOF
     exit 1
   fi
 
-  echo 'Installing the latest version of the wercker CLI'
+  echo 'Installing the latest version of the wercker CLI...'
   install "$platform"
   echo
-  echo 'Succesfully installed the wercker CLI:'
+  echo 'Succesfully installed the wercker CLI'
+  echo
   /usr/local/bin/wercker version --no-update-check
   echo
-  echo 'Checking for docker'
+  echo 'Checking for docker...'
+  echo
   check "$platform"
 }
 
@@ -45,9 +45,8 @@ if [ \"\$status\" != \"200\" ]; then
   exit 2;
 fi
 
-if chmod +x \"$location\"; then
-  echo \"done.\";
-else
+if ! chmod +x \"$location\"; then
+  echo
   echo \"Unable to make wercker command executable.\";
   echo \"Try to run chmod +x $location .\";
 fi"
