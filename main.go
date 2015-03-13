@@ -196,6 +196,10 @@ var (
 				Name:  "beta",
 				Usage: "Checks for the latest beta version",
 			},
+			cli.BoolFlag{
+				Name:  "no-update-check",
+				Usage: "Do not check for update",
+			},
 		},
 		Action: func(c *cli.Context) {
 			opts, err := NewVersionOptions(c, NewEnvironment(os.Environ()))
@@ -607,58 +611,59 @@ func cmdVersion(options *VersionOptions) error {
 			os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
 		}
 
-		channel := "stable"
-		if options.BetaChannel {
-			channel = "beta"
+		if options.CheckForUpdate {
+			channel := "stable"
+			if options.BetaChannel {
+				channel = "beta"
+			}
+
+			url := fmt.Sprintf("http://downloads.wercker.com/cli/%s/version.json", channel)
+
+			nv := Versions{}
+			client := &http.Client{}
+
+			req, err := http.NewRequest("GET", url, nil)
+			if err != nil {
+				logger.WithField("Error", err).Debug("Unable to create request to version endpoint")
+			}
+
+			res, err := client.Do(req)
+			if err != nil {
+				logger.WithField("Error", err).Debug("Unable to execute HTTP request to version endpoint")
+			}
+
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				logger.WithField("Error", err).Debug("Unable to read response body")
+			}
+
+			err = json.Unmarshal(body, &nv)
+			if err != nil {
+				logger.WithField("Error", err).Debug("Unable to unmarshal versions")
+			}
+
+			vCurrent, err := semver.New(v.Version)
+			if err != nil {
+				logger.WithField("Error", err).Debug("Unable to get semver of current version")
+			}
+			vRetrieved, err := semver.New(nv.Version)
+			if err != nil {
+				logger.WithField("Error", err).Debug("Unable to get semver of retrieved version")
+			}
+
+			upToDate := vCurrent.Compare(vRetrieved)
+
+			dlURL := fmt.Sprintf("http://downloads.wercker.com/cli/%s/%s_amd64/wercker", channel, runtime.GOOS)
+
+			if upToDate == -1 {
+				os.Stdout.WriteString(fmt.Sprintf("A new version is available: %s\n", nv.Version))
+				os.Stdout.WriteString(fmt.Sprintf("Download it from: %s\n", dlURL))
+			}
+
+			if upToDate == 0 {
+				os.Stdout.WriteString(fmt.Sprintf("No new version available\n"))
+			}
 		}
-
-		url := fmt.Sprintf("http://downloads.wercker.com/cli/%s/version.json", channel)
-
-		nv := Versions{}
-		client := &http.Client{}
-
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			logger.WithField("Error", err).Debug("Unable to create request to version endpoint")
-		}
-
-		res, err := client.Do(req)
-		if err != nil {
-			logger.WithField("Error", err).Debug("Unable to execute HTTP request to version endpoint")
-		}
-
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			logger.WithField("Error", err).Debug("Unable to read response body")
-		}
-
-		err = json.Unmarshal(body, &nv)
-		if err != nil {
-			logger.WithField("Error", err).Debug("Unable to unmarshal versions")
-		}
-
-		vCurrent, err := semver.New(v.Version)
-		if err != nil {
-			logger.WithField("Error", err).Debug("Unable to get semver of current version")
-		}
-		vRetrieved, err := semver.New(nv.Version)
-		if err != nil {
-			logger.WithField("Error", err).Debug("Unable to get semver of retrieved version")
-		}
-
-		upToDate := vCurrent.Compare(vRetrieved)
-
-		dlURL := fmt.Sprintf("http://downloads.wercker.com/cli/%s/%s_amd64/wercker", channel, runtime.GOOS)
-
-		if upToDate == -1 {
-			os.Stdout.WriteString(fmt.Sprintf("A new version is available: %s\n", nv.Version))
-			os.Stdout.WriteString(fmt.Sprintf("Download it from: %s\n", dlURL))
-		}
-
-		if upToDate == 0 {
-			os.Stdout.WriteString(fmt.Sprintf("No new version available\n"))
-		}
-
 	}
 
 	return nil
