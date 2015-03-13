@@ -203,16 +203,19 @@ func (p *Runner) GetConfig() (*RawConfig, string, error) {
 
 // GetBox fetches and returns the base box for the pipeline.
 func (p *Runner) GetBox(pipeline Pipeline, rawConfig *RawConfig) (*Box, error) {
-	if pipeline.Box() != nil {
-		return pipeline.Box(), nil
-	}
-	if rawConfig.RawBox == nil {
-		return nil, fmt.Errorf("No box found in wercker.yml, cannot proceed")
-	}
-	// Promote RawBox to a real Box. We believe in you, Box!
-	box, err := rawConfig.RawBox.ToBox(p.options, nil)
-	if err != nil {
-		return nil, err
+	var box *Box
+	var err error
+	box = pipeline.Box()
+
+	if box == nil {
+		if rawConfig.RawBox == nil {
+			return nil, fmt.Errorf("No box found in wercker.yml, cannot proceed")
+		}
+		// Promote RawBox to a real Box. We believe in you, Box!
+		box, err = rawConfig.RawBox.ToBox(p.options, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	p.logger.Debugln("Box:", box.Name)
