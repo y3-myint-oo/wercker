@@ -169,6 +169,7 @@ check_darwin() {
     echo "docker api version: ${api_version}"
   else
     echo "Unable to determine docker version"
+    echo "See http://devcenter.wercker.io/docs/cli/requirements.html for more info"
   fi
 }
 
