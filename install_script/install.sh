@@ -37,21 +37,20 @@ install() {
   local url="https://s3.amazonaws.com/downloads.wercker.com/cli/stable/${platform}_amd64/wercker"
   local location="/usr/local/bin/wercker"
 
-  read install_script << EOF
-  echo "Downloading the CLI..."
-status=\$(curl -# -w '%{http_code}' "$url" -o "$location");
-if [ "\$status" != "200" ]; then
-  echo "Unable to download CLI from http://downloads.wercker.com";
+  local install_script="
+echo \"Downloading the CLI...\"
+status=\$(curl -# -w '%{http_code}' \"$url\" -o \"$location\");
+if [ \"\$status\" != \"200\" ]; then
+  echo \"Unable to download CLI from http://downloads.wercker.com\";
   exit 2;
 fi
 
-if chmod +x "$location"; then
-  echo "done.";
+if chmod +x \"$location\"; then
+  echo \"done.\";
 else
-  echo "Unable to make wercker command executable.";
-  echo "Try to run chmod +x $location .";
-fi
-EOF
+  echo \"Unable to make wercker command executable.\";
+  echo \"Try to run chmod +x $location .\";
+fi"
 
   if [ "$platform" = "darwin" ]; then
     echo "$install_script" | /bin/sh
