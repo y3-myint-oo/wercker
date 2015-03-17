@@ -14,10 +14,6 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
-const (
-	fiveMegabytes = 5 * 1024 * 1024
-)
-
 // Artificer collects artifacts from containers and uploads them.
 type Artificer struct {
 	options *PipelineOptions
@@ -146,7 +142,7 @@ func (a *Artificer) Upload(artifact *Artifact) error {
 	if err != nil {
 		return err
 	}
-	parts, err := multi.PutAll(f, fiveMegabytes)
+	parts, err := multi.PutAll(f, a.options.S3PartSize)
 	if err != nil {
 		return err
 	}

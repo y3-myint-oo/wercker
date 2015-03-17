@@ -236,6 +236,7 @@ type AWSOptions struct {
 	AWSSecretAccessKey string
 	AWSRegion          string
 	S3Bucket           string
+	S3PartSize         int64
 }
 
 // NewAWSOptions constructor
@@ -251,6 +252,7 @@ func NewAWSOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*
 		AWSRegion:          awsRegion,
 		AWSSecretAccessKey: awsSecretAccessKey,
 		S3Bucket:           s3Bucket,
+		S3PartSize:         100 * 1024 * 1024, // 100 MB
 	}, nil
 }
 
