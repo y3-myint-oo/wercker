@@ -36,6 +36,7 @@ build:
             echo $WERCKER_GIT_COMMIT > $WERCKER_OUTPUT_DIR/HEAD
             mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/latest
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
+            cp -r install_script $WERCKER_OUTPUT_DIR/install_script
 
 deploy:
   steps:
@@ -105,5 +106,15 @@ deploy:
         source-dir: "./latest"
         delete-removed: false
         bucket-url: $DOWNLOADS_BUCKET_URL/versions/$WERCKER_VERSION/
+        key-id: $AWS_ACCESS_KEY_ID
+        key-secret: $AWS_SECRET_ACCESS_KEY
+  
+  installsh:
+    - script:
+        name: ls
+        code: ls -la
+    - s3sync:
+        source-dir: "install_script/"
+        bucket-url: $INSTALLSH_BUCKET_URL
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
