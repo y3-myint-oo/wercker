@@ -8,8 +8,6 @@ import (
 	"github.com/crowdmob/goamz/s3"
 )
 
-const defaultPartSize = 100 * 1024 * 1024
-
 // NewS3Store creates a new S3Store
 func NewS3Store(options *AWSOptions) *S3Store {
 	logger := rootLogger.WithField("Logger", "S3Store")
@@ -77,7 +75,7 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 
 	s.logger.Println("Starting to upload to S3")
 
-	parts, err := multi.PutAll(file, defaultPartSize)
+	parts, err := multi.PutAll(file, s.options.S3PartSize)
 	if err != nil {
 		s.logger.WithField("Error", err).Error("Unable to upload multiparts")
 		return err
