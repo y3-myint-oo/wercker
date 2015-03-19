@@ -13,36 +13,36 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/termie/go-shutil"
 	"golang.org/x/net/context"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
 
 // Step INterface GOes Here
 
-// StepConfig represents a wercker-step.yml
-type StepConfig struct {
+// StepDesc represents a wercker-step.yml
+type StepDesc struct {
 	Name        string
 	Version     string
 	Description string
 	Keywords    []string
-	Properties  map[string]StepConfigProperty
+	Properties  map[string]StepDescProperty
 }
 
-// StepConfigProperty is the structure of the values in the "properties"
+// StepDescProperty is the structure of the values in the "properties"
 // section of the config
-type StepConfigProperty struct {
+type StepDescProperty struct {
 	Default  string
 	Required bool
 	Type     string
 }
 
-// ReadStepConfig reads a file, expecting it to be parsed into a StepConfig.
-func ReadStepConfig(configPath string) (*StepConfig, error) {
-	file, err := ioutil.ReadFile(configPath)
+// ReadStepDesc reads a file, expecting it to be parsed into a StepDesc.
+func ReadStepDesc(descPath string) (*StepDesc, error) {
+	file, err := ioutil.ReadFile(descPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var m StepConfig
+	var m StepDesc
 	err = yaml.Unmarshal(file, &m)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func ReadStepConfig(configPath string) (*StepConfig, error) {
 }
 
 // Defaults returns the default properties for a step as a map.
-func (sc *StepConfig) Defaults() map[string]string {
+func (sc *StepDesc) Defaults() map[string]string {
 	m := make(map[string]string)
 	if sc == nil || sc.Properties == nil {
 		return m
@@ -73,21 +73,17 @@ type Step struct {
 	Version     string
 	DisplayName string
 	url         string
-	data        RawStepData
+	data        map[string]string
 	options     *PipelineOptions
-	stepConfig  *StepConfig
+	stepDesc    *StepDesc
 	logger      *LogEntry
 }
 
-// ExtraRawStepsToSteps normalizes steps to RawSteps then calls ToStep on them
-func ExtraRawStepsToSteps(raws []interface{}, options *PipelineOptions) ([]*Step, error) {
+// StepConfigsToSteps converts StepsConfigs to Steps
+func StepConfigsToSteps(stepConfigs []RawStepConfig, options *PipelineOptions) ([]*Step, error) {
 	steps := []*Step{}
-	for _, raw := range raws {
-		rawStep, err := normalizeStep(raw)
-		if err != nil {
-			return nil, err
-		}
-		step, err := rawStep.ToStep(options)
+	for _, stepConfig := range stepConfigs {
+		step, err := stepConfig.ToStep(options)
 		if err != nil {
 			return nil, err
 		}
@@ -96,59 +92,9 @@ func ExtraRawStepsToSteps(raws []interface{}, options *PipelineOptions) ([]*Step
 	return steps, nil
 }
 
-// normalizeStep attempts to make things like RawSteps into RawSteps.
-// Steps unfortunately can come in a couple shapes in the yaml, this
-// function attempts to normalize them all to a RawStep
-func normalizeStep(raw interface{}) (*RawStep, error) {
-	s := make(RawStep)
-
-	// If it was just a string, make a RawStep with empty data
-	stringBase, ok := raw.(string)
-	if ok {
-		s[stringBase] = make(RawStepData)
-		return &s, nil
-	}
-
-	// Otherwise it is a map[interface{}]map[interface{}]interface{},
-	// and we will manually assert it into shape
-	mapBase, ok := raw.(map[interface{}]interface{})
-	if ok {
-		for key, value := range mapBase {
-			mapValue := value.(map[interface{}]interface{})
-			data := make(RawStepData)
-			for dataKey, dataValue := range mapValue {
-
-				assertedValue, ok := dataValue.(string)
-				if !ok {
-					maybeBool, ok := dataValue.(bool)
-					if ok && maybeBool {
-						assertedValue = "true"
-					} else {
-						assertedValue = "false"
-					}
-				}
-
-				data[dataKey.(string)] = assertedValue
-			}
-			s[key.(string)] = data
-		}
-		return &s, nil
-	}
-	return nil, fmt.Errorf("Invalid step data. %s", raw)
-}
-
-// ToStep converts a RawStep into a Step.
-func (s *RawStep) ToStep(options *PipelineOptions) (*Step, error) {
-	// There should only be one step in the internal map
-	var stepID string
-	var stepData RawStepData
-
-	// Dereference ourself to get to our underlying data structure
-	for id, data := range *s {
-		stepID = id
-		stepData = data
-	}
-	return NewStep(stepID, stepData, options)
+// ToStep converts a StepConfig into a Step.
+func (s *StepConfig) ToStep(options *PipelineOptions) (*Step, error) {
+	return NewStep(s, options)
 }
 
 // NewStep sets up the basic parts of a Step.
@@ -157,13 +103,16 @@ func (s *RawStep) ToStep(options *PipelineOptions) (*Step, error) {
 //   x wercker/hipchat-notify (fetches from api)
 //   x wercker/hipchat-notify "http://someurl/thingee.tar" (downloads tarball)
 //   x setup-go-environment "file:///some_path" (uses local path)
-func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, error) {
+func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*Step, error) {
 	var identifier string
 	var name string
 	var owner string
 	var version string
 
 	url := ""
+
+	stepID := stepConfig.ID
+	data := stepConfig.Data
 
 	// Check for urls
 	_, err := fmt.Sscanf(stepID, "%s %q", &identifier, &url)
@@ -201,11 +150,10 @@ func NewStep(stepID string, data RawStepData, options *PipelineOptions) (*Step, 
 	}
 
 	// If there is a name in data, make it our displayName and delete it
-	displayName, ok := data["name"]
-	if !ok {
+	displayName := stepConfig.Name
+	if displayName == "" {
 		displayName = name
 	}
-	delete(data, "name")
 
 	logger := rootLogger.WithFields(LogFields{
 		"Logger": "Step",
@@ -312,13 +260,13 @@ func (s *Step) Fetch() (string, error) {
 	}
 
 	// Now that we have the code, load any step config we might find
-	cfg, err := ReadStepConfig(s.HostPath("wercker-step.yml"))
+	desc, err := ReadStepDesc(s.HostPath("wercker-step.yml"))
 	if err != nil && !os.IsNotExist(err) {
 		// TODO(termie): Log an error instead of printing
 		s.logger.Println("ERROR: Reading wercker-step.yml:", err)
 	}
 	if err == nil {
-		s.stepConfig = cfg
+		s.stepDesc = desc
 	}
 	return hostStepPath, nil
 }
@@ -434,7 +382,7 @@ func (s *Step) InitEnv() {
 	}
 	s.Env.Update(a)
 
-	defaults := s.stepConfig.Defaults()
+	defaults := s.stepDesc.Defaults()
 
 	for k, defaultValue := range defaults {
 		value, ok := s.data[k]
@@ -495,9 +443,9 @@ func (s *Step) ReportPath(p ...string) string {
 
 // NewWerckerInitStep returns our fake initial step
 func NewWerckerInitStep(options *PipelineOptions) (*Step, error) {
-	rawStepData := RawStepData{}
 	werckerInit := `wercker-init "https://api.github.com/repos/wercker/wercker-init/tarball"`
-	initStep, err := NewStep(werckerInit, rawStepData, options)
+	stepConfig := &StepConfig{ID: werckerInit, Data: make(map[string]string)}
+	initStep, err := NewStep(stepConfig, options)
 	if err != nil {
 		return nil, err
 	}

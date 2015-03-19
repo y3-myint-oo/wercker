@@ -15,13 +15,13 @@ type ServiceBox struct {
 }
 
 // ToServiceBox turns a box into a ServiceBox
-func (b *RawBox) ToServiceBox(options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
-	return NewServiceBox(string(*b), options, boxOptions)
+func (b *BoxConfig) ToServiceBox(options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+	return NewServiceBox(b, options, boxOptions)
 }
 
 // NewServiceBox from a name and other references
-func NewServiceBox(name string, options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
-	box, err := NewBox(name, options, boxOptions)
+func NewServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+	box, err := NewBox(boxConfig, options, boxOptions)
 	logger := rootLogger.WithField("Logger", "Service")
 	return &ServiceBox{Box: box, logger: logger}, err
 }

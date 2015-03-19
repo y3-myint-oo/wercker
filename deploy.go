@@ -11,12 +11,12 @@ type Deploy struct {
 }
 
 // ToDeploy converts a RawPipeline into a Deploy
-func (p *RawPipeline) ToDeploy(options *PipelineOptions) (*Deploy, error) {
+func (p *PipelineConfig) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 	var box *Box
 	var err error
-	rawBox := p.GetBox()
-	if rawBox != nil {
-		box, err = rawBox.ToBox(options, &BoxOptions{})
+	configBox := p.Box
+	if configBox != nil {
+		box, err = configBox.ToBox(options, &BoxOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -35,15 +35,24 @@ func (p *RawPipeline) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 	// If p is nil it means no Deploy section was found
 	// TODO(bvdberg): fail the build, fall back to default steps, idk. Just run
 	// init for now.
+	var configSteps []RawStepConfig
 	if p != nil {
-		realSteps, err := ExtraRawStepsToSteps(rawDeploySteps(p, options), options)
+		if options.DeployTarget != "" {
+			sectionSteps, ok := p.StepsMap[options.DeployTarget]
+			if ok {
+				configSteps = sectionSteps
+			} else {
+				configSteps = p.Steps
+			}
+		}
+		realSteps, err := StepConfigsToSteps(configSteps, options)
 		if err != nil {
 			return nil, err
 		}
 		steps = append(steps, realSteps...)
 
 		// For after steps we again need werker-init
-		realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps(), options)
+		realAfterSteps, err := StepConfigsToSteps(p.AfterSteps, options)
 		if err != nil {
 			return nil, err
 		}
@@ -56,17 +65,6 @@ func (p *RawPipeline) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 	deploy := &Deploy{NewBasePipeline(options, box, steps, afterSteps), options}
 	deploy.InitEnv()
 	return deploy, nil
-}
-
-func rawDeploySteps(p *RawPipeline, options *PipelineOptions) []interface{} {
-	if options.DeployTarget != "" {
-		section := p.GetSteps(options.DeployTarget)
-		if section != nil {
-			return section
-		}
-	}
-
-	return p.RawSteps()
 }
 
 // InitEnv sets up the internal state of the environment for the build

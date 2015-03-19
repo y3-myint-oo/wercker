@@ -5,63 +5,194 @@ import (
 	"io/ioutil"
 	"path"
 
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
 
-// RawBox is the data type for a box in the wercker.yml
-type RawBox string
+// RawBoxConfig is the unwrapper for BoxConfig
+type RawBoxConfig struct {
+	*BoxConfig
+}
 
-// RawServices is a list of auxilliary boxes to boot in the wercker.yml
-type RawServices []RawBox
+// BoxConfig is the type for boxes in the config
+type BoxConfig struct {
+	ID       string
+	Name     string
+	Tag      string
+	Cmd      string
+	Env      map[string]string
+	Username string
+	Password string
+	Registry string
+}
 
-// RawPipeline is the data type for builds and deploys in the wercker.yml
-type RawPipeline map[string]interface{}
+// UnmarshalYAML first attempts to unmarshal as a string to ID otherwise
+// attempts to unmarshal to the whole struct
+func (r *RawBoxConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	r.BoxConfig = &BoxConfig{}
+	err := unmarshal(&r.BoxConfig.ID)
+	if err != nil {
+		err = unmarshal(&r.BoxConfig)
+	}
+	return err
+}
 
-func (r RawPipeline) GetBox() *RawBox {
-	if s, ok := r["box"]; ok {
-		if boxstring, ok := s.(string); ok {
-			box := RawBox(boxstring)
-			return &box
+// ServicesConfig is a list of auxilliary boxes to boot in the wercker.yml
+type ServicesConfig []RawBoxConfig
+
+// RawStepConfig is our unwrapper for config steps
+type RawStepConfig struct {
+	*StepConfig
+}
+
+// StepConfig holds our step configs
+type StepConfig struct {
+	ID   string
+	Cwd  string
+	Name string
+	Data map[string]string
+}
+
+// ifaceToString takes either a string or bool from yaml and makes it a string
+func ifaceToString(dataValue interface{}) string {
+	assertedValue, ok := dataValue.(string)
+	if !ok {
+		maybeBool, ok := dataValue.(bool)
+		if ok && maybeBool {
+			assertedValue = "true"
+		} else {
+			assertedValue = "false"
 		}
+	}
+	return assertedValue
+}
+
+// UnmarshalYAML is fun, for this one as we're supporting three different
+// types of yaml structures, a string, a map[string]map[string]string,
+// and a map[string]string, these basically equate to these three styles
+// of specifying the step that people commonly use:
+//   steps:
+//    - string-step  # this parses as a string
+//    - script:      # this parses as a map[string]map[string]string
+//        code: done right
+//    - script:      # this parses as a map[string]string
+//      code: done wrong
+func (r *RawStepConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	r.StepConfig = &StepConfig{}
+
+	// First up, check whether we're just a string
+	err := unmarshal(&r.StepConfig.ID)
+	if err == nil {
+		return nil
+	}
+
+	// Next check whether we are a one-key map
+	var stepID string
+	stepData := make(map[string]string)
+	var topMap yaml.MapSlice
+	err = unmarshal(&topMap)
+	if len(topMap) == 1 {
+		// The only item's key will be the stepID, value is data
+		item := topMap[0]
+		stepID = item.Key.(string)
+		interData := item.Value.(yaml.MapSlice)
+		for _, item := range interData {
+			stepData[item.Key.(string)] = ifaceToString(item.Value)
+		}
+	} else {
+		// Otherwise the first element's key is the id, and the rest
+		// of the elements are the data
+		// TODO(termie): Throw a deprecation/bad usage warning
+		firstItem := topMap[0]
+		stepID = firstItem.Key.(string)
+		for _, item := range topMap[1:] {
+			stepData[item.Key.(string)] = ifaceToString(item.Value)
+		}
+	}
+
+	r.ID = stepID
+	// At this point we should know the ID and have a map[string]string
+	// to work with to get the rest of the data
+	if v, ok := stepData["cwd"]; ok {
+		r.Cwd = v
+		delete(stepData, "cwd")
+	}
+	if v, ok := stepData["name"]; ok {
+		r.Name = v
+		delete(stepData, "name")
+	}
+	r.Data = stepData
+	return nil
+}
+
+// RawPipelineConfig is our unwrapper for PipelineConfig
+type RawPipelineConfig struct {
+	*PipelineConfig
+}
+
+// PipelineConfig is for any pipeline sections
+// StepsMap is for compat with the multiple deploy target configs
+// TODO(termie): it would be great to deprecate this behavior and switch
+//               to multiple pipelines instead
+type PipelineConfig struct {
+	Box        *RawBoxConfig
+	Steps      []RawStepConfig
+	AfterSteps []RawStepConfig
+	StepsMap   map[string][]RawStepConfig
+}
+
+var pipelineReservedWords = map[string]struct{}{
+	"box":         struct{}{},
+	"steps":       struct{}{},
+	"after-steps": struct{}{},
+}
+
+// UnmarshalYAML in this case is a little involved due to the myriad shapes our
+// data can take for deploys (unfortunately), so we have to pretend the data is
+// a map for a while and do a marshal/unmarshal hack to parse the subsections
+func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// First get the fields we know and love
+	r.PipelineConfig = &PipelineConfig{
+		StepsMap: make(map[string][]RawStepConfig),
+	}
+	err := unmarshal(r.PipelineConfig)
+
+	// Then treat it like a map to get the extra fields
+	m := map[string]interface{}{}
+	err = unmarshal(&m)
+	if err != nil {
+		return err
+	}
+	for k, v := range m {
+		// Skip the fields we already know
+		if _, ok := pipelineReservedWords[k]; ok {
+			continue
+		}
+
+		// Marshal the data so we can use the unmarshal logic on it
+		b, err := yaml.Marshal(v)
+		if err != nil {
+			return err
+		}
+
+		// Finally, unmarshal each section as steps and add it to our map
+		var otherSteps []RawStepConfig
+		err = yaml.Unmarshal(b, &otherSteps)
+		if err != nil {
+			return fmt.Errorf("Invalid extra key in pipeline, %s is not a list of steps", k)
+		}
+		r.PipelineConfig.StepsMap[k] = otherSteps
 	}
 	return nil
 }
 
-// GetSteps retrieves the steps section for the build or deploy. Return nil if
-// not found.
-func (r RawPipeline) GetSteps(section string) []interface{} {
-	if s, ok := r[section]; ok {
-		if steps, ok := s.([]interface{}); ok {
-			return steps
-		}
-	}
-	return nil
+// Config is the data type for wercker.yml
+type Config struct {
+	SourceDir string             `yaml:"source-dir"`
+	Box       *RawBoxConfig      `yaml:"box"`
+	Services  ServicesConfig     `yaml:"services"`
+	Build     *RawPipelineConfig `yaml:"build"`
+	Deploy    *RawPipelineConfig `yaml:"deploy"`
 }
-
-// RawSteps retrieves the "steps" section for the build or deploy.
-func (r *RawPipeline) RawSteps() []interface{} {
-	return r.GetSteps("steps")
-}
-
-// RawAfterSteps retrieves the "after-steps" section for the build or deploy.
-func (r *RawPipeline) RawAfterSteps() []interface{} {
-	return r.GetSteps("after-steps")
-}
-
-// RawConfig is the data type for wercker.yml
-type RawConfig struct {
-	SourceDir   string       `yaml:"source-dir"`
-	RawBox      *RawBox      `yaml:"box"`
-	RawServices RawServices  `yaml:"services"`
-	RawBuild    *RawPipeline `yaml:"build"`
-	RawDeploy   *RawPipeline `yaml:"deploy"`
-}
-
-// RawStep is the data type for a step in wercker.yml
-type RawStep map[string]RawStepData
-
-// RawStepData is the data type for the contents of a step in wercker.yml
-type RawStepData map[string]string
 
 func findYaml(searchDirs []string) (string, error) {
 	possibleYaml := []string{"ewok.yml", "wercker.yml", ".wercker.yml"}
@@ -99,9 +230,9 @@ func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
 	return ioutil.ReadFile(foundYaml)
 }
 
-// ConfigFromYaml reads a []byte as yaml and turn it into a RawConfig object
-func ConfigFromYaml(file []byte) (*RawConfig, error) {
-	var m RawConfig
+// ConfigFromYaml reads a []byte as yaml and turn it into a Config object
+func ConfigFromYaml(file []byte) (*Config, error) {
+	var m Config
 
 	err := yaml.Unmarshal(file, &m)
 	if err != nil {

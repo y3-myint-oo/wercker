@@ -1,0 +1,23 @@
+box:
+  id: structs_box
+services:
+  - id: structs_service
+build:
+  box: strings_build
+deploy:
+  box: strings_deploy
+
+pipeline:
+  box:
+    id: blue
+    username: $DOCKER_USERNAME
+  steps:
+    - string-step
+    - script:
+        code: done right
+    - script:
+      code: done wrong
+  alternate-deploy:
+    - alternate-string-step
+    - script:
+        code: also done right

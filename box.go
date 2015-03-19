@@ -31,15 +31,16 @@ type BoxOptions struct {
 	NetworkDisabled bool
 }
 
-// ToBox will convert a RawBox into a Box
-func (b *RawBox) ToBox(options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
-	return NewBox(string(*b), options, boxOptions)
+// ToBox will convert a BoxConfig into a Box
+func (b *BoxConfig) ToBox(options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
+	return NewBox(b, options, boxOptions)
 }
 
 // NewBox from a name and other references
-func NewBox(name string, options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
+func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
 	// TODO(termie): right now I am just tacking the version into the name
 	//               by replacing @ with _
+	name := boxConfig.ID
 	name = strings.Replace(name, "@", "_", 1)
 	parts := strings.Split(name, ":")
 	repository := parts[0]

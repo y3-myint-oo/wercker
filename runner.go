@@ -16,14 +16,14 @@ import (
 
 // GetPipeline is a function that will fetch the appropriate pipeline
 // object from the rawConfig.
-type GetPipeline func(*RawConfig, *PipelineOptions) (Pipeline, error)
+type GetPipeline func(*Config, *PipelineOptions) (Pipeline, error)
 
 // GetBuildPipeline grabs the "build" section of the yaml.
-func GetBuildPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline, error) {
-	if rawConfig.RawBuild == nil {
+func GetBuildPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
+	if rawConfig.Build == nil {
 		return nil, fmt.Errorf("No build pipeline definition in wercker.yml")
 	}
-	build, err := rawConfig.RawBuild.ToBuild(options)
+	build, err := rawConfig.Build.ToBuild(options)
 	if err != nil {
 		return nil, err
 	}
@@ -31,11 +31,11 @@ func GetBuildPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline,
 }
 
 // GetDeployPipeline gets the "deploy" section of the yaml.
-func GetDeployPipeline(rawConfig *RawConfig, options *PipelineOptions) (Pipeline, error) {
-	if rawConfig.RawDeploy == nil {
+func GetDeployPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
+	if rawConfig.Deploy == nil {
 		return nil, fmt.Errorf("No deploy pipeline definition in wercker.yml")
 	}
-	build, err := rawConfig.RawDeploy.ToDeploy(options)
+	build, err := rawConfig.Deploy.ToDeploy(options)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (p *Runner) EnsureCode() (string, error) {
 }
 
 // GetConfig parses and returns the wercker.yml file.
-func (p *Runner) GetConfig() (*RawConfig, string, error) {
+func (p *Runner) GetConfig() (*Config, string, error) {
 	// Return a []byte of the yaml we find or create.
 	var werckerYaml []byte
 	var err error
@@ -202,17 +202,17 @@ func (p *Runner) GetConfig() (*RawConfig, string, error) {
 }
 
 // GetBox fetches and returns the base box for the pipeline.
-func (p *Runner) GetBox(pipeline Pipeline, rawConfig *RawConfig) (*Box, error) {
+func (p *Runner) GetBox(pipeline Pipeline, rawConfig *Config) (*Box, error) {
 	var box *Box
 	var err error
 	box = pipeline.Box()
 
 	if box == nil {
-		if rawConfig.RawBox == nil {
+		if rawConfig.Box == nil {
 			return nil, fmt.Errorf("No box found in wercker.yml, cannot proceed")
 		}
-		// Promote RawBox to a real Box. We believe in you, Box!
-		box, err = rawConfig.RawBox.ToBox(p.options, nil)
+		// Promote ConfigBox to a real Box. We believe in you, Box!
+		box, err = rawConfig.Box.ToBox(p.options, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -230,8 +230,8 @@ func (p *Runner) GetBox(pipeline Pipeline, rawConfig *RawConfig) (*Box, error) {
 }
 
 // AddServices fetches and links the services to the base box.
-func (p *Runner) AddServices(rawConfig *RawConfig, box *Box) error {
-	for _, rawService := range rawConfig.RawServices {
+func (p *Runner) AddServices(rawConfig *Config, box *Box) error {
+	for _, rawService := range rawConfig.Services {
 		p.logger.Debugln("Fetching service:", rawService)
 
 		serviceBox, err := rawService.ToServiceBox(p.options, nil)
@@ -285,7 +285,7 @@ func (p *Runner) GetSession(runnerContext context.Context, containerID string) (
 }
 
 // GetPipeline returns a pipeline based on the "build" config section
-func (p *Runner) GetPipeline(rawConfig *RawConfig) (Pipeline, error) {
+func (p *Runner) GetPipeline(rawConfig *Config) (Pipeline, error) {
 	return p.pipelineGetter(rawConfig, p.options)
 }
 
@@ -295,7 +295,7 @@ type RunnerShared struct {
 	box         *Box
 	pipeline    Pipeline
 	sess        *Session
-	config      *RawConfig
+	config      *Config
 	sessionCtx  context.Context
 	containerID string
 }

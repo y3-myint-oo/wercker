@@ -11,12 +11,12 @@ type Build struct {
 }
 
 // ToBuild converts a RawPipeline into a Build
-func (p *RawPipeline) ToBuild(options *PipelineOptions) (*Build, error) {
+func (p *PipelineConfig) ToBuild(options *PipelineOptions) (*Build, error) {
 	var box *Box
 	var err error
-	rawBox := p.GetBox()
-	if rawBox != nil {
-		box, err = rawBox.ToBox(options, &BoxOptions{})
+	configBox := p.Box
+	if configBox != nil {
+		box, err = configBox.ToBox(options, &BoxOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -32,14 +32,14 @@ func (p *RawPipeline) ToBuild(options *PipelineOptions) (*Build, error) {
 	}
 	steps = append(steps, initStep)
 
-	realSteps, err := ExtraRawStepsToSteps(p.RawSteps(), options)
+	realSteps, err := StepConfigsToSteps(p.Steps, options)
 	if err != nil {
 		return nil, err
 	}
 	steps = append(steps, realSteps...)
 
 	// For after steps we again need werker-init
-	realAfterSteps, err := ExtraRawStepsToSteps(p.RawAfterSteps(), options)
+	realAfterSteps, err := StepConfigsToSteps(p.AfterSteps, options)
 	if err != nil {
 		return nil, err
 	}
