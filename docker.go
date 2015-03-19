@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 
 	"code.google.com/p/go-uuid/uuid"
+	"github.com/CenturyLinkLabs/docker-reg-client/registry"
 	"github.com/docker/docker/pkg/term"
 	"github.com/fsouza/go-dockerclient"
 )
@@ -129,4 +131,55 @@ func (c *DockerClient) RunAndAttach(name string) error {
 
 	_, err = c.WaitContainer(container.ID)
 	return err
+}
+
+type CheckAccessOptions struct {
+	Auth       docker.AuthConfiguration
+	Access     string
+	Repository string
+	Tag        string
+	Registry   string
+}
+
+// CheckAccess checks whether a user can read or write an image
+// TODO(termie): this really uses the docker registry code rather than the
+//               client so, maybe this is the wrong place
+func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
+	// Do the steps described here: https://gist.github.com/termie/bc0334b086697a162f67
+	// TODO(termie): make sure the tag is fixed before calling this function
+	//               to prevent image ID attacks
+	name := fmt.Sprintf("%s:%s", opts.Repository, opts.Tag)
+	auth := registry.BasicAuth{
+		Username: opts.Auth.Username,
+		Password: opts.Auth.Password,
+	}
+	client := registry.NewClient()
+
+	// If we're using the hub, do the hub calls to update the auth
+	if opts.Registry == "" {
+		if opts.Access == "write" {
+			if _, err := client.Hub.GetWriteToken(name, auth); err != nil {
+				return false, err
+			}
+		} else if opts.Access == "read" {
+			// if _, err := client.Hub.GetReadTokenWithAuth(name, auth); err != nil {
+			if _, err := client.Hub.GetReadToken(name, auth); err != nil {
+				return false, err
+			}
+		} else {
+			return false, fmt.Errorf("Invalid access type requested: %s", opts.Access)
+		}
+		return true, nil
+	}
+
+	// Otherwise we're using a private repo that aren't technically
+	// required to implement the "Hub" calls (although it seems like most do?)
+	client.BaseURL, _ = url.Parse(opts.Registry)
+	// TODO(termie): check for write access separately, seems like right now
+	//               the only way is to attempt to write a tag
+	_, err := client.Repository.ListTags(name, auth)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
