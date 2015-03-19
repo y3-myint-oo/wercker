@@ -162,8 +162,7 @@ func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
 				return false, err
 			}
 		} else if opts.Access == "read" {
-			// if _, err := client.Hub.GetReadTokenWithAuth(name, auth); err != nil {
-			if _, err := client.Hub.GetReadToken(name, auth); err != nil {
+			if _, err := client.Hub.GetReadTokenWithAuth(name, auth); err != nil {
 				return false, err
 			}
 		} else {
