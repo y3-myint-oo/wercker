@@ -18,6 +18,7 @@ type Logger struct {
 	*logrus.Logger
 }
 
+// LogFields is just exported form logrus
 type LogFields logrus.Fields
 
 // NewLogger constructor

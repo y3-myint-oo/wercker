@@ -133,6 +133,7 @@ func (c *DockerClient) RunAndAttach(name string) error {
 	return err
 }
 
+// CheckAccessOptions is just args for CheckAccess
 type CheckAccessOptions struct {
 	Auth       docker.AuthConfiguration
 	Access     string

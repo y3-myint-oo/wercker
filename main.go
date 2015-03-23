@@ -304,16 +304,16 @@ func cmdCheckConfig(options *PipelineOptions) error {
 		return soft.Exit(err)
 	}
 
-	if rawConfig.RawBox != nil {
-		box, err := rawConfig.RawBox.ToBox(options, &BoxOptions{})
+	if rawConfig.Box != nil {
+		box, err := rawConfig.Box.ToBox(options, &BoxOptions{})
 		if err != nil {
 			return soft.Exit(err)
 		}
 		logger.Println("Found box:", box.Name)
 	}
 
-	if rawConfig.RawBuild != nil {
-		build, err := rawConfig.RawBuild.ToBuild(options)
+	if rawConfig.Build != nil {
+		build, err := rawConfig.Build.ToBuild(options)
 		if err != nil {
 			return soft.Exit(err)
 		}
@@ -323,8 +323,8 @@ func cmdCheckConfig(options *PipelineOptions) error {
 		}
 	}
 
-	if rawConfig.RawDeploy != nil {
-		deploy, err := rawConfig.RawDeploy.ToDeploy(options)
+	if rawConfig.Deploy != nil {
+		deploy, err := rawConfig.Deploy.ToDeploy(options)
 		if err != nil {
 			return soft.Exit(err)
 		}

@@ -822,7 +822,7 @@ func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	return pipelineOpts, nil
 }
 
-// NewBuildOptions constructor
+// NewCheckConfigOptions constructor
 func NewCheckConfigOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
@@ -891,7 +891,7 @@ type LogoutOptions struct {
 	*GlobalOptions
 }
 
-// NewLoginOptions constructor
+// NewLogoutOptions constructor
 func NewLogoutOptions(c *cli.Context, e *Environment) (*LogoutOptions, error) {
 	globalOpts, err := NewGlobalOptions(c, e)
 	if err != nil {

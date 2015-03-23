@@ -208,6 +208,7 @@ type APIStepVersion struct {
 	Description string `json:"description"`
 }
 
+// GetStepVersion grabs a step at a specific version
 func (c *APIClient) GetStepVersion(owner, name, version string) (*APIStepVersion, error) {
 	urlModel := make(map[string]interface{})
 	urlModel["owner"] = owner

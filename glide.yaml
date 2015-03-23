@@ -25,9 +25,9 @@ import:
   - package: github.com/termie/go-shutil
     ref:     bcacb06
     vcs:     git
-  - package: gopkg.in/yaml.v1
-    ref:     9f9df34
-    vcs:     git
+  - package: gopkg.in/yaml.v2
+    # ref:     9f9df34
+    # vcs:     git
   - package: github.com/chuckpreslar/emission
     ref:     586ef24
     vcs:     git
