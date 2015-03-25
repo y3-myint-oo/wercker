@@ -12,8 +12,8 @@ type Pipeline interface {
 	// Getters
 	Env() *Environment   // base
 	Box() *Box           // base
-	Steps() []*Step      // base
-	AfterSteps() []*Step // base
+	Steps() []IStep      // base
+	AfterSteps() []IStep // base
 
 	// Methods
 	CommonEnv() [][]string   // base
@@ -67,13 +67,13 @@ type BasePipeline struct {
 	options    *PipelineOptions
 	env        *Environment
 	box        *Box
-	steps      []*Step
-	afterSteps []*Step
+	steps      []IStep
+	afterSteps []IStep
 	logger     *LogEntry
 }
 
 // NewBasePipeline returns a new BasePipeline
-func NewBasePipeline(options *PipelineOptions, box *Box, steps []*Step, afterSteps []*Step) *BasePipeline {
+func NewBasePipeline(options *PipelineOptions, box *Box, steps []IStep, afterSteps []IStep) *BasePipeline {
 	logger := rootLogger.WithField("Logger", "Pipeline")
 	return &BasePipeline{
 		options:    options,
@@ -91,12 +91,12 @@ func (p *BasePipeline) Box() *Box {
 }
 
 // Steps is a getter for steps
-func (p *BasePipeline) Steps() []*Step {
+func (p *BasePipeline) Steps() []IStep {
 	return p.steps
 }
 
 // AfterSteps is a getter for afterSteps
-func (p *BasePipeline) AfterSteps() []*Step {
+func (p *BasePipeline) AfterSteps() []IStep {
 	return p.afterSteps
 }
 
@@ -139,7 +139,7 @@ func (p *BasePipeline) PassthruEnv() [][]string {
 // FetchSteps makes sure we have all the steps
 func (p *BasePipeline) FetchSteps() error {
 	for _, step := range p.steps {
-		p.logger.Println("Preparing Step:", step.Name)
+		p.logger.Println("Preparing Step:", step.Name())
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}

@@ -22,8 +22,8 @@ func (p *PipelineConfig) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 		}
 	}
 
-	var steps []*Step
-	var afterSteps []*Step
+	var steps []IStep
+	var afterSteps []IStep
 
 	// Start with the secret step, wercker-init that runs before everything
 	initStep, err := NewWerckerInitStep(options)

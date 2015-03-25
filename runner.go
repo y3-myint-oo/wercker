@@ -301,7 +301,7 @@ type RunnerShared struct {
 }
 
 // StartStep emits BuildStepStarted and returns a Finisher for the end event.
-func (p *Runner) StartStep(ctx *RunnerShared, step *Step, order int) *Finisher {
+func (p *Runner) StartStep(ctx *RunnerShared, step IStep, order int) *Finisher {
 	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
 		Options: p.options,
 		Box:     ctx.box,
@@ -369,7 +369,13 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		ExitCode: 1,
 	}
 
-	setupEnvironmentStep := &Step{Owner: "wercker", Name: "setup environment", Version: Version()}
+	setupEnvironmentStep := &Step{
+		BaseStep: &BaseStep{
+			name:    "setup environment",
+			owner:   "wercker",
+			version: Version(),
+		},
+	}
 	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 
@@ -510,7 +516,7 @@ type StepResult struct {
 }
 
 // RunStep runs a step and tosses error if it fails
-func (p *Runner) RunStep(shared *RunnerShared, step *Step, order int) (*StepResult, error) {
+func (p *Runner) RunStep(shared *RunnerShared, step IStep, order int) (*StepResult, error) {
 	finisher := p.StartStep(shared, step, order)
 	sr := &StepResult{
 		Success:  false,
@@ -520,20 +526,22 @@ func (p *Runner) RunStep(shared *RunnerShared, step *Step, order int) (*StepResu
 	}
 	defer finisher.Finish(sr)
 
-	step.InitEnv()
+	step.InitEnv(shared.pipeline)
 	p.logger.Debugln("Step Environment")
-	for _, pair := range step.Env.Ordered() {
+	for _, pair := range step.Env().Ordered() {
 		p.logger.Debugln(" ", pair[0], pair[1])
 	}
 
 	exit, err := step.Execute(shared.sessionCtx, shared.sess)
 	if exit != 0 {
 		sr.ExitCode = exit
-	} else if err != nil {
-		return sr, err
-	} else {
+	} else if err == nil {
 		sr.Success = true
 		sr.ExitCode = 0
+	}
+	if err != nil {
+		sr.Message = err.Error()
+		return sr, err
 	}
 
 	// Grab the message

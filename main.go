@@ -779,7 +779,14 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	tag := pipeline.DockerTag()
 	message := pipeline.DockerMessage()
 
-	storeStep := &Step{Owner: "wercker", Name: "store", Version: Version()}
+	// TODO(termie): hack for now, probably can be made into a naive class
+	storeStep := &Step{
+		BaseStep: &BaseStep{
+			name:    "store",
+			owner:   "wercker",
+			version: Version(),
+		},
+	}
 
 	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
 		Build:      pipeline,
@@ -801,13 +808,13 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	for _, step := range pipeline.Steps() {
 		logger.Println()
 		logger.Println("============== Running Step ===============")
-		logger.Println(step.DisplayName)
+		logger.Println(step.DisplayName())
 		logger.Println("===========================================")
 
 		sr, err := p.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
 			pr.Success = false
-			pr.FailedStepName = step.DisplayName
+			pr.FailedStepName = step.DisplayName()
 			pr.FailedStepMessage = sr.Message
 			logger.Warnln("============== Step failed! ===============")
 			break
@@ -844,7 +851,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			originalFailedStepName := pr.FailedStepName
 			originalFailedStepMessage := pr.FailedStepMessage
 
-			pr.FailedStepName = storeStep.Name
+			pr.FailedStepName = storeStep.Name()
 
 			if shouldStore {
 				pr.FailedStepMessage = "Unable to store container"
@@ -1059,7 +1066,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	for _, step := range pipeline.AfterSteps() {
 		logger.Println()
 		logger.Println("=========== Running After Step ============")
-		logger.Println(step.DisplayName)
+		logger.Println(step.DisplayName())
 		logger.Println("===========================================")
 
 		_, err := p.RunStep(newShared, step, stepCounter.Increment())

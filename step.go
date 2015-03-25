@@ -63,25 +63,87 @@ func (sc *StepDesc) Defaults() map[string]string {
 	return m
 }
 
+// IStep interface for steps, to be renamed
+type IStep interface {
+	// Bunch of getters
+	DisplayName() string
+	Env() *Environment
+	ID() string
+	Name() string
+	Owner() string
+	SafeID() string
+	Version() string
+
+	// Actual methods
+	Fetch() (string, error)
+
+	InitEnv(Pipeline)
+	Execute(context.Context, *Session) (int, error)
+	CollectFile(string, string, string, io.Writer) error
+	CollectArtifact(string) (*Artifact, error)
+	// TODO(termie): don't think this needs to be universal
+	ReportPath(...string) string
+}
+
+// BaseStep type for extending
+type BaseStep struct {
+	displayName string
+	env         *Environment
+	id          string
+	name        string
+	options     *PipelineOptions
+	owner       string
+	safeID      string
+	version     string
+}
+
+// DisplayName getter
+func (s *BaseStep) DisplayName() string {
+	return s.displayName
+}
+
+// Env getter
+func (s *BaseStep) Env() *Environment {
+	return s.env
+}
+
+// ID getter
+func (s *BaseStep) ID() string {
+	return s.id
+}
+
+// Name getter
+func (s *BaseStep) Name() string {
+	return s.name
+}
+
+// Owner getter
+func (s *BaseStep) Owner() string {
+	return s.owner
+}
+
+// SafeID getter
+func (s *BaseStep) SafeID() string {
+	return s.safeID
+}
+
+// Version getter
+func (s *BaseStep) Version() string {
+	return s.version
+}
+
 // Step is the holder of the Step methods.
 type Step struct {
-	Env         *Environment
-	ID          string
-	SafeID      string
-	Owner       string
-	Name        string
-	Version     string
-	DisplayName string
-	url         string
-	data        map[string]string
-	options     *PipelineOptions
-	stepDesc    *StepDesc
-	logger      *LogEntry
+	*BaseStep
+	url      string
+	data     map[string]string
+	stepDesc *StepDesc
+	logger   *LogEntry
 }
 
 // StepConfigsToSteps converts StepsConfigs to Steps
-func StepConfigsToSteps(stepConfigs []RawStepConfig, options *PipelineOptions) ([]*Step, error) {
-	steps := []*Step{}
+func StepConfigsToSteps(stepConfigs []RawStepConfig, options *PipelineOptions) ([]IStep, error) {
+	steps := []IStep{}
 	for _, stepConfig := range stepConfigs {
 		step, err := stepConfig.ToStep(options)
 		if err != nil {
@@ -93,7 +155,12 @@ func StepConfigsToSteps(stepConfigs []RawStepConfig, options *PipelineOptions) (
 }
 
 // ToStep converts a StepConfig into a Step.
-func (s *StepConfig) ToStep(options *PipelineOptions) (*Step, error) {
+func (s *StepConfig) ToStep(options *PipelineOptions) (IStep, error) {
+
+	// NOTE(termie) Special case steps are special
+	if s.ID == "internal/docker-push" {
+		return NewDockerPushStep(s, options)
+	}
 	return NewStep(s, options)
 }
 
@@ -161,22 +228,25 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*Step, error) {
 	})
 
 	return &Step{
-		DisplayName: displayName,
-		Name:        name,
-		Owner:       owner,
-		SafeID:      stepSafeID,
-		Version:     version,
-		data:        data,
-		ID:          identifier,
-		options:     options,
-		url:         url,
-		logger:      logger,
+		BaseStep: &BaseStep{
+			displayName: displayName,
+			env:         &Environment{},
+			id:          identifier,
+			name:        name,
+			options:     options,
+			owner:       owner,
+			safeID:      stepSafeID,
+			version:     version,
+		},
+		data:   data,
+		url:    url,
+		logger: logger,
 	}, nil
 }
 
 // IsScript should probably not be exported.
 func (s *Step) IsScript() bool {
-	return s.Name == "script"
+	return s.name == "script"
 }
 
 func normalizeCode(code string) string {
@@ -188,8 +258,8 @@ func normalizeCode(code string) string {
 
 // FetchScript turns the raw code in a step into a shell file.
 func (s *Step) FetchScript() (string, error) {
-	hostStepPath := s.options.HostPath(s.SafeID)
-	scriptPath := s.options.HostPath(s.SafeID, "run.sh")
+	hostStepPath := s.options.HostPath(s.safeID)
+	scriptPath := s.options.HostPath(s.safeID, "run.sh")
 	content := normalizeCode(s.data["code"])
 
 	err := os.MkdirAll(hostStepPath, 0755)
@@ -224,8 +294,7 @@ func (s *Step) Fetch() (string, error) {
 		if s.url == "" {
 			// Grab the info about the step from the api
 			client := NewAPIClient(s.options.GlobalOptions)
-
-			stepInfo, err := client.GetStepVersion(s.Owner, s.Name, s.Version)
+			stepInfo, err := client.GetStepVersion(s.Owner(), s.Name(), s.Version())
 			if err != nil {
 				return "", err
 			}
@@ -289,7 +358,7 @@ func (s *Step) Execute(sessionCtx context.Context, sess *Session) (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	_, _, err = sess.SendChecked(sessionCtx, s.Env.Export()...)
+	_, _, err = sess.SendChecked(sessionCtx, s.env.Export()...)
 	if err != nil {
 		return 1, err
 	}
@@ -349,11 +418,11 @@ func (s *Step) CollectArtifact(containerID string) (*Artifact, error) {
 	artifact := &Artifact{
 		ContainerID:   containerID,
 		GuestPath:     s.ReportPath("artifacts"),
-		HostPath:      s.options.HostPath("artifacts", s.SafeID, "artifacts.tar"),
+		HostPath:      s.options.HostPath("artifacts", s.safeID, "artifacts.tar"),
 		ApplicationID: s.options.ApplicationID,
 		BuildID:       s.options.BuildID,
 		DeployID:      s.options.DeployID,
-		BuildStepID:   s.SafeID,
+		BuildStepID:   s.safeID,
 		Bucket:        s.options.S3Bucket,
 	}
 
@@ -369,30 +438,29 @@ func (s *Step) CollectArtifact(containerID string) (*Artifact, error) {
 }
 
 // InitEnv sets up the internal environment for the Step.
-func (s *Step) InitEnv() {
-	s.Env = &Environment{}
+func (s *Step) InitEnv(pipeline Pipeline) {
 	a := [][]string{
 		[]string{"WERCKER_STEP_ROOT", s.GuestPath()},
-		[]string{"WERCKER_STEP_ID", s.SafeID},
-		[]string{"WERCKER_STEP_OWNER", s.Owner},
-		[]string{"WERCKER_STEP_NAME", s.Name},
+		[]string{"WERCKER_STEP_ID", s.safeID},
+		[]string{"WERCKER_STEP_OWNER", s.owner},
+		[]string{"WERCKER_STEP_NAME", s.name},
 		[]string{"WERCKER_REPORT_NUMBERS_FILE", s.ReportPath("numbers.ini")},
 		[]string{"WERCKER_REPORT_MESSAGE_FILE", s.ReportPath("message.txt")},
 		[]string{"WERCKER_REPORT_ARTIFACTS_DIR", s.ReportPath("artifacts")},
 	}
-	s.Env.Update(a)
+	s.Env().Update(a)
 
 	defaults := s.stepDesc.Defaults()
 
 	for k, defaultValue := range defaults {
 		value, ok := s.data[k]
-		key := fmt.Sprintf("WERCKER_%s_%s", s.Name, k)
+		key := fmt.Sprintf("WERCKER_%s_%s", s.name, k)
 		key = strings.Replace(key, "-", "_", -1)
 		key = strings.ToUpper(key)
 		if !ok {
-			s.Env.Add(key, defaultValue)
+			s.Env().Add(key, defaultValue)
 		} else {
-			s.Env.Add(key, value)
+			s.Env().Add(key, value)
 		}
 	}
 
@@ -400,44 +468,44 @@ func (s *Step) InitEnv() {
 		if k == "code" || k == "name" {
 			continue
 		}
-		key := fmt.Sprintf("WERCKER_%s_%s", s.Name, k)
+		key := fmt.Sprintf("WERCKER_%s_%s", s.name, k)
 		key = strings.Replace(key, "-", "_", -1)
 		key = strings.ToUpper(key)
-		s.Env.Add(key, value)
+		s.Env().Add(key, value)
 	}
 }
 
 // CachedName returns a name suitable for caching
 func (s *Step) CachedName() string {
-	name := fmt.Sprintf("%s-%s", s.Owner, s.Name)
-	if s.Version != "*" {
-		name = fmt.Sprintf("%s@%s", name, s.Version)
+	name := fmt.Sprintf("%s-%s", s.owner, s.name)
+	if s.version != "*" {
+		name = fmt.Sprintf("%s@%s", name, s.version)
 	}
 	return name
 }
 
 // HostPath returns a path relative to the Step on the host.
 func (s *Step) HostPath(p ...string) string {
-	newArgs := append([]string{s.SafeID}, p...)
+	newArgs := append([]string{s.safeID}, p...)
 	return s.options.HostPath(newArgs...)
 }
 
 // GuestPath returns a path relative to the Step on the guest.
 func (s *Step) GuestPath(p ...string) string {
-	newArgs := append([]string{s.SafeID}, p...)
+	newArgs := append([]string{s.safeID}, p...)
 	return s.options.GuestPath(newArgs...)
 }
 
 // MntPath returns a path relative to the read-only mount of the Step on
 // the guest.
 func (s *Step) MntPath(p ...string) string {
-	newArgs := append([]string{s.SafeID}, p...)
+	newArgs := append([]string{s.safeID}, p...)
 	return s.options.MntPath(newArgs...)
 }
 
 // ReportPath returns a path to the reports for the step on the guest.
 func (s *Step) ReportPath(p ...string) string {
-	newArgs := append([]string{s.SafeID}, p...)
+	newArgs := append([]string{s.safeID}, p...)
 	return s.options.ReportPath(newArgs...)
 }
 
