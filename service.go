@@ -31,7 +31,12 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name, "/", "-", -1), b.options.PipelineID)
 	containerName = strings.Replace(containerName, ":", "_", -1)
 
-	container, err := b.client.CreateContainer(
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
 			Name: containerName,
 			Config: &docker.Config{
@@ -44,11 +49,11 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 		return nil, err
 	}
 
-	b.client.StartContainer(container.ID, &docker.HostConfig{})
+	client.StartContainer(container.ID, &docker.HostConfig{})
 	b.container = container
 
 	go func() {
-		status, err := b.client.WaitContainer(container.ID)
+		status, err := client.WaitContainer(container.ID)
 		if err != nil {
 			b.logger.Errorln("Error waiting", err)
 		}
@@ -67,7 +72,7 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 				OutputStream: &outstream,
 				RawTerminal:  false,
 			}
-			err = b.client.Logs(opts)
+			err = client.Logs(opts)
 			if err != nil {
 				b.logger.Panicln(err)
 			}

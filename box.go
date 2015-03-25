@@ -18,8 +18,8 @@ type Box struct {
 	networkDisabled bool
 	services        []*ServiceBox
 	options         *PipelineOptions
-	client          *DockerClient
 	container       *docker.Container
+	config          *BoxConfig
 	repository      string
 	tag             string
 	images          []*docker.Image
@@ -38,26 +38,27 @@ func (b *BoxConfig) ToBox(options *PipelineOptions, boxOptions *BoxOptions) (*Bo
 
 // NewBox from a name and other references
 func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
-	// TODO(termie): right now I am just tacking the version into the name
-	//               by replacing @ with _
 	name := boxConfig.ID
-	name = strings.Replace(name, "@", "_", 1)
+
+	if strings.Contains(name, "@") {
+		return nil, fmt.Errorf("Invalid box name, '@' is not allowed in docker repositories.")
+	}
+
 	parts := strings.Split(name, ":")
 	repository := parts[0]
 	tag := "latest"
+	if len(parts) > 1 {
+		tag = parts[1]
+	}
+	if boxConfig.Tag != "" {
+		tag = boxConfig.Tag
+	}
+	name = fmt.Sprintf("%s:%s", repository, tag)
 
 	repoParts := strings.Split(repository, "/")
 	shortName := repository
 	if len(repoParts) > 1 {
 		shortName = repoParts[len(repoParts)-1]
-	}
-
-	if len(parts) > 1 {
-		tag = parts[1]
-	}
-	client, err := NewDockerClient(options.DockerOptions)
-	if err != nil {
-		return nil, err
 	}
 
 	networkDisabled := false
@@ -72,9 +73,9 @@ func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptio
 	})
 
 	return &Box{
-		client:          client,
 		Name:            name,
 		ShortName:       shortName,
+		config:          boxConfig,
 		options:         options,
 		repository:      repository,
 		tag:             tag,
@@ -134,9 +135,15 @@ func (b *Box) RunServices() error {
 // Run creates the container and runs it.
 func (b *Box) Run() (*docker.Container, error) {
 	b.logger.Debugln("Starting base box:", b.Name)
+
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return nil, err
+	}
+
 	// Make and start the container
 	containerName := "wercker-pipeline-" + b.options.PipelineID
-	container, err := b.client.CreateContainer(
+	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
 			Name: containerName,
 			Config: &docker.Config{
@@ -162,7 +169,7 @@ func (b *Box) Run() (*docker.Container, error) {
 		return nil, err
 	}
 
-	b.client.StartContainer(container.ID, &docker.HostConfig{
+	client.StartContainer(container.ID, &docker.HostConfig{
 		Binds: binds,
 		Links: b.links(),
 	})
@@ -183,6 +190,11 @@ func (b *Box) Clean() error {
 		}
 	}
 
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return err
+	}
+
 	for _, container := range containers {
 		opts := docker.RemoveContainerOptions{
 			ID: container,
@@ -192,14 +204,14 @@ func (b *Box) Clean() error {
 			RemoveVolumes: true,
 			Force:         true,
 		}
-		err := b.client.RemoveContainer(opts)
+		err := client.RemoveContainer(opts)
 		if err != nil {
 			return err
 		}
 	}
 
 	for i := len(b.images) - 1; i >= 0; i-- {
-		b.client.RemoveImage(b.images[i].ID)
+		client.RemoveImage(b.images[i].ID)
 	}
 
 	return nil
@@ -207,7 +219,11 @@ func (b *Box) Clean() error {
 
 // Restart stops and starts the box
 func (b *Box) Restart() (*docker.Container, error) {
-	err := b.client.RestartContainer(b.container.ID, 1)
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return nil, err
+	}
+	err = client.RestartContainer(b.container.ID, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -221,9 +237,13 @@ func (b *Box) AddService(service *ServiceBox) {
 
 // Stop the box and all its services
 func (b *Box) Stop() {
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return
+	}
 	for _, service := range b.services {
 		b.logger.Println("Stopping service", service.Box.container.ID)
-		err := b.client.StopContainer(service.Box.container.ID, 1)
+		err := client.StopContainer(service.Box.container.ID, 1)
 
 		if err != nil {
 			if _, ok := err.(*docker.ContainerNotRunning); ok {
@@ -235,7 +255,7 @@ func (b *Box) Stop() {
 	}
 	if b.container != nil {
 		b.logger.Println("Stopping container", b.container.ID)
-		err := b.client.StopContainer(b.container.ID, 1)
+		err := client.StopContainer(b.container.ID, 1)
 
 		if err != nil {
 			if _, ok := err.(*docker.ContainerNotRunning); ok {
@@ -247,13 +267,38 @@ func (b *Box) Stop() {
 	}
 }
 
-// Fetch an image if we don't have it already
-func (b *Box) Fetch() (*docker.Image, error) {
-	if image, err := b.client.InspectImage(b.Name); err == nil {
-		return image, nil
+// Fetch an image (or update the local)
+func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return nil, err
 	}
 
-	b.logger.Println("Couldn't find image locally, fetching.")
+	// Check for access to this image
+	auth := docker.AuthConfiguration{
+		Username: env.Interpolate(b.config.Username),
+		Password: env.Interpolate(b.config.Password),
+		// Email:         s.email,
+		// ServerAddress: s.authServer,
+	}
+
+	checkOpts := CheckAccessOptions{
+		Auth:       auth,
+		Access:     "read",
+		Repository: env.Interpolate(b.repository),
+		Tag:        env.Interpolate(b.tag),
+		Registry:   env.Interpolate(b.config.Registry),
+	}
+
+	check, err := client.CheckAccess(checkOpts)
+	if err != nil {
+		b.logger.Errorln("Error during check access", err)
+		return nil, err
+	}
+	if !check {
+		b.logger.Errorln("Not allowed to interact with this repository:", b.repository)
+		return nil, fmt.Errorf("Not allowed to interact with this repository: %s", b.repository)
+	}
 
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
@@ -266,13 +311,13 @@ func (b *Box) Fetch() (*docker.Image, error) {
 		// Registry:      "docker.tsuru.io",
 		OutputStream:  w,
 		RawJSONStream: true,
-		Repository:    b.repository,
-		Tag:           b.tag,
+		Repository:    env.Interpolate(b.repository),
+		Tag:           env.Interpolate(b.tag),
 	}
 
-	err := b.client.PullImage(options, docker.AuthConfiguration{})
+	err = client.PullImage(options, auth)
 	if err == nil {
-		image, err := b.client.InspectImage(b.Name)
+		image, err := client.InspectImage(b.Name)
 		if err == nil {
 			return image, nil
 		}
@@ -284,20 +329,17 @@ func (b *Box) Fetch() (*docker.Image, error) {
 	return nil, err
 }
 
-// PushOptions configures what we push to a registry
-type PushOptions struct {
-	Registry string
-	Name     string
-	Tag      string
-	Message  string
-}
-
 // Commit the current running Docker container to an Docker image.
 func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 	b.logger.WithFields(LogFields{
 		"Name": name,
 		"Tag":  tag,
 	}).Debug("Commit container")
+
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return nil, err
+	}
 
 	commitOptions := docker.CommitContainerOptions{
 		Container:  b.container.ID,
@@ -306,57 +348,11 @@ func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 		Message:    "Build completed",
 		Author:     "wercker",
 	}
-	image, err := b.client.CommitContainer(commitOptions)
+	image, err := client.CommitContainer(commitOptions)
 
 	b.images = append(b.images, image)
 
 	return image, err
-}
-
-// Push commits and tag a container. Then push the image to the registry.
-// Returns the new image, no cleanup is provided.
-func (b *Box) Push(options *PushOptions, auth docker.AuthConfiguration) (*docker.Image, error) {
-	b.logger.WithFields(LogFields{
-		"Registry": options.Registry,
-		"Name":     options.Name,
-		"Tag":      options.Tag,
-		"Message":  options.Message,
-	}).Debug("Push to registry")
-
-	imageName := options.Name
-	if options.Registry != "" {
-		imageName = fmt.Sprintf("%s/%s", options.Registry, options.Name)
-	}
-
-	i, err := b.Commit(imageName, options.Tag, options.Message)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
-	r, w := io.Pipe()
-
-	// emitStatusses in a different go routine
-	go emitStatus(r, b.options)
-
-	pushOptions := docker.PushImageOptions{
-		Name:          imageName,
-		OutputStream:  w,
-		RawJSONStream: true,
-		Registry:      options.Registry,
-		Tag:           options.Tag,
-	}
-
-	err = b.client.PushImage(pushOptions, auth)
-	if err != nil {
-		return nil, err
-	}
-	b.logger.WithField("Image", i).Debug("Commit completed")
-
-	// Cleanup the go routine by closing the writer.
-	w.Close()
-
-	return i, nil
 }
 
 // ExportImageOptions are the options available for ExportImage.
@@ -375,7 +371,12 @@ func (b *Box) ExportImage(options *ExportImageOptions) error {
 		OutputStream: options.OutputStream,
 	}
 
-	return b.client.ExportImage(exportImageOptions)
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return err
+	}
+
+	return client.ExportImage(exportImageOptions)
 }
 
 // emitStatus will decode the messages coming from r and decode these into
