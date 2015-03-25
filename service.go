@@ -29,6 +29,7 @@ func NewServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *B
 // Run executes the service
 func (b *ServiceBox) Run() (*docker.Container, error) {
 	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name, "/", "-", -1), b.options.PipelineID)
+	containerName = strings.Replace(containerName, ":", "_", -1)
 
 	container, err := b.client.CreateContainer(
 		docker.CreateContainerOptions{
