@@ -305,7 +305,7 @@ func (s *Step) Execute(sessionCtx context.Context, sess *Session) (int, error) {
 	}
 
 	if yes, _ := exists(s.HostPath("run.sh")); yes {
-		exit, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`source "%s"`, s.GuestPath("run.sh")))
+		exit, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`source "%s" < /dev/null`, s.GuestPath("run.sh")))
 		return exit, err
 	}
 
