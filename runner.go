@@ -222,6 +222,9 @@ func (p *Runner) GetBox(pipeline Pipeline, rawConfig *Config) (*Box, error) {
 
 	// Make sure we have the box available
 	image, err := box.Fetch()
+	if image == nil {
+		return nil, fmt.Errorf("No box fetched.")
+	}
 	if err != nil {
 		return nil, err
 	}
