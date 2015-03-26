@@ -50,4 +50,4 @@ import:
   - package: github.com/blang/semver
   - package: github.com/wercker/journalhook
   - package: github.com/jtacoma/uritemplates
-  - package: github.com/CenturyLinkLabs/docker-reg-client
+  - package: github.com/CenturyLinkLabs/docker-reg-client/registry
