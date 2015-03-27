@@ -136,7 +136,7 @@ type RawPipelineConfig struct {
 type PipelineConfig struct {
 	Box        *RawBoxConfig
 	Steps      []RawStepConfig
-	AfterSteps []RawStepConfig
+	AfterSteps []RawStepConfig `yaml:"after-steps"`
 	StepsMap   map[string][]RawStepConfig
 }
 
