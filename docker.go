@@ -250,7 +250,7 @@ type DockerPushStep struct {
 // NewDockerPushStep is a special step for doing docker pushes
 func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*DockerPushStep, error) {
 	name := "docker-push"
-	displayName := "Docker Push"
+	displayName := "docker push"
 	if stepConfig.Name != "" {
 		displayName = stepConfig.Name
 	}
