@@ -5,8 +5,7 @@ Parse your wercker.yml, do the things wercker would do.
 
  .. image:: https://app.wercker.com/status/b9328d1816a2c82df512ca359cd934aa/m
     :alt: "Wercker status" 
-    :target: https://app.wercker.com/status/b9328d1816a2c82df512ca359cd934aa/
-
+    :target: https://app.wercker.com/project/bykey/b9328d1816a2c82df512ca359cd934aa
 
 Getting Started
 ---------------
