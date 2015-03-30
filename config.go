@@ -93,19 +93,19 @@ func (r *RawStepConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if len(topMap) == 1 {
 		// The only item's key will be the stepID, value is data
 		item := topMap[0]
-		stepID = item.Key.(string)
+		stepID = item.Key
 		interData := item.Value.(yaml.MapSlice)
 		for _, item := range interData {
-			stepData[item.Key.(string)] = ifaceToString(item.Value)
+			stepData[item.Key] = ifaceToString(item.Value)
 		}
 	} else {
 		// Otherwise the first element's key is the id, and the rest
 		// of the elements are the data
 		// TODO(termie): Throw a deprecation/bad usage warning
 		firstItem := topMap[0]
-		stepID = firstItem.Key.(string)
+		stepID = firstItem.Key
 		for _, item := range topMap[1:] {
-			stepData[item.Key.(string)] = ifaceToString(item.Value)
+			stepData[item.Key] = ifaceToString(item.Value)
 		}
 	}
 

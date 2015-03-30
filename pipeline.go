@@ -146,7 +146,7 @@ func (p *BasePipeline) FetchSteps() error {
 	}
 
 	for _, step := range p.afterSteps {
-		p.logger.Println("Preparing After Step:", step.Name)
+		p.logger.Println("Preparing After Step:", step.Name())
 		if _, err := step.Fetch(); err != nil {
 			return err
 		}
