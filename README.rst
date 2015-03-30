@@ -3,9 +3,9 @@ sentcli
 
 Parse your wercker.yml, do the things wercker would do.
 
-    image:: https://app.wercker.com/status/b9328d1816a2c82df512ca359cd934aa/m.png
-        :alt: "Wercker status" 
-        :target: https://app.wercker.com/status/b9328d1816a2c82df512ca359cd934aa/m
+ .. image:: https://app.wercker.com/status/b9328d1816a2c82df512ca359cd934aa/
+    :alt: "Wercker status" 
+    :target: https://app.wercker.com/status/b9328d1816a2c82df512ca359cd934aa/m
 
 
 Getting Started
