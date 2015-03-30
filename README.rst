@@ -3,8 +3,9 @@ sentcli
 
 Parse your wercker.yml, do the things wercker would do.
 
-.. raw:: html
-    <a href="https://app.wercker.com/project/bykey/b9328d1816a2c82df512ca359cd934aa"><img alt="Wercker status" src="https://app.wercker.com/status/b9328d1816a2c82df512ca359cd934aa/m"></a>
+    image:: https://app.wercker.com/project/bykey/b9328d1816a2c82df512ca359cd934aa
+        :alt: "Wercker status" 
+        :target: https://app.wercker.com/status/b9328d1816a2c82df512ca359cd934aa/m
 
 
 Getting Started
