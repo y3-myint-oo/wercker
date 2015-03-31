@@ -221,7 +221,7 @@ func (p *Runner) GetBox(pipeline Pipeline, rawConfig *Config) (*Box, error) {
 	p.logger.Debugln("Box:", box.Name)
 
 	// Make sure we have the box available
-	image, err := box.Fetch()
+	image, err := box.Fetch(pipeline.Env())
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func (p *Runner) GetBox(pipeline Pipeline, rawConfig *Config) (*Box, error) {
 }
 
 // AddServices fetches and links the services to the base box.
-func (p *Runner) AddServices(rawConfig *Config, box *Box) error {
+func (p *Runner) AddServices(pipeline Pipeline, rawConfig *Config, box *Box) error {
 	for _, rawService := range rawConfig.Services {
 		p.logger.Debugln("Fetching service:", rawService)
 
@@ -242,7 +242,7 @@ func (p *Runner) AddServices(rawConfig *Config, box *Box) error {
 			return err
 		}
 
-		if _, err := serviceBox.Box.Fetch(); err != nil {
+		if _, err := serviceBox.Box.Fetch(pipeline.Env()); err != nil {
 			return err
 		}
 
@@ -418,7 +418,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 	shared.box = box
 
-	err = p.AddServices(rawConfig, box)
+	err = p.AddServices(pipeline, rawConfig, box)
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err

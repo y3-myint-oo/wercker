@@ -146,10 +146,10 @@ type CheckAccessOptions struct {
 	Registry   string
 }
 
-// normalizeRepo only really applies to the repo name used in the registry
+// normalizeRepo only really applies to the repository name used in the registry
 // the full name is still used within the other calls to docker stuff
 func normalizeRepo(name string) string {
-	// NOTE(termie): the local name of the repo is something like
+	// NOTE(termie): the local name of the repository is something like
 	//               quay.io/termie/gox-mirror but we ahve to check for
 	//               termie/gox-mirror, so... it's manglin' time
 	parts := strings.Split(name, "/")
@@ -218,11 +218,20 @@ func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
 			return false, err
 		}
 	} else if opts.Access == "read" {
-		if _, err := client.Hub.GetReadTokenWithAuth(name, auth); err != nil {
-			if err.Error() == "Server returned status 401" || err.Error() == "Server returned status 403" {
-				return false, nil
+		if opts.Auth.Username != "" {
+			if _, err := client.Hub.GetReadTokenWithAuth(name, auth); err != nil {
+				if err.Error() == "Server returned status 401" || err.Error() == "Server returned status 403" {
+					return false, nil
+				}
+				return false, err
 			}
-			return false, err
+		} else {
+			if _, err := client.Hub.GetReadToken(name); err != nil {
+				if err.Error() == "Server returned status 401" || err.Error() == "Server returned status 403" {
+					return false, nil
+				}
+				return false, err
+			}
 		}
 	} else {
 		return false, fmt.Errorf("Invalid access type requested: %s", opts.Access)
@@ -238,7 +247,7 @@ type DockerPushStep struct {
 	password   string
 	email      string
 	authServer string
-	repo       string
+	repository string
 	author     string
 	message    string
 	tag        string
@@ -281,14 +290,7 @@ func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*Docke
 // identified by $VAR with the value of the VAR pipeline environment variable
 func (s *DockerPushStep) interpolate(value string, pipeline Pipeline) string {
 	env := pipeline.Env()
-	if strings.HasPrefix(value, "$") {
-		if interp, ok := env.Map[value[1:]]; ok {
-			return interp
-		} else {
-			return ""
-		}
-	}
-	return value
+	return env.Interpolate(value)
 }
 
 // The IStep Interface
@@ -311,8 +313,8 @@ func (s *DockerPushStep) InitEnv(pipeline Pipeline) {
 		s.authServer = s.interpolate(authServer, pipeline)
 	}
 
-	if repo, ok := s.data["repo"]; ok {
-		s.repo = s.interpolate(repo, pipeline)
+	if repository, ok := s.data["repository"]; ok {
+		s.repository = s.interpolate(repository, pipeline)
 	}
 
 	if tag, ok := s.data["tag"]; ok {
@@ -351,6 +353,13 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		return 1, err
 	}
 
+	s.logger.WithFields(LogFields{
+		"Registry":   s.registry,
+		"Repository": s.repository,
+		"Tag":        s.tag,
+		"Message":    s.message,
+	}).Debug("Push to registry")
+
 	// This is clearly only relevant to docker so we're going to dig into the
 	// transport internals a little bit to get the container ID
 	dt := sess.transport.(*DockerTransport)
@@ -366,7 +375,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	checkOpts := CheckAccessOptions{
 		Auth:       auth,
 		Access:     "write",
-		Repository: s.repo,
+		Repository: s.repository,
 		Tag:        s.tag,
 		Registry:   s.registry,
 	}
@@ -377,51 +386,42 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		return -1, err
 	}
 	if !check {
-		s.logger.Errorln("Not allowed to interact with this repo:", s.repo)
-		return -1, fmt.Errorf("Not allowed to interact with this repo: %s", s.repo)
+		s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
+		return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
 	}
 
 	s.logger.Debugln("Init env:", s.data)
 	commitOpts := docker.CommitContainerOptions{
 		Container:  containerID,
-		Repository: s.repo,
+		Repository: s.repository,
 		Tag:        s.tag,
 		Author:     s.author,
 		Message:    s.message,
 	}
 	s.logger.Debugln("Commit container:", containerID)
-	client.CommitContainer(commitOpts)
+	i, err := client.CommitContainer(commitOpts)
+	if err != nil {
+		return -1, err
+	}
+	s.logger.WithField("Image", i).Debug("Commit completed")
 
-	done := make(chan struct{})
-	recv := make(chan string)
-	stdout := NewReceiver(recv)
+	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
+	r, w := io.Pipe()
 
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case line := <-recv:
-				s.e.Emit(Logs, &LogsArgs{
-					Options: s.options,
-					Hidden:  false,
-					Logs:    line,
-					Stream:  "stdout",
-				})
-			}
-		}
-	}()
+	// emitStatusses in a different go routine
+	go emitStatus(r, s.options)
+	defer w.Close()
 
 	pushOpts := docker.PushImageOptions{
-		Name:         s.repo,
-		Tag:          s.tag,
-		Registry:     s.registry,
-		OutputStream: stdout,
+		Name:          s.repository,
+		Tag:           s.tag,
+		Registry:      s.registry,
+		OutputStream:  w,
+		RawJSONStream: true,
 	}
 
-	s.logger.Println("Push container:", s.repo, s.registry)
+	s.logger.Println("Push container:", s.repository, s.registry)
 	err = client.PushImage(pushOpts, auth)
-	done <- struct{}{}
 
 	if err != nil {
 		s.logger.Errorln("Failed to push:", err)

@@ -70,6 +70,19 @@ func (e *Environment) Ordered() [][]string {
 	return a
 }
 
+// Interpolate is a naive interpolator that attempts to replace variables
+// identified by $VAR with the value of the VAR pipeline environment variable
+func (e *Environment) Interpolate(value string) string {
+	if strings.HasPrefix(value, "$") {
+		if interp, ok := e.Map[value[1:]]; ok {
+			return interp
+		} else {
+			return ""
+		}
+	}
+	return value
+}
+
 var mirroredEnv = [...]string{
 	"WERCKER_STARTED_BY",
 	"WERCKER_MAIN_PIPELINE_STARTED",

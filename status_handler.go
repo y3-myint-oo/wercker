@@ -42,6 +42,8 @@ func (s *JSONMessageProcessor) ProcessJSONMessage(m *utils.JSONMessage) string {
 		fallthrough
 	case "Download complete":
 		fallthrough
+	case "Image already pushed, skipping":
+		fallthrough
 	case "Image successfully pushed":
 		delete(s.progressMessages, m.ID)
 		s.message = m

@@ -85,7 +85,7 @@ func NewBasePipeline(options *PipelineOptions, box *Box, steps []IStep, afterSte
 	}
 }
 
-// Box is a getter for steps
+// Box is a getter for the box
 func (p *BasePipeline) Box() *Box {
 	return p.box
 }
