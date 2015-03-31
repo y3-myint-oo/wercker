@@ -191,6 +191,7 @@ type Config struct {
 	Build             *RawPipelineConfig `yaml:"build"`
 	CommandTimeout    int                `yaml:"command-timeout"`
 	Deploy            *RawPipelineConfig `yaml:"deploy"`
+	Dev               *RawPipelineConfig `yaml:"dev"`
 	NoResponseTimeout int                `yaml:"no-response-timeout"`
 	Services          []*RawBoxConfig    `yaml:"services"`
 	SourceDir         string             `yaml:"source-dir"`

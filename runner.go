@@ -18,9 +18,20 @@ import (
 // object from the rawConfig.
 type GetPipeline func(*Config, *PipelineOptions) (Pipeline, error)
 
+func GetDevPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
+	if rawConfig.Dev == nil {
+		return nil, fmt.Errorf("No build pipeline definition in wercker.yml")
+	}
+	build, err := rawConfig.ToPipeline(options, rawConfig.Dev)
+	if err != nil {
+		return nil, err
+	}
+	return build, nil
+}
+
 // GetBuildPipeline grabs the "build" section of the yaml.
 func GetBuildPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-	return rawConfig.ToBuild(options)
+	return rawConfig.ToPipeline(options, rawConfig.Build)
 }
 
 // GetDeployPipeline gets the "deploy" section of the yaml.

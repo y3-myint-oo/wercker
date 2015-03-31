@@ -45,6 +45,26 @@ var (
 		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
 	}
 
+	devCommand = cli.Command{
+		Name:  "dev",
+		Usage: "build a local project",
+		Action: func(c *cli.Context) {
+			envfile := c.GlobalString("environment")
+			_ = godotenv.Load(envfile)
+
+			opts, err := NewBuildOptions(c, NewEnvironment(os.Environ()))
+			if err != nil {
+				cliLogger.Errorln("Invalid options\n", err)
+				os.Exit(1)
+			}
+			err = cmdDev(opts)
+			if err != nil {
+				os.Exit(1)
+			}
+		},
+		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
+	}
+
 	checkConfigCommand = cli.Command{
 		Name: "check-config",
 		// ShortName: "b",
@@ -228,6 +248,7 @@ func main() {
 	app.Flags = flagsFor(GlobalFlags)
 	app.Commands = []cli.Command{
 		buildCommand,
+		devCommand,
 		checkConfigCommand,
 		deployCommand,
 		detectCommand,
@@ -269,6 +290,10 @@ func (s *SoftExit) Exit(v ...interface{}) error {
 	return fmt.Errorf("Exiting.")
 }
 
+func cmdDev(options *PipelineOptions) error {
+	return executePipeline(options, GetDevPipeline)
+}
+
 func cmdBuild(options *PipelineOptions) error {
 	return executePipeline(options, GetBuildPipeline)
 }
@@ -299,6 +324,7 @@ func cmdCheckConfig(options *PipelineOptions) error {
 
 	// Parse that bad boy.
 	rawConfig, err := ConfigFromYaml(werckerYaml)
+	fmt.Println(rawConfig)
 	if err != nil {
 		return soft.Exit(err)
 	}
@@ -311,8 +337,19 @@ func cmdCheckConfig(options *PipelineOptions) error {
 		logger.Println("Found box:", box.Name)
 	}
 
+	if rawConfig.Dev != nil {
+		build, err := rawConfig.ToPipeline(options, rawConfig.Dev)
+		if err != nil {
+			return soft.Exit(err)
+		}
+		logger.Println("Found dev section")
+		if build.box != nil {
+			logger.Println("  with box:", build.box.Name)
+		}
+	}
+
 	if rawConfig.Build != nil {
-		build, err := rawConfig.ToBuild(options)
+		build, err := rawConfig.ToPipeline(options, rawConfig.Build)
 		if err != nil {
 			return soft.Exit(err)
 		}
@@ -743,7 +780,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		defer shared.box.Stop()
 	}
 	if err != nil {
-		logger.Errorln(f.Fail("Step failed", "setup environment"))
+		logger.Errorln(f.Fail("Step failed", "setup environment"), err)
 		e.Emit(Logs, &LogsArgs{
 			Options: options,
 			Hidden:  false,

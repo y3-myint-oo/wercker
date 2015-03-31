@@ -52,3 +52,4 @@ import:
   - package: github.com/jtacoma/uritemplates
   - package: github.com/CenturyLinkLabs/docker-reg-client/registry
   - package: github.com/flynn/go-shlex
+  - package: gopkg.in/fsnotify.v1
