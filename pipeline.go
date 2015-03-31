@@ -10,8 +10,9 @@ import (
 // both Build and Deploy
 type Pipeline interface {
 	// Getters
-	Env() *Environment   // base
-	Box() *Box           // base
+	Env() *Environment // base
+	Box() *Box         // base
+	ServicesConfig() ServicesConfig
 	Steps() []IStep      // base
 	AfterSteps() []IStep // base
 
@@ -65,6 +66,7 @@ func (pr *PipelineResult) ExportEnvironment(sessionCtx context.Context, sess *Se
 // BasePipeline is the base class for Build and Deploy
 type BasePipeline struct {
 	options    *PipelineOptions
+	config     *PipelineConfig
 	env        *Environment
 	box        *Box
 	steps      []IStep
@@ -73,10 +75,11 @@ type BasePipeline struct {
 }
 
 // NewBasePipeline returns a new BasePipeline
-func NewBasePipeline(options *PipelineOptions, box *Box, steps []IStep, afterSteps []IStep) *BasePipeline {
+func NewBasePipeline(options *PipelineOptions, box *Box, steps []IStep, afterSteps []IStep, config *PipelineConfig) *BasePipeline {
 	logger := rootLogger.WithField("Logger", "Pipeline")
 	return &BasePipeline{
 		options:    options,
+		config:     config,
 		env:        &Environment{},
 		box:        box,
 		steps:      steps,
@@ -88,6 +91,11 @@ func NewBasePipeline(options *PipelineOptions, box *Box, steps []IStep, afterSte
 // Box is a getter for the box
 func (p *BasePipeline) Box() *Box {
 	return p.box
+}
+
+// ServicesConfig is a getter for the servicesConfig
+func (p *BasePipeline) ServicesConfig() ServicesConfig {
+	return p.config.Services
 }
 
 // Steps is a getter for steps

@@ -48,7 +48,7 @@ func (p *PipelineConfig) ToBuild(options *PipelineOptions) (*Build, error) {
 		afterSteps = append(afterSteps, realAfterSteps...)
 	}
 
-	build := &Build{NewBasePipeline(options, box, steps, afterSteps), options}
+	build := &Build{NewBasePipeline(options, box, steps, afterSteps, p), options}
 	build.InitEnv()
 	return build, nil
 }

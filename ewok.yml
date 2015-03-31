@@ -6,6 +6,11 @@ box: tcnksm/gox:1.3.3
 #       mysql_root_password: FOO
 
 build:
+  # services:
+  #   - id: mariadb
+  #     cmd: /bin/badcommand
+  #     env:
+  #       mysql_root_password: FOO
   # box: tcnksm/gox:1.3.3
   steps:
     - install-packages:

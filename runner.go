@@ -234,7 +234,11 @@ func (p *Runner) GetBox(pipeline Pipeline, rawConfig *Config) (*Box, error) {
 
 // AddServices fetches and links the services to the base box.
 func (p *Runner) AddServices(pipeline Pipeline, rawConfig *Config, box *Box) error {
-	for _, rawService := range rawConfig.Services {
+	services := pipeline.ServicesConfig()
+	if services == nil {
+		services = rawConfig.Services
+	}
+	for _, rawService := range services {
 		p.logger.Debugln("Fetching service:", rawService)
 
 		serviceBox, err := rawService.ToServiceBox(p.options, nil)

@@ -62,7 +62,7 @@ func (p *PipelineConfig) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 		}
 	}
 
-	deploy := &Deploy{NewBasePipeline(options, box, steps, afterSteps), options}
+	deploy := &Deploy{NewBasePipeline(options, box, steps, afterSteps, p), options}
 	deploy.InitEnv()
 	return deploy, nil
 }
