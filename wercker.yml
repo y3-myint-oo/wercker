@@ -59,10 +59,13 @@ deploy:
     - script:
         name: rename
         code: |
-            mv ./latest/darwin_386/sentcli ./latest/darwin_386/wercker
-            mv ./latest/darwin_amd64/sentcli ./latest/darwin_amd64/wercker
-            mv ./latest/linux_386/sentcli ./latest/linux_386/wercker
-            mv ./latest/linux_amd64/sentcli ./latest/linux_amd64/wercker
+            find . -type f -name "sentcli" -exec bash -c 'mv "${0}" ${0/%sentcli/wercker}' {} \;
+
+    - script:
+        name: gzip files
+        code: |
+            find . -type f | xargs gzip
+            find . -type f -name "*.gz" -exec bash -c 'mv "${0}" ${0/%.gz/}' {} \;
 
     - s3sync:
         source-dir: "./latest"
@@ -70,6 +73,7 @@ deploy:
         bucket-url: $DOWNLOADS_BUCKET_URL/beta/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
+        opts: --acl-private --add-header=Content-Encoding:gzip
 
     - s3sync:
         source-dir: "./latest"
@@ -77,6 +81,7 @@ deploy:
         bucket-url: $DOWNLOADS_BUCKET_URL/dev/$WERCKER_VERSION/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
+        opts: --acl-private --add-header=Content-Encoding:gzip
 
   # This should be manually deployed when we want to make new version available.
   stable:
@@ -90,10 +95,7 @@ deploy:
     - script:
         name: rename
         code: |
-            mv ./latest/darwin_386/sentcli ./latest/darwin_386/wercker
-            mv ./latest/darwin_amd64/sentcli ./latest/darwin_amd64/wercker
-            mv ./latest/linux_386/sentcli ./latest/linux_386/wercker
-            mv ./latest/linux_amd64/sentcli ./latest/linux_amd64/wercker
+            find . -type f -name "sentcli" -exec bash -c 'mv "${0}" ${0/%sentcli/wercker}' {} \;
 
     - s3sync:
         source-dir: "./latest"
@@ -108,11 +110,12 @@ deploy:
         bucket-url: $DOWNLOADS_BUCKET_URL/versions/$WERCKER_VERSION/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
-  
+
   installsh:
     - script:
         name: ls
         code: ls -la
+
     - s3sync:
         source-dir: "install_script/"
         bucket-url: $INSTALLSH_BUCKET_URL
