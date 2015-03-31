@@ -121,10 +121,10 @@ func (b *Box) binds() ([]string, error) {
 }
 
 // RunServices runs the services associated with this box
-func (b *Box) RunServices() error {
+func (b *Box) RunServices(env *Environment) error {
 	for _, serviceBox := range b.services {
 		b.logger.Debugln("Starting service:", serviceBox.Name)
-		_, err := serviceBox.Run()
+		_, err := serviceBox.Run(env)
 		if err != nil {
 			return err
 		}
@@ -132,13 +132,28 @@ func (b *Box) RunServices() error {
 	return nil
 }
 
+func dockerEnv(boxEnv map[string]string, env *Environment) []string {
+	s := []string{}
+	for k, v := range boxEnv {
+		s = append(s, fmt.Sprintf("%s=%s", strings.ToUpper(k), env.Interpolate(v)))
+	}
+	return s
+}
+
 // Run creates the container and runs it.
-func (b *Box) Run() (*docker.Container, error) {
+func (b *Box) Run(env *Environment) (*docker.Container, error) {
 	b.logger.Debugln("Starting base box:", b.Name)
 
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {
 		return nil, err
+	}
+
+	// Import the environment
+	myEnv := dockerEnv(b.config.Env, env)
+	cmd := b.config.Cmd
+	if cmd == "" {
+		cmd = "/bin/bash"
 	}
 
 	// Make and start the container
@@ -150,7 +165,8 @@ func (b *Box) Run() (*docker.Container, error) {
 				Image:           b.Name,
 				Tty:             false,
 				OpenStdin:       true,
-				Cmd:             []string{"/bin/bash"},
+				Cmd:             []string{cmd},
+				Env:             myEnv,
 				AttachStdin:     true,
 				AttachStdout:    true,
 				AttachStderr:    true,
