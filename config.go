@@ -138,6 +138,7 @@ type PipelineConfig struct {
 	Steps      []RawStepConfig
 	AfterSteps []RawStepConfig `yaml:"after-steps"`
 	StepsMap   map[string][]RawStepConfig
+	Services   ServicesConfig `yaml:"services"`
 }
 
 var pipelineReservedWords = map[string]struct{}{

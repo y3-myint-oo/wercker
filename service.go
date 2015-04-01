@@ -27,7 +27,7 @@ func NewServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *B
 }
 
 // Run executes the service
-func (b *ServiceBox) Run() (*docker.Container, error) {
+func (b *ServiceBox) Run(env *Environment) (*docker.Container, error) {
 	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name, "/", "-", -1), b.options.PipelineID)
 	containerName = strings.Replace(containerName, ":", "_", -1)
 
@@ -36,11 +36,20 @@ func (b *ServiceBox) Run() (*docker.Container, error) {
 		return nil, err
 	}
 
+	// Import the environment and command
+	myEnv := dockerEnv(b.config.Env, env)
+	cmd := []string{}
+	if b.config.Cmd != "" {
+		cmd = append(cmd, b.config.Cmd)
+	}
+
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
 			Name: containerName,
 			Config: &docker.Config{
 				Image:           b.Name,
+				Cmd:             cmd,
+				Env:             myEnv,
 				NetworkDisabled: b.networkDisabled,
 			},
 		})
