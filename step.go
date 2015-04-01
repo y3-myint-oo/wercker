@@ -68,6 +68,7 @@ type IStep interface {
 	// Bunch of getters
 	DisplayName() string
 	Env() *Environment
+	Cwd() string
 	ID() string
 	Name() string
 	Owner() string
@@ -95,6 +96,7 @@ type BaseStep struct {
 	owner       string
 	safeID      string
 	version     string
+	cwd         string
 }
 
 // DisplayName getter
@@ -105,6 +107,11 @@ func (s *BaseStep) DisplayName() string {
 // Env getter
 func (s *BaseStep) Env() *Environment {
 	return s.env
+}
+
+// Cwd getter
+func (s *BaseStep) Cwd() string {
+	return s.cwd
 }
 
 // ID getter
@@ -237,6 +244,7 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*Step, error) {
 			owner:       owner,
 			safeID:      stepSafeID,
 			version:     version,
+			cwd:         stepConfig.Cwd,
 		},
 		data:   data,
 		url:    url,
@@ -349,6 +357,9 @@ func (s *Step) SetupGuest(sessionCtx context.Context, sess *Session) error {
 	_, _, err = sess.SendChecked(sessionCtx, "set +e")
 	_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cp -r "%s" "%s"`, s.MntPath(), s.GuestPath()))
 	_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cd "%s"`, s.options.SourcePath()))
+	if s.Cwd() != "" {
+		_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cd "%s"`, s.Cwd()))
+	}
 	return err
 }
 
