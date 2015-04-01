@@ -259,7 +259,10 @@ func (s *Step) IsScript() bool {
 
 func normalizeCode(code string) string {
 	if !strings.HasPrefix(code, "#!") {
-		code = strings.Join([]string{"set -v", "set -e", code, "set +v"}, "\n")
+		code = strings.Join([]string{
+			"set -e",
+			code,
+		}, "\n")
 	}
 	return code
 }

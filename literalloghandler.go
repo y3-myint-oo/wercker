@@ -39,9 +39,22 @@ func (h *LiteralLogHandler) Logs(args *LogsArgs) {
 			"Hidden": args.Hidden,
 			"Stream": args.Stream,
 		}).Printf("%s %6s %q", shown, args.Stream, args.Logs)
-	} else if !args.Hidden {
+	} else if h.shouldPrintLog(args) {
 		h.l.Print(args.Logs)
 	}
+}
+
+func (h *LiteralLogHandler) shouldPrintLog(args *LogsArgs) bool {
+	if args.Hidden {
+		return false
+	}
+
+	// Do not show stdin stream is verbose is false
+	if args.Stream == "stdin" && !h.options.Verbose {
+		return false
+	}
+
+	return true
 }
 
 // ListenTo will add eventhandlers to e.
