@@ -73,7 +73,7 @@ deploy:
         bucket-url: $DOWNLOADS_BUCKET_URL/beta/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
-        opts: --acl-private --add-header=Content-Encoding:gzip
+        opts: --acl-public --add-header=Content-Encoding:gzip
 
     - s3sync:
         source-dir: "./latest"
@@ -81,7 +81,7 @@ deploy:
         bucket-url: $DOWNLOADS_BUCKET_URL/dev/$WERCKER_VERSION/
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
-        opts: --acl-private --add-header=Content-Encoding:gzip
+        opts: --acl-public --add-header=Content-Encoding:gzip
 
   # This should be manually deployed when we want to make new version available.
   stable:
