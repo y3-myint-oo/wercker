@@ -12,6 +12,7 @@ import (
 	"github.com/CenturyLinkLabs/docker-reg-client/registry"
 	"github.com/chuckpreslar/emission"
 	"github.com/docker/docker/pkg/term"
+	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
 	"golang.org/x/net/context"
 )
@@ -252,6 +253,7 @@ type DockerPushStep struct {
 	message    string
 	tag        string
 	registry   string
+	cmd        []string
 	logger     *LogEntry
 	e          *emission.Emitter
 }
@@ -336,6 +338,13 @@ func (s *DockerPushStep) InitEnv(pipeline Pipeline) {
 		// s.registry = "https://registry.hub.docker.com"
 		s.registry = normalizeRegistry("https://registry.hub.docker.com")
 	}
+
+	if cmd, ok := s.data["cmd"]; ok {
+		parts, err := shlex.Split(cmd)
+		if err == nil {
+			s.cmd = parts
+		}
+	}
 }
 
 // Fetch NOP
@@ -391,12 +400,16 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	}
 
 	s.logger.Debugln("Init env:", s.data)
+	config := docker.Config{
+		Cmd: s.cmd,
+	}
 	commitOpts := docker.CommitContainerOptions{
 		Container:  containerID,
 		Repository: s.repository,
 		Tag:        s.tag,
 		Author:     s.author,
 		Message:    s.message,
+		Run:        &config,
 	}
 	s.logger.Debugln("Commit container:", containerID)
 	i, err := client.CommitContainer(commitOpts)
