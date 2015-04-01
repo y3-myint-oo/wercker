@@ -78,7 +78,7 @@ type IStep interface {
 	// Actual methods
 	Fetch() (string, error)
 
-	InitEnv(Pipeline)
+	InitEnv(*Environment)
 	Execute(context.Context, *Session) (int, error)
 	CollectFile(string, string, string, io.Writer) error
 	CollectArtifact(string) (*Artifact, error)
@@ -148,10 +148,9 @@ type Step struct {
 	logger   *LogEntry
 }
 
-// StepConfigsToSteps converts StepsConfigs to Steps
-func StepConfigsToSteps(stepConfigs []RawStepConfig, options *PipelineOptions) ([]IStep, error) {
+func (s RawStepsConfig) ToSteps(options *PipelineOptions) ([]IStep, error) {
 	steps := []IStep{}
-	for _, stepConfig := range stepConfigs {
+	for _, stepConfig := range s {
 		step, err := stepConfig.ToStep(options)
 		if err != nil {
 			return nil, err
@@ -452,7 +451,7 @@ func (s *Step) CollectArtifact(containerID string) (*Artifact, error) {
 }
 
 // InitEnv sets up the internal environment for the Step.
-func (s *Step) InitEnv(pipeline Pipeline) {
+func (s *Step) InitEnv(env *Environment) {
 	a := [][]string{
 		[]string{"WERCKER_STEP_ROOT", s.GuestPath()},
 		[]string{"WERCKER_STEP_ID", s.safeID},

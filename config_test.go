@@ -7,10 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func emptyPipelineOptions() *PipelineOptions {
-	return &PipelineOptions{}
-}
-
 func TestConfigBoxStrings(t *testing.T) {
 	b, err := ioutil.ReadFile("./tests/box_strings.yml")
 	assert.Nil(t, err)

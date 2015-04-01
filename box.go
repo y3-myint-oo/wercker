@@ -143,6 +143,10 @@ func dockerEnv(boxEnv map[string]string, env *Environment) []string {
 
 // Run creates the container and runs it.
 func (b *Box) Run(env *Environment) (*docker.Container, error) {
+	err := b.RunServices(env)
+	if err != nil {
+		return nil, err
+	}
 	b.logger.Debugln("Starting base box:", b.Name)
 
 	client, err := NewDockerClient(b.options.DockerOptions)

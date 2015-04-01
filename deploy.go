@@ -10,65 +10,53 @@ type Deploy struct {
 	options *PipelineOptions
 }
 
-// ToDeploy converts a RawPipeline into a Deploy
-func (p *PipelineConfig) ToDeploy(options *PipelineOptions) (*Deploy, error) {
-	var box *Box
-	var err error
-	configBox := p.Box
-	if configBox != nil {
-		box, err = configBox.ToBox(options, &BoxOptions{})
-		if err != nil {
-			return nil, err
-		}
+// ToBuild grabs the build section from the config and configures all the
+// instances necessary for the build
+func (c *Config) ToDeploy(options *PipelineOptions) (*Deploy, error) {
+	pipelineConfig := c.Deploy
+	if pipelineConfig == nil {
+		return nil, fmt.Errorf("No 'deploy' pipeline definition in wercker.yml")
 	}
 
-	var steps []IStep
-	var afterSteps []IStep
+	// Either the pipeline's box or the global
+	boxConfig := pipelineConfig.Box
+	if boxConfig == nil {
+		boxConfig = c.Box
+	}
+	if boxConfig == nil {
+		return nil, fmt.Errorf("No box definition in either pipeline or global config")
+	}
 
-	// Start with the secret step, wercker-init that runs before everything
-	initStep, err := NewWerckerInitStep(options)
+	// Either the pipeline's services or the global
+	servicesConfig := pipelineConfig.Services
+	if servicesConfig == nil {
+		servicesConfig = c.Services
+	}
+
+	stepsConfig := pipelineConfig.Steps
+	if options.DeployTarget != "" {
+		sectionSteps, ok := pipelineConfig.StepsMap[options.DeployTarget]
+		if ok {
+			stepsConfig = sectionSteps
+		}
+	}
+	if stepsConfig == nil {
+		return nil, fmt.Errorf("No steps defined in the pipeline")
+	}
+
+	afterStepsConfig := pipelineConfig.AfterSteps
+
+	// NewBasePipeline will init all the rest
+	basePipeline, err := NewBasePipeline(options, pipelineConfig, boxConfig, servicesConfig, stepsConfig, afterStepsConfig)
 	if err != nil {
 		return nil, err
 	}
-	steps = append(steps, initStep)
 
-	// If p is nil it means no Deploy section was found
-	// TODO(bvdberg): fail the build, fall back to default steps, idk. Just run
-	// init for now.
-	var configSteps []RawStepConfig
-	if p != nil {
-		if options.DeployTarget != "" {
-			sectionSteps, ok := p.StepsMap[options.DeployTarget]
-			if ok {
-				configSteps = sectionSteps
-			} else {
-				configSteps = p.Steps
-			}
-		}
-		realSteps, err := StepConfigsToSteps(configSteps, options)
-		if err != nil {
-			return nil, err
-		}
-		steps = append(steps, realSteps...)
-
-		// For after steps we again need werker-init
-		realAfterSteps, err := StepConfigsToSteps(p.AfterSteps, options)
-		if err != nil {
-			return nil, err
-		}
-		if len(realAfterSteps) > 0 {
-			afterSteps = append(afterSteps, initStep)
-			afterSteps = append(afterSteps, realAfterSteps...)
-		}
-	}
-
-	deploy := &Deploy{NewBasePipeline(options, box, steps, afterSteps, p), options}
-	deploy.InitEnv()
-	return deploy, nil
+	return &Deploy{basePipeline, options}, nil
 }
 
 // InitEnv sets up the internal state of the environment for the build
-func (d *Deploy) InitEnv() {
+func (d *Deploy) InitEnv(hostEnv *Environment) {
 	env := d.Env()
 
 	a := [][]string{
@@ -88,8 +76,8 @@ func (d *Deploy) InitEnv() {
 
 	env.Update(d.CommonEnv())
 	env.Update(a)
-	env.Update(d.MirrorEnv())
-	env.Update(d.PassthruEnv())
+	env.Update(hostEnv.getMirror())
+	env.Update(hostEnv.getPassthru())
 }
 
 // DockerRepo returns the name where we might store this in docker

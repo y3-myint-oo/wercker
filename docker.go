@@ -288,52 +288,45 @@ func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*Docke
 	}, nil
 }
 
-// interpolate is a naive interpolator that attempts to replace variables
-// identified by $VAR with the value of the VAR pipeline environment variable
-func (s *DockerPushStep) interpolate(value string, pipeline Pipeline) string {
-	env := pipeline.Env()
-	return env.Interpolate(value)
-}
-
 // The IStep Interface
 
 // InitEnv parses our data into our config
-func (s *DockerPushStep) InitEnv(pipeline Pipeline) {
+func (s *DockerPushStep) InitEnv(env *Environment) {
 	if username, ok := s.data["username"]; ok {
-		s.username = s.interpolate(username, pipeline)
+		s.username = env.Interpolate(username)
 	}
 
 	if password, ok := s.data["password"]; ok {
-		s.password = s.interpolate(password, pipeline)
+		s.password = env.Interpolate(password)
 	}
 
 	if email, ok := s.data["email"]; ok {
-		s.email = s.interpolate(email, pipeline)
+		s.email = env.Interpolate(email)
 	}
 
 	if authServer, ok := s.data["auth-server"]; ok {
-		s.authServer = s.interpolate(authServer, pipeline)
+		s.authServer = env.Interpolate(authServer)
 	}
 
 	if repository, ok := s.data["repository"]; ok {
-		s.repository = s.interpolate(repository, pipeline)
+		s.repository = env.Interpolate(repository)
 	}
 
 	if tag, ok := s.data["tag"]; ok {
-		s.tag = s.interpolate(tag, pipeline)
+		s.tag = env.Interpolate(tag)
 	}
 
 	if author, ok := s.data["author"]; ok {
-		s.author = s.interpolate(author, pipeline)
+		s.author = env.Interpolate(author)
 	}
 
 	if message, ok := s.data["message"]; ok {
-		s.message = s.interpolate(message, pipeline)
+		s.message = env.Interpolate(message)
 	}
 
 	if registry, ok := s.data["registry"]; ok {
-		// s.registry = s.interpolate(registry, pipeline)
-		s.registry = normalizeRegistry(s.interpolate(registry, pipeline))
+		// s.registry = env.Interpolate(registry)
+		s.registry = normalizeRegistry(env.Interpolate(registry))
 	} else {
 		// s.registry = "https://registry.hub.docker.com"
 		s.registry = normalizeRegistry("https://registry.hub.docker.com")

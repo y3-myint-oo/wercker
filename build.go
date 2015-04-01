@@ -10,51 +10,47 @@ type Build struct {
 	options *PipelineOptions
 }
 
-// ToBuild converts a RawPipeline into a Build
-func (p *PipelineConfig) ToBuild(options *PipelineOptions) (*Build, error) {
-	var box *Box
-	var err error
-	configBox := p.Box
-	if configBox != nil {
-		box, err = configBox.ToBox(options, &BoxOptions{})
-		if err != nil {
-			return nil, err
-		}
+// ToBuild grabs the build section from the config and configures all the
+// instances necessary for the build
+func (c *Config) ToBuild(options *PipelineOptions) (*Build, error) {
+	pipelineConfig := c.Build
+	if pipelineConfig == nil {
+		return nil, fmt.Errorf("No 'build' pipeline definition in wercker.yml")
 	}
 
-	var steps []IStep
-	var afterSteps []IStep
+	// Either the pipeline's box or the global
+	boxConfig := pipelineConfig.Box
+	if boxConfig == nil {
+		boxConfig = c.Box
+	}
+	if boxConfig == nil {
+		return nil, fmt.Errorf("No box definition in either pipeline or global config")
+	}
 
-	// Start with the secret step, wercker-init that runs before everything
-	initStep, err := NewWerckerInitStep(options)
+	// Either the pipeline's services or the global
+	servicesConfig := pipelineConfig.Services
+	if servicesConfig == nil {
+		servicesConfig = c.Services
+	}
+
+	stepsConfig := pipelineConfig.Steps
+	if stepsConfig == nil {
+		return nil, fmt.Errorf("No steps defined in the pipeline")
+	}
+
+	afterStepsConfig := pipelineConfig.AfterSteps
+
+	// NewBasePipeline will init all the rest
+	basePipeline, err := NewBasePipeline(options, pipelineConfig, boxConfig, servicesConfig, stepsConfig, afterStepsConfig)
 	if err != nil {
 		return nil, err
 	}
-	steps = append(steps, initStep)
 
-	realSteps, err := StepConfigsToSteps(p.Steps, options)
-	if err != nil {
-		return nil, err
-	}
-	steps = append(steps, realSteps...)
-
-	// For after steps we again need werker-init
-	realAfterSteps, err := StepConfigsToSteps(p.AfterSteps, options)
-	if err != nil {
-		return nil, err
-	}
-	if len(realAfterSteps) > 0 {
-		afterSteps = append(afterSteps, initStep)
-		afterSteps = append(afterSteps, realAfterSteps...)
-	}
-
-	build := &Build{NewBasePipeline(options, box, steps, afterSteps, p), options}
-	build.InitEnv()
-	return build, nil
+	return &Build{basePipeline, options}, nil
 }
 
 // InitEnv sets up the internal state of the environment for the build
-func (b *Build) InitEnv() {
+func (b *Build) InitEnv(hostEnv *Environment) {
 	env := b.Env()
 
 	a := [][]string{
@@ -71,8 +67,8 @@ func (b *Build) InitEnv() {
 
 	env.Update(b.CommonEnv())
 	env.Update(a)
-	env.Update(b.MirrorEnv())
-	env.Update(b.PassthruEnv())
+	env.Update(hostEnv.getMirror())
+	env.Update(hostEnv.getPassthru())
 }
 
 // DockerRepo calculates our repo name

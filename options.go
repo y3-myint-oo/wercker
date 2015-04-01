@@ -483,7 +483,7 @@ type PipelineOptions struct {
 
 	// TODO(termie): i'd like to remove this, it is only used in a couple
 	//               places by BasePipeline
-	Env *Environment
+	HostEnv *Environment
 
 	BuildID      string
 	DeployID     string
@@ -722,7 +722,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		KeenOptions:     keenOpts,
 		ReporterOptions: reporterOpts,
 
-		Env: e,
+		HostEnv: e,
 
 		BuildID:      buildID,
 		DeployID:     deployID,
@@ -798,7 +798,7 @@ func dumpOptions(options interface{}, indent ...string) {
 	for i := 0; i < s.NumField(); i++ {
 		// f := s.Field(i)
 		fieldName := typeOfT.Field(i).Name
-		if fieldName != "Env" {
+		if fieldName != "HostEnv" {
 			names = append(names, fieldName)
 		}
 	}
