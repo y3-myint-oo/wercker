@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -215,6 +217,7 @@ func (f *VerboseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 			f.appendKeyValue(b, "time", entry.Time.Format(time.RFC3339))
 		}
 		f.appendKeyValue(b, "level", entry.Level.String())
+		f.appendKeyValue(b, "line", getCaller())
 		f.appendKeyValue(b, "msg", entry.Message)
 		for _, key := range keys {
 			f.appendKeyValue(b, key, entry.Data[key])
@@ -283,4 +286,19 @@ func (f *VerboseFormatter) appendKeyValue(b *bytes.Buffer, key, value interface{
 	default:
 		fmt.Fprintf(b, "%v=%v ", key, value)
 	}
+}
+
+func getCaller() string {
+	for i := 0; i < 10; i++ {
+		//Need to skip at least 2 to get out of the log calls
+		_, file, line, ok := runtime.Caller(i + 2)
+		if ok {
+			if strings.Contains(file, "logrus") ||
+				strings.Contains(file, "literalloghandler") {
+				continue
+			}
+			return fmt.Sprintf("%s:%d", filepath.Base(file), line)
+		}
+	}
+	return ""
 }
