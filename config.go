@@ -188,11 +188,13 @@ func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 
 // Config is the data type for wercker.yml
 type Config struct {
-	SourceDir string             `yaml:"source-dir"`
-	Box       *RawBoxConfig      `yaml:"box"`
-	Services  ServicesConfig     `yaml:"services"`
-	Build     *RawPipelineConfig `yaml:"build"`
-	Deploy    *RawPipelineConfig `yaml:"deploy"`
+	Box               *RawBoxConfig      `yaml:"box"`
+	Build             *RawPipelineConfig `yaml:"build"`
+	CommandTimeout    int                `yaml:"command-timeout"`
+	Deploy            *RawPipelineConfig `yaml:"deploy"`
+	NoResponseTimeout int                `yaml:"no-response-timeout"`
+	Services          ServicesConfig     `yaml:"services"`
+	SourceDir         string             `yaml:"source-dir"`
 }
 
 func findYaml(searchDirs []string) (string, error) {
@@ -238,9 +240,7 @@ func ConfigFromYaml(file []byte) (*Config, error) {
 	err := yaml.Unmarshal(file, &m)
 	if err != nil {
 		errStr := err.Error()
-		err = fmt.Errorf(`Error parsing your wercker.yml:
-  %s
-`, errStr)
+		err = fmt.Errorf("Error parsing your wercker.yml:\n  %s", errStr)
 		return nil, err
 	}
 

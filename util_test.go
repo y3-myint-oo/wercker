@@ -89,3 +89,43 @@ func TestIsBuildIDInvalid3(t *testing.T) {
 
 	assert.Equal(t, false, ok)
 }
+
+func TestMinInt(t *testing.T) {
+	testSteps := []struct {
+		input    []int
+		expected int
+	}{
+		{[]int{}, 0},
+		{[]int{1}, 1},
+		{[]int{1, 2}, 1},
+		{[]int{2, 1}, 1},
+		{[]int{1, 1}, 1},
+		{[]int{5, 4, 3, 5, 7, 4}, 3},
+	}
+
+	for _, test := range testSteps {
+		actual := MinInt(test.input...)
+
+		assert.Equal(t, test.expected, actual)
+	}
+}
+
+func TestMaxInt(t *testing.T) {
+	testSteps := []struct {
+		input    []int
+		expected int
+	}{
+		{[]int{}, 0},
+		{[]int{1}, 1},
+		{[]int{1, 2}, 2},
+		{[]int{2, 1}, 2},
+		{[]int{1, 1}, 1},
+		{[]int{5, 4, 3, 5, 7, 4}, 7},
+	}
+
+	for _, test := range testSteps {
+		actual := MaxInt(test.input...)
+
+		assert.Equal(t, test.expected, actual)
+	}
+}
