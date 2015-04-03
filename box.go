@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/utils"
@@ -105,7 +106,7 @@ func (b *Box) binds() ([]string, error) {
 		return nil, err
 	}
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() || entry.Mode()&os.ModeSymlink == os.ModeSymlink {
 
 			// For local dev we can mount read-write and avoid a copy, so we'll mount
 			// directly in the pipeline path
