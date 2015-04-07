@@ -14,7 +14,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/blang/semver"
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/joho/godotenv"
@@ -605,7 +604,7 @@ func cmdVersion(options *VersionOptions) error {
 	} else {
 
 		os.Stdout.WriteString(fmt.Sprintf("Version: %s\n", v.Version))
-		os.Stdout.WriteString(fmt.Sprintf("Compiled at: %s\n", v.CompiledAt.Format(time.RFC3339)))
+		os.Stdout.WriteString(fmt.Sprintf("Compiled at: %s\n", v.CompiledAt.Local()))
 
 		if v.GitCommit != "" {
 			os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
@@ -642,25 +641,12 @@ func cmdVersion(options *VersionOptions) error {
 				logger.WithField("Error", err).Debug("Unable to unmarshal versions")
 			}
 
-			vCurrent, err := semver.New(v.Version)
-			if err != nil {
-				logger.WithField("Error", err).Debug("Unable to get semver of current version")
-			}
-			vRetrieved, err := semver.New(nv.Version)
-			if err != nil {
-				logger.WithField("Error", err).Debug("Unable to get semver of retrieved version")
-			}
-
-			upToDate := vCurrent.Compare(vRetrieved)
-
-			dlURL := fmt.Sprintf("http://downloads.wercker.com/cli/%s/%s_amd64/wercker", channel, runtime.GOOS)
-
-			if upToDate == -1 {
-				os.Stdout.WriteString(fmt.Sprintf("A new version is available: %s\n", nv.Version))
+			newerVersion := nv.CompiledAt.After(v.CompiledAt)
+			if newerVersion {
+				dlURL := fmt.Sprintf("http://downloads.wercker.com/cli/%s/%s_amd64/wercker", channel, runtime.GOOS)
+				os.Stdout.WriteString(fmt.Sprintf("A new version is available: %s (compiled at %s)\n", nv.Version, nv.CompiledAt.Local()))
 				os.Stdout.WriteString(fmt.Sprintf("Download it from: %s\n", dlURL))
-			}
-
-			if upToDate == 0 {
+			} else {
 				os.Stdout.WriteString(fmt.Sprintf("No new version available\n"))
 			}
 		}
