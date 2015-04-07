@@ -111,6 +111,9 @@ func (p *Runner) Emitter() *emission.Emitter {
 
 // ProjectDir returns the directory where we expect to find the code for this project
 func (p *Runner) ProjectDir() string {
+	if p.options.DirectMount {
+		return p.options.ProjectPath
+	}
 	return fmt.Sprintf("%s/%s", p.options.ProjectDir, p.options.ApplicationID)
 }
 
@@ -122,6 +125,9 @@ func (p *Runner) ProjectDir() string {
 // with the local dir.
 func (p *Runner) EnsureCode() (string, error) {
 	projectDir := p.ProjectDir()
+	if p.options.DirectMount {
+		return projectDir, nil
+	}
 
 	// If the target is a tarball feetch and build that
 	if p.options.ProjectURL != "" {
@@ -266,9 +272,16 @@ func (p *Runner) CopySource() error {
 		return err
 	}
 
-	err = shutil.CopyTree(p.ProjectDir(), p.options.HostPath("source"), nil)
-	if err != nil {
-		return err
+	if p.options.DirectMount {
+		err = os.Symlink(p.ProjectDir(), p.options.HostPath("source"))
+		if err != nil {
+			return err
+		}
+	} else {
+		err = shutil.CopyTree(p.ProjectDir(), p.options.HostPath("source"), nil)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
