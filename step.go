@@ -356,7 +356,7 @@ func (s *Step) SetupGuest(sessionCtx context.Context, sess *Session) error {
 	_, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`mkdir -p "%s"`, s.ReportPath("artifacts")))
 	_, _, err = sess.SendChecked(sessionCtx, "set +e")
 	_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cp -r "%s" "%s"`, s.MntPath(), s.GuestPath()))
-	_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cd "%s"`, s.options.SourcePath()))
+	_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cd $WERCKER_SOURCE_DIR`))
 	if s.Cwd() != "" {
 		_, _, err = sess.SendChecked(sessionCtx, fmt.Sprintf(`cd "%s"`, s.Cwd()))
 	}
