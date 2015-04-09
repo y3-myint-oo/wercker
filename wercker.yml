@@ -1,44 +1,58 @@
-box: tcnksm/gox@0.2.0
+box: tcnksm/gox:1.4.2
 build:
   steps:
-    - setup-go-workspace
+    - install-packages:
+        packages: openssh-client
 
-    - wercker/add-ssh-key:
+    - add-ssh-key:
         keyname: REPORTER_KEY
+        host: github.com
 
-    - script:
-        name: fetch github.com/wercker/reporter
-        code: git clone git@github.com:wercker/reporter $GOPATH/src/github.com/wercker/reporter
+    - add-to-known_hosts:
+        hostname: github.com
+        fingerprint: "16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48"
+
+    - setup-go-workspace:
+        package-dir: github.com/wercker/sentcli
 
     - termie/glide-build:
-        # We do the actual build with gox below
         build: false
 
     - script:
         name: go vet
-        code: go tool vet *.go
+        code: |
+            go get golang.org/x/tools/cmd/vet
+            go vet *.go
 
     - golint
 
     - script:
         name: go test
-        code: |-
-            go test
+        code: go test
 
-    - tcnksm/gox:
-        ldflags: -X main.GitCommit $WERCKER_GIT_COMMIT -X main.PatchVersion $(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X main.Compiled $(date +%s)
-        os: "darwin linux"
-        arch: "386 amd64"
+    - script:
+        name: clear out the build binaries
+        code: |
+            rm -rf $GOPATH/pkg
+
+    - script:
+        name: gox
+        code: |
+            gox \
+              -ldflags="-X main.GitCommit $WERCKER_GIT_COMMIT -X main.PatchVersion $(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X main.Compiled $(date +%s)" \
+              -os="linux darwin" \
+              -arch="amd64 386" \
+              -output "$WERCKER_OUTPUT_DIR/pkg/{{.OS}}_{{.Arch}}/sentcli"
 
     - script:
         name: prepare
-        code: |-
+        code: |
             echo $WERCKER_GIT_COMMIT > $WERCKER_OUTPUT_DIR/HEAD
             mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/latest
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
             cp -r install_script $WERCKER_OUTPUT_DIR/install_script
-
 deploy:
+  box: ubuntu:12.04
   steps:
     - s3sync:
         source-dir: "."
@@ -104,10 +118,6 @@ deploy:
         key-secret: $AWS_SECRET_ACCESS_KEY
 
   installsh:
-    - script:
-        name: ls
-        code: ls -la
-
     - s3sync:
         source-dir: "install_script/"
         bucket-url: $INSTALLSH_BUCKET_URL
