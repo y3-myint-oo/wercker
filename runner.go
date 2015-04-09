@@ -204,6 +204,21 @@ func (p *Runner) GetConfig() (*Config, string, error) {
 		p.options.SourceDir = rawConfig.SourceDir
 	}
 
+	MaxCommandTimeout := 60    // minutes
+	MaxNoResponseTimeout := 60 // minutes
+
+	if rawConfig.CommandTimeout > 0 {
+		commandTimeout := MinInt(rawConfig.CommandTimeout, MaxCommandTimeout)
+		p.options.CommandTimeout = commandTimeout * 60 * 1000 // convert to milliseconds
+		p.logger.Debugln("CommandTimeout set in config, new CommandTimeout:", commandTimeout)
+	}
+
+	if rawConfig.NoResponseTimeout > 0 {
+		noResponseTimeout := MinInt(rawConfig.NoResponseTimeout, MaxNoResponseTimeout)
+		p.options.NoResponseTimeout = noResponseTimeout * 60 * 1000 // convert to milliseconds
+		p.logger.Debugln("NoReponseTimeout set in config, new NoReponseTimeout:", noResponseTimeout)
+	}
+
 	return rawConfig, string(werckerYaml), nil
 }
 

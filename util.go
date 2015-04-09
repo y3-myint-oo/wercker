@@ -324,3 +324,36 @@ func (c *CounterReader) Read(p []byte) (int, error) {
 func (c *CounterReader) Count() int64 {
 	return c.c
 }
+
+// MinInt finds the smallest int in input and return that value. If no input is
+// given, it will return 0.
+func MinInt(input ...int) int {
+	if len(input) == 0 {
+		return 0
+	}
+
+	min := input[0]
+	for _, in := range input {
+		if in < min {
+			min = in
+		}
+	}
+
+	return min
+}
+
+// MaxInt finds the biggest int in input and return that value. If no input is
+// given, it will return 0.
+func MaxInt(input ...int) int {
+	if len(input) == 0 {
+		return 0
+	}
+
+	max := input[0]
+	for _, in := range input {
+		if in > max {
+			max = in
+		}
+	}
+	return max
+}

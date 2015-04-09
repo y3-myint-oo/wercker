@@ -1,4 +1,6 @@
 box: ubuntu
+command-timeout: 60
+no-response-timeout: 60
 # Build definition
 services:
     - nginx
