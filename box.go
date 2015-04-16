@@ -179,7 +179,7 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 		return nil, err
 	}
 
-	b.logger.Println("Docker Container:", container.ID)
+	b.logger.Debugln("Docker Container:", container.ID)
 
 	binds, err := b.binds()
 	if err != nil {
@@ -259,7 +259,7 @@ func (b *Box) Stop() {
 		return
 	}
 	for _, service := range b.services {
-		b.logger.Println("Stopping service", service.Box.container.ID)
+		b.logger.Debugln("Stopping service", service.Box.container.ID)
 		err := client.StopContainer(service.Box.container.ID, 1)
 
 		if err != nil {
@@ -271,7 +271,7 @@ func (b *Box) Stop() {
 		}
 	}
 	if b.container != nil {
-		b.logger.Println("Stopping container", b.container.ID)
+		b.logger.Debugln("Stopping container", b.container.ID)
 		err := client.StopContainer(b.container.ID, 1)
 
 		if err != nil {

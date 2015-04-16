@@ -415,12 +415,14 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	defer finisher.Finish(sr)
 
 	e := p.Emitter()
-	e.Emit(Logs, &LogsArgs{
-		Options: p.options,
-		Logs:    fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
-		Stream:  "stdout",
-		Hidden:  false,
-	})
+	if p.options.Verbose {
+		e.Emit(Logs, &LogsArgs{
+			Options: p.options,
+			Logs:    fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
+			Stream:  "stdout",
+			Hidden:  false,
+		})
+	}
 
 	p.logger.Debugln("Application:", p.options.ApplicationName)
 
@@ -436,12 +438,14 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	pipeline, err := p.GetPipeline(rawConfig)
 	shared.pipeline = pipeline
 
-	e.Emit(Logs, &LogsArgs{
-		Options: p.options,
-		Logs:    fmt.Sprintf("Using config:\n%s\n", stringConfig),
-		Stream:  "stdout",
-		Hidden:  false,
-	})
+	if p.options.Verbose {
+		e.Emit(Logs, &LogsArgs{
+			Options: p.options,
+			Logs:    fmt.Sprintf("Using config:\n%s\n", stringConfig),
+			Stream:  "stdout",
+			Hidden:  false,
+		})
+	}
 
 	box, err := p.GetBox(pipeline, rawConfig)
 	if err != nil {

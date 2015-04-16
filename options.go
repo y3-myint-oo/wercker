@@ -91,6 +91,8 @@ var (
 	// These flags affect our local execution environment
 	devFlags = []cli.Flag{
 		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "specify additional environment variables in a file"},
+		cli.BoolFlag{Name: "verbose", Usage: "print more information"},
+		cli.BoolFlag{Name: "no-colors", Usage: "wercker output will not use colors (does not apply to step output)"},
 		cli.BoolFlag{Name: "debug", Usage: "print additional debug information"},
 		cli.BoolFlag{Name: "journal", Usage: "Send logs to systemd-journald. Suppresses stdout logging."},
 	}
@@ -181,9 +183,11 @@ func flagsFor(flagSets ...[][]cli.Flag) []cli.Flag {
 
 // GlobalOptions applicable to everything
 type GlobalOptions struct {
-	Debug   bool
-	BaseURL string
-	Journal bool
+	BaseURL    string
+	Debug      bool
+	Journal    bool
+	Verbose    bool
+	ShowColors bool
 
 	// Auth
 	AuthToken      string
@@ -211,18 +215,27 @@ func guessAuthToken(c *cli.Context, e *Environment, authTokenStore string) strin
 
 // NewGlobalOptions constructor
 func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
+	baseURL := strings.TrimRight(c.GlobalString("base-url"), "/")
 	debug := c.GlobalBool("debug")
 	journal := c.GlobalBool("journal")
-
-	baseURL := strings.TrimRight(c.GlobalString("base-url"), "/")
+	verbose := c.GlobalBool("verbose")
+	showColors := !c.GlobalBool("no-colors")
 
 	authTokenStore := expandHomePath(c.GlobalString("auth-token-store"), e.Get("HOME"))
 	authToken := guessAuthToken(c, e, authTokenStore)
 
+	// If debug is true, than force verbose and do not use colors.
+	if debug {
+		verbose = true
+		showColors = false
+	}
+
 	return &GlobalOptions{
-		Debug:   debug,
-		BaseURL: baseURL,
-		Journal: journal,
+		BaseURL:    baseURL,
+		Debug:      debug,
+		Journal:    journal,
+		Verbose:    verbose,
+		ShowColors: showColors,
 
 		AuthToken:      authToken,
 		AuthTokenStore: authTokenStore,

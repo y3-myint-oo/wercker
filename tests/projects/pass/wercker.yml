@@ -15,6 +15,7 @@ build:
               sleep 0.01
               let COUNTER+=1
             done
+            echo
     - script:
         name: make a message
         code: |-

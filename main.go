@@ -695,6 +695,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	p := NewRunner(options, getter)
 	e := p.Emitter()
 
+	f := &Formatter{options.GlobalOptions}
+
 	fullPipelineFinished := p.StartFullPipeline(options)
 
 	// All bool properties will be initialized on false
@@ -719,7 +721,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	runnerCtx := context.Background()
 
-	logger.Println("############ Executing Pipeline ############")
+	logger.Println(f.Info("Executing pipeline"))
 	_, err = p.EnsureCode()
 	if err != nil {
 		e.Emit(Logs, &LogsArgs{
@@ -731,10 +733,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		return soft.Exit(err)
 	}
 
-	logger.Println()
-	logger.Println("============== Running Step ===============")
-	logger.Println("setup environment")
-	logger.Println("===========================================")
+	logger.Println(f.Info("Running step", "setup environment"))
 
 	shared, err := p.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
@@ -744,7 +743,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		defer shared.box.Stop()
 	}
 	if err != nil {
-		logger.Warnln("============== Step failed! ===============")
+		logger.Errorln(f.Fail("Step failed", "setup environment"))
 		e.Emit(Logs, &LogsArgs{
 			Options: options,
 			Hidden:  false,
@@ -753,7 +752,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		})
 		return soft.Exit(err)
 	}
-	logger.Println("============== Step passed! ===============")
+	logger.Println(f.Success("Step passed", "setup environment"))
 
 	// Expand our context object
 	box := shared.box
@@ -792,20 +791,17 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	// environment".
 	stepCounter := &Counter{Current: 3}
 	for _, step := range pipeline.Steps() {
-		logger.Println()
-		logger.Println("============== Running Step ===============")
-		logger.Println(step.DisplayName())
-		logger.Println("===========================================")
+		logger.Printf(f.Info("Running step", step.DisplayName()))
 
 		sr, err := p.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName()
 			pr.FailedStepMessage = sr.Message
-			logger.Warnln("============== Step failed! ===============")
+			logger.Printf(f.Fail("Step failed", step.DisplayName()))
 			break
 		}
-		logger.Println("============== Step passed! ===============")
+		logger.Printf(f.Success("Step passed", step.DisplayName()))
 	}
 
 	if options.ShouldCommit {
@@ -997,9 +993,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 
 	if pr.Success {
-		logger.Println("########### Pipeline passed! ##############")
-	} else {
-		logger.Warnln("########### Pipeline failed! ##############")
+		logger.Println(f.Success("Steps passed"))
 	}
 
 	// We're sending our build finished but we're not done yet,
@@ -1016,7 +1010,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	pipelineArgs.RanAfterSteps = true
 
-	logger.Println("########## Starting After Steps ###########")
+	logger.Println(f.Info("Starting after-steps"))
 	// The container may have died, either way we'll have a fresh env
 	container, err := box.Restart()
 	if err != nil {
@@ -1050,23 +1044,20 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 
 	for _, step := range pipeline.AfterSteps() {
-		logger.Println()
-		logger.Println("=========== Running After Step ============")
-		logger.Println(step.DisplayName())
-		logger.Println("===========================================")
+		logger.Println(f.Info("Running after-step", step.DisplayName()))
 
 		_, err := p.RunStep(newShared, step, stepCounter.Increment())
 		if err != nil {
-			logger.Warnln("=========== After Step failed! ============")
+			logger.Println(f.Fail("After-step failed", step.DisplayName()))
 			break
 		}
-		logger.Println("=========== After Step passed! ============")
+		logger.Println(f.Success("After-step passed", step.DisplayName()))
 	}
 
 	if pr.Success {
-		logger.Println("########### Pipeline passed! ##############")
+		logger.Println(f.Success("Pipeline finished"))
 	} else {
-		logger.Warnln("########### Pipeline failed! ##############")
+		logger.Println(f.Fail("Pipeline failed"))
 	}
 
 	if !pr.Success {
