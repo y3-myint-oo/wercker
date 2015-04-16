@@ -993,7 +993,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 
 	if pr.Success {
-		logger.Println(f.Success("Steps passed", ""))
+		logger.Println(f.Success("Steps passed"))
 	}
 
 	// We're sending our build finished but we're not done yet,
