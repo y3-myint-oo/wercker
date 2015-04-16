@@ -36,9 +36,6 @@ func (r *RawBoxConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
-// ServicesConfig is a list of auxilliary boxes to boot in the wercker.yml
-type ServicesConfig []RawBoxConfig
-
 // RawStepConfig is our unwrapper for config steps
 type RawStepConfig struct {
 	*StepConfig
@@ -124,6 +121,8 @@ func (r *RawStepConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+type RawStepsConfig []*RawStepConfig
+
 // RawPipelineConfig is our unwrapper for PipelineConfig
 type RawPipelineConfig struct {
 	*PipelineConfig
@@ -135,10 +134,10 @@ type RawPipelineConfig struct {
 //               to multiple pipelines instead
 type PipelineConfig struct {
 	Box        *RawBoxConfig
-	Steps      []RawStepConfig
-	AfterSteps []RawStepConfig `yaml:"after-steps"`
-	StepsMap   map[string][]RawStepConfig
-	Services   ServicesConfig `yaml:"services"`
+	Steps      RawStepsConfig
+	AfterSteps RawStepsConfig `yaml:"after-steps"`
+	StepsMap   map[string][]*RawStepConfig
+	Services   []*RawBoxConfig `yaml:"services"`
 }
 
 var pipelineReservedWords = map[string]struct{}{
@@ -153,7 +152,7 @@ var pipelineReservedWords = map[string]struct{}{
 func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// First get the fields we know and love
 	r.PipelineConfig = &PipelineConfig{
-		StepsMap: make(map[string][]RawStepConfig),
+		StepsMap: make(map[string][]*RawStepConfig),
 	}
 	err := unmarshal(r.PipelineConfig)
 
@@ -176,7 +175,7 @@ func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 		}
 
 		// Finally, unmarshal each section as steps and add it to our map
-		var otherSteps []RawStepConfig
+		var otherSteps []*RawStepConfig
 		err = yaml.Unmarshal(b, &otherSteps)
 		if err != nil {
 			return fmt.Errorf("Invalid extra key in pipeline, %s is not a list of steps", k)
@@ -193,7 +192,7 @@ type Config struct {
 	CommandTimeout    int                `yaml:"command-timeout"`
 	Deploy            *RawPipelineConfig `yaml:"deploy"`
 	NoResponseTimeout int                `yaml:"no-response-timeout"`
-	Services          ServicesConfig     `yaml:"services"`
+	Services          []*RawBoxConfig    `yaml:"services"`
 	SourceDir         string             `yaml:"source-dir"`
 }
 

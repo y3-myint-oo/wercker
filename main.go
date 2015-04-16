@@ -312,7 +312,7 @@ func cmdCheckConfig(options *PipelineOptions) error {
 	}
 
 	if rawConfig.Build != nil {
-		build, err := rawConfig.Build.ToBuild(options)
+		build, err := rawConfig.ToBuild(options)
 		if err != nil {
 			return soft.Exit(err)
 		}
@@ -323,7 +323,7 @@ func cmdCheckConfig(options *PipelineOptions) error {
 	}
 
 	if rawConfig.Deploy != nil {
-		deploy, err := rawConfig.Deploy.ToDeploy(options)
+		deploy, err := rawConfig.ToDeploy(options)
 		if err != nil {
 			return soft.Exit(err)
 		}

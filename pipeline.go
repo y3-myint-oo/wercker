@@ -10,18 +10,15 @@ import (
 // both Build and Deploy
 type Pipeline interface {
 	// Getters
-	Env() *Environment // base
-	Box() *Box         // base
-	ServicesConfig() ServicesConfig
-	Steps() []IStep      // base
-	AfterSteps() []IStep // base
+	Env() *Environment       // base
+	Box() *Box               // base
+	Services() []*ServiceBox //base
+	Steps() []IStep          // base
+	AfterSteps() []IStep     // base
 
 	// Methods
-	CommonEnv() [][]string   // base
-	MirrorEnv() [][]string   // base
-	PassthruEnv() [][]string // base
-	InitEnv()                // impl
-	FetchSteps() error
+	CommonEnv() [][]string // base
+	InitEnv(*Environment)  // impl
 	CollectArtifact(string) (*Artifact, error)
 	SetupGuest(context.Context, *Session) error
 	ExportEnvironment(context.Context, *Session) error
@@ -69,23 +66,61 @@ type BasePipeline struct {
 	config     *PipelineConfig
 	env        *Environment
 	box        *Box
+	services   []*ServiceBox
 	steps      []IStep
 	afterSteps []IStep
 	logger     *LogEntry
 }
 
-// NewBasePipeline returns a new BasePipeline
-func NewBasePipeline(options *PipelineOptions, box *Box, steps []IStep, afterSteps []IStep, config *PipelineConfig) *BasePipeline {
+// NewBasePipeline initialize our pipeline from our configs
+func NewBasePipeline(options *PipelineOptions, pipelineConfig *RawPipelineConfig, boxConfig *RawBoxConfig, servicesConfig []*RawBoxConfig, stepsConfig RawStepsConfig, afterStepsConfig RawStepsConfig) (*BasePipeline, error) {
+
+	box, err := boxConfig.ToBox(options, &BoxOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var services []*ServiceBox
+	for _, sbox := range servicesConfig {
+		service, err := sbox.ToServiceBox(options, &BoxOptions{})
+		if err != nil {
+			return nil, err
+		}
+		services = append(services, service)
+	}
+
+	initStep, err := NewWerckerInitStep(options)
+	if err != nil {
+		return nil, err
+	}
+
+	steps := []IStep{initStep}
+	realSteps, err := stepsConfig.ToSteps(options)
+	if err != nil {
+		return nil, err
+	}
+	steps = append(steps, realSteps...)
+
+	var afterSteps []IStep
+	if afterStepsConfig != nil {
+		afterSteps = []IStep{initStep}
+		realAfterSteps, err := afterStepsConfig.ToSteps(options)
+		if err != nil {
+			return nil, err
+		}
+		afterSteps = append(afterSteps, realAfterSteps...)
+	}
+
 	logger := rootLogger.WithField("Logger", "Pipeline")
 	return &BasePipeline{
 		options:    options,
-		config:     config,
 		env:        &Environment{},
 		box:        box,
+		services:   services,
 		steps:      steps,
 		afterSteps: afterSteps,
 		logger:     logger,
-	}
+	}, nil
 }
 
 // Box is a getter for the box
@@ -93,9 +128,9 @@ func (p *BasePipeline) Box() *Box {
 	return p.box
 }
 
-// ServicesConfig is a getter for the servicesConfig
-func (p *BasePipeline) ServicesConfig() ServicesConfig {
-	return p.config.Services
+// Services is a getter for the Services
+func (p *BasePipeline) Services() []*ServiceBox {
+	return p.services
 }
 
 // Steps is a getter for steps
@@ -132,34 +167,6 @@ func (p *BasePipeline) CommonEnv() [][]string {
 		[]string{"TERM", "xterm-256color"},
 	}
 	return a
-}
-
-// MirrorEnv returns the env vars we're mirroring
-func (p *BasePipeline) MirrorEnv() [][]string {
-	return p.options.Env.getMirror()
-}
-
-// PassthruEnv returns the env vars we're passing to the gueset.
-func (p *BasePipeline) PassthruEnv() [][]string {
-	return p.options.Env.getPassthru()
-}
-
-// FetchSteps makes sure we have all the steps
-func (p *BasePipeline) FetchSteps() error {
-	for _, step := range p.steps {
-		p.logger.Debugln("Preparing step:", step.Name())
-		if _, err := step.Fetch(); err != nil {
-			return err
-		}
-	}
-
-	for _, step := range p.afterSteps {
-		p.logger.Debugln("Preparing after-step:", step.Name())
-		if _, err := step.Fetch(); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // SetupGuest ensures that the guest is prepared to run the pipeline.

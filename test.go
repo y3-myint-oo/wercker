@@ -5,7 +5,22 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 )
+
+var (
+	globalFlags   = flagsFor(GlobalFlags)
+	pipelineFlags = flagsFor(PipelineFlags, WerckerInternalFlags)
+	emptyFlags    = []cli.Flag{}
+)
+
+func emptyEnv() *Environment {
+	return NewEnvironment([]string{})
+}
+
+func emptyPipelineOptions() *PipelineOptions {
+	return &PipelineOptions{}
+}
 
 // TestLogWriter writes our logs to the test output
 type TestLogWriter struct {

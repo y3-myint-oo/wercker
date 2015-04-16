@@ -20,26 +20,12 @@ type GetPipeline func(*Config, *PipelineOptions) (Pipeline, error)
 
 // GetBuildPipeline grabs the "build" section of the yaml.
 func GetBuildPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-	if rawConfig.Build == nil {
-		return nil, fmt.Errorf("No build pipeline definition in wercker.yml")
-	}
-	build, err := rawConfig.Build.ToBuild(options)
-	if err != nil {
-		return nil, err
-	}
-	return build, nil
+	return rawConfig.ToBuild(options)
 }
 
 // GetDeployPipeline gets the "deploy" section of the yaml.
 func GetDeployPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-	if rawConfig.Deploy == nil {
-		return nil, fmt.Errorf("No deploy pipeline definition in wercker.yml")
-	}
-	build, err := rawConfig.Deploy.ToDeploy(options)
-	if err != nil {
-		return nil, err
-	}
-	return build, nil
+	return rawConfig.ToDeploy(options)
 }
 
 // Runner is the base type for running the pipelines.
@@ -55,7 +41,6 @@ type Runner struct {
 
 // NewRunner from global options
 func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
-
 	e := GetEmitter()
 	logger := rootLogger.WithField("Logger", "Runner")
 	// h, err := NewLogHandler()
@@ -255,23 +240,12 @@ func (p *Runner) GetBox(pipeline Pipeline, rawConfig *Config) (*Box, error) {
 
 // AddServices fetches and links the services to the base box.
 func (p *Runner) AddServices(pipeline Pipeline, rawConfig *Config, box *Box) error {
-	services := pipeline.ServicesConfig()
-	if services == nil {
-		services = rawConfig.Services
-	}
-	for _, rawService := range services {
-		p.logger.Debugln("Fetching service:", rawService)
-
-		serviceBox, err := rawService.ToServiceBox(p.options, nil)
-		if err != nil {
+	for _, service := range pipeline.Services() {
+		if _, err := service.Fetch(pipeline.Env()); err != nil {
 			return err
 		}
 
-		if _, err := serviceBox.Box.Fetch(pipeline.Env()); err != nil {
-			return err
-		}
-
-		box.AddService(serviceBox)
+		box.AddService(service)
 		// TODO(mh): We want to make sure container is running fully before
 		// allowing build steps to run. We may need custom steps which block
 		// until service services are running.
@@ -435,7 +409,13 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	shared.config = rawConfig
 	sr.WerckerYamlContents = stringConfig
 
+	// Init the pipeline
 	pipeline, err := p.GetPipeline(rawConfig)
+	if err != nil {
+		sr.Message = err.Error()
+		return shared, err
+	}
+	pipeline.InitEnv(p.options.HostEnv)
 	shared.pipeline = pipeline
 
 	if p.options.Verbose {
@@ -447,17 +427,25 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		})
 	}
 
-	box, err := p.GetBox(pipeline, rawConfig)
+	// Fetch the box
+	box := pipeline.Box()
+	_, err = box.Fetch(pipeline.Env())
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err
 	}
+	// TODO(termie): dump some logs about the image
 	shared.box = box
 
-	err = p.AddServices(pipeline, rawConfig, box)
-	if err != nil {
-		sr.Message = err.Error()
-		return shared, err
+	// Fetch the services and add them to the box
+	services := pipeline.Services()
+	for _, service := range services {
+		_, err = service.Fetch(pipeline.Env())
+		if err != nil {
+			sr.Message = err.Error()
+			return shared, err
+		}
+		box.AddService(service)
 	}
 
 	// Start setting up the pipeline dir
@@ -470,22 +458,27 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 
 	p.logger.Debugln("Steps:", len(pipeline.Steps()))
 
-	// Make sure we have the steps
-	err = pipeline.FetchSteps()
-	if err != nil {
-		sr.Message = err.Error()
-		return shared, err
+	// Fetch the steps
+	steps := pipeline.Steps()
+	for _, step := range steps {
+		p.logger.Println("Preparing step:", step.Name())
+		if _, err := step.Fetch(); err != nil {
+			sr.Message = err.Error()
+			return shared, err
+		}
 	}
 
-	// Start booting up our services
-	// TODO(termie): maybe move this into box.Run?
-	err = box.RunServices(pipeline.Env())
-	if err != nil {
-		sr.Message = err.Error()
-		return shared, err
+	// ... and the after steps
+	afterSteps := pipeline.AfterSteps()
+	for _, step := range afterSteps {
+		p.logger.Println("Preparing after-step:", step.Name())
+		if _, err := step.Fetch(); err != nil {
+			sr.Message = err.Error()
+			return shared, err
+		}
 	}
 
-	// Boot up our main container
+	// Boot up our main container, it will run the services
 	container, err := box.Run(pipeline.Env())
 	if err != nil {
 		sr.Message = err.Error()
@@ -565,7 +558,7 @@ func (p *Runner) RunStep(shared *RunnerShared, step IStep, order int) (*StepResu
 	}
 	defer finisher.Finish(sr)
 
-	step.InitEnv(shared.pipeline)
+	step.InitEnv(shared.pipeline.Env())
 	p.logger.Debugln("Step Environment")
 	for _, pair := range step.Env().Ordered() {
 		p.logger.Debugln(" ", pair[0], pair[1])

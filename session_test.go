@@ -79,7 +79,7 @@ func (t *FakeTransport) ListenAndRespond(exit int, recv []string) {
 	}
 }
 
-func FakeSessionOptions() *PipelineOptions {
+func fakeSessionOptions() *PipelineOptions {
 	return &PipelineOptions{
 		GlobalOptions:     &GlobalOptions{Debug: true},
 		NoResponseTimeout: 100,
@@ -89,7 +89,7 @@ func FakeSessionOptions() *PipelineOptions {
 
 func FakeSession(t *testing.T, opts *PipelineOptions) (context.Context, context.CancelFunc, *Session, *FakeTransport) {
 	if opts == nil {
-		opts = FakeSessionOptions()
+		opts = fakeSessionOptions()
 	}
 	transport := &FakeTransport{}
 	topCtx, cancel := context.WithCancel(context.Background())
@@ -158,7 +158,7 @@ func TestSessionSendChecked(t *testing.T) {
 
 func TestSessionSendCheckedCommandTimeout(t *testing.T) {
 	setup(t)
-	opts := FakeSessionOptions()
+	opts := fakeSessionOptions()
 	opts.CommandTimeout = 0
 	sessionCtx, _, session, transport := FakeSession(t, opts)
 
@@ -176,7 +176,7 @@ func TestSessionSendCheckedCommandTimeout(t *testing.T) {
 
 func TestSessionSendCheckedNoResponseTimeout(t *testing.T) {
 	setup(t)
-	opts := FakeSessionOptions()
+	opts := fakeSessionOptions()
 	opts.NoResponseTimeout = 0
 	sessionCtx, _, session, transport := FakeSession(t, opts)
 

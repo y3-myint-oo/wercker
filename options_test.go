@@ -12,16 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	globalFlags   = flagsFor(GlobalFlags)
-	pipelineFlags = flagsFor(PipelineFlags, WerckerInternalFlags)
-	emptyFlags    = []cli.Flag{}
-)
-
-func emptyEnv() *Environment {
-	return NewEnvironment([]string{})
-}
-
 func run(t *testing.T, gFlags []cli.Flag, cFlags []cli.Flag, action func(c *cli.Context), args []string) {
 	rootLogger.SetLevel("debug")
 	os.Clearenv()
