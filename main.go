@@ -733,7 +733,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		return soft.Exit(err)
 	}
 
-	logger.Println(f.Info("Running Step", "setup environment"))
+	logger.Println(f.Info("Running step", "setup environment"))
 
 	shared, err := p.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
@@ -1048,10 +1048,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 		_, err := p.RunStep(newShared, step, stepCounter.Increment())
 		if err != nil {
-			logger.Println(f.Fail("after-step failed", step.DisplayName()))
+			logger.Println(f.Fail("After-step failed", step.DisplayName()))
 			break
 		}
-		logger.Println(f.Success("after-step passed", step.DisplayName()))
+		logger.Println(f.Success("After-step passed", step.DisplayName()))
 	}
 
 	if pr.Success {
