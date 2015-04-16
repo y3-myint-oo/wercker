@@ -721,7 +721,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	runnerCtx := context.Background()
 
-	logger.Println(f.Info("Executing Pipeline"))
+	logger.Println(f.Info("Executing pipeline"))
 	_, err = p.EnsureCode()
 	if err != nil {
 		e.Emit(Logs, &LogsArgs{
