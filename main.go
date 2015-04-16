@@ -822,6 +822,15 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		// At this point the build has effectively passed but we can still mess it
 		// up by being unable to deliver the artifacts
 
+		// If we are not saving a commit we still need one temporarily to
+		// perform the export.
+		if !options.ShouldCommit {
+			_, err = box.Commit(repoName, tag, message)
+			if err != nil {
+				logger.Errorln("Failed to commit:", err.Error())
+			}
+		}
+
 		err = func() error {
 			sr := &StepResult{
 				Success:    false,
