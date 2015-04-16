@@ -225,14 +225,18 @@ func (b *Box) Clean() error {
 			RemoveVolumes: true,
 			Force:         true,
 		}
+		b.logger.WithField("Container", container).Debugln("Removing container:", container)
 		err := client.RemoveContainer(opts)
 		if err != nil {
 			return err
 		}
 	}
 
-	for i := len(b.images) - 1; i >= 0; i-- {
-		client.RemoveImage(b.images[i].ID)
+	if !b.options.ShouldCommit {
+		for i := len(b.images) - 1; i >= 0; i-- {
+			b.logger.WithField("Image", b.images[i].ID).Debugln("Removing image:", b.images[i].ID)
+			client.RemoveImage(b.images[i].ID)
+		}
 	}
 
 	return nil
@@ -355,7 +359,7 @@ func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 	b.logger.WithFields(LogFields{
 		"Name": name,
 		"Tag":  tag,
-	}).Debug("Commit container")
+	}).Debugln("Commit container:", name, tag)
 
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {

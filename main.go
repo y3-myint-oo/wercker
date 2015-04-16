@@ -805,7 +805,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 
 	if options.ShouldCommit {
-		box.Commit(repoName, tag, message)
+		_, err = box.Commit(repoName, tag, message)
+		if err != nil {
+			logger.Errorln("Failed to commit:", err.Error())
+		}
 	}
 
 	// We need to wind the counter to where it should be if we failed a step
