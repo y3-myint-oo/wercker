@@ -78,7 +78,10 @@ func (b *Build) DockerRepo() string {
 
 // DockerTag calculates our tag
 func (b *Build) DockerTag() string {
-	return ""
+	if b.options.Tag != "" {
+		return b.options.Tag
+	}
+	return "latest"
 }
 
 // DockerMessage calculates our message
