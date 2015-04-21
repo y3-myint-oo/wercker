@@ -119,4 +119,3 @@ Basic Process
     c. Execute scripts in docker containers
 
 See https://github.com/wercker/sentcli/blob/master/docs/design.rst for more.
-
