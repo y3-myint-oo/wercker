@@ -76,9 +76,8 @@ func (e *Environment) Interpolate(value string) string {
 	if strings.HasPrefix(value, "$") {
 		if interp, ok := e.Map[value[1:]]; ok {
 			return interp
-		} else {
-			return ""
 		}
+		return ""
 	}
 	return value
 }

@@ -121,6 +121,7 @@ func (r *RawStepConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+// RawStepsConfig is a list of RawStepConfigs
 type RawStepsConfig []*RawStepConfig
 
 // RawPipelineConfig is our unwrapper for PipelineConfig

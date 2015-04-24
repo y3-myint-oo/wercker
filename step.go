@@ -148,6 +148,7 @@ type Step struct {
 	logger   *LogEntry
 }
 
+// ToSteps builds a list of steps from RawStepsConfig
 func (s RawStepsConfig) ToSteps(options *PipelineOptions) ([]IStep, error) {
 	steps := []IStep{}
 	for _, stepConfig := range s {
