@@ -253,6 +253,8 @@ type DockerPushStep struct {
 	message    string
 	tag        string
 	registry   string
+	ports      string
+	volumes    string
 	cmd        []string
 	logger     *LogEntry
 	e          *emission.Emitter
@@ -324,6 +326,14 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 		s.message = env.Interpolate(message)
 	}
 
+	if ports, ok := s.data["ports"]; ok {
+		s.ports = env.Interpolate(ports)
+	}
+
+	if volumes, ok := s.data["volumes"]; ok {
+		s.volumes = env.Interpolate(volumes)
+	}
+
 	if registry, ok := s.data["registry"]; ok {
 		// s.registry = env.Interpolate(registry)
 		s.registry = normalizeRegistry(env.Interpolate(registry))
@@ -393,9 +403,33 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	}
 
 	s.logger.Debugln("Init env:", s.data)
+
 	config := docker.Config{
 		Cmd: s.cmd,
 	}
+	if s.ports != "" {
+		parts := strings.Split(s.ports, ",")
+		portmap := make(map[docker.Port]struct{})
+		for _, port := range parts {
+			port = strings.TrimSpace(port)
+			if !strings.Contains(port, "/") {
+				port = port + "/tcp"
+			}
+			portmap[docker.Port(port)] = struct{}{}
+		}
+		config.ExposedPorts = portmap
+	}
+
+	if s.volumes != "" {
+		parts := strings.Split(s.volumes, ",")
+		volumemap := make(map[string]struct{})
+		for _, volume := range parts {
+			volume = strings.TrimSpace(volume)
+			volumemap[volume] = struct{}{}
+		}
+		config.Volumes = volumemap
+	}
+
 	commitOpts := docker.CommitContainerOptions{
 		Container:  containerID,
 		Repository: s.repository,
