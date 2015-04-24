@@ -425,9 +425,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		volumemap := make(map[string]struct{})
 		for _, volume := range parts {
 			volume = strings.TrimSpace(volume)
-			if !strings.Contains(volume, "/") {
-				volume = volume + "/tcp"
-			}
 			volumemap[volume] = struct{}{}
 		}
 		config.Volumes = volumemap
