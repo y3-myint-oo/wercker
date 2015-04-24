@@ -51,15 +51,6 @@ build:
             mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/latest
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
             cp -r install_script $WERCKER_OUTPUT_DIR/install_script
-
-    # - internal/docker-push:
-    #     registry: quay.io
-    #     repository: quay.io/wercker/goxxxer
-    #     username: $DOCKER_USERNAME
-    #     password: $DOCKER_PASSWORD
-    #     ports: 22/tcp,9000
-    #     volumes: /tmp
-    #     tag: latest
 deploy:
   box: ubuntu:12.04
   steps:
