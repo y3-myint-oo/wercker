@@ -7,12 +7,17 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/chuckpreslar/emission"
 	"golang.org/x/net/context"
 	"gopkg.in/fsnotify.v1"
 )
+
+// test TODO (mh)
+// 1. change multiple files simultaneously and show that build only happens
+//    once
 
 // WatchStep needs to implemenet IStep
 type WatchStep struct {
@@ -84,29 +89,43 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		return 1, err
 	}
 	defer watcher.Close()
+
 	if _, _, err = sess.SendChecked(ctx, s.env.Export()...); err != nil {
 		s.logger.Println(err)
 		return 1, err
 	}
-	cmd := fmt.Sprintf("set +e; %s", s.Code)
-	// We don't care if this command succeeded
-	sess.SendChecked(ctx, cmd)
 
+	cmd := fmt.Sprintf("set +e; %s", s.Code)
+	f := &Formatter{s.options.GlobalOptions}
+
+	doCmd := func() (int, error) {
+		exit, _, err := sess.SendChecked(ctx, cmd)
+		if err == nil {
+			s.logger.Println(f.Success("Build succeeded"))
+		} else {
+			s.logger.Printf(f.Fail("Failed with message \"%s\""), err)
+		}
+		return exit, err
+	}
+	doCmd()
+
+	debounce := time.NewTimer(2 * time.Second)
+	debounce.Stop()
 	done := make(chan bool)
 	go func() {
 		for {
 			select {
 			case event := <-watcher.Events:
-				// s.logger.Println("event:", event)
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					if !strings.HasPrefix(filepath.Base(event.Name), ".") {
-						s.logger.Println("modified file:", event.Name)
-						exit, _, err := sess.SendChecked(ctx, cmd)
-						s.logger.Println(exit, err)
+						s.logger.Debug(f.Info("modified file:", event.Name))
+						debounce.Reset(1 * time.Second)
 					}
 				}
+			case <-debounce.C:
+				doCmd()
 			case err := <-watcher.Errors:
-				s.logger.Println("error:", err)
+				s.logger.Fatal(err)
 			}
 		}
 	}()
