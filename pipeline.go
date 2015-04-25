@@ -176,8 +176,6 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 
 	cmds := []string{}
 
-	// If we're running in direct-mount mode we mounted stuff read-write and
-	// won't need to copy
 	if !p.options.DirectMount {
 		cmds = append(cmds, []string{
 			// Make sure our guest path exists

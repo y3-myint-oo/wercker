@@ -148,6 +148,7 @@ type Step struct {
 	logger   *LogEntry
 }
 
+// ToSteps builds a list of steps from RawStepsConfig
 func (s RawStepsConfig) ToSteps(options *PipelineOptions) ([]IStep, error) {
 	steps := []IStep{}
 	for _, stepConfig := range s {
@@ -166,6 +167,9 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (IStep, error) {
 	// NOTE(termie) Special case steps are special
 	if s.ID == "internal/docker-push" {
 		return NewDockerPushStep(s, options)
+	}
+	if s.ID == "internal/watch" {
+		return NewWatchStep(s, options)
 	}
 	return NewStep(s, options)
 }

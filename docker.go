@@ -181,14 +181,14 @@ func normalizeRegistry(address string) string {
 	}
 
 	parts := strings.Split(address, "/")
-	possiblyApiVersionStr := parts[len(parts)-1]
+	possiblyAPIVersionStr := parts[len(parts)-1]
 
 	// we only support v1, so...
-	if possiblyApiVersionStr == "v2" {
+	if possiblyAPIVersionStr == "v2" {
 		logger.Warnln("Registry API v2 not supported, using v1")
 		newParts := append(parts[:len(parts)-1], "v1")
 		address = strings.Join(newParts, "/")
-	} else if possiblyApiVersionStr != "v1" {
+	} else if possiblyAPIVersionStr != "v1" {
 		newParts := append(parts, "v1")
 		address = strings.Join(newParts, "/")
 	}

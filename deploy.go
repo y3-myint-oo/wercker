@@ -10,7 +10,7 @@ type Deploy struct {
 	options *PipelineOptions
 }
 
-// ToBuild grabs the build section from the config and configures all the
+// ToDeploy grabs the build section from the config and configures all the
 // instances necessary for the build
 func (c *Config) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 	pipelineConfig := c.Deploy

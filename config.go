@@ -121,6 +121,7 @@ func (r *RawStepConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+// RawStepsConfig is a list of RawStepConfigs
 type RawStepsConfig []*RawStepConfig
 
 // RawPipelineConfig is our unwrapper for PipelineConfig
@@ -191,6 +192,7 @@ type Config struct {
 	Build             *RawPipelineConfig `yaml:"build"`
 	CommandTimeout    int                `yaml:"command-timeout"`
 	Deploy            *RawPipelineConfig `yaml:"deploy"`
+	Dev               *RawPipelineConfig `yaml:"dev"`
 	NoResponseTimeout int                `yaml:"no-response-timeout"`
 	Services          []*RawBoxConfig    `yaml:"services"`
 	SourceDir         string             `yaml:"source-dir"`

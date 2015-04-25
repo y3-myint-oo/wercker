@@ -10,10 +10,9 @@ type Build struct {
 	options *PipelineOptions
 }
 
-// ToBuild grabs the build section from the config and configures all the
+// ToPipeline grabs the specified section from the config and configures all the
 // instances necessary for the build
-func (c *Config) ToBuild(options *PipelineOptions) (*Build, error) {
-	pipelineConfig := c.Build
+func (c *Config) ToPipeline(options *PipelineOptions, pipelineConfig *RawPipelineConfig) (*Build, error) {
 	if pipelineConfig == nil {
 		return nil, fmt.Errorf("No 'build' pipeline definition in wercker.yml")
 	}

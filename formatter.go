@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	SuccessColor = "\x1b[32m"
-	FailColor    = "\x1b[31m"
-	VarColor     = "\x1b[33m"
+	successColor = "\x1b[32m"
+	failColor    = "\x1b[31m"
+	varColor     = "\x1b[33m"
 	reset        = "\x1b[m"
 )
 
@@ -23,21 +23,21 @@ func (f *Formatter) Info(messages ...string) string {
 	return FormatMessage("", f.options.ShowColors, messages...)
 }
 
-// Success uses SuccessColor (green) as color.
+// Success uses successColor (green) as color.
 func (f *Formatter) Success(messages ...string) string {
-	return FormatMessage(SuccessColor, f.options.ShowColors, messages...)
+	return FormatMessage(successColor, f.options.ShowColors, messages...)
 }
 
-// Fail uses FailColor (red) as color.
+// Fail uses failColor (red) as color.
 func (f *Formatter) Fail(messages ...string) string {
-	return FormatMessage(FailColor, f.options.ShowColors, messages...)
+	return FormatMessage(failColor, f.options.ShowColors, messages...)
 }
 
 // FormatMessage handles one or two messages. If more messages are used, those
 // are ignore. If no messages are used, than it will return an empty string.
 // 1 message : --> message[0]
 // 2 messages: --> message[0]: message[1]
-// color will be applied to the first message, VarColor will be used for the
+// color will be applied to the first message, varColor will be used for the
 // second message. If useColors is false, than color will be ignored.
 func FormatMessage(color string, useColors bool, messages ...string) string {
 	segments := []string{}
@@ -58,7 +58,7 @@ func FormatMessage(color string, useColors bool, messages ...string) string {
 
 	if l >= 2 {
 		if useColors {
-			segments = append(segments, fmt.Sprintf(": %s%s%s", VarColor, messages[1], reset))
+			segments = append(segments, fmt.Sprintf(": %s%s%s", varColor, messages[1], reset))
 		} else {
 			segments = append(segments, fmt.Sprintf(": %s", messages[1]))
 		}
