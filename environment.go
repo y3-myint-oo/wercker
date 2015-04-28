@@ -98,6 +98,17 @@ func (e *Environment) getPassthru() [][]string {
 	return a
 }
 
+// Collect the hidden passthru variables
+func (e *Environment) getHiddenPassthru() [][]string {
+	a := [][]string{}
+	for key, value := range e.Map {
+		if strings.HasPrefix(key, "XXX_") {
+			a = append(a, []string{strings.TrimPrefix(key, "XXX_"), value})
+		}
+	}
+	return a
+}
+
 func (e *Environment) getMirror() [][]string {
 	a := [][]string{}
 	for _, key := range mirroredEnv {

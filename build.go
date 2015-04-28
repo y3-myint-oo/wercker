@@ -51,6 +51,7 @@ func (c *Config) ToPipeline(options *PipelineOptions, pipelineConfig *RawPipelin
 // InitEnv sets up the internal state of the environment for the build
 func (b *Build) InitEnv(hostEnv *Environment) {
 	env := b.Env()
+	hiddenEnv := b.HiddenEnv()
 
 	a := [][]string{
 		[]string{"BUILD", "true"},
@@ -68,6 +69,7 @@ func (b *Build) InitEnv(hostEnv *Environment) {
 	env.Update(a)
 	env.Update(hostEnv.getMirror())
 	env.Update(hostEnv.getPassthru())
+	hiddenEnv.Update(hostEnv.getHiddenPassthru())
 }
 
 // DockerRepo calculates our repo name

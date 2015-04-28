@@ -58,6 +58,7 @@ func (c *Config) ToDeploy(options *PipelineOptions) (*Deploy, error) {
 // InitEnv sets up the internal state of the environment for the build
 func (d *Deploy) InitEnv(hostEnv *Environment) {
 	env := d.Env()
+	hiddenEnv := d.HiddenEnv()
 
 	a := [][]string{
 		[]string{"DEPLOY", "true"},
@@ -78,6 +79,7 @@ func (d *Deploy) InitEnv(hostEnv *Environment) {
 	env.Update(a)
 	env.Update(hostEnv.getMirror())
 	env.Update(hostEnv.getPassthru())
+	hiddenEnv.Update(hostEnv.getHiddenPassthru())
 }
 
 // DockerRepo returns the name where we might store this in docker
