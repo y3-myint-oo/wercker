@@ -616,6 +616,9 @@ func (p *Runner) RunStep(shared *RunnerShared, step IStep, order int) (*StepResu
 	exit, err := step.Execute(shared.sessionCtx, shared.sess)
 	if exit != 0 {
 		sr.ExitCode = exit
+		if p.options.AttachOnFailure {
+			shared.box.StartInteractiveSession(p.options.SourcePath())
+		}
 	} else if err == nil {
 		sr.Success = true
 		sr.ExitCode = 0

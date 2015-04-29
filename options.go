@@ -112,6 +112,11 @@ var (
 		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "region"},
 	}
 
+	// flags for the dev clause
+	devclauseFlags = []cli.Flag{
+		cli.BoolFlag{Name: "attach", Usage: "Attach shell to container if a step fails."},
+	}
+
 	// keen.io bits
 	keenFlags = []cli.Flag{
 		cli.BoolFlag{Name: "keen-metrics", Usage: "report metrics to keen.io", Hidden: true},
@@ -152,6 +157,10 @@ var (
 
 	DockerFlags = [][]cli.Flag{
 		dockerFlags,
+	}
+
+	DevclauseFlags = [][]cli.Flag{
+		devclauseFlags,
 	}
 
 	PipelineFlags = [][]cli.Flag{
@@ -277,6 +286,20 @@ type DockerOptions struct {
 	DockerHost      string
 	DockerTLSVerify string
 	DockerCertPath  string
+}
+
+// DevclauseOptions for running dev steps
+type DevclauseOptions struct {
+	*GlobalOptions
+	AttachOnFailure bool
+}
+
+// NewDevclauseOptions constructor
+func NewDevclauseOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*DevclauseOptions, error) {
+	attach := c.Bool("attach")
+	return &DevclauseOptions{
+		AttachOnFailure: attach,
+	}, nil
 }
 
 // NewDockerOptions constructor
@@ -482,6 +505,7 @@ type PipelineOptions struct {
 	*GitOptions
 	*KeenOptions
 	*ReporterOptions
+	*DevclauseOptions
 
 	// TODO(termie): i'd like to remove this, it is only used in a couple
 	//               places by BasePipeline
@@ -668,6 +692,11 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		return nil, err
 	}
 
+	devclauseOpts, err := NewDevclauseOptions(c, e, globalOpts)
+	if err != nil {
+		return nil, err
+	}
+
 	buildID := c.String("build-id")
 	deployID := c.String("deploy-id")
 	pipelineID := ""
@@ -721,12 +750,13 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	werckerYml := c.String("wercker-yml")
 
 	return &PipelineOptions{
-		GlobalOptions:   globalOpts,
-		AWSOptions:      awsOpts,
-		DockerOptions:   dockerOpts,
-		GitOptions:      gitOpts,
-		KeenOptions:     keenOpts,
-		ReporterOptions: reporterOpts,
+		GlobalOptions:    globalOpts,
+		AWSOptions:       awsOpts,
+		DockerOptions:    dockerOpts,
+		GitOptions:       gitOpts,
+		KeenOptions:      keenOpts,
+		DevclauseOptions: devclauseOpts,
+		ReporterOptions:  reporterOpts,
 
 		HostEnv: e,
 

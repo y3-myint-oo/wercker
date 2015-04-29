@@ -106,8 +106,40 @@ func (c *DockerClient) RunAndAttach(name string) error {
 	}
 	c.StartContainer(container.ID, &docker.HostConfig{})
 
+	return c.AttachTerminal(container.ID)
+}
+
+// AttachInteractive starts an interactive session and runs cmd
+func (c *DockerClient) AttachInteractive(containerID string, cmd []string) error {
+
+	exec, err := c.CreateExec(docker.CreateExecOptions{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+		Cmd:          cmd,
+		Container:    containerID,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	err = c.StartExec(exec.ID, docker.StartExecOptions{
+		InputStream:  os.Stdin,
+		OutputStream: os.Stdout,
+		ErrorStream:  os.Stderr,
+		Tty:          true,
+		RawTerminal:  true,
+	})
+
+	return err
+}
+
+func (c *DockerClient) AttachTerminal(containerID string) error {
+	c.logger.Println("Attaching to ", containerID)
 	opts := docker.AttachToContainerOptions{
-		Container:    container.ID,
+		Container:    containerID,
 		Logs:         true,
 		Stdin:        true,
 		Stdout:       true,
@@ -121,7 +153,7 @@ func (c *DockerClient) RunAndAttach(name string) error {
 
 	var oldState *term.State
 
-	oldState, err = term.SetRawTerminal(os.Stdin.Fd())
+	oldState, err := term.SetRawTerminal(os.Stdin.Fd())
 	if err != nil {
 		return err
 	}
@@ -134,7 +166,7 @@ func (c *DockerClient) RunAndAttach(name string) error {
 		}
 	}()
 
-	_, err = c.WaitContainer(container.ID)
+	_, err = c.WaitContainer(containerID)
 	return err
 }
 

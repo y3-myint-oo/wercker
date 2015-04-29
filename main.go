@@ -62,7 +62,7 @@ var (
 				os.Exit(1)
 			}
 		},
-		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
+		Flags: flagsFor(DevclauseFlags, PipelineFlags, WerckerInternalFlags),
 	}
 
 	checkConfigCommand = cli.Command{
@@ -850,6 +850,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 		sr, err := p.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
+
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName()
 			pr.FailedStepMessage = sr.Message
