@@ -63,6 +63,7 @@ var (
 		cli.StringFlag{Name: "application-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_NAME"},
 		cli.StringFlag{Name: "application-owner-name", Value: "", Usage: "application id", EnvVar: "WERCKER_APPLICATION_OWNER_NAME"},
 		cli.StringFlag{Name: "application-started-by-name", Value: "", Usage: "application started by", EnvVar: "WERCKER_APPLICATION_STARTED_BY_NAME"},
+		cli.StringFlag{Name: "pipeline", Value: "", Usage: "alternate pipeline name to execute", EnvVar: "WERCKER_PIPELINE", Hidden: true},
 	}
 
 	gitFlags = []cli.Flag{
@@ -489,6 +490,7 @@ type PipelineOptions struct {
 	DeployID     string
 	PipelineID   string
 	DeployTarget string
+	Pipeline     string
 
 	ApplicationID            string
 	ApplicationName          string
@@ -673,6 +675,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		pipelineID = buildID
 	}
 	deployTarget := c.String("deploy-target")
+	pipeline := c.String("pipeline")
 
 	applicationName, err := guessApplicationName(c, e)
 	if err != nil {
@@ -728,6 +731,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		DeployID:     deployID,
 		PipelineID:   pipelineID,
 		DeployTarget: deployTarget,
+		Pipeline:     pipeline,
 
 		ApplicationID:            applicationID,
 		ApplicationName:          applicationName,
