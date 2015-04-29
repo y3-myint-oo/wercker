@@ -199,7 +199,7 @@ type Config struct {
 	PipelinesMap      map[string]*RawPipelineConfig
 }
 
-// RawConfig unwrapper for Config
+// RawConfig is the unwrapper for Config
 type RawConfig struct {
 	*Config
 }

@@ -152,6 +152,50 @@ func untargzip(path string, r io.Reader) error {
 	return nil
 }
 
+// tarPath makes a tarball out of a directory
+func tarPath(writer io.Writer, root string) error {
+	tw := tar.NewWriter(writer)
+	defer tw.Close()
+	walkFn := func(path string, info os.FileInfo, err error) error {
+		if info.Mode().IsDir() {
+			return nil
+		}
+		newPath := path[len(root)+1:]
+		if len(newPath) == 0 {
+			return nil
+		}
+
+		fr, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer fr.Close()
+
+		hdr, err := tar.FileInfoHeader(info, newPath)
+		if err != nil {
+			return err
+		}
+		hdr.Uid = 0
+		hdr.Gid = 0
+		hdr.Name = newPath
+		err = tw.WriteHeader(hdr)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(tw, fr)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	err := filepath.Walk(root, walkFn)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Finisher is a helper class for running something either right away or
 // at `defer` time.
 type Finisher struct {

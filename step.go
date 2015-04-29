@@ -176,6 +176,7 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (IStep, error) {
 		if s.ID == "internal/shell" {
 			return NewShellStep(s, options)
 		}
+	}
 	return NewStep(s, options)
 }
 

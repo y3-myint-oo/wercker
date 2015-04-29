@@ -52,7 +52,7 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
-			opts, err := NewDevOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewDevOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -238,7 +238,7 @@ var (
 			Name:  "doc",
 			Usage: "Generate usage documentation",
 			Action: func(c *cli.Context) {
-				opts, err := NewGlobalOptions(c, NewEnvironment(os.Environ()))
+				opts, err := NewGlobalOptions(c, NewEnvironment(os.Environ()...))
 				if err != nil {
 					cliLogger.Errorln("Invalid options\n", err)
 					os.Exit(1)

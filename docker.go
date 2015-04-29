@@ -1,12 +1,18 @@
 package main
 
 import (
+	"archive/tar"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"path"
 	"strings"
+	"time"
+
+	"crypto/sha256"
 
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/CenturyLinkLabs/docker-reg-client/registry"
@@ -313,34 +319,40 @@ func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
 	return true, nil
 }
 
+// DockerScratchPushStep creates a new image based on a scratch tarball and
+// pushes it
 type DockerScratchPushStep struct {
 	*DockerPushStep
 }
 
-// Minimal JSON description for a docker layer
+// DockerImageJSON is a minimal JSON description for a docker layer
 type DockerImageJSON struct {
 	Architecture    string                         `json:"architecture"`
-	Created         string                         `json:"created"`
-	Config          DockerImageJSONConfig          `json:"config"`
+	Created         time.Time                      `json:"created"`
+	Config          docker.Config                  `json:"config"`
 	Container       string                         `json:"container"`
 	ContainerConfig DockerImageJSONContainerConfig `json:"container_config"`
 	ID              string                         `json:"id"`
 	OS              string                         `json:"os"`
 	DockerVersion   string                         `json:"docker_version"`
-	Size            int                            `json:"Size"`
+	Size            int64                          `json:"Size"`
 }
 
+// DockerImageJSONConfig substructure
 type DockerImageJSONConfig struct {
 	Hostname string
+	Cmd      []string
 }
 
+// DockerImageJSONContainerConfig substructure
 type DockerImageJSONContainerConfig struct {
 	Hostname string
-	Cmd      []string
+	// Cmd      []string
 	// Memory int
 	// OpenStdin bool
 }
 
+// NewDockerScratchPushStep constructorama
 func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) (*DockerScratchPushStep, error) {
 	name := "docker-scratch-push"
 	displayName := "docker scratch'n'push"
@@ -372,6 +384,329 @@ func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) 
 	return &DockerScratchPushStep{DockerPushStep: dockerPushStep}, nil
 }
 
+// Execute the scratch-n-push
+func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int, error) {
+	// This is clearly only relevant to docker so we're going to dig into the
+	// transport internals a little bit to get the container ID
+	dt := sess.transport.(*DockerTransport)
+	containerID := dt.containerID
+	_, err := s.CollectArtifact(containerID)
+	if err != nil {
+		return -1, err
+	}
+
+	// At this point we've written the layer to disk, we're going to add up the
+	// sizes of all the files to add to our json format, and sha256 the data
+	layerFile, err := os.Open(s.options.HostPath("layer.tar"))
+	defer layerFile.Close()
+	if err != nil {
+		return -1, err
+	}
+	layerTar := tar.NewReader(layerFile)
+	var layerSize int64
+	layerSha := sha256.New()
+	for {
+		hdr, err := layerTar.Next()
+		if err == io.EOF {
+			// finished the tarball
+			break
+		}
+		if err != nil {
+			return -1, err
+		}
+		// Skip the base dir
+		if hdr.Name == "./" {
+			continue
+		}
+		layerSize = layerSize + hdr.Size
+		_, err = io.Copy(layerSha, layerTar)
+		if err != nil {
+			return -1, err
+		}
+	}
+	var b []byte
+	layerSum := layerSha.Sum(b)
+	layerSumHex := hex.EncodeToString(layerSum)
+	layerFile.Close()
+
+	config := docker.Config{
+		Cmd:        s.cmd,
+		Entrypoint: s.entrypoint,
+		Hostname:   containerID[:16],
+	}
+
+	// Make the JSON file we need
+	imageJSON := DockerImageJSON{
+		Architecture: "amd64",
+		Container:    containerID,
+		ContainerConfig: DockerImageJSONContainerConfig{
+			Hostname: containerID[:16],
+		},
+		DockerVersion: "1.5",
+		Created:       time.Now(),
+		ID:            layerSumHex,
+		OS:            "linux",
+		Size:          layerSize,
+	}
+
+	if s.ports != "" {
+		parts := strings.Split(s.ports, ",")
+		portmap := make(map[docker.Port]struct{})
+		for _, port := range parts {
+			port = strings.TrimSpace(port)
+			if !strings.Contains(port, "/") {
+				port = port + "/tcp"
+			}
+			portmap[docker.Port(port)] = struct{}{}
+		}
+		config.ExposedPorts = portmap
+	}
+
+	if s.volumes != "" {
+		parts := strings.Split(s.volumes, ",")
+		volumemap := make(map[string]struct{})
+		for _, volume := range parts {
+			volume = strings.TrimSpace(volume)
+			volumemap[volume] = struct{}{}
+		}
+		config.Volumes = volumemap
+	}
+
+	imageJSON.Config = config
+
+	jsonOut, err := json.MarshalIndent(imageJSON, "", "  ")
+	if err != nil {
+		return -1, err
+	}
+	s.logger.Debugln(jsonOut)
+
+	// Write out the files to disk that we are going to care about
+	err = os.MkdirAll(s.options.HostPath("scratch", layerSumHex), 0755)
+	if err != nil {
+		return -1, err
+	}
+	defer os.RemoveAll(s.options.HostPath("scratch"))
+
+	// VERSION file
+	versionFile, err := os.OpenFile(s.options.HostPath("scratch", layerSumHex, "VERSION"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return -1, err
+	}
+	defer versionFile.Close()
+	_, err = versionFile.Write([]byte("1.0"))
+	if err != nil {
+		return -1, err
+	}
+	err = versionFile.Sync()
+	if err != nil {
+		return -1, err
+	}
+
+	// json file
+	jsonFile, err := os.OpenFile(s.options.HostPath("scratch", layerSumHex, "json"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return -1, err
+	}
+	defer jsonFile.Close()
+	_, err = jsonFile.Write(jsonOut)
+	if err != nil {
+		return -1, err
+	}
+	err = jsonFile.Sync()
+	if err != nil {
+		return -1, err
+	}
+
+	// repositories file
+	repositoriesFile, err := os.OpenFile(s.options.HostPath("scratch", "repositories"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return -1, err
+	}
+	defer repositoriesFile.Close()
+	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{"%s":"%s"}}`, s.repository, s.tag, layerSumHex)))
+	if err != nil {
+		return -1, err
+	}
+	err = repositoriesFile.Sync()
+	if err != nil {
+		return -1, err
+	}
+
+	// layer.tar has an extra folder in it so we have to strip it :/
+	tempLayerFile, err := os.Open(s.options.HostPath("layer.tar"))
+	if err != nil {
+		return -1, err
+	}
+	defer os.Remove(s.options.HostPath("layer.tar"))
+	defer tempLayerFile.Close()
+
+	realLayerFile, err := os.OpenFile(s.options.HostPath("scratch", layerSumHex, "layer.tar"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return -1, err
+	}
+	defer realLayerFile.Close()
+
+	tr := tar.NewReader(tempLayerFile)
+	tw := tar.NewWriter(realLayerFile)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			// finished the tarball
+			break
+		}
+		if err != nil {
+			return -1, err
+		}
+		// Skip the base dir
+		if hdr.Name == "./" {
+			continue
+		}
+		if strings.HasPrefix(hdr.Name, "output/") {
+			hdr.Name = hdr.Name[len("output/"):]
+		} else if strings.HasPrefix(hdr.Name, "source/") {
+			hdr.Name = hdr.Name[len("source/"):]
+		}
+		if len(hdr.Name) == 0 {
+			continue
+		}
+		tw.WriteHeader(hdr)
+		_, err = io.Copy(tw, tr)
+		if err != nil {
+			return -1, err
+		}
+	}
+	tw.Close()
+
+	// Build our output tarball and start writing to it
+	imageFile, err := os.Create(s.options.HostPath("scratch.tar"))
+	defer imageFile.Close()
+	if err != nil {
+		return -1, err
+	}
+	err = tarPath(imageFile, s.options.HostPath("scratch"))
+	if err != nil {
+		return -1, err
+	}
+	imageFile.Close()
+
+	// --exhale--
+
+	// Okay, we have the tarball, we now need to do the whole load and push part.
+	// For the moment this is copy-pasta from DockerPushStep
+	// TODO(termie): could probably re-use the tansport's client
+	client, err := NewDockerClient(s.options.DockerOptions)
+	if err != nil {
+		return 1, err
+	}
+
+	s.logger.WithFields(LogFields{
+		"Registry":   s.registry,
+		"Repository": s.repository,
+		"Tag":        s.tag,
+		"Message":    s.message,
+	}).Debug("Scratch push to registry")
+
+	// Check the auth
+	auth := docker.AuthConfiguration{
+		Username:      s.username,
+		Password:      s.password,
+		Email:         s.email,
+		ServerAddress: s.authServer,
+	}
+
+	checkOpts := CheckAccessOptions{
+		Auth:       auth,
+		Access:     "write",
+		Repository: s.repository,
+		Tag:        s.tag,
+		Registry:   s.registry,
+	}
+
+	check, err := client.CheckAccess(checkOpts)
+	if err != nil {
+		s.logger.Errorln("Error during check access", err)
+		return -1, err
+	}
+	if !check {
+		s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
+		return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
+	}
+
+	// Okay, we can access it, do a docker load to import the image then push it
+	loadFile, err := os.Open(s.options.HostPath("scratch.tar"))
+	defer loadFile.Close()
+	err = client.LoadImage(docker.LoadImageOptions{InputStream: loadFile})
+	if err != nil {
+		return -1, err
+	}
+
+	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
+	r, w := io.Pipe()
+
+	// emitStatusses in a different go routine
+	go emitStatus(r, s.options)
+	defer w.Close()
+
+	pushOpts := docker.PushImageOptions{
+		Name:          s.repository,
+		Tag:           s.tag,
+		Registry:      s.registry,
+		OutputStream:  w,
+		RawJSONStream: true,
+	}
+
+	s.logger.Println("Push container:", s.repository, s.registry)
+	err = client.PushImage(pushOpts, auth)
+
+	if err != nil {
+		s.logger.Errorln("Failed to push:", err)
+		return 1, err
+	}
+
+	return 0, nil
+}
+
+// CollectArtifact is copied from the build, we use this to get the layer
+// tarball that we'll include in the image tarball
+func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*Artifact, error) {
+	artificer := NewArtificer(s.options)
+
+	// Ensure we have the host directory
+
+	artifact := &Artifact{
+		ContainerID:   containerID,
+		GuestPath:     s.options.GuestPath("output"),
+		HostPath:      s.options.HostPath("layer.tar"),
+		ApplicationID: s.options.ApplicationID,
+		BuildID:       s.options.PipelineID,
+		Bucket:        s.options.S3Bucket,
+	}
+
+	sourceArtifact := &Artifact{
+		ContainerID:   containerID,
+		GuestPath:     s.options.SourcePath(),
+		HostPath:      s.options.HostPath("layer.tar"),
+		ApplicationID: s.options.ApplicationID,
+		BuildID:       s.options.PipelineID,
+		Bucket:        s.options.S3Bucket,
+	}
+
+	// Get the output dir, if it is empty grab the source dir.
+	fullArtifact, err := artificer.Collect(artifact)
+	if err != nil {
+		if err == ErrEmptyTarball {
+			fullArtifact, err = artificer.Collect(sourceArtifact)
+			if err != nil {
+				return nil, err
+			}
+			return fullArtifact, nil
+		}
+		return nil, err
+	}
+
+	return fullArtifact, nil
+}
+
 // DockerPushStep needs to implemenet IStep
 type DockerPushStep struct {
 	*BaseStep
@@ -388,6 +723,7 @@ type DockerPushStep struct {
 	ports      string
 	volumes    string
 	cmd        []string
+	entrypoint []string
 	logger     *LogEntry
 	e          *emission.Emitter
 }
@@ -480,6 +816,13 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 			s.cmd = parts
 		}
 	}
+
+	if entrypoint, ok := s.data["entrypoint"]; ok {
+		parts, err := shlex.Split(entrypoint)
+		if err == nil {
+			s.entrypoint = parts
+		}
+	}
 }
 
 // Fetch NOP
@@ -537,7 +880,8 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	s.logger.Debugln("Init env:", s.data)
 
 	config := docker.Config{
-		Cmd: s.cmd,
+		Cmd:        s.cmd,
+		Entrypoint: s.entrypoint,
 	}
 	if s.ports != "" {
 		parts := strings.Split(s.ports, ",")

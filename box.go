@@ -250,7 +250,7 @@ func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step IStep) erro
 
 	env := []string{}
 	env = append(env, pipeline.Env().Export()...)
-	env = append(env, pipeline.HiddenEnv().Export()...)
+	env = append(env, pipeline.Env().Hidden.Export()...)
 	env = append(env, step.Env().Export()...)
 	env = append(env, fmt.Sprintf("cd %s", cwd))
 	cmd := []string{b.cmd}
