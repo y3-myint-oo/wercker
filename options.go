@@ -835,6 +835,18 @@ func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	return pipelineOpts, nil
 }
 
+// NewDevOptions ctor
+func NewDevOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+	pipelineOpts, err := NewBuildOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+	// dev command implies DirectMount
+	pipelineOpts.DirectMount = true
+
+	return pipelineOpts, nil
+}
+
 // NewCheckConfigOptions constructor
 func NewCheckConfigOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	pipelineOpts, err := NewPipelineOptions(c, e)

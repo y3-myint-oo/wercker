@@ -41,8 +41,6 @@ func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep,
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
-	options.DirectMount = true
-
 	baseStep := &BaseStep{
 		displayName: displayName,
 		env:         &Environment{},
