@@ -313,6 +313,65 @@ func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
 	return true, nil
 }
 
+type DockerScratchPushStep struct {
+	*DockerPushStep
+}
+
+// Minimal JSON description for a docker layer
+type DockerImageJSON struct {
+	Architecture    string                         `json:"architecture"`
+	Created         string                         `json:"created"`
+	Config          DockerImageJSONConfig          `json:"config"`
+	Container       string                         `json:"container"`
+	ContainerConfig DockerImageJSONContainerConfig `json:"container_config"`
+	ID              string                         `json:"id"`
+	OS              string                         `json:"os"`
+	DockerVersion   string                         `json:"docker_version"`
+	Size            int                            `json:"Size"`
+}
+
+type DockerImageJSONConfig struct {
+	Hostname string
+}
+
+type DockerImageJSONContainerConfig struct {
+	Hostname string
+	Cmd      []string
+	// Memory int
+	// OpenStdin bool
+}
+
+func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) (*DockerScratchPushStep, error) {
+	name := "docker-scratch-push"
+	displayName := "docker scratch'n'push"
+	if stepConfig.Name != "" {
+		displayName = stepConfig.Name
+	}
+
+	// Add a random number to the name to prevent collisions on disk
+	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
+
+	baseStep := &BaseStep{
+		displayName: displayName,
+		env:         &Environment{},
+		id:          name,
+		name:        name,
+		options:     options,
+		owner:       "wercker",
+		safeID:      stepSafeID,
+		version:     Version(),
+	}
+
+	dockerPushStep := &DockerPushStep{
+		BaseStep: baseStep,
+		data:     stepConfig.Data,
+		logger:   rootLogger.WithField("Logger", "DockerScratchPushStep"),
+		e:        GetEmitter(),
+	}
+
+	return &DockerScratchPushStep{DockerPushStep: dockerPushStep}, nil
+}
+
 // DockerPushStep needs to implemenet IStep
 type DockerPushStep struct {
 	*BaseStep

@@ -45,7 +45,7 @@ func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep,
 
 	baseStep := &BaseStep{
 		displayName: displayName,
-		env:         &Environment{},
+		env:         NewEnvironment(),
 		id:          name,
 		name:        name,
 		options:     options,
