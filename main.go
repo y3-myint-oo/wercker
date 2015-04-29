@@ -52,7 +52,7 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
-			opts, err := NewBuildOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewDevOptions(c, NewEnvironment(os.Environ()))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
