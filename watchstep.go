@@ -67,7 +67,7 @@ func (s *WatchStep) InitEnv(env *Environment) {
 		s.Code = code
 	}
 	if reload, ok := s.data["reload"]; ok {
-		if v, err := strconv.ParseBool(reload); err != nil {
+		if v, err := strconv.ParseBool(reload); err == nil {
 			s.reload = v
 		}
 	}
