@@ -12,12 +12,7 @@ type Deploy struct {
 
 // ToDeploy grabs the build section from the config and configures all the
 // instances necessary for the build
-func (c *Config) ToDeploy(options *PipelineOptions) (*Deploy, error) {
-	pipelineConfig := c.Deploy
-	if pipelineConfig == nil {
-		return nil, fmt.Errorf("No 'deploy' pipeline definition in wercker.yml")
-	}
-
+func (c *Config) ToDeploy(options *PipelineOptions, pipelineConfig *RawPipelineConfig) (*Deploy, error) {
 	// Either the pipeline's box or the global
 	boxConfig := pipelineConfig.Box
 	if boxConfig == nil {

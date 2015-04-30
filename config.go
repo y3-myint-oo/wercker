@@ -196,6 +196,61 @@ type Config struct {
 	NoResponseTimeout int                `yaml:"no-response-timeout"`
 	Services          []*RawBoxConfig    `yaml:"services"`
 	SourceDir         string             `yaml:"source-dir"`
+	PipelinesMap      map[string]*RawPipelineConfig
+}
+
+type RawConfig struct {
+	*Config
+}
+
+var configReservedWords = map[string]struct{}{
+	"box":             struct{}{},
+	"build":           struct{}{},
+	"command-timeout": struct{}{},
+	"deploy":          struct{}{},
+	"dev":             struct{}{},
+	"no-response-timeout": struct{}{},
+	"services":            struct{}{},
+	"source-dir":          struct{}{},
+}
+
+// UnmarshalYAML in this case is a little involved due to the myriad shapes our
+// data can take for deploys (unfortunately), so we have to pretend the data is
+// a map for a while and do a marshal/unmarshal hack to parse the subsections
+func (r *RawConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// First get the fields we know and love
+	r.Config = &Config{
+		PipelinesMap: make(map[string]*RawPipelineConfig),
+	}
+	err := unmarshal(r.Config)
+
+	// Then treat it like a map to get the extra fields
+	m := map[string]interface{}{}
+	err = unmarshal(&m)
+	if err != nil {
+		return err
+	}
+	for k, v := range m {
+		// Skip the fields we already know
+		if _, ok := configReservedWords[k]; ok {
+			continue
+		}
+
+		// Marshal the data so we can use the unmarshal logic on it
+		b, err := yaml.Marshal(v)
+		if err != nil {
+			return err
+		}
+
+		// Finally, unmarshal each section as steps and add it to our map
+		var otherPipelines *RawPipelineConfig
+		err = yaml.Unmarshal(b, &otherPipelines)
+		if err != nil {
+			return fmt.Errorf("Invalid extra key in config, p %s is not a pipeline", k)
+		}
+		r.Config.PipelinesMap[k] = otherPipelines
+	}
+	return nil
 }
 
 func findYaml(searchDirs []string) (string, error) {
@@ -236,7 +291,7 @@ func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
 
 // ConfigFromYaml reads a []byte as yaml and turn it into a Config object
 func ConfigFromYaml(file []byte) (*Config, error) {
-	var m Config
+	var m RawConfig
 
 	err := yaml.Unmarshal(file, &m)
 	if err != nil {
@@ -245,5 +300,5 @@ func ConfigFromYaml(file []byte) (*Config, error) {
 		return nil, err
 	}
 
-	return &m, nil
+	return m.Config, nil
 }

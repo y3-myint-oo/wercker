@@ -291,15 +291,33 @@ func (s *SoftExit) Exit(v ...interface{}) error {
 }
 
 func cmdDev(options *PipelineOptions) error {
-	return executePipeline(options, GetDevPipeline)
+	var pipelineGetter GetPipeline
+	if options.Pipeline != "" {
+		pipelineGetter = GetDevPipelineFactory(options.Pipeline)
+	} else {
+		pipelineGetter = GetDevPipeline
+	}
+	return executePipeline(options, pipelineGetter)
 }
 
 func cmdBuild(options *PipelineOptions) error {
-	return executePipeline(options, GetBuildPipeline)
+	var pipelineGetter GetPipeline
+	if options.Pipeline != "" {
+		pipelineGetter = GetBuildPipelineFactory(options.Pipeline)
+	} else {
+		pipelineGetter = GetBuildPipeline
+	}
+	return executePipeline(options, pipelineGetter)
 }
 
 func cmdDeploy(options *PipelineOptions) error {
-	return executePipeline(options, GetDeployPipeline)
+	var pipelineGetter GetPipeline
+	if options.Pipeline != "" {
+		pipelineGetter = GetDeployPipelineFactory(options.Pipeline)
+	} else {
+		pipelineGetter = GetDeployPipeline
+	}
+	return executePipeline(options, pipelineGetter)
 }
 
 func cmdCheckConfig(options *PipelineOptions) error {
@@ -360,7 +378,7 @@ func cmdCheckConfig(options *PipelineOptions) error {
 	}
 
 	if rawConfig.Deploy != nil {
-		deploy, err := rawConfig.ToDeploy(options)
+		deploy, err := rawConfig.ToDeploy(options, rawConfig.Deploy)
 		if err != nil {
 			return soft.Exit(err)
 		}
