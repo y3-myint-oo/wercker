@@ -62,7 +62,7 @@ var (
 				os.Exit(1)
 			}
 		},
-		Flags: flagsFor(DevclauseFlags, PipelineFlags, WerckerInternalFlags),
+		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
 	}
 
 	checkConfigCommand = cli.Command{
