@@ -141,6 +141,59 @@ func dockerEnv(boxEnv map[string]string, env *Environment) []string {
 	return s
 }
 
+func portBindings(published []string) map[docker.Port][]docker.PortBinding {
+	outer := make(map[docker.Port][]docker.PortBinding)
+	for _, portdef := range published {
+		var ip string
+		var hostPort string
+		var containerPort string
+
+		parts := strings.Split(portdef, ":")
+
+		switch {
+		case len(parts) == 3:
+			ip = parts[0]
+			hostPort = parts[1]
+			containerPort = parts[2]
+		case len(parts) == 2:
+			hostPort = parts[0]
+			containerPort = parts[1]
+		case len(parts) == 1:
+			hostPort = parts[0]
+			containerPort = parts[0]
+		}
+		// Make sure we have a protocol in the container port
+		if !strings.Contains(containerPort, "/") {
+			containerPort = containerPort + "/tcp"
+		}
+
+		if hostPort == "" {
+			hostPort = containerPort
+		}
+
+		// Just in case we have a /tcp in there
+		hostParts := strings.Split(hostPort, "/")
+		hostPort = hostParts[0]
+		portBinding := docker.PortBinding{
+			HostPort: hostPort,
+		}
+		if ip != "" {
+			portBinding.HostIP = ip
+		}
+		outer[docker.Port(containerPort)] = []docker.PortBinding{portBinding}
+	}
+	return outer
+}
+
+func exposedPorts(published []string) map[docker.Port]struct{} {
+	portBinds := portBindings(published)
+	exposed := make(map[docker.Port]struct{})
+	for port, _ := range portBinds {
+		exposed[port] = struct{}{}
+	}
+	return exposed
+}
+
 // Run creates the container and runs it.
 func (b *Box) Run(env *Environment) (*docker.Container, error) {
 	err := b.RunServices(env)
@@ -175,6 +228,7 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 				AttachStdin:     true,
 				AttachStdout:    true,
 				AttachStderr:    true,
+				ExposedPorts:    exposedPorts(b.options.PublishPorts),
 				NetworkDisabled: b.networkDisabled,
 				// Volumes: volumes,
 			},
@@ -191,8 +245,9 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 	}
 
 	client.StartContainer(container.ID, &docker.HostConfig{
-		Binds: binds,
-		Links: b.links(),
+		Binds:        binds,
+		Links:        b.links(),
+		PortBindings: portBindings(b.options.PublishPorts),
 	})
 	b.container = container
 	return container, nil
