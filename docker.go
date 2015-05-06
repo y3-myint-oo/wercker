@@ -138,6 +138,29 @@ func (c *DockerClient) RunAndAttach(name string) error {
 	return err
 }
 
+func (c *DockerClient) ExecOne(containerID string, cmd []string, output io.Writer) error {
+	exec, err := c.CreateExec(docker.CreateExecOptions{
+		AttachStdin:  false,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          false,
+		Cmd:          cmd,
+		Container:    containerID,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = c.StartExec(exec.ID, docker.StartExecOptions{
+		OutputStream: output,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // CheckAccessOptions is just args for CheckAccess
 type CheckAccessOptions struct {
 	Auth       docker.AuthConfiguration
