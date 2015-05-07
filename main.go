@@ -1069,6 +1069,15 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	pipelineArgs.MainSuccessful = pr.Success
 
 	if len(pipeline.AfterSteps()) == 0 {
+		if pr.Success {
+			logger.Println(f.Success("Pipeline finished"))
+		} else {
+			logger.Println(f.Fail("Pipeline failed"))
+		}
+
+		if !pr.Success {
+			return fmt.Errorf("Step failed: %s", pr.FailedStepName)
+		}
 		return nil
 	}
 
