@@ -101,7 +101,8 @@ var (
 	// These flags are advanced dev settings
 	internalDevFlags = []cli.Flag{
 		cli.BoolFlag{Name: "direct-mount", Usage: "mount our binds read-write to the pipeline path"},
-		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "publish a port from the main container, same format as docker --publish"},
+		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "publish a port from the main container, same format as docker --publish", Hidden: true},
+		cli.BoolFlag{Name: "attach", Usage: "Attach shell to container if a step fails.", Hidden: true},
 	}
 
 	// AWS bits
@@ -523,9 +524,10 @@ type PipelineOptions struct {
 	ShouldRemove      bool
 	SourceDir         string
 
-	DirectMount  bool
-	PublishPorts []string
-	WerckerYml   string
+	AttachOnFailure bool
+	DirectMount     bool
+	PublishPorts    []string
+	WerckerYml      string
 }
 
 func guessApplicationID(c *cli.Context, e *Environment, name string) string {
@@ -716,6 +718,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	shouldRemove := !c.Bool("no-remove")
 	sourceDir := c.String("source-dir")
 
+	attachOnFailure := c.Bool("attach")
 	directMount := c.Bool("direct-mount")
 	publishPorts := c.StringSlice("publish")
 	werckerYml := c.String("wercker-yml")
@@ -766,9 +769,10 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		ShouldRemove:      shouldRemove,
 		SourceDir:         sourceDir,
 
-		DirectMount:  directMount,
-		PublishPorts: publishPorts,
-		WerckerYml:   werckerYml,
+		AttachOnFailure: attachOnFailure,
+		DirectMount:     directMount,
+		PublishPorts:    publishPorts,
+		WerckerYml:      werckerYml,
 	}, nil
 }
 

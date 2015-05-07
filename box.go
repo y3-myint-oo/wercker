@@ -194,6 +194,26 @@ func exposedPorts(published []string) map[docker.Port]struct{} {
 	return exposed
 }
 
+//RecoverInteractive restarts the box with a terminal attached
+func (b *Box) RecoverInteractive(cwd string) error {
+	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return nil
+	}
+
+	container, err := b.Restart()
+	if err != nil {
+		b.logger.Panicln("box restart failed")
+		return err
+	}
+
+	cmd := []string{
+		"sh", "-c",
+		fmt.Sprintf("cd %s; if [ `which bash` ]; then exec bash -; else exec sh; fi", cwd),
+	}
+	return client.AttachInteractive(container.ID, cmd)
+}
+
 // Run creates the container and runs it.
 func (b *Box) Run(env *Environment) (*docker.Container, error) {
 	err := b.RunServices(env)

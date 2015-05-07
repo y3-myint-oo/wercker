@@ -18,6 +18,8 @@ import (
 // test TODO (mh)
 // 1. change multiple files simultaneously and show that build only happens
 //    once
+// 2. what happens when files written while build running. queue build?
+//    make sure we don't run multiple builds in parallel
 
 // WatchStep needs to implemenet IStep
 type WatchStep struct {
@@ -67,6 +69,8 @@ func (s *WatchStep) InitEnv(env *Environment) {
 	if reload, ok := s.data["reload"]; ok {
 		if v, err := strconv.ParseBool(reload); err == nil {
 			s.reload = v
+		} else {
+			s.logger.Panic(err)
 		}
 	}
 }
@@ -180,6 +184,8 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		return -1, err
 	}
 
+	// connect(s.options.DockerOptions, sess)
+
 	debounce := time.NewTimer(2 * time.Second)
 	debounce.Stop()
 	done := make(chan struct{})
@@ -188,6 +194,9 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 			// TODO(termie): wait on os.SIGINT and end our loop, too
 			select {
 			case event := <-watcher.Events:
+				// TODO(mh): we should pause this while build is running.
+				// 		 	 python, for example, will generate .pyc files
+				// 		 	 which will spawn multiple builds
 				s.logger.Debugln("fsnotify event", event.String())
 				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Remove == fsnotify.Remove {
 					if !strings.HasPrefix(filepath.Base(event.Name), ".") {
