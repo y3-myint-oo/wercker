@@ -101,7 +101,8 @@ var (
 	// These flags are advanced dev settings
 	internalDevFlags = []cli.Flag{
 		cli.BoolFlag{Name: "direct-mount", Usage: "mount our binds read-write to the pipeline path"},
-		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "publish a port from the main container, same format as docker --publish"},
+		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "publish a port from the main container, same format as docker --publish", Hidden: true},
+		cli.BoolFlag{Name: "attach", Usage: "Attach shell to container if a step fails.", Hidden: true},
 	}
 
 	// AWS bits
@@ -110,11 +111,6 @@ var (
 		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "access key id"},
 		cli.StringFlag{Name: "s3-bucket", Value: "wercker-development", Usage: "bucket for artifacts"},
 		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "region"},
-	}
-
-	// flags for the dev clause
-	devclauseFlags = []cli.Flag{
-		cli.BoolFlag{Name: "attach", Usage: "Attach shell to container if a step fails."},
 	}
 
 	// keen.io bits
@@ -157,10 +153,6 @@ var (
 
 	DockerFlags = [][]cli.Flag{
 		dockerFlags,
-	}
-
-	DevclauseFlags = [][]cli.Flag{
-		devclauseFlags,
 	}
 
 	PipelineFlags = [][]cli.Flag{
@@ -286,20 +278,6 @@ type DockerOptions struct {
 	DockerHost      string
 	DockerTLSVerify string
 	DockerCertPath  string
-}
-
-// DevclauseOptions for running dev steps
-type DevclauseOptions struct {
-	*GlobalOptions
-	AttachOnFailure bool
-}
-
-// NewDevclauseOptions constructor
-func NewDevclauseOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*DevclauseOptions, error) {
-	attach := c.Bool("attach")
-	return &DevclauseOptions{
-		AttachOnFailure: attach,
-	}, nil
 }
 
 // NewDockerOptions constructor
@@ -505,7 +483,6 @@ type PipelineOptions struct {
 	*GitOptions
 	*KeenOptions
 	*ReporterOptions
-	*DevclauseOptions
 
 	// TODO(termie): i'd like to remove this, it is only used in a couple
 	//               places by BasePipeline
@@ -547,9 +524,10 @@ type PipelineOptions struct {
 	ShouldRemove      bool
 	SourceDir         string
 
-	DirectMount  bool
-	PublishPorts []string
-	WerckerYml   string
+	AttachOnFailure bool
+	DirectMount     bool
+	PublishPorts    []string
+	WerckerYml      string
 }
 
 func guessApplicationID(c *cli.Context, e *Environment, name string) string {
@@ -692,11 +670,6 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		return nil, err
 	}
 
-	devclauseOpts, err := NewDevclauseOptions(c, e, globalOpts)
-	if err != nil {
-		return nil, err
-	}
-
 	buildID := c.String("build-id")
 	deployID := c.String("deploy-id")
 	pipelineID := ""
@@ -745,18 +718,18 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	shouldRemove := !c.Bool("no-remove")
 	sourceDir := c.String("source-dir")
 
+	attachOnFailure := c.Bool("attach")
 	directMount := c.Bool("direct-mount")
 	publishPorts := c.StringSlice("publish")
 	werckerYml := c.String("wercker-yml")
 
 	return &PipelineOptions{
-		GlobalOptions:    globalOpts,
-		AWSOptions:       awsOpts,
-		DockerOptions:    dockerOpts,
-		GitOptions:       gitOpts,
-		KeenOptions:      keenOpts,
-		DevclauseOptions: devclauseOpts,
-		ReporterOptions:  reporterOpts,
+		GlobalOptions:   globalOpts,
+		AWSOptions:      awsOpts,
+		DockerOptions:   dockerOpts,
+		GitOptions:      gitOpts,
+		KeenOptions:     keenOpts,
+		ReporterOptions: reporterOpts,
 
 		HostEnv: e,
 
@@ -796,9 +769,10 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		ShouldRemove:      shouldRemove,
 		SourceDir:         sourceDir,
 
-		DirectMount:  directMount,
-		PublishPorts: publishPorts,
-		WerckerYml:   werckerYml,
+		AttachOnFailure: attachOnFailure,
+		DirectMount:     directMount,
+		PublishPorts:    publishPorts,
+		WerckerYml:      werckerYml,
 	}, nil
 }
 
