@@ -70,7 +70,6 @@ func NewDockerClient(options *DockerOptions) (*DockerClient, error) {
 		cert := path.Join(dockerCertPath, fmt.Sprintf("cert.pem"))
 		ca := path.Join(dockerCertPath, fmt.Sprintf("ca.pem"))
 		key := path.Join(dockerCertPath, fmt.Sprintf("key.pem"))
-		logger.Println("key path", key)
 		client, err = docker.NewVersionnedTLSClient(dockerHost, cert, key, ca, "")
 		if err != nil {
 			return nil, err
