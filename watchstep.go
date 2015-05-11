@@ -190,6 +190,9 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 	// If we're not going to reload just run the thing once, synchronously
 	if !s.reload {
 		err := sess.Send(ctx, false, "set +e", s.Code)
+		for {
+			time.Sleep(1)
+		}
 		return 0, err
 		// return 0, nil
 	}
