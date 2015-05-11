@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -81,6 +82,22 @@ func (s *WatchStep) Fetch() (string, error) {
 	return "", nil
 }
 
+// filterGitignore tries to exclude patterns defined in gitignore
+func (s *WatchStep) filterGitignore(root string) []string {
+	filters := []string{}
+	gitignorePath := filepath.Join(root, ".gitignore")
+	file, err := os.Open(gitignorePath)
+	if err == nil {
+		s.logger.Debugln("Excluding file patterns in .gitignore")
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			filters = append(filters, filepath.Join(root, scanner.Text()))
+		}
+	}
+	return filters
+}
+
 func (s *WatchStep) watch(root string) (*fsnotify.Watcher, error) {
 	// Set up the filesystem watcher
 	watcher, err := fsnotify.NewWatcher()
@@ -88,35 +105,46 @@ func (s *WatchStep) watch(root string) (*fsnotify.Watcher, error) {
 		return nil, err
 	}
 
+	filters := []string{
+		fmt.Sprintf("%s*", s.options.StepDir),
+		fmt.Sprintf("%s*", s.options.ProjectDir),
+		fmt.Sprintf("%s*", s.options.BuildDir),
+		".*",
+		"_*",
+	}
+
+	watchCount := 0
+
+	// import a .gitignore if it exists
+	filters = append(filters, s.filterGitignore(root)...)
+
 	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			if err != nil {
 				return err
 			}
-			if strings.HasPrefix(path, s.options.StepDir) {
-				return nil
-			}
-			if strings.HasPrefix(path, s.options.ProjectDir) {
-				return nil
-			}
-			if strings.HasPrefix(path, s.options.BuildDir) {
-				return nil
-			}
-			checkPath := path[len(root):]
-			if strings.HasPrefix(checkPath, "/") {
-				checkPath = checkPath[1:]
-			}
-			if strings.HasPrefix(checkPath, ".") {
-				return nil
-			}
-			if strings.HasPrefix(checkPath, "_") {
-				return nil
-			}
-			if !strings.HasPrefix(filepath.Base(path), ".") {
-				s.logger.Debugln("Watching:", path)
-				if err := watcher.Add(path); err != nil {
-					return err
+			partialPath := filepath.Base(path)
+
+			s.logger.Debugln("check path", path, partialPath)
+			for _, pattern := range filters {
+				matchFull, err := filepath.Match(pattern, path)
+				if err != nil {
+					s.logger.Warnln("Bad exclusion pattern: %s", pattern)
 				}
+				if matchFull {
+					s.logger.Debugf("exclude (%s): %s\n", pattern, path)
+					return filepath.SkipDir
+				}
+				matchPartial, _ := filepath.Match(pattern, partialPath)
+				if matchPartial {
+					s.logger.Debugf("exclude (%s): %s\n", pattern, partialPath)
+					return filepath.SkipDir
+				}
+			}
+			s.logger.Debugln("Watching:", path)
+			watchCount = watchCount + 1
+			if err := watcher.Add(path); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -124,6 +152,7 @@ func (s *WatchStep) watch(root string) (*fsnotify.Watcher, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.logger.Debugf("Watching %d directories\n", watchCount)
 	return watcher, nil
 }
 
@@ -160,8 +189,8 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 
 	// If we're not going to reload just run the thing once, synchronously
 	if !s.reload {
-		exit, _, err := sess.SendChecked(ctx, "set +e", s.Code)
-		return exit, err
+		err := sess.Send(ctx, false, "set +e", s.Code)
+		return 0, err
 		// return 0, nil
 	}
 	f := Formatter{s.options.GlobalOptions}
