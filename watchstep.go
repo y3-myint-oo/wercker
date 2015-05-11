@@ -191,9 +191,10 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 	if !s.reload {
 		err := sess.Send(ctx, false, "set +e", s.Code)
 		for {
+			// TODO(termie): this thing needs to be replaced with a watch for ctrl-c
 			time.Sleep(1)
 		}
-		return 0, err
+		// return 0, err
 		// return 0, nil
 	}
 	f := Formatter{s.options.GlobalOptions}
