@@ -232,6 +232,23 @@ var (
 			}
 		},
 	}
+
+	documentCommand = func(app *cli.App) cli.Command {
+		return cli.Command{
+			Name:  "doc",
+			Usage: "Generate usage documentation",
+			Action: func(c *cli.Context) {
+				opts, err := NewGlobalOptions(c, NewEnvironment(os.Environ()))
+				if err != nil {
+					cliLogger.Errorln("Invalid options\n", err)
+					os.Exit(1)
+				}
+				if err := GenerateDocumentation(opts, app); err != nil {
+					cliLogger.Panic(err)
+				}
+			},
+		}
+	}
 )
 
 func main() {
@@ -257,6 +274,7 @@ func main() {
 		logoutCommand,
 		pullCommand,
 		versionCommand,
+		documentCommand(app),
 	}
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {
