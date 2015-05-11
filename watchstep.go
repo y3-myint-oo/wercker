@@ -213,24 +213,18 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		return -1, err
 	}
 
-	// connect(s.options.DockerOptions, sess)
-
-	debounce := time.NewTimer(2 * time.Second)
-	debounce.Stop()
+	debounce := NewDebouncer(2 * time.Second)
 	done := make(chan struct{})
 	go func() {
 		for {
 			// TODO(termie): wait on os.SIGINT and end our loop, too
 			select {
 			case event := <-watcher.Events:
-				// TODO(mh): we should pause this while build is running.
-				// 		 	 python, for example, will generate .pyc files
-				// 		 	 which will spawn multiple builds
 				s.logger.Debugln("fsnotify event", event.String())
 				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Remove == fsnotify.Remove {
 					if !strings.HasPrefix(filepath.Base(event.Name), ".") {
 						s.logger.Debug(f.Info("Modified file", event.Name))
-						debounce.Reset(1 * time.Second)
+						debounce.Trigger()
 					}
 				}
 			case <-debounce.C:
@@ -248,7 +242,8 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		}
 	}()
 
-	go doCmd()
+	// Run build on first run
+	debounce.Trigger()
 	<-done
 	return 0, nil
 }
