@@ -49,7 +49,8 @@ func prefixedNames(fullName string) (prefixed string) {
 	return
 }
 
-func genFlags(flags []cli.Flag) ([]cli.StringFlag, error) {
+// stringifyFlags gives us a representation of flags that's usable in templates
+func stringifyFlags(flags []cli.Flag) ([]cli.StringFlag, error) {
 	usefulFlags := []cli.StringFlag{}
 	for _, flag := range flags {
 		switch t := flag.(type) {
@@ -92,8 +93,8 @@ func genFlags(flags []cli.Flag) ([]cli.StringFlag, error) {
 
 func writeDoc(templ string, data interface{}, output io.Writer) error {
 	funcMap := template.FuncMap{
-		"GenFlags": genFlags,
-		"Prefixed": prefixedNames,
+		"stringifyFlags": stringifyFlags,
+		"Prefixed":       prefixedNames,
 	}
 	tpl := template.Must(template.New("doc").Funcs(funcMap).Parse(templ))
 	tabwriter := tabwriter.NewWriter(output, 0, 8, 1, ' ', 0)

@@ -15,7 +15,7 @@ DESCRIPTION
 OPTIONS
 -------
 
-{{range $flag := GenFlags $.Flags}}{{Prefixed $flag.Name}}::
+{{range $flag := stringifyFlags $.Flags}}{{Prefixed $flag.Name}}::
   {{$flag.Usage}}{{if $flag.Value}}
   Default;;
     {{$flag.Value}}{{end}}
