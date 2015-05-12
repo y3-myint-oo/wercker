@@ -6,7 +6,7 @@ version - print versions
 
 USAGE
 -----
-command `version [command options] [arguments...]`
+command version [command options] [arguments...]
 
 OPTIONS
 -------
@@ -17,4 +17,3 @@ OPTIONS
   Checks for the latest beta version
 --no-update-check::
   Do not check for update
-

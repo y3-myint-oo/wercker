@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +13,62 @@ import (
 )
 
 const docPath = "Documentation/command"
+
+var werckerSubcommandHelpTemplate = `# {{.Name}}
+
+NAME
+----
+{{.Name}} - {{.Usage}}
+
+USAGE
+-----
+command {{.Name}}{{if .Flags}} [command options]{{end}} [arguments...]{{if .Description}}
+
+DESCRIPTION
+-----------
+{{.Description}}{{end}}{{if .Flags}}
+
+OPTIONS
+-------
+
+{{range $flag := stringifyFlags $.Flags}}{{Prefixed $flag.Name}}::
+  {{$flag.Usage}}{{if $flag.Value}}
+  Default;;
+    {{$flag.Value}}{{end}}
+{{end}}{{end}}`
+
+var werckerAppHelpTemplate = `# {{.Name}}
+
+NAME
+----
+{{.Name}} - {{.Usage}}
+
+USAGE
+-----
+  {{.Name}} {{if .Flags}}[global options] {{end}}command{{if .Flags}} [command options]{{end}} [arguments...]
+
+VERSION
+-------
+{{.Version}}{{if or .Author .Email}}
+
+AUTHOR
+------{{if .Author}}
+{{.Author}}{{if .Email}} - <{{.Email}}>{{end}}{{else}}
+{{.Email}}{{end}}{{end}}
+
+COMMANDS
+--------
+{{range .Commands}}{{.Name}}{{with .ShortName}}, {{.}}{{end}}::
+  {{.Usage}}
+{{end}}{{if .Flags}}
+
+GLOBAL OPTIONS
+--------------
+{{range $flag := stringifyFlags $.Flags}}{{Prefixed $flag.Name}}::
+  {{$flag.Usage}}{{if $flag.Value}}
+  Default;;
+    {{$flag.Value}}{{end}}
+{{end}}{{end}}`
 
 // Stringifies the flag and returns the first line.
 func shortFlag(flag cli.Flag) string {
@@ -51,18 +106,6 @@ OPTIONS:
 		}
 		w.Flush()
 	}
-}
-
-func loadTemplate(templ string) (string, error) {
-	absPath, err := filepath.Abs(filepath.Join(docPath, fmt.Sprintf("%s.tpl", templ)))
-	if err != nil {
-		return "", err
-	}
-	tpl, err := ioutil.ReadFile(absPath)
-	if err != nil {
-		return "", err
-	}
-	return string(tpl), nil
 }
 
 func prefixFor(name string) (prefix string) {
@@ -126,7 +169,6 @@ func stringifyFlags(flags []cli.Flag) ([]cli.StringFlag, error) {
 		}
 	}
 	return usefulFlags, nil
-
 }
 
 func writeDoc(templ string, data interface{}, output io.Writer) error {
@@ -167,21 +209,12 @@ func GenerateDocumentation(options *GlobalOptions, app *cli.App) error {
 		}
 		return writeDoc(templ, data, w)
 	}
-	appTpl, err := loadTemplate("wercker")
-	if err != nil {
-		return err
-	}
-	if err := write("wercker", appTpl, app); err != nil {
-		return err
-	}
-
-	cmdTpl, err := loadTemplate("subcmd")
-	if err != nil {
+	if err := write("wercker", werckerAppHelpTemplate, app); err != nil {
 		return err
 	}
 
 	for _, cmd := range app.Commands {
-		if err := write(cmd.Name, cmdTpl, cmd); err != nil {
+		if err := write(cmd.Name, werckerSubcommandHelpTemplate, cmd); err != nil {
 			return err
 		}
 	}

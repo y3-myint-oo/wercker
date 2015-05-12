@@ -10,7 +10,7 @@ USAGE
 
 VERSION
 -------
-1.0.0 (Compiled at: 2015-05-12T15:40:33Z)
+1.0.0 (Compiled at: 2015-05-12T15:57:57Z)
 
 AUTHOR
 ------
@@ -72,4 +72,3 @@ GLOBAL OPTIONS
   show help
 --version, -v::
   print the version
-

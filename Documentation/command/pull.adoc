@@ -6,7 +6,7 @@ pull - pull <build id>
 
 USAGE
 -----
-command `pull [command options] [arguments...]`
+command pull [command options] [arguments...]
 
 DESCRIPTION
 -----------
@@ -37,4 +37,3 @@ OPTIONS
   load the container into docker after downloading
 -f, --force::
   override output if it already exists
-
