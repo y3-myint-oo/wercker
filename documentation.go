@@ -183,13 +183,15 @@ func writeDoc(templ string, data interface{}, output io.Writer) error {
 
 // Creates file at correct path. caller must close file.
 func createDoc(name string) (*os.File, error) {
-	tplName, err := filepath.Abs(
-		filepath.Join(
-			docPath,
-			fmt.Sprintf("%s.adoc", strings.ToLower(name))))
+	absDoc, err := filepath.Abs(docPath)
 	if err != nil {
 		return nil, err
 	}
+	if err := os.MkdirAll(absDoc, 0755); err != nil {
+		return nil, err
+	}
+	tplName := filepath.Join(absDoc,
+		fmt.Sprintf("%s.adoc", strings.ToLower(name)))
 	return os.Create(tplName)
 }
 
