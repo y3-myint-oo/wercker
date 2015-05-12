@@ -82,7 +82,11 @@ OPTIONS
 --store-local::
   store artifacts and containers locally
 --store-s3::
-  store artifacts and containers on s3
+  store artifacts and containers on s3.
+   This requires access to aws credentials, pulled from any of the usual places
+   (~/.aws/config, AWS_SECRET_ACCESS_KEY, etc), or from the --aws-secret-key and
+   --aws-access-key flags. It will upload to a bucket defined by --s3-bucket in
+   the region named by --aws-region
 --aws-secret-key::
   secret access key
 --aws-access-key::

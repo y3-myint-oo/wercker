@@ -15,6 +15,44 @@ import (
 
 const docPath = "Documentation/command"
 
+// Stringifies the flag and returns the first line.
+func shortFlag(flag cli.Flag) string {
+	ss := strings.Split(flag.String(), "\n")
+	if len(ss) == 0 {
+		return ""
+	}
+	return ss[0]
+}
+
+// setupUsageFormatter configures codegangsta.cli to output usage
+// information in the format we want.
+func setupUsageFormatter(app *cli.App) {
+	cli.CommandHelpTemplate = `NAME:
+   {{.Name}} - {{.Usage}}
+
+USAGE:
+   command {{.Name}}{{if .Flags}} [command options]{{end}} [arguments...]{{if .Description}}
+
+DESCRIPTION:
+   {{.Description}}{{end}}{{if .Flags}}
+
+OPTIONS:
+{{range .Flags}}{{if not .IsHidden}}   {{. | shortFlag}}{{ "\n" }}{{end}}{{end}}{{end}}
+`
+
+	cli.HelpPrinter = func(templ string, data interface{}) {
+		w := tabwriter.NewWriter(app.Writer, 0, 8, 1, '\t', 0)
+		t := template.Must(template.New("help").Funcs(
+			template.FuncMap{"shortFlag": shortFlag},
+		).Parse(templ))
+		err := t.Execute(w, data)
+		if err != nil {
+			panic(err)
+		}
+		w.Flush()
+	}
+}
+
 func loadTemplate(templ string) (string, error) {
 	absPath, err := filepath.Abs(filepath.Join(docPath, fmt.Sprintf("%s.tpl", templ)))
 	if err != nil {

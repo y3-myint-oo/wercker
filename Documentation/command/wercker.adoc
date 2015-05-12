@@ -10,7 +10,7 @@ USAGE
 
 VERSION
 -------
-1.0.0 (Compiled at: 2015-05-12T11:33:21Z)
+1.0.0 (Compiled at: 2015-05-12T15:40:33Z)
 
 AUTHOR
 ------

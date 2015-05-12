@@ -257,6 +257,7 @@ func main() {
 	// rootLogger.Formatter = &logger.JSONFormatter{}
 
 	app := cli.NewApp()
+	setupUsageFormatter(app)
 	app.Author = "Team wercker"
 	app.Name = "wercker"
 	app.Usage = "build and deploy from the command line"
