@@ -190,6 +190,9 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 	// If we're not going to reload just run the thing once, synchronously
 	if !s.reload {
 		err := sess.Send(ctx, false, "set +e", s.Code)
+		if err != nil {
+			return 0, err
+		}
 		for {
 			// TODO(termie): this thing needs to be replaced with a watch for ctrl-c
 			time.Sleep(1)
