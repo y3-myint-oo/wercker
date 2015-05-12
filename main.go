@@ -289,6 +289,8 @@ func main() {
 			rootLogger.Hooks.Add(&journalhook.JournalHook{})
 			rootLogger.Out = ioutil.Discard
 		}
+		// Register the global signal handler
+		globalSigint.Register(os.Interrupt)
 		return nil
 	}
 	app.Run(os.Args)
