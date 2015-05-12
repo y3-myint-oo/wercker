@@ -86,7 +86,12 @@ var (
 		cli.BoolFlag{Name: "artifacts", Usage: "store artifacts"},
 		cli.BoolFlag{Name: "no-remove", Usage: "don't remove the containers"},
 		cli.BoolFlag{Name: "store-local", Usage: "store artifacts and containers locally"},
-		cli.BoolFlag{Name: "store-s3", Usage: "store artifacts and containers on s3"},
+		cli.BoolFlag{Name: "store-s3",
+			Usage: `store artifacts and containers on s3.
+			This requires access to aws credentials, pulled from any of the usual places
+			(~/.aws/config, AWS_SECRET_ACCESS_KEY, etc), or from the --aws-secret-key and
+			--aws-access-key flags. It will upload to a bucket defined by --s3-bucket in
+			the region named by --aws-region`},
 	}
 
 	// These flags affect our local execution environment
