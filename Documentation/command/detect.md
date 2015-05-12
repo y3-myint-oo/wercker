@@ -1,8 +1,0 @@
-## detect
-
-### NAME:
-   detect - detect the type of project
-
-### USAGE:
-   command `detect [arguments...]`
-```

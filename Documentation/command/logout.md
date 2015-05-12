@@ -1,8 +1,0 @@
-## logout
-
-### NAME:
-   logout - logout from wercker
-
-### USAGE:
-   command `logout [arguments...]`
-```

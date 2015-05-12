@@ -1,21 +1,32 @@
-## {{.Name}}
+# {{.Name}}
 
-### Name:
-   {{.Name}} - {{.Usage}}
+NAME
+----
+{{.Name}} - {{.Usage}}
 
-### USAGE:
-   {{.Name}} {{if .Flags}}[global options] {{end}}command{{if .Flags}} [command options]{{end}} [arguments...]
+USAGE
+-----
+  {{.Name}} {{if .Flags}}[global options] {{end}}command{{if .Flags}} [command options]{{end}} [arguments...]
 
-### VERSION:
-   {{.Version}}{{if or .Author .Email}}
+VERSION
+-------
+{{.Version}}{{if or .Author .Email}}
 
-### AUTHOR:{{if .Author}}
-  {{.Author}}{{if .Email}} - <{{.Email}}>{{end}}{{else}}
-  {{.Email}}{{end}}{{end}}
+AUTHOR
+------{{if .Author}}
+{{.Author}}{{if .Email}} - <{{.Email}}>{{end}}{{else}}
+{{.Email}}{{end}}{{end}}
 
-### COMMANDS:
-   {{range .Commands}}{{.Name}}{{with .ShortName}}, {{.}}{{end}}{{ "\t" }}{{.Usage}}
-   {{end}}{{if .Flags}}
-### GLOBAL OPTIONS:
-```
-{{range .Flags}}   {{.}}{{ "\n" }}{{end}}```{{end}}
+COMMANDS
+--------
+{{range .Commands}}{{.Name}}{{with .ShortName}}, {{.}}{{end}}::
+  {{.Usage}}
+{{end}}{{if .Flags}}
+
+GLOBAL OPTIONS
+--------------
+{{range $flag := GenFlags $.Flags}}{{Prefixed $flag.Name}}::
+  {{$flag.Usage}}{{if $flag.Value}}
+  Default;;
+    {{$flag.Value}}{{end}}
+{{end}}{{end}}

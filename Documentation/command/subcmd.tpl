@@ -1,14 +1,22 @@
-## {{.Name}}
+# {{.Name}}
 
-### NAME:
-   {{.Name}} - {{.Usage}}
+NAME
+----
+{{.Name}} - {{.Usage}}
 
-### USAGE:
-   command `{{.Name}}{{if .Flags}} [command options]{{end}} [arguments...]`{{if .Description}}
+USAGE
+-----
+command `{{.Name}}{{if .Flags}} [command options]{{end}} [arguments...]`{{if .Description}}
 
-### DESCRIPTION:
-   {{.Description}}{{end}}{{if .Flags}}
+DESCRIPTION
+-----------
+{{.Description}}{{end}}{{if .Flags}}
 
-### OPTIONS:
-```
-{{range .Flags}}   {{.}}{{ "\n" }}{{end}}```{{end}}
+OPTIONS
+-------
+
+{{range $flag := GenFlags $.Flags}}{{Prefixed $flag.Name}}::
+  {{$flag.Usage}}{{if $flag.Value}}
+  Default;;
+    {{$flag.Value}}{{end}}
+{{end}}{{end}}

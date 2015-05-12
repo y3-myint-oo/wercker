@@ -27,8 +27,75 @@ func loadTemplate(templ string) (string, error) {
 	return string(tpl), nil
 }
 
+func prefixFor(name string) (prefix string) {
+	if len(name) == 1 {
+		prefix = "-"
+	} else {
+		prefix = "--"
+	}
+
+	return
+}
+
+func prefixedNames(fullName string) (prefixed string) {
+	parts := strings.Split(fullName, ",")
+	for i, name := range parts {
+		name = strings.Trim(name, " ")
+		prefixed += prefixFor(name) + name
+		if i < len(parts)-1 {
+			prefixed += ", "
+		}
+	}
+	return
+}
+
+func genFlags(flags []cli.Flag) ([]cli.StringFlag, error) {
+	usefulFlags := []cli.StringFlag{}
+	for _, flag := range flags {
+		switch t := flag.(type) {
+		default:
+			return nil, fmt.Errorf("unexpected type %T", t)
+		case cli.StringSliceFlag:
+			usefulFlags = append(usefulFlags, cli.StringFlag{
+				Name:  t.Name,
+				Usage: t.Usage,
+				Value: strings.Join(*t.Value, ","),
+			})
+		case cli.BoolFlag:
+			usefulFlags = append(usefulFlags, cli.StringFlag{
+				Name:  t.Name,
+				Usage: t.Usage,
+			})
+		case cli.StringFlag:
+			usefulFlags = append(usefulFlags, cli.StringFlag{
+				Name:  t.Name,
+				Usage: t.Usage,
+				Value: t.Value,
+			})
+		case cli.IntFlag:
+			usefulFlags = append(usefulFlags, cli.StringFlag{
+				Name:  t.Name,
+				Usage: t.Usage,
+				Value: fmt.Sprintf("%d", t.Value),
+			})
+		case cli.Float64Flag:
+			usefulFlags = append(usefulFlags, cli.StringFlag{
+				Name:  t.Name,
+				Usage: t.Usage,
+				Value: fmt.Sprintf("%.2f", t.Value),
+			})
+		}
+	}
+	return usefulFlags, nil
+
+}
+
 func writeDoc(templ string, data interface{}, output io.Writer) error {
-	tpl := template.Must(template.New("doc").Parse(templ))
+	funcMap := template.FuncMap{
+		"GenFlags": genFlags,
+		"Prefixed": prefixedNames,
+	}
+	tpl := template.Must(template.New("doc").Funcs(funcMap).Parse(templ))
 	tabwriter := tabwriter.NewWriter(output, 0, 8, 1, ' ', 0)
 	return tpl.Execute(tabwriter, data)
 }
@@ -38,7 +105,7 @@ func createDoc(name string) (*os.File, error) {
 	tplName, err := filepath.Abs(
 		filepath.Join(
 			docPath,
-			fmt.Sprintf("%s.md", strings.ToLower(name))))
+			fmt.Sprintf("%s.adoc", strings.ToLower(name))))
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +132,9 @@ func GenerateDocumentation(options *GlobalOptions, app *cli.App) error {
 	if err != nil {
 		return err
 	}
-	write("wercker", appTpl, app)
+	if err := write("wercker", appTpl, app); err != nil {
+		return err
+	}
 
 	cmdTpl, err := loadTemplate("subcmd")
 	if err != nil {
@@ -73,7 +142,9 @@ func GenerateDocumentation(options *GlobalOptions, app *cli.App) error {
 	}
 
 	for _, cmd := range app.Commands {
-		write(cmd.Name, cmdTpl, cmd)
+		if err := write(cmd.Name, cmdTpl, cmd); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -1,8 +1,0 @@
-## doc
-
-### NAME:
-   doc - Generate usage documentation
-
-### USAGE:
-   command `doc [arguments...]`
-```
