@@ -16,24 +16,24 @@ OPTIONS
 -------
 
 --docker-host::
-  docker api host
+  Docker api endpoint.
   Default;;
     tcp://127.0.0.1:2375
 --docker-tls-verify::
-  docker api tls verify
+  Docker api tls verify.
   Default;;
     0
 --docker-cert-path::
-  docker api cert path
+  Docker api cert path.
 --branch::
-  filter on this branch
+  Filter on this branch.
 --result::
-  filter on this result (passed or failed)
+  Filter on this result (passed or failed).
 --output::
-  path to repository
+  Path to repository.
   Default;;
     ./repository.tar
 --load::
-  load the container into docker after downloading
+  Load the container into docker after downloading.
 -f, --force::
-  override output if it already exists
+  Override output if it already exists.

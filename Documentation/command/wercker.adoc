@@ -10,7 +10,7 @@ USAGE
 
 VERSION
 -------
-1.0.0 (Compiled at: 2015-05-12T15:57:57Z)
+1.0.0 (Compiled at: 2015-05-13T10:03:29Z)
 
 AUTHOR
 ------
@@ -45,27 +45,27 @@ help, h::
 GLOBAL OPTIONS
 --------------
 --environment::
-  specify additional environment variables in a file
+  Specify additional environment variables in a file.
   Default;;
     ENVIRONMENT
 --verbose::
-  print more information
+  Print more information.
 --no-colors::
-  wercker output will not use colors (does not apply to step output)
+  Wercker output will not use colors (does not apply to step output).
 --debug::
-  print additional debug information
+  Print additional debug information.
 --journal::
   Send logs to systemd-journald. Suppresses stdout logging.
 --wercker-endpoint::
-  deprecated
+  Deprecated.
 --base-url::
-  base url for the wercker app
+  Base url for the wercker app.
   Default;;
     https://app.wercker.com
 --auth-token::
-  authentication token to use
+  Authentication token to use.
 --auth-token-store::
-  where to store the token after a login
+  Where to store the token after a login.
   Default;;
     ~/.wercker/token
 --help, -h::
