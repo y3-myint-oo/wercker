@@ -109,7 +109,7 @@ func (c *DockerClient) RunAndAttach(name string) error {
 }
 
 // AttachInteractive starts an interactive session and runs cmd
-func (c *DockerClient) AttachInteractive(containerID string, cmd []string) error {
+func (c *DockerClient) AttachInteractive(containerID string, cmd []string, initialStdin []string) error {
 
 	exec, err := c.CreateExec(docker.CreateExecOptions{
 		AttachStdin:  true,
@@ -124,8 +124,24 @@ func (c *DockerClient) AttachInteractive(containerID string, cmd []string) error
 		return err
 	}
 
+	// Dump any initial stdin then go into os.Stdin
+	readers := []io.Reader{}
+	for _, s := range initialStdin {
+		readers = append(readers, strings.NewReader(s+"\n"))
+	}
+	readers = append(readers, os.Stdin)
+	stdin := io.MultiReader(readers...)
+
+	// This causes our ctrl-c's to be passed to the stuff in the terminal
+	var oldState *term.State
+	oldState, err = term.SetRawTerminal(os.Stdin.Fd())
+	if err != nil {
+		return err
+	}
+	defer term.RestoreTerminal(os.Stdin.Fd(), oldState)
+
 	err = c.StartExec(exec.ID, docker.StartExecOptions{
-		InputStream:  os.Stdin,
+		InputStream:  stdin,
 		OutputStream: os.Stdout,
 		ErrorStream:  os.Stderr,
 		Tty:          true,

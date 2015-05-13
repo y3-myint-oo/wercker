@@ -16,8 +16,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Step INterface GOes Here
-
 // StepDesc represents a wercker-step.yml
 type StepDesc struct {
 	Name        string
