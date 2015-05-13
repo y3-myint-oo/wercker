@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -34,7 +35,7 @@ var (
 	}
 
 	dockerFlags = []cli.Flag{
-		cli.StringFlag{Name: "docker-host", Value: "tcp://127.0.0.1:2375", Usage: "Docker api endpoint.", EnvVar: "DOCKER_HOST"},
+		cli.StringFlag{Name: "docker-host", Value: "", Usage: "Docker api endpoint.", EnvVar: "DOCKER_HOST"},
 		cli.StringFlag{Name: "docker-tls-verify", Value: "0", Usage: "Docker api tls verify.", EnvVar: "DOCKER_TLS_VERIFY"},
 		cli.StringFlag{Name: "docker-cert-path", Value: "", Usage: "Docker api cert path.", EnvVar: "DOCKER_CERT_PATH"},
 	}
@@ -298,18 +299,75 @@ type DockerOptions struct {
 	DockerCertPath  string
 }
 
+func guessAndUpdateDockerOptions(opts *DockerOptions) {
+	if opts.DockerHost != "" {
+		return
+	}
+
+	logger := rootLogger.WithField("Logger", "docker")
+
+	// Check the unix socket, default on linux
+	if runtime.GOOS == "linux" {
+		unixSocket := "unix:///var/run/docker.sock"
+		logger.Println(fmt.Sprintf("No Docker host specified, checking: %s", unixSocket))
+		client, err := NewDockerClient(&DockerOptions{
+			DockerHost: unixSocket,
+		})
+		if err == nil {
+			_, err = client.Version()
+			if err == nil {
+				opts.DockerHost = unixSocket
+				return
+			}
+		}
+	}
+
+	// Check the boot2docker port with default cert paths and such
+	u, err := user.Current()
+	if err == nil {
+		b2dCertPath := filepath.Join(u.HomeDir, ".boot2docker/certs/boot2docker-vm")
+		b2dHost := "tcp://192.168.59.103:2376"
+
+		logger.Println(fmt.Sprintf("No Docker host specified, checking for boot2docker: %s", b2dHost))
+		client, err := NewDockerClient(&DockerOptions{
+			DockerHost:      b2dHost,
+			DockerCertPath:  b2dCertPath,
+			DockerTLSVerify: "1",
+		})
+		if err == nil {
+			_, err = client.Version()
+			if err == nil {
+				opts.DockerHost = b2dHost
+				opts.DockerCertPath = b2dCertPath
+				opts.DockerTLSVerify = "1"
+				return
+			}
+		}
+	}
+
+	// Pick a default localhost port and hope for the best :/
+	opts.DockerHost = "tcp://127.0.0.1:2375"
+	logger.Println(fmt.Sprintf("No Docker host specified, using default: %s", opts.DockerHost))
+}
+
 // NewDockerOptions constructor
 func NewDockerOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*DockerOptions, error) {
 	dockerHost := c.String("docker-host")
 	dockerTLSVerify := c.String("docker-tls-verify")
 	dockerCertPath := c.String("docker-cert-path")
 
-	return &DockerOptions{
+	speculativeOptions := &DockerOptions{
 		GlobalOptions:   globalOpts,
 		DockerHost:      dockerHost,
 		DockerTLSVerify: dockerTLSVerify,
 		DockerCertPath:  dockerCertPath,
-	}, nil
+	}
+
+	// We're going to try out a few settings and set DockerHost if
+	// one of them works, it they don't we'll get a nice error when
+	// requireDockerEndpoint triggers later on
+	guessAndUpdateDockerOptions(speculativeOptions)
+	return speculativeOptions, nil
 }
 
 // GitOptions for the users, mostly
