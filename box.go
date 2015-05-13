@@ -188,7 +188,7 @@ func portBindings(published []string) map[docker.Port][]docker.PortBinding {
 func exposedPorts(published []string) map[docker.Port]struct{} {
 	portBinds := portBindings(published)
 	exposed := make(map[docker.Port]struct{})
-	for port, _ := range portBinds {
+	for port := range portBinds {
 		exposed[port] = struct{}{}
 	}
 	return exposed

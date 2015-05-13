@@ -135,6 +135,7 @@ func (c *DockerClient) AttachInteractive(containerID string, cmd []string) error
 	return err
 }
 
+// AttachTerminal connects us to container and gives us a terminal
 func (c *DockerClient) AttachTerminal(containerID string) error {
 	c.logger.Println("Attaching to ", containerID)
 	opts := docker.AttachToContainerOptions{
@@ -169,6 +170,7 @@ func (c *DockerClient) AttachTerminal(containerID string) error {
 	return err
 }
 
+// ExecOne uses docker exec to run a command in the container
 func (c *DockerClient) ExecOne(containerID string, cmd []string, output io.Writer) error {
 	exec, err := c.CreateExec(docker.CreateExecOptions{
 		AttachStdin:  false,

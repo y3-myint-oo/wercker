@@ -175,17 +175,48 @@ func (s *WatchStep) killProcesses(containerID string, signal string) error {
 // registry
 func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 	// Start watching our stdout
+	stopListening := make(chan struct{})
+	defer func() { stopListening <- struct{}{} }()
 	go func() {
 		for {
-			line := <-sess.recv
-			sess.e.Emit(Logs, &LogsArgs{
-				Options: sess.options,
-				Hidden:  sess.logsHidden,
-				Logs:    line,
-				Stream:  "stdout",
-			})
+			select {
+			case line := <-sess.recv:
+				sess.e.Emit(Logs, &LogsArgs{
+					Options: sess.options,
+					Hidden:  sess.logsHidden,
+					Logs:    line,
+					Stream:  "stdout",
+				})
+			// We need to make sure we stop eating the stdout from the container
+			// promiscuously when we finish out step
+			case <-stopListening:
+				return
+			}
 		}
 	}()
+
+	// cheating to get containerID
+	// TODO(termie): we should deal with this eventually
+	dt := sess.transport.(*DockerTransport)
+	containerID := dt.containerID
+
+	// Set up a signal handler to end our step.
+	finishedStep := make(chan struct{})
+	stopWatchHandler := &SignalHandler{
+		ID: "stop-watch",
+		// Signal our stuff to stop and finish the step, return false to
+		// signify that we've handled the signal and don't process further
+		F: func() bool {
+			s.logger.Println("Keyboard interrupt detected, finishing step")
+			finishedStep <- struct{}{}
+			return false
+		},
+	}
+	globalSigint.Add(stopWatchHandler)
+	// NOTE(termie): I think the only way to exit this code is via this
+	//               signal handler and the signal monkey removes handlers
+	//               after it processes them, so this may be superfluous
+	defer globalSigint.Remove(stopWatchHandler)
 
 	// If we're not going to reload just run the thing once, synchronously
 	if !s.reload {
@@ -193,12 +224,10 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		for {
-			// TODO(termie): this thing needs to be replaced with a watch for ctrl-c
-			time.Sleep(1)
-		}
-		// return 0, err
-		// return 0, nil
+		<-finishedStep
+		// ignoring errors
+		s.killProcesses(containerID, "INT")
+		return 0, nil
 	}
 	f := Formatter{s.options.GlobalOptions}
 	s.logger.Info(f.Info("Reloading on file changes"))
@@ -210,11 +239,6 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 	}
 
 	// Otherwise set up a watcher and do some magic
-	// cheating to get containerID
-	// TODO(termie): we should deal with this eventually
-	dt := sess.transport.(*DockerTransport)
-	containerID := dt.containerID
-
 	watcher, err := s.watch(s.options.ProjectPath)
 	if err != nil {
 		return -1, err
@@ -224,7 +248,6 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 	done := make(chan struct{})
 	go func() {
 		for {
-			// TODO(termie): wait on os.SIGINT and end our loop, too
 			select {
 			case event := <-watcher.Events:
 				s.logger.Debugln("fsnotify event", event.String())
@@ -238,13 +261,18 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 				err := s.killProcesses(containerID, "INT")
 				if err != nil {
 					s.logger.Panic(err)
-					break
+					return
 				}
 				s.logger.Info(f.Info("Reloading"))
 				go doCmd()
 			case err := <-watcher.Errors:
 				s.logger.Error(err)
 				done <- struct{}{}
+				return
+			case <-finishedStep:
+				s.killProcesses(containerID, "INT")
+				done <- struct{}{}
+				return
 			}
 		}
 	}()

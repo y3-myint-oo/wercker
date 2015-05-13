@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
 	"path/filepath"
 
 	"code.google.com/p/go-uuid/uuid"
@@ -30,6 +29,8 @@ func GetDevPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, erro
 	return build, nil
 }
 
+// GetDevPipelineFactory makes dev pipelines out of arbitrarily
+// named config sections
 func GetDevPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipeline, error) {
 	return func(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
 		pipeline, ok := rawConfig.PipelinesMap[name]
@@ -45,7 +46,7 @@ func GetBuildPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, er
 	return rawConfig.ToPipeline(options, rawConfig.Build)
 }
 
-// GetBuildPipelinefactory makes build pipelines out of arbitrarily
+// GetBuildPipelineFactory makes build pipelines out of arbitrarily
 // named config sections
 func GetBuildPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipeline, error) {
 	return func(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
@@ -65,7 +66,7 @@ func GetDeployPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, e
 	return rawConfig.ToDeploy(options, rawConfig.Deploy)
 }
 
-// GetDeployPipelinefactory makes deploy pipelines out of arbitrarily
+// GetDeployPipelineFactory makes deploy pipelines out of arbitrarily
 // named config sections
 func GetDeployPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipeline, error) {
 	return func(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
@@ -536,23 +537,23 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	shared.containerID = container.ID
 
 	// Register our signal handler to clean the box up
-	// TODO(termie): we should probably make a little general purpose signal
-	// handler and register callbacks with it so that multiple parts of the app
-	// can do cleanup
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	go func() {
-		tries := 0
-		for _ = range sigint {
-			if tries == 0 {
-				tries = 1
-				box.Stop()
-				os.Exit(1)
-			} else {
-				panic("Exiting forcefully")
+	// NOTE(termie): we're expecting that this is going to be the last handler
+	//               to be run since it calls exit, in the future we might be
+	//               able to do something like close the calling context and
+	//               short circuit / let the rest of things play out
+	boxCleanupHandler := &SignalHandler{
+		ID: "box-cleanup",
+		F: func() bool {
+			p.logger.Errorln("Keyboard interrupt detected, cleaning up containers and shutting down")
+			box.Stop()
+			if p.options.ShouldRemove {
+				box.Clean()
 			}
-		}
-	}()
+			os.Exit(1)
+			return true
+		},
+	}
+	globalSigint.Add(boxCleanupHandler)
 
 	p.logger.Debugln("Attaching session to base box")
 	// Start our session

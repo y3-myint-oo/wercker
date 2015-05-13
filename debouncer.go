@@ -12,6 +12,7 @@ type Debouncer struct {
 	settling     bool
 }
 
+// NewDebouncer constructor
 func NewDebouncer(d time.Duration) *Debouncer {
 	c := make(chan time.Time, 1)
 	return &Debouncer{
@@ -22,6 +23,7 @@ func NewDebouncer(d time.Duration) *Debouncer {
 	}
 }
 
+// Trigger tells us we should do the thing we're waiting on
 func (d *Debouncer) Trigger() {
 	if d.settling {
 		return
