@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"strings"
 
@@ -199,6 +200,29 @@ func exposedPorts(published []string) map[docker.Port]struct{} {
 		exposed[port] = struct{}{}
 	}
 	return exposed
+}
+
+// exposedURIs returns a list of exposed ports and the host
+func exposedURIs(published []string) ([]string, error) {
+	dockerHost := os.Getenv("DOCKER_HOST")
+	if dockerHost != "" {
+		docker, err := url.Parse(dockerHost)
+		if err != nil {
+			return nil, err
+		}
+		if docker.Scheme == "unix" {
+			dockerHost = "localhost"
+		} else {
+			dockerHost = strings.Split(docker.Host, ":")[0]
+		}
+	}
+	uris := []string{}
+	for _, v := range portBindings(published) {
+		for _, port := range v {
+			uris = append(uris, fmt.Sprintf("%s:%s", dockerHost, port.HostPort))
+		}
+	}
+	return uris, nil
 }
 
 //RecoverInteractive restarts the box with a terminal attached

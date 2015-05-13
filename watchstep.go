@@ -235,6 +235,15 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		err := sess.Send(ctx, false, "set +e", s.Code)
 		if err != nil {
 			s.logger.Errorln(err)
+			return
+		}
+		open, err := exposedURIs(s.options.PublishPorts)
+		if err != nil {
+			s.logger.Warnf(f.Info("Problem parsing docker host"), err)
+			return
+		}
+		for _, uri := range open {
+			s.logger.Infof(f.Info("Opened %s"), uri)
 		}
 	}
 
