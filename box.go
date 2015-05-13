@@ -202,8 +202,14 @@ func exposedPorts(published []string) map[docker.Port]struct{} {
 	return exposed
 }
 
-// exposedURIs returns a list of exposed ports and the host
-func exposedURIs(published []string) ([]string, error) {
+// ExposedPortMap contains port forwarding information
+type ExposedPortMap struct {
+	ContainerPort string
+	HostURI       string
+}
+
+// exposedPortMaps returns a list of exposed ports and the host
+func exposedPortMaps(published []string) ([]ExposedPortMap, error) {
 	dockerHost := os.Getenv("DOCKER_HOST")
 	if dockerHost != "" {
 		docker, err := url.Parse(dockerHost)
@@ -216,13 +222,17 @@ func exposedURIs(published []string) ([]string, error) {
 			dockerHost = strings.Split(docker.Host, ":")[0]
 		}
 	}
-	uris := []string{}
-	for _, v := range portBindings(published) {
+	portMap := []ExposedPortMap{}
+	for k, v := range portBindings(published) {
 		for _, port := range v {
-			uris = append(uris, fmt.Sprintf("%s:%s", dockerHost, port.HostPort))
+			p := ExposedPortMap{
+				ContainerPort: k.Port(),
+				HostURI:       fmt.Sprintf("%s:%s", dockerHost, port.HostPort),
+			}
+			portMap = append(portMap, p)
 		}
 	}
-	return uris, nil
+	return portMap, nil
 }
 
 //RecoverInteractive restarts the box with a terminal attached

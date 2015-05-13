@@ -237,13 +237,13 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 			s.logger.Errorln(err)
 			return
 		}
-		open, err := exposedURIs(s.options.PublishPorts)
+		open, err := exposedPortMaps(s.options.PublishPorts)
 		if err != nil {
-			s.logger.Warnf(f.Info("Problem parsing docker host"), err)
+			s.logger.Warnf(f.Info("There was a problem parsing your docker host."), err)
 			return
 		}
 		for _, uri := range open {
-			s.logger.Infof(f.Info("Opened %s"), uri)
+			s.logger.Infof(f.Info("Forwarding %s to %s on the container."), uri.HostURI, uri.ContainerPort)
 		}
 	}
 
