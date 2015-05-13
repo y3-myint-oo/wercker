@@ -21,6 +21,7 @@ type Box struct {
 	options         *PipelineOptions
 	container       *docker.Container
 	config          *BoxConfig
+	cmd             string
 	repository      string
 	tag             string
 	images          []*docker.Image
@@ -67,6 +68,11 @@ func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptio
 		networkDisabled = boxOptions.NetworkDisabled
 	}
 
+	cmd := boxConfig.Cmd
+	if cmd == "" {
+		cmd = "/bin/bash"
+	}
+
 	logger := rootLogger.WithFields(LogFields{
 		"Logger":    "Box",
 		"Name":      name,
@@ -82,6 +88,7 @@ func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptio
 		tag:             tag,
 		networkDisabled: networkDisabled,
 		logger:          logger,
+		cmd:             cmd,
 	}, nil
 }
 
@@ -207,11 +214,7 @@ func (b *Box) RecoverInteractive(cwd string) error {
 		return err
 	}
 
-	cmd := []string{
-		"sh", "-c",
-		fmt.Sprintf("cd %s; if [ `which bash` ]; then exec bash -; else exec sh; fi", cwd),
-	}
-	return client.AttachInteractive(container.ID, cmd)
+	return client.AttachInteractive(container.ID, []string{b.cmd})
 }
 
 // Run creates the container and runs it.
@@ -229,10 +232,6 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
-	cmd := b.config.Cmd
-	if cmd == "" {
-		cmd = "/bin/bash"
-	}
 
 	// Make and start the container
 	containerName := "wercker-pipeline-" + b.options.PipelineID
@@ -243,7 +242,7 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 				Image:           b.Name,
 				Tty:             false,
 				OpenStdin:       true,
-				Cmd:             []string{cmd},
+				Cmd:             []string{b.cmd},
 				Env:             myEnv,
 				AttachStdin:     true,
 				AttachStdout:    true,
