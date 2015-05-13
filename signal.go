@@ -85,7 +85,7 @@ func (s *SignalMonkey) Register(sig os.Signal) {
 					s.Dispatch()
 					tries--
 				} else {
-					panic("Exiting forcefully, containers and data may not have been cleaned up")
+					rootLogger.Fatal("Exiting forcefully, containers and data may not have been cleaned up")
 				}
 			}()
 		}
