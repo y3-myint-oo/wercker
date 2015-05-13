@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"strings"
 
@@ -199,6 +200,39 @@ func exposedPorts(published []string) map[docker.Port]struct{} {
 		exposed[port] = struct{}{}
 	}
 	return exposed
+}
+
+// ExposedPortMap contains port forwarding information
+type ExposedPortMap struct {
+	ContainerPort string
+	HostURI       string
+}
+
+// exposedPortMaps returns a list of exposed ports and the host
+func exposedPortMaps(published []string) ([]ExposedPortMap, error) {
+	dockerHost := os.Getenv("DOCKER_HOST")
+	if dockerHost != "" {
+		docker, err := url.Parse(dockerHost)
+		if err != nil {
+			return nil, err
+		}
+		if docker.Scheme == "unix" {
+			dockerHost = "localhost"
+		} else {
+			dockerHost = strings.Split(docker.Host, ":")[0]
+		}
+	}
+	portMap := []ExposedPortMap{}
+	for k, v := range portBindings(published) {
+		for _, port := range v {
+			p := ExposedPortMap{
+				ContainerPort: k.Port(),
+				HostURI:       fmt.Sprintf("%s:%s", dockerHost, port.HostPort),
+			}
+			portMap = append(portMap, p)
+		}
+	}
+	return portMap, nil
 }
 
 //RecoverInteractive restarts the box with a terminal attached
