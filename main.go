@@ -804,7 +804,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			Options: options,
 			Hidden:  false,
 			Stream:  "stderr",
-			Logs:    err.Error(),
+			Logs:    err.Error() + "\n",
 		})
 		return soft.Exit(err)
 	}
@@ -819,12 +819,12 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		defer shared.box.Stop()
 	}
 	if err != nil {
-		logger.Errorln(f.Fail("Step failed", "setup environment"), err)
+		logger.Errorln(f.Fail("Step failed", "setup environment"))
 		e.Emit(Logs, &LogsArgs{
 			Options: options,
 			Hidden:  false,
 			Stream:  "stderr",
-			Logs:    err.Error(),
+			Logs:    err.Error() + "\n",
 		})
 		return soft.Exit(err)
 	}
