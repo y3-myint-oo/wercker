@@ -14,7 +14,7 @@ import (
 
 const docPath = "Documentation/command"
 
-var werckerSubcommandHelpTemplate = `# {{.Name}}
+var werckerCommandHelpTemplate = `# {{.Name}}
 
 NAME
 ----
@@ -92,6 +92,25 @@ DESCRIPTION:
    {{.Description}}{{end}}{{if .Flags}}
 
 OPTIONS:
+{{range .Flags}}{{if not .IsHidden}}   {{. | shortFlag}}{{ "\n" }}{{end}}{{end}}{{end}}
+`
+	cli.AppHelpTemplate = `NAME:
+   {{.Name}} - {{.Usage}}
+
+USAGE:
+   {{.Name}} {{if .Flags}}[global options] {{end}}command{{if .Flags}} [command options]{{end}} [arguments...]
+
+VERSION:
+   {{.Version}}{{if or .Author .Email}}
+
+AUTHOR:{{if .Author}}
+  {{.Author}}{{if .Email}} - <{{.Email}}>{{end}}{{else}}
+  {{.Email}}{{end}}{{end}}
+
+COMMANDS:
+   {{range .Commands}}{{.Name}}{{with .ShortName}}, {{.}}{{end}}{{ "\t" }}{{.Usage}}
+   {{end}}{{if .Flags}}
+GLOBAL OPTIONS:
 {{range .Flags}}{{if not .IsHidden}}   {{. | shortFlag}}{{ "\n" }}{{end}}{{end}}{{end}}
 `
 
@@ -216,7 +235,7 @@ func GenerateDocumentation(options *GlobalOptions, app *cli.App) error {
 	}
 
 	for _, cmd := range app.Commands {
-		if err := write(cmd.Name, werckerSubcommandHelpTemplate, cmd); err != nil {
+		if err := write(cmd.Name, werckerCommandHelpTemplate, cmd); err != nil {
 			return err
 		}
 	}

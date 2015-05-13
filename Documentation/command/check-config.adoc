@@ -12,126 +12,126 @@ OPTIONS
 -------
 
 --project-dir::
-  path where downloaded projects live
+  Path where downloaded projects live.
   Default;;
     ./_projects
 --step-dir::
-  path where downloaded steps live
+  Path where downloaded steps live.
   Default;;
     ./_steps
 --build-dir::
-  path where created builds live
+  Path where created builds live.
   Default;;
     ./_builds
 --container-dir::
-  path where exported containers live
+  Path where exported containers live.
   Default;;
     ./_containers
 --build-id::
-  build id
+  The build id.
 --deploy-id::
-  deploy id
+  The deploy id.
 --deploy-target::
-  deploy target name
+  The deploy target name.
 --application-id::
-  application id
+  The application id.
 --application-name::
-  application id
+  The application name.
 --application-owner-name::
-  application id
+  The application owner name.
 --application-started-by-name::
-  application started by
+  The name of the user who started the application.
 --pipeline::
-  alternate pipeline name to execute
+  Alternate pipeline name to execute.
 --docker-host::
-  docker api host
+  Docker api endpoint.
   Default;;
     tcp://127.0.0.1:2375
 --docker-tls-verify::
-  docker api tls verify
+  Docker api tls verify.
   Default;;
     0
 --docker-cert-path::
-  docker api cert path
+  Docker api cert path.
 --direct-mount::
-  mount our binds read-write to the pipeline path
+  Mount our binds read-write to the pipeline path.
 --publish::
-  publish a port from the main container, same format as docker --publish
+  Publish a port from the main container, same format as docker --publish.
 --attach::
   Attach shell to container if a step fails.
 --git-domain::
-  git domain
+  Git domain.
 --git-owner::
-  git owner
+  Git owner.
 --git-repository::
-  git repository
+  Git repository.
 --git-branch::
-  git branch
+  Git branch.
 --git-commit::
-  git commit
+  Git commit.
 --commit::
-  commit the build result locally
+  Commit the build result locally.
 --tag::
-  tag for this build
+  Tag for this build.
 --message::
-  message for this build
+  Message for this build.
 --artifacts::
-  store artifacts
+  Store artifacts.
 --no-remove::
-  don't remove the containers
+  Don't remove the containers.
 --store-local::
-  store artifacts and containers locally
+  Store artifacts and containers locally.
 --store-s3::
-  store artifacts and containers on s3.
+  Store artifacts and containers on s3.
    This requires access to aws credentials, pulled from any of the usual places
    (~/.aws/config, AWS_SECRET_ACCESS_KEY, etc), or from the --aws-secret-key and
    --aws-access-key flags. It will upload to a bucket defined by --s3-bucket in
    the region named by --aws-region
 --aws-secret-key::
-  secret access key
+  Secret access key.
 --aws-access-key::
-  access key id
+  Access key id.
 --s3-bucket::
-  bucket for artifacts
+  Bucket for artifacts.
   Default;;
     wercker-development
 --aws-region::
-  region
+  Region.
   Default;;
     us-east-1
 --source-dir::
-  source path relative to checkout root
+  Source path relative to checkout root.
 --no-response-timeout::
-  timeout if no script output is received in this many minutes
+  Timeout if no script output is received in this many minutes.
   Default;;
     5.00
 --command-timeout::
-  timeout if command does not complete in this many minutes
+  Timeout if command does not complete in this many minutes.
   Default;;
     25.00
 --wercker-yml::
-  specify a specific yaml file
+  Specify a specific yaml file.
 --mnt-root::
-  directory on the guest where volumes are mounted
+  Directory on the guest where volumes are mounted.
   Default;;
     /mnt
 --guest-root::
-  directory on the guest where work is done
+  Directory on the guest where work is done.
   Default;;
     /pipeline
 --report-root::
-  directory on the guest where reports will be written
+  Directory on the guest where reports will be written.
   Default;;
     /report
 --keen-metrics::
-  report metrics to keen.io
+  Report metrics to keen.io.
 --keen-project-write-key::
-  keen write key
+  Keen write key.
 --keen-project-id::
-  keen project id
+  Keen project id.
 --report::
-  Report logs back to wercker (requires build-id, wercker-host, wercker-token)
+  Report logs back to wercker (requires build-id, wercker-host, wercker-token).
 --wercker-host::
-  Wercker host to use for wercker reporter
+  Wercker host to use for wercker reporter.
 --wercker-token::
-  Wercker token to use for wercker reporter
+  Wercker token to use for wercker reporter.
