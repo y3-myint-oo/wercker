@@ -47,7 +47,7 @@ var (
 
 	devCommand = cli.Command{
 		Name:  "dev",
-		Usage: "build a local project",
+		Usage: "develop and run a local project",
 		Action: func(c *cli.Context) {
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
