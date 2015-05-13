@@ -116,6 +116,11 @@ var (
 		cli.BoolFlag{Name: "direct-mount", Usage: "Mount our binds read-write to the pipeline path."},
 		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish.", Hidden: true},
 		cli.BoolFlag{Name: "attach", Usage: "Attach shell to container if a step fails.", Hidden: true},
+		cli.BoolFlag{Name: "enable-dev-steps", Hidden: true, Usage: `
+		Enable internal dev steps.
+		This enables:
+		- internal/watch
+		`},
 	}
 
 	// AWS bits
@@ -539,6 +544,7 @@ type PipelineOptions struct {
 
 	AttachOnFailure bool
 	DirectMount     bool
+	EnableDevSteps  bool
 	PublishPorts    []string
 	WerckerYml      string
 }
@@ -733,6 +739,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 
 	attachOnFailure := c.Bool("attach")
 	directMount := c.Bool("direct-mount")
+	enableDevSteps := c.Bool("enable-dev-steps")
 	publishPorts := c.StringSlice("publish")
 	werckerYml := c.String("wercker-yml")
 
@@ -784,6 +791,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 
 		AttachOnFailure: attachOnFailure,
 		DirectMount:     directMount,
+		EnableDevSteps:  enableDevSteps,
 		PublishPorts:    publishPorts,
 		WerckerYml:      werckerYml,
 	}, nil
@@ -868,6 +876,7 @@ func NewDevOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	}
 	// dev command implies DirectMount
 	pipelineOpts.DirectMount = true
+	pipelineOpts.EnableDevSteps = true
 
 	return pipelineOpts, nil
 }
