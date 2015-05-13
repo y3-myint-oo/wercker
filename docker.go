@@ -33,7 +33,8 @@ or the --docker-host command-line flag.
 	_, err = client.Version()
 	if err != nil {
 		if err == docker.ErrConnectionRefused {
-			return fmt.Errorf(`Can't connect to the Docker endpoint:
+			return fmt.Errorf(`You don't seem to have a working Docker environment
+			or wercker can't connect to the Docker endpoint:
   %s
 To specify a different endpoint use the DOCKER_HOST environment variable,
 or the --docker-host command-line flag.
