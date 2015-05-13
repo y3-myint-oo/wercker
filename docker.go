@@ -21,7 +21,8 @@ func requireDockerEndpoint(options *DockerOptions) error {
 	client, err := NewDockerClient(options)
 	if err != nil {
 		if err == docker.ErrInvalidEndpoint {
-			return fmt.Errorf(`The given docker endpoint seems invalid:
+			return fmt.Errorf(`You don't seem to have a working Docker 
+			environment or the given Docker endpoint is invalid:
   %s
 To specify a different endpoint use the DOCKER_HOST environment variable,
 or the --docker-host command-line flag.
