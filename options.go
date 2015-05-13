@@ -115,7 +115,7 @@ var (
 	internalDevFlags = []cli.Flag{
 		cli.BoolFlag{Name: "direct-mount", Usage: "Mount our binds read-write to the pipeline path."},
 		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish.", Hidden: true},
-		cli.BoolFlag{Name: "attach", Usage: "Attach shell to container if a step fails.", Hidden: true},
+		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
 		cli.BoolFlag{Name: "enable-dev-steps", Hidden: true, Usage: `
 		Enable internal dev steps.
 		This enables:
@@ -542,11 +542,11 @@ type PipelineOptions struct {
 	ShouldRemove      bool
 	SourceDir         string
 
-	AttachOnFailure bool
-	DirectMount     bool
+	AttachOnError bool
+	DirectMount   bool
 	EnableDevSteps  bool
-	PublishPorts    []string
-	WerckerYml      string
+	PublishPorts  []string
+	WerckerYml    string
 }
 
 func guessApplicationID(c *cli.Context, e *Environment, name string) string {
@@ -737,7 +737,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	shouldRemove := !c.Bool("no-remove")
 	sourceDir := c.String("source-dir")
 
-	attachOnFailure := c.Bool("attach")
+	attachOnError := c.Bool("attach-on-error")
 	directMount := c.Bool("direct-mount")
 	enableDevSteps := c.Bool("enable-dev-steps")
 	publishPorts := c.StringSlice("publish")
@@ -789,11 +789,11 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		ShouldRemove:      shouldRemove,
 		SourceDir:         sourceDir,
 
-		AttachOnFailure: attachOnFailure,
-		DirectMount:     directMount,
+		AttachOnError: attachOnError,
+		DirectMount:   directMount,
 		EnableDevSteps:  enableDevSteps,
-		PublishPorts:    publishPorts,
-		WerckerYml:      werckerYml,
+		PublishPorts:  publishPorts,
+		WerckerYml:    werckerYml,
 	}, nil
 }
 
