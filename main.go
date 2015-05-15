@@ -692,7 +692,7 @@ func cmdVersion(options *VersionOptions) error {
 				channel = "beta"
 			}
 
-			url := fmt.Sprintf("http://downloads.wercker.com/cli/%s/version.json", channel)
+			url := fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/version.json", channel)
 
 			nv := Versions{}
 			client := &http.Client{}
@@ -719,7 +719,7 @@ func cmdVersion(options *VersionOptions) error {
 
 			newerVersion := nv.CompiledAt.After(v.CompiledAt)
 			if newerVersion {
-				dlURL := fmt.Sprintf("http://downloads.wercker.com/cli/%s/%s_amd64/wercker", channel, runtime.GOOS)
+				dlURL := fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/%s_amd64/wercker", channel, runtime.GOOS)
 				os.Stdout.WriteString(fmt.Sprintf("A new version is available: %s (compiled at %s)\n", nv.Version, nv.CompiledAt.Local()))
 				os.Stdout.WriteString(fmt.Sprintf("Download it from: %s\n", dlURL))
 			} else {
