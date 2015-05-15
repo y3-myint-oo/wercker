@@ -34,8 +34,8 @@ type WatchStep struct {
 
 // NewWatchStep is a special step for doing docker pushes
 func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep, error) {
-	name := "dev"
-	displayName := "dev mode"
+	name := "watch"
+	displayName := "watch"
 	if stepConfig.Name != "" {
 		displayName = stepConfig.Name
 	}
@@ -171,8 +171,7 @@ func (s *WatchStep) killProcesses(containerID string, signal string) error {
 	return nil
 }
 
-// Execute commits the current container and pushes it to the configured
-// registry
+// Execute runs a command and optionally reloads it
 func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 	// Start watching our stdout
 	stopListening := make(chan struct{})

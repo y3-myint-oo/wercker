@@ -166,8 +166,13 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (IStep, error) {
 	if s.ID == "internal/docker-push" {
 		return NewDockerPushStep(s, options)
 	}
-	if options.EnableDevSteps && s.ID == "internal/watch" {
-		return NewWatchStep(s, options)
+	if options.EnableDevSteps {
+		if s.ID == "internal/watch" {
+			return NewWatchStep(s, options)
+		}
+		if s.ID == "internal/shell" {
+			return NewShellStep(s, options)
+		}
 	}
 	return NewStep(s, options)
 }
