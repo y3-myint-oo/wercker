@@ -431,7 +431,7 @@ func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
 
 	check, err := client.CheckAccess(checkOpts)
 	if err != nil {
-		b.logger.Errorln("Error during check access", err)
+		b.logger.Errorln("Error during check access")
 		return nil, err
 	}
 	if !check {
