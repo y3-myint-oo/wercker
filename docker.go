@@ -32,8 +32,8 @@ func requireDockerEndpoint(options *DockerOptions) error {
 	_, err = client.Version()
 	if err != nil {
 		if err == docker.ErrConnectionRefused {
-			return fmt.Errorf(`You don't seem to have a working Docker environment or wercker can't connect to the Docker endpoint: 
-	%s 
+			return fmt.Errorf(`You don't seem to have a working Docker environment or wercker can't connect to the Docker endpoint:
+	%s
 To specify a different endpoint use the DOCKER_HOST environment variable,
 or the --docker-host command-line flag.`, options.DockerHost)
 		}
@@ -126,7 +126,9 @@ func (c *DockerClient) AttachInteractive(containerID string, cmd []string, initi
 	// Dump any initial stdin then go into os.Stdin
 	readers := []io.Reader{}
 	for _, s := range initialStdin {
-		readers = append(readers, strings.NewReader(s+"\n"))
+		if s != "" {
+			readers = append(readers, strings.NewReader(s+"\n"))
+		}
 	}
 	readers = append(readers, os.Stdin)
 	stdin := io.MultiReader(readers...)

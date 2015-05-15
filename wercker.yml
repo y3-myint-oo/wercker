@@ -9,6 +9,11 @@ dev:
           echo "starting nc listening on port 8000"
           nc -l -p 8000
         reload: false
+    - internal/shell:
+        cmd: /bin/sh
+        code: |-
+          echo "welcome to your shell"
+          echo "stay a while, and listen"
 build:
   steps:
     - install-packages:
