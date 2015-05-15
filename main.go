@@ -828,7 +828,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		})
 		return soft.Exit(err)
 	}
-	logger.Println(f.Success("Step passed", "setup environment"))
+	if options.Verbose {
+		logger.Printf(f.Success("Step passed", "setup environment"))
+	}
 
 	// Expand our context object
 	box := shared.box
@@ -878,7 +880,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			logger.Printf(f.Fail("Step failed", step.DisplayName()))
 			break
 		}
-		logger.Printf(f.Success("Step passed", step.DisplayName()))
+		if options.Verbose {
+			logger.Printf(f.Success("Step passed", step.DisplayName()))
+		}
 	}
 
 	if options.ShouldCommit {

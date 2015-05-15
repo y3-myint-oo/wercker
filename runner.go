@@ -420,6 +420,7 @@ func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
 // the entire "Setup Environment" step.
 func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, error) {
 	shared := &RunnerShared{}
+	f := &Formatter{p.options.GlobalOptions}
 
 	sr := &StepResult{
 		Success:  false,
@@ -511,7 +512,9 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Fetch the steps
 	steps := pipeline.Steps()
 	for _, step := range steps {
-		p.logger.Println("Preparing step:", step.Name())
+		if p.options.Verbose {
+			p.logger.Println(f.Info("Preparing step", step.Name()))
+		}
 		if _, err := step.Fetch(); err != nil {
 			sr.Message = err.Error()
 			return shared, err
@@ -521,7 +524,9 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// ... and the after steps
 	afterSteps := pipeline.AfterSteps()
 	for _, step := range afterSteps {
-		p.logger.Println("Preparing after-step:", step.Name())
+		if p.options.Verbose {
+			p.logger.Println(f.Info("Preparing after-step", step.Name()))
+		}
 		if _, err := step.Fetch(); err != nil {
 			sr.Message = err.Error()
 			return shared, err
