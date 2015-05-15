@@ -617,7 +617,7 @@ func (p *Runner) RunStep(shared *RunnerShared, step IStep, order int) (*StepResu
 	exit, err := step.Execute(shared.sessionCtx, shared.sess)
 	if exit != 0 {
 		sr.ExitCode = exit
-		if p.options.AttachOnFailure {
+		if p.options.AttachOnError {
 			shared.box.RecoverInteractive(
 				p.options.SourcePath(),
 				shared.pipeline,
