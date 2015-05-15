@@ -236,7 +236,7 @@ func exposedPortMaps(published []string) ([]ExposedPortMap, error) {
 }
 
 //RecoverInteractive restarts the box with a terminal attached
-func (b *Box) RecoverInteractive(cwd string) error {
+func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step IStep) error {
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {
 		return nil
@@ -248,7 +248,13 @@ func (b *Box) RecoverInteractive(cwd string) error {
 		return err
 	}
 
-	return client.AttachInteractive(container.ID, []string{b.cmd})
+	env := []string{}
+	env = append(env, pipeline.Env().Export()...)
+	env = append(env, pipeline.HiddenEnv().Export()...)
+	env = append(env, step.Env().Export()...)
+	env = append(env, fmt.Sprintf("cd %s", cwd))
+	cmd := []string{b.cmd}
+	return client.AttachInteractive(container.ID, cmd, env)
 }
 
 // Run creates the container and runs it.
