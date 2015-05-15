@@ -116,7 +116,7 @@ type DockerOptions struct {
 	DockerCertPath  string
 }
 
-func guessAndUpdateDockerOptions(opts *DockerOptions) {
+func guessAndUpdateDockerOptions(opts *DockerOptions, e *Environment) {
 	if opts.DockerHost != "" {
 		return
 	}
@@ -128,7 +128,7 @@ func guessAndUpdateDockerOptions(opts *DockerOptions) {
 	// This will fail instantly so don't bother with the goroutine
 	if runtime.GOOS == "linux" {
 		unixSocket := "unix:///var/run/docker.sock"
-		logger.Println(f.Info("No Docker host found, checking", unixSocket))
+		logger.Println(f.Info("No Docker host specified, checking", unixSocket))
 		client, err := NewDockerClient(&DockerOptions{
 			DockerHost: unixSocket,
 		})
@@ -142,39 +142,36 @@ func guessAndUpdateDockerOptions(opts *DockerOptions) {
 	}
 
 	// Check the boot2docker port with default cert paths and such
-	u, err := user.Current()
-	if err == nil {
-		b2dCertPath := filepath.Join(u.HomeDir, ".boot2docker/certs/boot2docker-vm")
-		b2dHost := "tcp://192.168.59.103:2376"
+	b2dCertPath := filepath.Join(e.Get("HOME"), ".boot2docker/certs/boot2docker-vm")
+	b2dHost := "tcp://192.168.59.103:2376"
 
-		logger.Printf(f.Info("No Docker host found, checking for boot2docker", b2dHost))
-		client, err := NewDockerClient(&DockerOptions{
-			DockerHost:      b2dHost,
-			DockerCertPath:  b2dCertPath,
-			DockerTLSVerify: "1",
-		})
-		if err == nil {
-			// This can take a long time if it isn't up, so toss it in a
-			// goroutine so we can time it out
-			result := make(chan bool)
-			go func() {
-				_, err = client.Version()
-				if err == nil {
-					result <- true
-				} else {
-					result <- false
-				}
-			}()
-			select {
-			case success := <-result:
-				if success {
-					opts.DockerHost = b2dHost
-					opts.DockerCertPath = b2dCertPath
-					opts.DockerTLSVerify = "1"
-					return
-				}
-			case <-time.After(1 * time.Second):
+	logger.Printf(f.Info("No Docker host specified, checking for boot2docker", b2dHost))
+	client, err := NewDockerClient(&DockerOptions{
+		DockerHost:      b2dHost,
+		DockerCertPath:  b2dCertPath,
+		DockerTLSVerify: "1",
+	})
+	if err == nil {
+		// This can take a long time if it isn't up, so toss it in a
+		// goroutine so we can time it out
+		result := make(chan bool)
+		go func() {
+			_, err = client.Version()
+			if err == nil {
+				result <- true
+			} else {
+				result <- false
 			}
+		}()
+		select {
+		case success := <-result:
+			if success {
+				opts.DockerHost = b2dHost
+				opts.DockerCertPath = b2dCertPath
+				opts.DockerTLSVerify = "1"
+				return
+			}
+		case <-time.After(1 * time.Second):
 		}
 	}
 
@@ -199,7 +196,7 @@ func NewDockerOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions)
 	// We're going to try out a few settings and set DockerHost if
 	// one of them works, it they don't we'll get a nice error when
 	// requireDockerEndpoint triggers later on
-	guessAndUpdateDockerOptions(speculativeOptions)
+	guessAndUpdateDockerOptions(speculativeOptions, e)
 	return speculativeOptions, nil
 }
 
