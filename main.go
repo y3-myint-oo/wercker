@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/codegangsta/cli"
@@ -675,59 +674,41 @@ func cmdVersion(options *VersionOptions) error {
 		if err != nil {
 			logger.WithField("Error", err).Panic("Unable to marshal versions")
 		}
-		os.Stdout.Write(b)
-		os.Stdout.WriteString("\n")
-	} else {
-
-		os.Stdout.WriteString(fmt.Sprintf("Version: %s\n", v.Version))
-		os.Stdout.WriteString(fmt.Sprintf("Compiled at: %s\n", v.CompiledAt.Local()))
-
-		if v.GitCommit != "" {
-			os.Stdout.WriteString(fmt.Sprintf("Git commit: %s\n", v.GitCommit))
-		}
-
-		if options.CheckForUpdate {
-			channel := "stable"
-			if options.BetaChannel {
-				channel = "beta"
-			}
-
-			url := fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/version.json", channel)
-
-			nv := Versions{}
-			client := &http.Client{}
-
-			req, err := http.NewRequest("GET", url, nil)
-			if err != nil {
-				logger.WithField("Error", err).Debug("Unable to create request to version endpoint")
-			}
-
-			res, err := client.Do(req)
-			if err != nil {
-				logger.WithField("Error", err).Debug("Unable to execute HTTP request to version endpoint")
-			}
-
-			body, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				logger.WithField("Error", err).Debug("Unable to read response body")
-			}
-
-			err = json.Unmarshal(body, &nv)
-			if err != nil {
-				logger.WithField("Error", err).Debug("Unable to unmarshal versions")
-			}
-
-			newerVersion := nv.CompiledAt.After(v.CompiledAt)
-			if newerVersion {
-				dlURL := fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/%s_amd64/wercker", channel, runtime.GOOS)
-				os.Stdout.WriteString(fmt.Sprintf("A new version is available: %s (compiled at %s)\n", nv.Version, nv.CompiledAt.Local()))
-				os.Stdout.WriteString(fmt.Sprintf("Download it from: %s\n", dlURL))
-			} else {
-				os.Stdout.WriteString(fmt.Sprintf("No new version available\n"))
-			}
-		}
+		logger.Infoln(b)
+		return nil
 	}
 
+	logger.Infoln("Version:", v.Version)
+	logger.Infoln("Compiled at:", v.CompiledAt.Local())
+
+	if v.GitCommit != "" {
+		logger.Infoln("Git commit:", v.GitCommit)
+	}
+
+	if options.CheckForUpdate {
+		channel := "stable"
+		if options.BetaChannel {
+			channel = "beta"
+		}
+		updater, err := NewUpdater(channel)
+		if err != nil {
+			return err
+		}
+		if updater.UpdateAvailable() {
+			logger.Infoln("A new version is available:",
+				updater.ServerVersion.FullVersion())
+			logger.Infoln("Download it from:", updater.DownloadUrl())
+			if AskForUpdate() {
+				if err := updater.Update(); err != nil {
+					logger.WithField("Error", err).Warn(
+						"Unable to download latest version. Please try again.")
+					return err
+				}
+			}
+		} else {
+			logger.Infoln("No new version available")
+		}
+	}
 	return nil
 }
 

@@ -1,0 +1,127 @@
+package main
+
+import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+)
+
+type Updater struct {
+	CurrentVersion *Versions
+	ServerVersion  *Versions
+	channel        string
+	l              *LogEntry
+}
+
+func NewUpdater(channel string) (*Updater, error) {
+	serverVersion, err := getServerVersion(channel)
+	if err != nil {
+		return nil, err
+	}
+	return &Updater{
+		CurrentVersion: GetVersions(),
+		ServerVersion:  serverVersion,
+		channel:        channel,
+		l:              rootLogger.WithField("Logger", "Updater"),
+	}, nil
+}
+
+// DownloadUrl returns the url to download the latest version
+func (u *Updater) DownloadUrl() string {
+	return fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/%s_%s/wercker", u.channel, runtime.GOOS, runtime.GOARCH)
+}
+
+// DownloadVersionUrl returns the url to download the specified version
+func (u *Updater) DownloadVersionUrl(version string) string {
+	return fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/versions/%s/%s_%s/wercker", version, runtime.GOOS, runtime.GOARCH)
+}
+
+// UpdateAvailable returns true if there's an update available
+func (u *Updater) UpdateAvailable() bool {
+	return u.ServerVersion.CompiledAt.After(u.CurrentVersion.CompiledAt)
+}
+
+// Update replaces the inode of the current executable with the latest version
+// n.b. this won't work on Windows
+func (u *Updater) Update() error {
+	u.l.Infoln("Downloading version", u.ServerVersion.Version)
+	werckerPath, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		return err
+	}
+
+	// Put new version in tempfile in parent directory.
+	temp, err := ioutil.TempFile(filepath.Dir(werckerPath), fmt.Sprintf(".%s-", u.ServerVersion.Version))
+	if err != nil {
+		return err
+	}
+	defer temp.Close()
+
+	newVersion, err := http.Get(u.DownloadUrl())
+	if err != nil {
+		return err
+	}
+	defer newVersion.Body.Close()
+
+	_, err = io.Copy(temp, newVersion.Body)
+	if err != nil {
+		return err
+	}
+
+	temp.Chmod(0755)
+
+	return os.Rename(temp.Name(), werckerPath)
+}
+
+func getServerVersion(channel string) (*Versions, error) {
+	logger := rootLogger.WithField("Logger", "getServerVersion")
+
+	url := fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/version.json", channel)
+
+	nv := &Versions{}
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		logger.WithField("Error", err).Debug("Unable to create request to version endpoint")
+		return nil, err
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		logger.WithField("Error", err).Debug("Unable to execute HTTP request to version endpoint")
+		return nil, err
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		logger.WithField("Error", err).Debug("Unable to read response body")
+		return nil, err
+	}
+
+	err = json.Unmarshal(body, nv)
+	if err != nil {
+		logger.WithField("Error", err).Debug("Unable to unmarshal versions")
+		return nil, err
+	}
+	return nv, nil
+}
+
+// AskForUpdate asks users if they want to update and returns the answer
+func AskForUpdate() bool {
+	fmt.Println("Would you like update? [yN]")
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		rootLogger.Errorln("Problem reading answer", err)
+		return false
+	}
+	return strings.HasPrefix(strings.ToLower(line), "y")
+}

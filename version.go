@@ -70,3 +70,14 @@ type Versions struct {
 	GitCommit  string    `json:"gitCommit,omitempty"`
 	Version    string    `json:"version,omitempty"`
 }
+
+// FullVersion returns the semver version and the git version if available.
+// TODO(mh): I'd like to make the above methods of Versions
+// 	Because I'd like to reuse them on `Versions` objects used in updating
+func (v *Versions) FullVersion() string {
+	gitCommit := ""
+	if v.GitCommit != "" {
+		gitCommit = fmt.Sprintf(", Git commit: %s", v.GitCommit)
+	}
+	return fmt.Sprintf("%s (Compiled at: %s%s)", v.Version, v.CompiledAt.Format(time.RFC3339), gitCommit)
+}
