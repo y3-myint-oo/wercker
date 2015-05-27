@@ -11,7 +11,6 @@ import (
 type Pipeline interface {
 	// Getters
 	Env() *Environment       // base
-	HiddenEnv() *Environment // base
 	Box() *Box               // base
 	Services() []*ServiceBox //base
 	Steps() []IStep          // base
@@ -40,7 +39,7 @@ type PipelineResult struct {
 
 // ExportEnvironment for this pipeline result (used in after-steps)
 func (pr *PipelineResult) ExportEnvironment(sessionCtx context.Context, sess *Session) error {
-	e := &Environment{}
+	e := NewEnvironment()
 	result := "failed"
 	if pr.Success {
 		result = "passed"
@@ -66,7 +65,6 @@ type BasePipeline struct {
 	options    *PipelineOptions
 	config     *PipelineConfig
 	env        *Environment
-	hiddenEnv  *Environment
 	box        *Box
 	services   []*ServiceBox
 	steps      []IStep
@@ -116,8 +114,7 @@ func NewBasePipeline(options *PipelineOptions, pipelineConfig *RawPipelineConfig
 	logger := rootLogger.WithField("Logger", "Pipeline")
 	return &BasePipeline{
 		options:    options,
-		env:        &Environment{},
-		hiddenEnv:  &Environment{},
+		env:        NewEnvironment(),
 		box:        box,
 		services:   services,
 		steps:      steps,
@@ -149,11 +146,6 @@ func (p *BasePipeline) AfterSteps() []IStep {
 // Env is a getter for env
 func (p *BasePipeline) Env() *Environment {
 	return p.env
-}
-
-// HiddenEnv is a getter for env
-func (p *BasePipeline) HiddenEnv() *Environment {
-	return p.hiddenEnv
 }
 
 // CommonEnv is shared by both builds and deploys
@@ -225,7 +217,7 @@ func (p *BasePipeline) ExportEnvironment(sessionCtx context.Context, sess *Sessi
 	// Export the hidden variables separately
 	sess.HideLogs()
 	defer sess.ShowLogs()
-	exit, _, err = sess.SendChecked(sessionCtx, p.HiddenEnv().Export()...)
+	exit, _, err = sess.SendChecked(sessionCtx, p.Env().Hidden.Export()...)
 	if err != nil {
 		return err
 	}

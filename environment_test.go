@@ -7,7 +7,7 @@ import (
 )
 
 func TestEnvironmentPassthru(t *testing.T) {
-	env := NewEnvironment([]string{"X_PUBLIC=foo", "XXX_PRIVATE=bar", "NOT=included"})
+	env := NewEnvironment("X_PUBLIC=foo", "XXX_PRIVATE=bar", "NOT=included")
 	assert.Equal(t, 1, len(env.getPassthru()))
 	assert.Equal(t, 1, len(env.getHiddenPassthru()))
 }

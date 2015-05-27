@@ -8,14 +8,17 @@ import (
 // Environment represents a shell environment and is implemented as something
 // like an OrderedMap
 type Environment struct {
-	Map   map[string]string
-	Order []string
+	Hidden *Environment
+	Map    map[string]string
+	Order  []string
 }
 
 // NewEnvironment fills up an Environment from a []string
 // Usually called like: env := NewEnvironment(os.Environ())
-func NewEnvironment(env []string) *Environment {
-	e := Environment{}
+func NewEnvironment(env ...string) *Environment {
+	e := Environment{
+		Hidden: &Environment{},
+	}
 	for _, keyvalue := range env {
 		pair := strings.SplitN(keyvalue, "=", 2)
 		e.Add(pair[0], pair[1])
@@ -72,9 +75,13 @@ func (e *Environment) Ordered() [][]string {
 
 // Interpolate is a naive interpolator that attempts to replace variables
 // identified by $VAR with the value of the VAR pipeline environment variable
+// NOTE(termie): This will check the hidden env, too.
 func (e *Environment) Interpolate(value string) string {
 	if strings.HasPrefix(value, "$") {
 		if interp, ok := e.Map[value[1:]]; ok {
+			return interp
+		}
+		if interp, ok := e.Hidden.Map[value[1:]]; ok {
 			return interp
 		}
 		return ""

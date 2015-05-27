@@ -5,7 +5,7 @@ import (
 )
 
 func TestBuildEnvironment(t *testing.T) {
-	env := NewEnvironment([]string{"X_FOO=bar", "BAZ=fizz"})
+	env := NewEnvironment("X_FOO=bar", "BAZ=fizz")
 	passthru := env.getPassthru()
 	if len(passthru) != 1 {
 		t.Fatal("Expected only one variable in passthru")

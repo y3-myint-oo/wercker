@@ -166,6 +166,9 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (IStep, error) {
 	if s.ID == "internal/docker-push" {
 		return NewDockerPushStep(s, options)
 	}
+	if s.ID == "internal/docker-scratch-push" {
+		return NewDockerScratchPushStep(s, options)
+	}
 	if options.EnableDevSteps {
 		if s.ID == "internal/watch" {
 			return NewWatchStep(s, options)
@@ -243,7 +246,7 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*Step, error) {
 	return &Step{
 		BaseStep: &BaseStep{
 			displayName: displayName,
-			env:         &Environment{},
+			env:         NewEnvironment(),
 			id:          identifier,
 			name:        name,
 			options:     options,

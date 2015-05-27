@@ -32,7 +32,7 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
-			opts, err := NewBuildOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewBuildOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -52,7 +52,7 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
-			opts, err := NewDevOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewDevOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -73,7 +73,7 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
-			opts, err := NewCheckConfigOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewCheckConfigOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -94,7 +94,7 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
-			opts, err := NewDeployOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewDeployOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -113,7 +113,7 @@ var (
 		Usage:     "detect the type of project",
 		Flags:     []cli.Flag{},
 		Action: func(c *cli.Context) {
-			opts, err := NewDetectOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewDetectOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -133,7 +133,7 @@ var (
 			// envfile := c.GlobalString("environment")
 			// _ = godotenv.Load(envfile)
 
-			opts, err := NewInspectOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewInspectOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -152,7 +152,7 @@ var (
 		Usage:     "log into wercker",
 		Flags:     []cli.Flag{},
 		Action: func(c *cli.Context) {
-			opts, err := NewLoginOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewLoginOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -170,7 +170,7 @@ var (
 		Usage:     "logout from wercker",
 		Flags:     []cli.Flag{},
 		Action: func(c *cli.Context) {
-			opts, err := NewLogoutOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewLogoutOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -189,7 +189,7 @@ var (
 		Description: "download a Docker repository, and load it into Docker",
 		Flags:       flagsFor(DockerFlags, pullFlags),
 		Action: func(c *cli.Context) {
-			opts, err := NewPullOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewPullOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -221,7 +221,7 @@ var (
 			},
 		},
 		Action: func(c *cli.Context) {
-			opts, err := NewVersionOptions(c, NewEnvironment(os.Environ()))
+			opts, err := NewVersionOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -238,7 +238,7 @@ var (
 			Name:  "doc",
 			Usage: "Generate usage documentation",
 			Action: func(c *cli.Context) {
-				opts, err := NewGlobalOptions(c, NewEnvironment(os.Environ()))
+				opts, err := NewGlobalOptions(c, NewEnvironment(os.Environ()...))
 				if err != nil {
 					cliLogger.Errorln("Invalid options\n", err)
 					os.Exit(1)

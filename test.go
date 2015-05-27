@@ -15,7 +15,7 @@ var (
 )
 
 func emptyEnv() *Environment {
-	return NewEnvironment([]string{})
+	return NewEnvironment()
 }
 
 func emptyPipelineOptions() *PipelineOptions {
