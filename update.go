@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/cheggaaa/pb"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -70,7 +71,11 @@ func (u *Updater) Update() error {
 	}
 	defer newVersion.Body.Close()
 
-	_, err = io.Copy(temp, newVersion.Body)
+	bar := pb.New(int(newVersion.ContentLength)).SetUnits(pb.U_BYTES)
+	bar.Start()
+	writer := io.MultiWriter(temp, bar)
+
+	_, err = io.Copy(writer, newVersion.Body)
 	if err != nil {
 		return err
 	}

@@ -53,3 +53,4 @@ import:
   - package: github.com/CenturyLinkLabs/docker-reg-client/registry
   - package: github.com/flynn/go-shlex
   - package: gopkg.in/fsnotify.v1
+  - package: github.com/cheggaaa/pb
