@@ -750,18 +750,18 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	logger := rootLogger.WithField("Logger", "Main")
 
 	// Build our common pipeline
-	p := NewRunner(options, getter)
+	r := NewRunner(options, getter)
 	e := GetGlobalEmitter()
 
 	f := &Formatter{options.GlobalOptions}
 
-	fullPipelineFinished := p.StartFullPipeline(options)
+	fullPipelineFinished := r.StartFullPipeline(options)
 
 	// All bool properties will be initialized on false
 	pipelineArgs := &FullPipelineFinishedArgs{}
 	defer fullPipelineFinished.Finish(pipelineArgs)
 
-	buildFinisher := p.StartBuild(options)
+	buildFinisher := r.StartBuild(options)
 
 	// This will be emitted at the end of the execution, we're going to be
 	// pessimistic and report that we failed, unless overridden at the end of the
@@ -780,7 +780,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	runnerCtx := context.Background()
 
 	logger.Println(f.Info("Executing pipeline"))
-	_, err = p.EnsureCode()
+	_, err = r.EnsureCode()
 	if err != nil {
 		e.Emit(Logs, &LogsArgs{
 			Options: options,
@@ -793,7 +793,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	logger.Println(f.Info("Running step", "setup environment"))
 
-	shared, err := p.SetupEnvironment(runnerCtx)
+	shared, err := r.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
 		if options.ShouldRemove {
 			defer shared.box.Clean()
@@ -853,7 +853,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	for _, step := range pipeline.Steps() {
 		logger.Printf(f.Info("Running step", step.DisplayName()))
 
-		sr, err := p.RunStep(shared, step, stepCounter.Increment())
+		sr, err := r.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
 
 			pr.Success = false
@@ -902,7 +902,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				PackageURL: "",
 				ExitCode:   1,
 			}
-			finisher := p.StartStep(shared, storeStep, stepCounter.Increment())
+			finisher := r.StartStep(shared, storeStep, stepCounter.Increment())
 			defer finisher.Finish(sr)
 
 			originalFailedStepName := pr.FailedStepName
@@ -1098,7 +1098,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		logger.Panicln(err)
 	}
 
-	newSessCtx, newSess, err := p.GetSession(runnerCtx, container.ID)
+	newSessCtx, newSess, err := r.GetSession(runnerCtx, container.ID)
 	if err != nil {
 		logger.Panicln(err)
 	}
@@ -1127,7 +1127,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	for _, step := range pipeline.AfterSteps() {
 		logger.Println(f.Info("Running after-step", step.DisplayName()))
 
-		_, err := p.RunStep(newShared, step, stepCounter.Increment())
+		_, err := r.RunStep(newShared, step, stepCounter.Increment())
 		if err != nil {
 			logger.Println(f.Fail("After-step failed", step.DisplayName()))
 			break
