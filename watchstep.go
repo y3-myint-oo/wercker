@@ -182,7 +182,6 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 					Options: sess.options,
 					Hidden:  sess.logsHidden,
 					Logs:    line,
-					Stream:  "stdout",
 				})
 			// We need to make sure we stop eating the stdout from the container
 			// promiscuously when we finish out step

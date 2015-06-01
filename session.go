@@ -342,7 +342,6 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 							Options: s.options,
 							Hidden:  true,
 							Logs:    subline,
-							Stream:  "stdout",
 						})
 						exitChan <- exit
 						return
@@ -351,7 +350,6 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 						Options: s.options,
 						Hidden:  s.logsHidden,
 						Logs:    subline,
-						Stream:  "stdout",
 					})
 					recv = append(recv, subline)
 				}

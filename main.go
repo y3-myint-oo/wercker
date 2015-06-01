@@ -786,7 +786,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	if err != nil {
 		e.Emit(Logs, &LogsArgs{
 			Options: options,
-			Hidden:  false,
 			Stream:  "stderr",
 			Logs:    err.Error() + "\n",
 		})
@@ -806,7 +805,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		logger.Errorln(f.Fail("Step failed", "setup environment"))
 		e.Emit(Logs, &LogsArgs{
 			Options: options,
-			Hidden:  false,
 			Stream:  "stderr",
 			Logs:    err.Error() + "\n",
 		})
@@ -921,8 +919,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					Order:   stepCounter.Current,
 					Step:    storeStep,
 					Logs:    "Exporting container\n",
-					Stream:  "stdout",
-					Hidden:  false,
 				})
 
 				file, err := ioutil.TempFile("", "export-image-")
@@ -978,8 +974,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 						Order:   stepCounter.Current,
 						Step:    storeStep,
 						Logs:    "Storing container\n",
-						Stream:  "stdout",
-						Hidden:  false,
 					})
 
 					s3Store := NewS3Store(options.AWSOptions)
@@ -996,8 +990,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 						Order:   stepCounter.Current,
 						Step:    storeStep,
 						Logs:    "Storing container complete\n",
-						Stream:  "stdout",
-						Hidden:  false,
 					})
 				}
 
@@ -1023,8 +1015,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					Order:   stepCounter.Current,
 					Step:    storeStep,
 					Logs:    "Storing artifacts\n",
-					Stream:  "stdout",
-					Hidden:  false,
 				})
 
 				artifact, err := pipeline.CollectArtifact(shared.containerID)
@@ -1049,8 +1039,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					Order:   stepCounter.Current,
 					Step:    storeStep,
 					Logs:    "Storing artifacts complete\n",
-					Stream:  "stdout",
-					Hidden:  false,
 				})
 			}
 

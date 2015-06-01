@@ -439,8 +439,6 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		e.Emit(Logs, &LogsArgs{
 			Options: p.options,
 			Logs:    fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
-			Stream:  "stdout",
-			Hidden:  false,
 		})
 	}
 
@@ -468,8 +466,6 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		e.Emit(Logs, &LogsArgs{
 			Options: p.options,
 			Logs:    fmt.Sprintf("Using config:\n%s\n", stringConfig),
-			Stream:  "stdout",
-			Hidden:  false,
 		})
 	}
 

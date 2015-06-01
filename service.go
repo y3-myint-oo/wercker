@@ -91,13 +91,11 @@ func (b *ServiceBox) Run(env *Environment) (*docker.Container, error) {
 			e := GetGlobalEmitter()
 			e.Emit(Logs, &LogsArgs{
 				Options: b.options,
-				Hidden:  false,
 				Stream:  fmt.Sprintf("%s-stdout", b.Name),
 				Logs:    outstream.String(),
 			})
 			e.Emit(Logs, &LogsArgs{
 				Options: b.options,
-				Hidden:  false,
 				Stream:  fmt.Sprintf("%s-stderr", b.Name),
 				Logs:    errstream.String(),
 			})

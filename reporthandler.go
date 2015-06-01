@@ -152,6 +152,10 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 		return
 	}
 
+	if args.Stream == "" {
+		args.Stream = "stdout"
+	}
+
 	step := h.currentStep
 	order := h.currentOrder
 
