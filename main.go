@@ -643,7 +643,6 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 func emitProgress(counter *CounterReader, total int64, logger *Logger) chan<- bool {
 	stop := make(chan bool)
 	go func(stop chan bool, counter *CounterReader, total int64) {
-		// e := GetEmitter()
 		prev := int64(-1)
 		for {
 			current := counter.Count()

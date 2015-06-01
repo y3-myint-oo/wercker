@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"code.google.com/p/go-uuid/uuid"
-	"github.com/chuckpreslar/emission"
 	"github.com/termie/go-shutil"
 	"golang.org/x/net/context"
 )
@@ -81,7 +80,6 @@ func GetDeployPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipe
 // Runner is the base type for running the pipelines.
 type Runner struct {
 	options        *PipelineOptions
-	emitter        *emission.Emitter
 	literalLogger  *LiteralLogHandler
 	metrics        *MetricsEventHandler
 	reporter       *ReportHandler
@@ -130,18 +128,12 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 
 	return &Runner{
 		options:        options,
-		emitter:        e,
 		literalLogger:  l,
 		metrics:        mh,
 		reporter:       r,
 		pipelineGetter: pipelineGetter,
 		logger:         logger,
 	}
-}
-
-// Emitter shares the Runner's emitter.
-func (p *Runner) Emitter() *emission.Emitter {
-	return p.emitter
 }
 
 // ProjectDir returns the directory where we expect to find the code for this project
@@ -361,7 +353,8 @@ type RunnerShared struct {
 
 // StartStep emits BuildStepStarted and returns a Finisher for the end event.
 func (p *Runner) StartStep(ctx *RunnerShared, step IStep, order int) *Finisher {
-	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
+	e := GetGlobalEmitter()
+	e.Emit(BuildStepStarted, &BuildStepStartedArgs{
 		Options: p.options,
 		Box:     ctx.box,
 		Build:   ctx.pipeline,
@@ -374,7 +367,7 @@ func (p *Runner) StartStep(ctx *RunnerShared, step IStep, order int) *Finisher {
 		if r.Artifact != nil {
 			artifactURL = r.Artifact.URL()
 		}
-		p.emitter.Emit(BuildStepFinished, &BuildStepFinishedArgs{
+		e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
 			Options:             p.options,
 			Box:                 ctx.box,
 			Build:               ctx.pipeline,
@@ -391,19 +384,21 @@ func (p *Runner) StartStep(ctx *RunnerShared, step IStep, order int) *Finisher {
 
 // StartBuild emits a BuildStarted and returns for a Finisher for the end.
 func (p *Runner) StartBuild(options *PipelineOptions) *Finisher {
-	p.emitter.Emit(BuildStarted, &BuildStartedArgs{Options: options})
+	e := GetGlobalEmitter()
+	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
 	return NewFinisher(func(result interface{}) {
 		r, ok := result.(*BuildFinishedArgs)
 		if !ok {
 			return
 		}
 		r.Options = options
-		p.emitter.Emit(BuildFinished, r)
+		e.Emit(BuildFinished, r)
 	})
 }
 
 // StartFullPipeline emits a FullPipelineFinished when the Finisher is called.
 func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
+	e := GetGlobalEmitter()
 	return NewFinisher(func(result interface{}) {
 		r, ok := result.(*FullPipelineFinishedArgs)
 		if !ok {
@@ -411,7 +406,7 @@ func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
 		}
 
 		r.Options = options
-		p.emitter.Emit(FullPipelineFinished, r)
+		e.Emit(FullPipelineFinished, r)
 	})
 }
 
@@ -439,7 +434,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 
-	e := p.Emitter()
+	e := GetGlobalEmitter()
 	if p.options.Verbose {
 		e.Emit(Logs, &LogsArgs{
 			Options: p.options,

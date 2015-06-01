@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"code.google.com/p/go-uuid/uuid"
-	"github.com/chuckpreslar/emission"
 	"github.com/flynn/go-shlex"
 	"golang.org/x/net/context"
 )
@@ -17,7 +16,6 @@ type ShellStep struct {
 	Cmd    []string
 	data   map[string]string
 	logger *LogEntry
-	e      *emission.Emitter
 }
 
 // NewShellStep is a special step for doing docker pushes
@@ -46,7 +44,6 @@ func NewShellStep(stepConfig *StepConfig, options *PipelineOptions) (*ShellStep,
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
 		logger:   rootLogger.WithField("Logger", "ShellStep"),
-		e:        GetGlobalEmitter(),
 	}, nil
 }
 

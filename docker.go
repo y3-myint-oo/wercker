@@ -16,7 +16,6 @@ import (
 
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/CenturyLinkLabs/docker-reg-client/registry"
-	"github.com/chuckpreslar/emission"
 	"github.com/docker/docker/pkg/term"
 	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
@@ -372,7 +371,6 @@ func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) 
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
 		logger:   rootLogger.WithField("Logger", "DockerScratchPushStep"),
-		e:        GetGlobalEmitter(),
 	}
 
 	return &DockerScratchPushStep{DockerPushStep: dockerPushStep}, nil
@@ -719,7 +717,6 @@ type DockerPushStep struct {
 	cmd        []string
 	entrypoint []string
 	logger     *LogEntry
-	e          *emission.Emitter
 }
 
 // NewDockerPushStep is a special step for doing docker pushes
@@ -748,7 +745,6 @@ func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*Docke
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
 		logger:   rootLogger.WithField("Logger", "DockerPushStep"),
-		e:        GetGlobalEmitter(),
 	}, nil
 }
 
