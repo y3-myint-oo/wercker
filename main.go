@@ -300,6 +300,10 @@ type SoftExit struct {
 	options *GlobalOptions
 }
 
+func NewSoftExit(options *GlobalOptions) *SoftExit {
+	return &SoftExit{options}
+}
+
 // Exit with either an error or a panic
 func (s *SoftExit) Exit(v ...interface{}) error {
 	if s.options.Debug {
@@ -341,7 +345,7 @@ func cmdDeploy(options *PipelineOptions) error {
 }
 
 func cmdCheckConfig(options *PipelineOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	// TODO(termie): this is pretty much copy-paste from the
@@ -414,7 +418,7 @@ func cmdCheckConfig(options *PipelineOptions) error {
 // detectProject inspects the the current directory that sentcli is running in
 // and detects the project's programming language
 func cmdDetect(options *DetectOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	logger.Println("########### Detecting your project! #############")
@@ -465,7 +469,6 @@ outer:
 }
 
 func cmdInspect(options *InspectOptions) error {
-	// soft := &SoftExit{options}
 	repoName := fmt.Sprintf("%s/%s", options.ApplicationOwnerName, options.ApplicationName)
 	tag := options.Tag
 
@@ -478,7 +481,7 @@ func cmdInspect(options *InspectOptions) error {
 }
 
 func cmdLogin(options *LoginOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	logger.Println("########### Logging into wercker! #############")
@@ -498,7 +501,7 @@ func cmdLogin(options *LoginOptions) error {
 }
 
 func cmdLogout(options *LogoutOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	logger.Println("Logging out")
@@ -511,7 +514,7 @@ func cmdLogout(options *LogoutOptions) error {
 }
 
 func cmdPull(c *cli.Context, options *PullOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	if options.Debug {
@@ -745,7 +748,7 @@ func getYml(detected string, options *DetectOptions) {
 }
 
 func executePipeline(options *PipelineOptions, getter GetPipeline) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	// Build our common pipeline
