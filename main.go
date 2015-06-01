@@ -567,7 +567,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 		}
 
 		if outputExists {
-			return soft.Exit(errors.New("Output already exists"))
+			return soft.Exit(errors.New("Repository.tar already exists. Delete it or run again with --f"))
 		}
 	}
 
