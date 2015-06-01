@@ -88,7 +88,7 @@ func (b *ServiceBox) Run(env *Environment) (*docker.Container, error) {
 			if err != nil {
 				b.logger.Panicln(err)
 			}
-			e := GetEmitter()
+			e := GetGlobalEmitter()
 			e.Emit(Logs, &LogsArgs{
 				Options: b.options,
 				Hidden:  false,

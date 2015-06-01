@@ -46,7 +46,7 @@ func NewShellStep(stepConfig *StepConfig, options *PipelineOptions) (*ShellStep,
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
 		logger:   rootLogger.WithField("Logger", "ShellStep"),
-		e:        GetEmitter(),
+		e:        GetGlobalEmitter(),
 	}, nil
 }
 

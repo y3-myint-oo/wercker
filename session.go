@@ -69,7 +69,7 @@ func NewDockerTransport(options *PipelineOptions, containerID string) (Transport
 		return nil, err
 	}
 	logger := rootLogger.WithField("Logger", "DockerTransport")
-	return &DockerTransport{options: options, e: GetEmitter(), client: client, containerID: containerID, logger: logger}, nil
+	return &DockerTransport{options: options, e: GetGlobalEmitter(), client: client, containerID: containerID, logger: logger}, nil
 }
 
 // Attach the given reader and writers to the transport, return a context
@@ -135,7 +135,7 @@ func NewSession(options *PipelineOptions, transport Transport) *Session {
 	logger := rootLogger.WithField("Logger", "Session")
 	return &Session{
 		options:    options,
-		e:          GetEmitter(),
+		e:          GetGlobalEmitter(),
 		transport:  transport,
 		logsHidden: false,
 		logger:     logger,

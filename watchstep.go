@@ -58,7 +58,7 @@ func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep,
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
 		logger:   rootLogger.WithField("Logger", "WatchStep"),
-		e:        GetEmitter(),
+		e:        GetGlobalEmitter(),
 	}, nil
 }
 

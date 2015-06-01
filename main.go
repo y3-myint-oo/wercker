@@ -751,7 +751,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	// Build our common pipeline
 	p := NewRunner(options, getter)
-	e := p.Emitter()
+	e := GetGlobalEmitter()
 
 	f := &Formatter{options.GlobalOptions}
 
@@ -886,7 +886,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		// up by being unable to deliver the artifacts
 
 		// If we are not saving a commit we still need one temporarily to
-		// perform the export.
+		// perform the export, it will get cleaned up when the build finishes.
 		if !options.ShouldCommit {
 			_, err = box.Commit(repoName, tag, message)
 			if err != nil {

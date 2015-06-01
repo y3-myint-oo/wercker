@@ -177,6 +177,6 @@ func (h *DebugHandler) ListenTo(e *emission.Emitter) {
 var emitter = emission.NewEmitter()
 
 // GetEmitter will return a singleton event emitter.
-func GetEmitter() *emission.Emitter {
+func GetGlobalEmitter() *emission.Emitter {
 	return emitter
 }

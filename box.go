@@ -523,7 +523,7 @@ func (b *Box) ExportImage(options *ExportImageOptions) error {
 // emitStatus will decode the messages coming from r and decode these into
 // JSONMessage
 func emitStatus(r io.Reader, options *PipelineOptions) {
-	e := GetEmitter()
+	e := GetGlobalEmitter()
 
 	s := NewJSONMessageProcessor()
 	dec := json.NewDecoder(r)

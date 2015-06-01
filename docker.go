@@ -372,7 +372,7 @@ func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) 
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
 		logger:   rootLogger.WithField("Logger", "DockerScratchPushStep"),
-		e:        GetEmitter(),
+		e:        GetGlobalEmitter(),
 	}
 
 	return &DockerScratchPushStep{DockerPushStep: dockerPushStep}, nil
@@ -748,7 +748,7 @@ func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*Docke
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
 		logger:   rootLogger.WithField("Logger", "DockerPushStep"),
-		e:        GetEmitter(),
+		e:        GetGlobalEmitter(),
 	}, nil
 }
 

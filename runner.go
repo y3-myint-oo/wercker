@@ -91,7 +91,7 @@ type Runner struct {
 
 // NewRunner from global options
 func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
-	e := GetEmitter()
+	e := GetGlobalEmitter()
 	logger := rootLogger.WithField("Logger", "Runner")
 	// h, err := NewLogHandler()
 	// if err != nil {
