@@ -2,7 +2,6 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/chuckpreslar/emission"
 	"github.com/wercker/reporter"
 )
 
@@ -29,6 +28,9 @@ type LiteralLogHandler struct {
 
 // Logs will handle the Logs event.
 func (h *LiteralLogHandler) Logs(args *LogsArgs) {
+	if args.Stream == "" {
+		args.Stream = "stdout"
+	}
 	if h.options.Debug {
 		shown := "[x]"
 		if args.Hidden {
@@ -58,6 +60,6 @@ func (h *LiteralLogHandler) shouldPrintLog(args *LogsArgs) bool {
 }
 
 // ListenTo will add eventhandlers to e.
-func (h *LiteralLogHandler) ListenTo(e *emission.Emitter) {
+func (h *LiteralLogHandler) ListenTo(e *NormalizedEmitter) {
 	e.AddListener(Logs, h.Logs)
 }

@@ -368,7 +368,6 @@ func (p *Runner) StartStep(ctx *RunnerShared, step IStep, order int) *Finisher {
 			artifactURL = r.Artifact.URL()
 		}
 		e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
-			Options:             p.options,
 			Box:                 ctx.box,
 			Build:               ctx.pipeline,
 			Step:                step,
@@ -437,8 +436,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	e := GetGlobalEmitter()
 	if p.options.Verbose {
 		e.Emit(Logs, &LogsArgs{
-			Options: p.options,
-			Logs:    fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
+			Logs: fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
 		})
 	}
 
@@ -464,8 +462,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 
 	if p.options.Verbose {
 		e.Emit(Logs, &LogsArgs{
-			Options: p.options,
-			Logs:    fmt.Sprintf("Using config:\n%s\n", stringConfig),
+			Logs: fmt.Sprintf("Using config:\n%s\n", stringConfig),
 		})
 	}
 

@@ -785,9 +785,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	_, err = r.EnsureCode()
 	if err != nil {
 		e.Emit(Logs, &LogsArgs{
-			Options: options,
-			Stream:  "stderr",
-			Logs:    err.Error() + "\n",
+			Stream: "stderr",
+			Logs:   err.Error() + "\n",
 		})
 		return soft.Exit(err)
 	}
@@ -804,9 +803,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	if err != nil {
 		logger.Errorln(f.Fail("Step failed", "setup environment"))
 		e.Emit(Logs, &LogsArgs{
-			Options: options,
-			Stream:  "stderr",
-			Logs:    err.Error() + "\n",
+			Stream: "stderr",
+			Logs:   err.Error() + "\n",
 		})
 		return soft.Exit(err)
 	}
@@ -914,11 +912,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				pr.FailedStepMessage = "Unable to store container"
 
 				e.Emit(Logs, &LogsArgs{
-					Build:   pipeline,
-					Options: options,
-					Order:   stepCounter.Current,
-					Step:    storeStep,
-					Logs:    "Exporting container\n",
+					Build: pipeline,
+					Logs:  "Exporting container\n",
 				})
 
 				file, err := ioutil.TempFile("", "export-image-")
@@ -969,11 +964,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					logger.Println("Storing docker repository on S3")
 
 					e.Emit(Logs, &LogsArgs{
-						Build:   pipeline,
-						Options: options,
-						Order:   stepCounter.Current,
-						Step:    storeStep,
-						Logs:    "Storing container\n",
+						Build: pipeline,
+						Logs:  "Storing container\n",
 					})
 
 					s3Store := NewS3Store(options.AWSOptions)
@@ -985,11 +977,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					}
 
 					e.Emit(Logs, &LogsArgs{
-						Build:   pipeline,
-						Options: options,
-						Order:   stepCounter.Current,
-						Step:    storeStep,
-						Logs:    "Storing container complete\n",
+						Build: pipeline,
+						Logs:  "Storing container complete\n",
 					})
 				}
 
@@ -1010,11 +999,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				pr.FailedStepMessage = "Unable to store pipeline output"
 
 				e.Emit(Logs, &LogsArgs{
-					Build:   pipeline,
-					Options: options,
-					Order:   stepCounter.Current,
-					Step:    storeStep,
-					Logs:    "Storing artifacts\n",
+					Build: pipeline,
+					Logs:  "Storing artifacts\n",
 				})
 
 				artifact, err := pipeline.CollectArtifact(shared.containerID)
@@ -1034,11 +1020,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				}
 
 				e.Emit(Logs, &LogsArgs{
-					Build:   pipeline,
-					Options: options,
-					Order:   stepCounter.Current,
-					Step:    storeStep,
-					Logs:    "Storing artifacts complete\n",
+					Build: pipeline,
+					Logs:  "Storing artifacts complete\n",
 				})
 			}
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/chuckpreslar/emission"
 	"github.com/inconshreveable/go-keen"
 )
 
@@ -46,7 +45,7 @@ type MetricsEventHandler struct {
 }
 
 // ListenTo will add eventhandlers to e.
-func (h *MetricsEventHandler) ListenTo(e *emission.Emitter) {
+func (h *MetricsEventHandler) ListenTo(e *NormalizedEmitter) {
 	e.AddListener(BuildStepStarted, h.BuildStepStarted)
 	e.AddListener(BuildStepFinished, h.BuildStepFinished)
 	e.AddListener(BuildStepsAdded, h.BuildStepsAdded)

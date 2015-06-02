@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/chuckpreslar/emission"
 	"github.com/wercker/reporter"
 )
 
@@ -39,22 +38,13 @@ func mapBuildSteps(counter *Counter, phase string, steps ...IStep) []*reporter.N
 
 // A ReportHandler reports all events to the wercker-api.
 type ReportHandler struct {
-	reporter        *reporter.Reporter
-	writers         map[string]*reporter.LogWriter
-	currentStep     IStep
-	currentOrder    int
-	currentBuildID  string
-	currentDeployID string
-	logger          *LogEntry
+	reporter *reporter.Reporter
+	writers  map[string]*reporter.LogWriter
+	logger   *LogEntry
 }
 
 // BuildStepStarted will handle the BuildStepStarted event.
 func (h *ReportHandler) BuildStepStarted(args *BuildStepStartedArgs) {
-	h.currentStep = args.Step
-	h.currentOrder = args.Order
-	h.currentBuildID = args.Options.BuildID
-	h.currentDeployID = args.Options.DeployID
-
 	opts := &reporter.PipelineStepStartedArgs{
 		BuildID:  args.Options.BuildID,
 		DeployID: args.Options.DeployID,
@@ -81,10 +71,6 @@ func (h *ReportHandler) flushLogs(pipelineID, stepName string, order int) error 
 
 // BuildStepFinished will handle the BuildStepFinished event.
 func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
-	h.currentStep = nil
-	h.currentOrder = -1
-	h.currentBuildID = ""
-
 	h.flushLogs(args.Options.PipelineID, args.Step.Name(), args.Order)
 
 	opts := &reporter.PipelineStepFinishedArgs{
@@ -151,18 +137,7 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 	if args.Hidden {
 		return
 	}
-
-	if args.Stream == "" {
-		args.Stream = "stdout"
-	}
-
-	step := h.currentStep
-	order := h.currentOrder
-
-	args.Step = step
-	args.Order = order
-
-	if step == nil {
+	if args.Step == nil {
 		return
 	}
 
@@ -200,7 +175,7 @@ func (h *ReportHandler) Close() error {
 }
 
 // ListenTo will add eventhandlers to e.
-func (h *ReportHandler) ListenTo(e *emission.Emitter) {
+func (h *ReportHandler) ListenTo(e *NormalizedEmitter) {
 	e.AddListener(BuildFinished, h.BuildFinished)
 	e.AddListener(BuildStepsAdded, h.BuildStepsAdded)
 	e.AddListener(BuildStepStarted, h.BuildStepStarted)
