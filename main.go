@@ -757,11 +757,11 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	f := &Formatter{options.GlobalOptions}
 
-	fullPipelineFinished := r.StartFullPipeline(options)
+	fullPipelineFinisher := r.StartFullPipeline(options)
 
 	// All bool properties will be initialized on false
 	pipelineArgs := &FullPipelineFinishedArgs{}
-	defer fullPipelineFinished.Finish(pipelineArgs)
+	defer fullPipelineFinisher.Finish(pipelineArgs)
 
 	buildFinisher := r.StartBuild(options)
 
