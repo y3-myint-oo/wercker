@@ -674,7 +674,8 @@ func cmdVersion(options *VersionOptions) error {
 		if err != nil {
 			logger.WithField("Error", err).Panic("Unable to marshal versions")
 		}
-		logger.Infoln(b)
+		os.Stdout.Write(b)
+		os.Stdout.WriteString("\n")
 		return nil
 	}
 
