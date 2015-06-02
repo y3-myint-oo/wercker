@@ -179,9 +179,8 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 			select {
 			case line := <-sess.recv:
 				e.Emit(Logs, &LogsArgs{
-					Options: sess.options,
-					Hidden:  sess.logsHidden,
-					Logs:    line,
+					Hidden: sess.logsHidden,
+					Logs:   line,
 				})
 			// We need to make sure we stop eating the stdout from the container
 			// promiscuously when we finish out step

@@ -538,10 +538,8 @@ func emitStatus(r io.Reader, options *PipelineOptions) {
 
 		line := s.ProcessJSONMessage(&m)
 		e.Emit(Logs, &LogsArgs{
-			Options: options,
-			Logs:    line,
-			Stream:  "docker",
-			Hidden:  false,
+			Logs:   line,
+			Stream: "docker",
 		})
 	}
 }

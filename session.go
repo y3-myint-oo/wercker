@@ -190,10 +190,9 @@ func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ..
 			}
 
 			e.Emit(Logs, &LogsArgs{
-				Options: s.options,
-				Hidden:  hidden,
-				Stream:  "stdin",
-				Logs:    command,
+				Hidden: hidden,
+				Stream: "stdin",
+				Logs:   command,
 			})
 		}
 	}
@@ -339,17 +338,15 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 					foundExit, exit := checkLine(subline, sentinel)
 					if foundExit {
 						e.Emit(Logs, &LogsArgs{
-							Options: s.options,
-							Hidden:  true,
-							Logs:    subline,
+							Hidden: true,
+							Logs:   subline,
 						})
 						exitChan <- exit
 						return
 					}
 					e.Emit(Logs, &LogsArgs{
-						Options: s.options,
-						Hidden:  s.logsHidden,
-						Logs:    subline,
+						Hidden: s.logsHidden,
+						Logs:   subline,
 					})
 					recv = append(recv, subline)
 				}

@@ -355,11 +355,9 @@ type RunnerShared struct {
 func (p *Runner) StartStep(ctx *RunnerShared, step IStep, order int) *Finisher {
 	e := GetGlobalEmitter()
 	e.Emit(BuildStepStarted, &BuildStepStartedArgs{
-		Options: p.options,
-		Box:     ctx.box,
-		Build:   ctx.pipeline,
-		Step:    step,
-		Order:   order,
+		Box:   ctx.box,
+		Step:  step,
+		Order: order,
 	})
 	return NewFinisher(func(result interface{}) {
 		r := result.(*StepResult)
@@ -369,9 +367,6 @@ func (p *Runner) StartStep(ctx *RunnerShared, step IStep, order int) *Finisher {
 		}
 		e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
 			Box:                 ctx.box,
-			Build:               ctx.pipeline,
-			Step:                step,
-			Order:               order,
 			Successful:          r.Success,
 			Message:             r.Message,
 			ArtifactURL:         artifactURL,
