@@ -62,7 +62,7 @@ func (sc *StepDesc) Defaults() map[string]string {
 }
 
 // IStep interface for steps, to be renamed
-type IStep interface {
+type Step interface {
 	// Bunch of getters
 	DisplayName() string
 	Env() *Environment
@@ -138,7 +138,7 @@ func (s *BaseStep) Version() string {
 }
 
 // Step is the holder of the Step methods.
-type Step struct {
+type ExternalStep struct {
 	*BaseStep
 	url      string
 	data     map[string]string
@@ -147,8 +147,8 @@ type Step struct {
 }
 
 // ToSteps builds a list of steps from RawStepsConfig
-func (s RawStepsConfig) ToSteps(options *PipelineOptions) ([]IStep, error) {
-	steps := []IStep{}
+func (s RawStepsConfig) ToSteps(options *PipelineOptions) ([]Step, error) {
+	steps := []Step{}
 	for _, stepConfig := range s {
 		step, err := stepConfig.ToStep(options)
 		if err != nil {
@@ -160,7 +160,7 @@ func (s RawStepsConfig) ToSteps(options *PipelineOptions) ([]IStep, error) {
 }
 
 // ToStep converts a StepConfig into a Step.
-func (s *StepConfig) ToStep(options *PipelineOptions) (IStep, error) {
+func (s *StepConfig) ToStep(options *PipelineOptions) (Step, error) {
 
 	// NOTE(termie) Special case steps are special
 	if s.ID == "internal/docker-push" {
@@ -186,7 +186,7 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (IStep, error) {
 //   x wercker/hipchat-notify (fetches from api)
 //   x wercker/hipchat-notify "http://someurl/thingee.tar" (downloads tarball)
 //   x setup-go-environment "file:///some_path" (uses local path)
-func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*Step, error) {
+func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*ExternalStep, error) {
 	var identifier string
 	var name string
 	var owner string
@@ -243,7 +243,7 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*Step, error) {
 		"SafeID": stepSafeID,
 	})
 
-	return &Step{
+	return &ExternalStep{
 		BaseStep: &BaseStep{
 			displayName: displayName,
 			env:         NewEnvironment(),
@@ -262,7 +262,7 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*Step, error) {
 }
 
 // IsScript should probably not be exported.
-func (s *Step) IsScript() bool {
+func (s *ExternalStep) IsScript() bool {
 	return s.name == "script"
 }
 
@@ -277,7 +277,7 @@ func normalizeCode(code string) string {
 }
 
 // FetchScript turns the raw code in a step into a shell file.
-func (s *Step) FetchScript() (string, error) {
+func (s *ExternalStep) FetchScript() (string, error) {
 	hostStepPath := s.options.HostPath(s.safeID)
 	scriptPath := s.options.HostPath(s.safeID, "run.sh")
 	content := normalizeCode(s.data["code"])
@@ -296,7 +296,7 @@ func (s *Step) FetchScript() (string, error) {
 }
 
 // Fetch grabs the Step content (or calls FetchScript for script steps).
-func (s *Step) Fetch() (string, error) {
+func (s *ExternalStep) Fetch() (string, error) {
 	// NOTE(termie): polymorphism based on kind, we could probably do something
 	//               with interfaces here, but this is okay for now
 	if s.IsScript() {
@@ -361,7 +361,7 @@ func (s *Step) Fetch() (string, error) {
 }
 
 // SetupGuest ensures that the guest is ready to run a Step.
-func (s *Step) SetupGuest(sessionCtx context.Context, sess *Session) error {
+func (s *ExternalStep) SetupGuest(sessionCtx context.Context, sess *Session) error {
 	// TODO(termie): can this even fail? i.e. exit code != 0
 	sess.HideLogs()
 	defer sess.ShowLogs()
@@ -376,7 +376,7 @@ func (s *Step) SetupGuest(sessionCtx context.Context, sess *Session) error {
 }
 
 // Execute actually sends the commands for the step.
-func (s *Step) Execute(sessionCtx context.Context, sess *Session) (int, error) {
+func (s *ExternalStep) Execute(sessionCtx context.Context, sess *Session) (int, error) {
 	err := s.SetupGuest(sessionCtx, sess)
 	if err != nil {
 		return 1, err
@@ -405,7 +405,7 @@ func (s *Step) Execute(sessionCtx context.Context, sess *Session) (int, error) {
 }
 
 // CollectFile gets an individual file from the container
-func (s *Step) CollectFile(containerID, path, name string, dst io.Writer) error {
+func (s *ExternalStep) CollectFile(containerID, path, name string, dst io.Writer) error {
 	client, err := NewDockerClient(s.options.DockerOptions)
 	if err != nil {
 		return err
@@ -433,7 +433,7 @@ func (s *Step) CollectFile(containerID, path, name string, dst io.Writer) error 
 }
 
 // CollectArtifact copies the artifacts associated with the Step.
-func (s *Step) CollectArtifact(containerID string) (*Artifact, error) {
+func (s *ExternalStep) CollectArtifact(containerID string) (*Artifact, error) {
 	artificer := NewArtificer(s.options)
 
 	// Ensure we have the host directory
@@ -461,7 +461,7 @@ func (s *Step) CollectArtifact(containerID string) (*Artifact, error) {
 }
 
 // InitEnv sets up the internal environment for the Step.
-func (s *Step) InitEnv(env *Environment) {
+func (s *ExternalStep) InitEnv(env *Environment) {
 	a := [][]string{
 		[]string{"WERCKER_STEP_ROOT", s.GuestPath()},
 		[]string{"WERCKER_STEP_ID", s.safeID},
@@ -499,7 +499,7 @@ func (s *Step) InitEnv(env *Environment) {
 }
 
 // CachedName returns a name suitable for caching
-func (s *Step) CachedName() string {
+func (s *ExternalStep) CachedName() string {
 	name := fmt.Sprintf("%s-%s", s.owner, s.name)
 	if s.version != "*" {
 		name = fmt.Sprintf("%s@%s", name, s.version)
@@ -508,32 +508,32 @@ func (s *Step) CachedName() string {
 }
 
 // HostPath returns a path relative to the Step on the host.
-func (s *Step) HostPath(p ...string) string {
+func (s *ExternalStep) HostPath(p ...string) string {
 	newArgs := append([]string{s.safeID}, p...)
 	return s.options.HostPath(newArgs...)
 }
 
 // GuestPath returns a path relative to the Step on the guest.
-func (s *Step) GuestPath(p ...string) string {
+func (s *ExternalStep) GuestPath(p ...string) string {
 	newArgs := append([]string{s.safeID}, p...)
 	return s.options.GuestPath(newArgs...)
 }
 
 // MntPath returns a path relative to the read-only mount of the Step on
 // the guest.
-func (s *Step) MntPath(p ...string) string {
+func (s *ExternalStep) MntPath(p ...string) string {
 	newArgs := append([]string{s.safeID}, p...)
 	return s.options.MntPath(newArgs...)
 }
 
 // ReportPath returns a path to the reports for the step on the guest.
-func (s *Step) ReportPath(p ...string) string {
+func (s *ExternalStep) ReportPath(p ...string) string {
 	newArgs := append([]string{s.safeID}, p...)
 	return s.options.ReportPath(newArgs...)
 }
 
 // NewWerckerInitStep returns our fake initial step
-func NewWerckerInitStep(options *PipelineOptions) (*Step, error) {
+func NewWerckerInitStep(options *PipelineOptions) (*ExternalStep, error) {
 	werckerInit := `wercker-init "https://github.com/wercker/wercker-init/archive/v1.0.0.tar.gz"`
 	stepConfig := &StepConfig{ID: werckerInit, Data: make(map[string]string)}
 	initStep, err := NewStep(stepConfig, options)

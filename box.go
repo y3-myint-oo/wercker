@@ -236,7 +236,7 @@ func exposedPortMaps(published []string) ([]ExposedPortMap, error) {
 }
 
 //RecoverInteractive restarts the box with a terminal attached
-func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step IStep) error {
+func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step Step) error {
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {
 		return nil

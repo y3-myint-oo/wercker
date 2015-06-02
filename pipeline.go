@@ -14,8 +14,8 @@ type Pipeline interface {
 	Env() *Environment       // base
 	Box() *Box               // base
 	Services() []*ServiceBox //base
-	Steps() []IStep          // base
-	AfterSteps() []IStep     // base
+	Steps() []Step           // base
+	AfterSteps() []Step      // base
 
 	// Methods
 	CommonEnv() [][]string // base
@@ -69,8 +69,8 @@ type BasePipeline struct {
 	env        *Environment
 	box        *Box
 	services   []*ServiceBox
-	steps      []IStep
-	afterSteps []IStep
+	steps      []Step
+	afterSteps []Step
 	logger     *LogEntry
 }
 
@@ -96,16 +96,16 @@ func NewBasePipeline(options *PipelineOptions, pipelineConfig *RawPipelineConfig
 		return nil, err
 	}
 
-	steps := []IStep{initStep}
+	steps := []Step{initStep}
 	realSteps, err := stepsConfig.ToSteps(options)
 	if err != nil {
 		return nil, err
 	}
 	steps = append(steps, realSteps...)
 
-	var afterSteps []IStep
+	var afterSteps []Step
 	if afterStepsConfig != nil {
-		afterSteps = []IStep{initStep}
+		afterSteps = []Step{initStep}
 		realAfterSteps, err := afterStepsConfig.ToSteps(options)
 		if err != nil {
 			return nil, err
@@ -136,12 +136,12 @@ func (p *BasePipeline) Services() []*ServiceBox {
 }
 
 // Steps is a getter for steps
-func (p *BasePipeline) Steps() []IStep {
+func (p *BasePipeline) Steps() []Step {
 	return p.steps
 }
 
 // AfterSteps is a getter for afterSteps
-func (p *BasePipeline) AfterSteps() []IStep {
+func (p *BasePipeline) AfterSteps() []Step {
 	return p.afterSteps
 }
 

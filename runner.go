@@ -352,7 +352,7 @@ type RunnerShared struct {
 }
 
 // StartStep emits BuildStepStarted and returns a Finisher for the end event.
-func (p *Runner) StartStep(ctx *RunnerShared, step IStep, order int) *Finisher {
+func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *Finisher {
 	e := GetGlobalEmitter()
 	e.Emit(BuildStepStarted, &BuildStepStartedArgs{
 		Box:   ctx.box,
@@ -418,7 +418,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		ExitCode: 1,
 	}
 
-	setupEnvironmentStep := &Step{
+	setupEnvironmentStep := &ExternalStep{
 		BaseStep: &BaseStep{
 			name:    "setup environment",
 			owner:   "wercker",
@@ -586,7 +586,7 @@ type StepResult struct {
 }
 
 // RunStep runs a step and tosses error if it fails
-func (p *Runner) RunStep(shared *RunnerShared, step IStep, order int) (*StepResult, error) {
+func (p *Runner) RunStep(shared *RunnerShared, step Step, order int) (*StepResult, error) {
 	finisher := p.StartStep(shared, step, order)
 	sr := &StepResult{
 		Success:  false,

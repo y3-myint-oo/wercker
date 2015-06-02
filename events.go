@@ -53,7 +53,7 @@ type LogsArgs struct {
 	Build   Pipeline
 	Options *PipelineOptions
 	Order   int
-	Step    IStep
+	Step    Step
 	Logs    string
 	Stream  string
 	Hidden  bool
@@ -64,9 +64,9 @@ type LogsArgs struct {
 type BuildStepsAddedArgs struct {
 	Build      Pipeline
 	Options    *PipelineOptions
-	Steps      []IStep
-	StoreStep  IStep
-	AfterSteps []IStep
+	Steps      []Step
+	StoreStep  Step
+	AfterSteps []Step
 }
 
 // BuildStepStartedArgs contains the args associated with the
@@ -76,7 +76,7 @@ type BuildStepStartedArgs struct {
 	Box     *Box
 	Build   Pipeline
 	Order   int
-	Step    IStep
+	Step    Step
 }
 
 // BuildStepFinishedArgs contains the args associated with the
@@ -86,7 +86,7 @@ type BuildStepFinishedArgs struct {
 	Box         *Box
 	Build       Pipeline
 	Order       int
-	Step        IStep
+	Step        Step
 	Successful  bool
 	Message     string
 	ArtifactURL string
@@ -182,7 +182,7 @@ type NormalizedEmitter struct {
 	options      *PipelineOptions // Set by BuildStarted
 	build        Pipeline         // Set by BuildStepsAdded
 	currentOrder int              // Set by BuildStepStarted
-	currentStep  IStep            // Set by BuildStepStarted
+	currentStep  Step             // Set by BuildStepStarted
 }
 
 func NewNormalizedEmitter() *NormalizedEmitter {

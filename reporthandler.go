@@ -23,7 +23,7 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	return h, nil
 }
 
-func mapBuildSteps(counter *Counter, phase string, steps ...IStep) []*reporter.NewStep {
+func mapBuildSteps(counter *Counter, phase string, steps ...Step) []*reporter.NewStep {
 	buffer := make([]*reporter.NewStep, len(steps))
 	for i, s := range steps {
 		buffer[i] = &reporter.NewStep{

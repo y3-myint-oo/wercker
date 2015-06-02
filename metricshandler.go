@@ -205,7 +205,7 @@ type metricsApplicationPayload struct {
 	OwnerName string `json:"ownerName"`
 }
 
-func newMetricStepPayload(step IStep) *metricStepPayload {
+func newMetricStepPayload(step Step) *metricStepPayload {
 	return &metricStepPayload{
 		Owner:      step.Owner(),
 		Name:       step.Name(),
@@ -293,6 +293,6 @@ func getBoxDetails(box *Box) (boxName string, boxTag string) {
 	return box.Name, box.tag
 }
 
-func formatUniqueStepName(step IStep) string {
+func formatUniqueStepName(step Step) string {
 	return fmt.Sprintf("%s/%s@%s", step.Owner(), step.Name(), step.Version())
 }

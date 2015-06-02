@@ -748,29 +748,28 @@ func getYml(detected string, options *DetectOptions) {
 }
 
 func executePipeline(options *PipelineOptions, getter GetPipeline) error {
+	// Boilerplate
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
-
-	// Build our common pipeline
-	r := NewRunner(options, getter)
 	e := GetGlobalEmitter()
-
 	f := &Formatter{options.GlobalOptions}
 
-	fullPipelineFinisher := r.StartFullPipeline(options)
+	// Set up the runner
+	r := NewRunner(options, getter)
+	runnerCtx := context.Background()
 
-	// All bool properties will be initialized on false
+	// These will be emitted at the end of the execution, we're going to be
+	// pessimistic and report that we failed, unless overridden at the end of the
+	// execution.
+	fullPipelineFinisher := r.StartFullPipeline(options)
 	pipelineArgs := &FullPipelineFinishedArgs{}
 	defer fullPipelineFinisher.Finish(pipelineArgs)
 
 	buildFinisher := r.StartBuild(options)
-
-	// This will be emitted at the end of the execution, we're going to be
-	// pessimistic and report that we failed, unless overridden at the end of the
-	// execution.
 	buildFinishedArgs := &BuildFinishedArgs{Box: nil, Result: "failed"}
 	defer buildFinisher.Finish(buildFinishedArgs)
 
+	// Debug information
 	dumpOptions(options)
 
 	// Do some sanity checks before starting
@@ -779,8 +778,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		return soft.Exit(err)
 	}
 
-	runnerCtx := context.Background()
-
+	// Start copying code
 	logger.Println(f.Info("Executing pipeline"))
 	_, err = r.EnsureCode()
 	if err != nil {
@@ -791,8 +789,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		return soft.Exit(err)
 	}
 
+	// Setup environment is still a fairly special step, it needs
+	// to start our boxes and get everything set up
 	logger.Println(f.Info("Running step", "setup environment"))
-
 	shared, err := r.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
 		if options.ShouldRemove {
@@ -814,16 +813,14 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	// Expand our context object
 	box := shared.box
-	pipeline := shared.pipeline
-
 	buildFinishedArgs.Box = box
-
+	pipeline := shared.pipeline
 	repoName := pipeline.DockerRepo()
 	tag := pipeline.DockerTag()
 	message := pipeline.DockerMessage()
 
 	// TODO(termie): hack for now, probably can be made into a naive class
-	storeStep := &Step{
+	storeStep := &ExternalStep{
 		BaseStep: &BaseStep{
 			name:    "store",
 			owner:   "wercker",
