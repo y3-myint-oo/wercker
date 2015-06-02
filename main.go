@@ -694,7 +694,7 @@ func cmdVersion(options *VersionOptions) error {
 		if err != nil {
 			return err
 		}
-		if updater.UpdateAvailable() || true {
+		if updater.UpdateAvailable() {
 			logger.Infoln("A new version is available:",
 				updater.ServerVersion.FullVersion())
 			logger.Infoln("Download it from:", updater.DownloadUrl())
