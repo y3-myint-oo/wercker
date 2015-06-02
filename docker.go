@@ -338,12 +338,6 @@ type DockerImageJSON struct {
 	Size            int64                          `json:"Size"`
 }
 
-// DockerImageJSONConfig substructure
-type DockerImageJSONConfig struct {
-	Hostname string
-	Cmd      []string
-}
-
 // DockerImageJSONContainerConfig substructure
 type DockerImageJSONContainerConfig struct {
 	Hostname string
