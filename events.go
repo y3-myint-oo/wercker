@@ -236,7 +236,7 @@ func (e *NormalizedEmitter) Emit(event interface{}, args interface{}) {
 			a.Stream = "stdout"
 		}
 		e.Emitter.Emit(event, a)
-	// Add options, build, step, order
+	// Add options, build, step, order, reset step and order after
 	case BuildStepFinished:
 		a := args.(*BuildStepFinishedArgs)
 		if a.Options == nil {
@@ -252,6 +252,8 @@ func (e *NormalizedEmitter) Emit(event interface{}, args interface{}) {
 			a.Order = e.currentOrder
 		}
 		e.Emitter.Emit(event, a)
+		e.currentStep = nil
+		e.currentOrder = -1
 	// Just add the options
 	case BuildFinished:
 		a := args.(*BuildFinishedArgs)
