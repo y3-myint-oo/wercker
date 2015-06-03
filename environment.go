@@ -59,7 +59,7 @@ func (e *Environment) Get(key string) string {
 func (e *Environment) Export() []string {
 	s := []string{}
 	for _, key := range e.Order {
-		s = append(s, fmt.Sprintf(`export %s="%s"`, key, e.Map[key]))
+		s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
 	}
 	return s
 }
