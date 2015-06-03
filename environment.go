@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -76,17 +77,8 @@ func (e *Environment) Ordered() [][]string {
 // Interpolate is a naive interpolator that attempts to replace variables
 // identified by $VAR with the value of the VAR pipeline environment variable
 // NOTE(termie): This will check the hidden env, too.
-func (e *Environment) Interpolate(value string) string {
-	if strings.HasPrefix(value, "$") {
-		if interp, ok := e.Map[value[1:]]; ok {
-			return interp
-		}
-		if interp, ok := e.Hidden.Map[value[1:]]; ok {
-			return interp
-		}
-		return ""
-	}
-	return value
+func (e *Environment) Interpolate(s string) string {
+	return os.Expand(s, e.Get)
 }
 
 var mirroredEnv = [...]string{
