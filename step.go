@@ -534,7 +534,7 @@ func (s *Step) ReportPath(p ...string) string {
 
 // NewWerckerInitStep returns our fake initial step
 func NewWerckerInitStep(options *PipelineOptions) (*Step, error) {
-	werckerInit := `wercker-init "https://api.github.com/repos/wercker/wercker-init/tarball"`
+	werckerInit := `wercker-init "https://github.com/wercker/wercker-init/archive/v1.0.0.tar.gz"`
 	stepConfig := &StepConfig{ID: werckerInit, Data: make(map[string]string)}
 	initStep, err := NewStep(stepConfig, options)
 	if err != nil {
