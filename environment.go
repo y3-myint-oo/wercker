@@ -56,6 +56,24 @@ func (e *Environment) Get(key string) string {
 	return ""
 }
 
+// GetInclHidden gets an individual record either from this environment or the
+// hidden environment.
+func (e *Environment) GetInclHidden(key string) string {
+	if e.Map != nil {
+		if val, ok := e.Map[key]; ok {
+			return val
+		}
+	}
+
+	if e.Hidden.Map != nil {
+		if val, ok := e.Hidden.Map[key]; ok {
+			return val
+		}
+	}
+
+	return ""
+}
+
 // Export the environment as shell commands for use with Session.Send*
 func (e *Environment) Export() []string {
 	s := []string{}
@@ -78,7 +96,7 @@ func (e *Environment) Ordered() [][]string {
 // identified by $VAR with the value of the VAR pipeline environment variable
 // NOTE(termie): This will check the hidden env, too.
 func (e *Environment) Interpolate(s string) string {
-	return os.Expand(s, e.Get)
+	return os.Expand(s, e.GetInclHidden)
 }
 
 var mirroredEnv = [...]string{
