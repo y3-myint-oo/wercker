@@ -2,11 +2,11 @@ package main
 
 import (
 	"archive/tar"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/crowdmob/goamz/aws"
@@ -32,11 +32,6 @@ type Artifact struct {
 	BuildStepID   string
 	Bucket        string
 }
-
-var (
-	// ErrEmptyTarball is returned when the tarball has no files in it
-	ErrEmptyTarball = errors.New("empty tarball")
-)
 
 // NewArtificer returns an Artificer
 func NewArtificer(options *PipelineOptions) *Artificer {
@@ -151,4 +146,56 @@ func (a *Artificer) Upload(artifact *Artifact) error {
 	}
 
 	return nil
+}
+
+// FileCollector gets files out of containers
+type FileCollector interface {
+	Collect(path string) (*Archive, chan error)
+}
+
+// DockerFileCollector impl of FileCollector
+type DockerFileCollector struct {
+	client      *DockerClient
+	containerID string
+	logger      *LogEntry
+}
+
+// NewDockerFileCollector constructor
+func NewDockerFileCollector(client *DockerClient, containerID string) FileCollector {
+	return &DockerFileCollector{
+		client:      client,
+		containerID: containerID,
+		logger:      rootLogger.WithField("Logger", "DockerFileCollector"),
+	}
+}
+
+// Collect grabs a path and returns an archive containing stream along with
+// an error channel to select on
+func (fc *DockerFileCollector) Collect(path string) (*Archive, chan error) {
+	pipeReader, pipeWriter := io.Pipe()
+	opts := docker.CopyFromContainerOptions{
+		OutputStream: pipeWriter,
+		Container:    fc.containerID,
+		Resource:     path,
+	}
+
+	errs := make(chan error)
+
+	go func() {
+		defer close(errs)
+		if err := fc.client.CopyFromContainer(opts); err != nil {
+			switch err.(type) {
+			case *docker.Error:
+				derr := err.(*docker.Error)
+				if derr.Status == 500 && strings.HasPrefix(derr.Message, "Could not find the file") {
+					errs <- ErrEmptyTarball
+				}
+			default:
+				errs <- err
+			}
+		}
+		pipeWriter.Close()
+	}()
+
+	return NewArchive(pipeReader), errs
 }

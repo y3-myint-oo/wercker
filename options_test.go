@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/codegangsta/cli"
+	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
 

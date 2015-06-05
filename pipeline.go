@@ -21,6 +21,7 @@ type Pipeline interface {
 	CommonEnv() [][]string // base
 	InitEnv(*Environment)  // impl
 	CollectArtifact(string) (*Artifact, error)
+	CollectCache(string) error
 	SetupGuest(context.Context, *Session) error
 	ExportEnvironment(context.Context, *Session) error
 	SyncEnvironment(context.Context, *Session) error
@@ -279,5 +280,30 @@ func (p *BasePipeline) SyncEnvironment(sessionCtx context.Context, sess *Session
 		p.env.Add(key, value)
 	}
 
+	return nil
+}
+
+// CollectCache extracts the cache from the container to the cachedir
+func (p *BasePipeline) CollectCache(containerID string) error {
+	client, err := NewDockerClient(p.options.DockerOptions)
+	if err != nil {
+		return err
+	}
+	dfc := NewDockerFileCollector(client, containerID)
+
+	// TODO(termie): this is hardcoded everywhere we use it
+	archive, errs := dfc.Collect("/cache")
+
+	select {
+	case err = <-archive.Multi("cache", p.options.CacheDir, 1024*1024*1000):
+	case err = <-errs:
+	}
+
+	if err != nil {
+		if err == ErrEmptyTarball {
+			return nil
+		}
+		return err
+	}
 	return nil
 }

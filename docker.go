@@ -14,11 +14,11 @@ import (
 
 	"crypto/sha256"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/CenturyLinkLabs/docker-reg-client/registry"
 	"github.com/docker/docker/pkg/term"
 	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
 )
 

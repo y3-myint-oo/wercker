@@ -823,7 +823,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	shouldStore := options.ShouldStoreS3 || options.ShouldStoreLocal
 
 	// TODO(termie): hack for now, probably can be made into a naive class
-	var storeStep Step = nil
+	var storeStep Step
 
 	if shouldStore {
 		storeStep = &ExternalStep{
@@ -856,13 +856,13 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 		sr, err := r.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
-
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName()
 			pr.FailedStepMessage = sr.Message
 			logger.Printf(f.Fail("Step failed", step.DisplayName()))
 			break
 		}
+
 		if options.Verbose {
 			logger.Printf(f.Success("Step passed", step.DisplayName()))
 		}
@@ -1046,6 +1046,15 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	pipelineArgs.MainSuccessful = pr.Success
 
 	if len(pipeline.AfterSteps()) == 0 {
+		// We're about to end the build, so pull the cache and explode it
+		// into the CacheDir
+		if pr.Success && !options.DirectMount {
+			err = pipeline.CollectCache(shared.containerID)
+			if err != nil {
+				logger.WithField("Error", err).Error("Unable to store cache")
+			}
+		}
+
 		if pr.Success {
 			logger.Println(f.Success("Pipeline finished"))
 		} else {
@@ -1102,6 +1111,15 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			break
 		}
 		logger.Println(f.Success("After-step passed", step.DisplayName()))
+	}
+
+	// We're about to end the build, so pull the cache and explode it
+	// into the CacheDir
+	if pr.Success && !options.DirectMount {
+		err = pipeline.CollectCache(newShared.containerID)
+		if err != nil {
+			logger.WithField("Error", err).Error("Unable to store cache")
+		}
 	}
 
 	if pr.Success {

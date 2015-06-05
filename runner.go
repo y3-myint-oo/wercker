@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
 	"golang.org/x/net/context"
 )
@@ -174,6 +174,7 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.options.ProjectDir,
 			p.options.StepDir,
 			p.options.ContainerDir,
+			p.options.CacheDir,
 		}
 
 		// Make sure we don't accidentally recurse or copy extra files
@@ -291,6 +292,27 @@ func (p *Runner) AddServices(pipeline Pipeline, rawConfig *Config, box *Box) err
 		// TODO(mh): We want to make sure container is running fully before
 		// allowing build steps to run. We may need custom steps which block
 		// until service services are running.
+	}
+	return nil
+}
+
+// CopyCache copies the source into the HostPath
+func (p *Runner) CopyCache() error {
+	err := os.MkdirAll(p.options.CacheDir, 0755)
+	if err != nil {
+		return err
+	}
+
+	if p.options.DirectMount {
+		err = os.Symlink(p.options.CacheDir, p.options.HostPath("cache"))
+		if err != nil {
+			return err
+		}
+	} else {
+		err = shutil.CopyTree(p.options.CacheDir, p.options.HostPath("cache"), nil)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -485,6 +507,14 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Start setting up the pipeline dir
 	p.logger.Debugln("Copying source to build directory")
 	err = p.CopySource()
+	if err != nil {
+		sr.Message = err.Error()
+		return shared, err
+	}
+
+	// ... and the cache dir
+	p.logger.Debugln("Copying cache to build directory")
+	err = p.CopyCache()
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err

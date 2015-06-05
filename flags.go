@@ -26,10 +26,11 @@ var (
 
 	// These flags control where we store local files
 	localPathFlags = []cli.Flag{
+		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "Path where created builds live."},
+		cli.StringFlag{Name: "cache-dir", Value: "./_cache", Usage: "Path for storing pipeline cache."},
+		cli.StringFlag{Name: "container-dir", Value: "./_containers", Usage: "Path where exported containers live."},
 		cli.StringFlag{Name: "project-dir", Value: "./_projects", Usage: "Path where downloaded projects live."},
 		cli.StringFlag{Name: "step-dir", Value: "./_steps", Usage: "Path where downloaded steps live."},
-		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "Path where created builds live."},
-		cli.StringFlag{Name: "container-dir", Value: "./_containers", Usage: "Path where exported containers live."},
 	}
 
 	// These flags control paths on the guest and probably shouldn't change

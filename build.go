@@ -1,8 +1,6 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Build is our basic wrapper for Build operations
 type Build struct {

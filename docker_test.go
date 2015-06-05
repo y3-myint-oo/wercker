@@ -1,13 +1,18 @@
 package main
 
 import (
+	"os"
 	"testing"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/assert"
 )
 
 func minimalDockerOptions() *DockerOptions {
-	return &DockerOptions{DockerHost: "tcp://127.0.0.1:2375"}
+
+	opts := &DockerOptions{GlobalOptions: &GlobalOptions{}}
+	guessAndUpdateDockerOptions(opts, NewEnvironment(os.Environ()...))
+	return opts
 }
 
 func dockerOrSkip(t *testing.T) *DockerClient {
@@ -18,6 +23,41 @@ func dockerOrSkip(t *testing.T) *DockerClient {
 		return nil
 	}
 	return client
+}
+
+type containerRemover struct {
+	*docker.Container
+	client *DockerClient
+}
+
+func tempBusybox(client *DockerClient) (*containerRemover, error) {
+	container, err := client.CreateContainer(
+		docker.CreateContainerOptions{
+			Name: "temp-busybox",
+			Config: &docker.Config{
+				Image:           "busybox",
+				Tty:             false,
+				OpenStdin:       true,
+				Cmd:             []string{"/bin/sh"},
+				AttachStdin:     true,
+				AttachStdout:    true,
+				AttachStderr:    true,
+				NetworkDisabled: true,
+			},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &containerRemover{Container: container, client: client}, nil
+}
+
+func (cc *containerRemover) Remove() {
+	cc.client.RemoveContainer(docker.RemoveContainerOptions{
+		ID:            cc.Container.ID,
+		RemoveVolumes: true,
+	})
 }
 
 func TestDockerNormalizeRegistry(t *testing.T) {
