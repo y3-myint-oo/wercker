@@ -67,8 +67,8 @@ func (b *Build) InitEnv(hostEnv *Environment) {
 	env.Update(b.CommonEnv())
 	env.Update(a)
 	env.Update(hostEnv.getMirror())
-	env.Update(hostEnv.getPassthru())
-	env.Hidden.Update(hostEnv.getHiddenPassthru())
+	env.Update(hostEnv.getPassthru().Ordered())
+	env.Hidden.Update(hostEnv.getHiddenPassthru().Ordered())
 }
 
 // DockerRepo calculates our repo name

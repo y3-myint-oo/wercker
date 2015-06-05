@@ -56,9 +56,77 @@ func (e *Environment) Get(key string) string {
 	return ""
 }
 
-// GetInclHidden gets an individual record either from this environment or the
+// Export the environment as shell commands for use with Session.Send*
+func (e *Environment) Export() []string {
+	s := []string{}
+	for _, key := range e.Order {
+		s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
+	}
+	return s
+}
+
+// Ordered returns a [][]string of the items in the env.
+// Used only for debugging
+func (e *Environment) Ordered() [][]string {
+	a := [][]string{}
+	for _, k := range e.Order {
+		a = append(a, []string{k, e.Map[k]})
+	}
+	return a
+}
+
+// Interpolate is a naive interpolator that attempts to replace variables
+// identified by $VAR with the value of the VAR pipeline environment variable
+// NOTE(termie): This will check the hidden env, too.
+func (e *Environment) Interpolate(s string) string {
+	return os.Expand(s, e.getInclHidden)
+}
+
+var mirroredEnv = [...]string{
+	"WERCKER_STARTED_BY",
+	"WERCKER_MAIN_PIPELINE_STARTED",
+}
+
+// Collect passthru variables from the project
+func (e *Environment) getPassthru() (env *Environment) {
+	a := [][]string{}
+	for key, value := range e.Map {
+		if strings.HasPrefix(key, "X_") {
+			a = append(a, []string{strings.TrimPrefix(key, "X_"), value})
+		}
+	}
+	env = &Environment{}
+	env.Update(a)
+	return env
+}
+
+// Collect the hidden passthru variables
+func (e *Environment) getHiddenPassthru() (env *Environment) {
+	a := [][]string{}
+	for key, value := range e.Map {
+		if strings.HasPrefix(key, "XXX_") {
+			a = append(a, []string{strings.TrimPrefix(key, "XXX_"), value})
+		}
+	}
+	env = &Environment{}
+	env.Update(a)
+	return env
+}
+
+func (e *Environment) getMirror() [][]string {
+	a := [][]string{}
+	for _, key := range mirroredEnv {
+		value, ok := e.Map[key]
+		if ok {
+			a = append(a, []string{key, value})
+		}
+	}
+	return a
+}
+
+// getInclHidden gets an individual record either from this environment or the
 // hidden environment.
-func (e *Environment) GetInclHidden(key string) string {
+func (e *Environment) getInclHidden(key string) string {
 	if e.Map != nil {
 		if val, ok := e.Map[key]; ok {
 			return val
@@ -72,67 +140,4 @@ func (e *Environment) GetInclHidden(key string) string {
 	}
 
 	return ""
-}
-
-// Export the environment as shell commands for use with Session.Send*
-func (e *Environment) Export() []string {
-	s := []string{}
-	for _, key := range e.Order {
-		s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
-	}
-	return s
-}
-
-// Ordered returns a [][]string of the items in the env.
-func (e *Environment) Ordered() [][]string {
-	a := [][]string{}
-	for _, k := range e.Order {
-		a = append(a, []string{k, e.Map[k]})
-	}
-	return a
-}
-
-// Interpolate is a naive interpolator that attempts to replace variables
-// identified by $VAR with the value of the VAR pipeline environment variable
-// NOTE(termie): This will check the hidden env, too.
-func (e *Environment) Interpolate(s string) string {
-	return os.Expand(s, e.GetInclHidden)
-}
-
-var mirroredEnv = [...]string{
-	"WERCKER_STARTED_BY",
-	"WERCKER_MAIN_PIPELINE_STARTED",
-}
-
-// Collect passthru variables from the project
-func (e *Environment) getPassthru() [][]string {
-	a := [][]string{}
-	for key, value := range e.Map {
-		if strings.HasPrefix(key, "X_") {
-			a = append(a, []string{strings.TrimPrefix(key, "X_"), value})
-		}
-	}
-	return a
-}
-
-// Collect the hidden passthru variables
-func (e *Environment) getHiddenPassthru() [][]string {
-	a := [][]string{}
-	for key, value := range e.Map {
-		if strings.HasPrefix(key, "XXX_") {
-			a = append(a, []string{strings.TrimPrefix(key, "XXX_"), value})
-		}
-	}
-	return a
-}
-
-func (e *Environment) getMirror() [][]string {
-	a := [][]string{}
-	for _, key := range mirroredEnv {
-		value, ok := e.Map[key]
-		if ok {
-			a = append(a, []string{key, value})
-		}
-	}
-	return a
 }
