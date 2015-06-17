@@ -72,8 +72,8 @@ func (d *Deploy) InitEnv(hostEnv *Environment) {
 	env.Update(d.CommonEnv())
 	env.Update(a)
 	env.Update(hostEnv.getMirror())
-	env.Update(hostEnv.getPassthru())
-	env.Hidden.Update(hostEnv.getHiddenPassthru())
+	env.Update(hostEnv.getPassthru().Ordered())
+	env.Hidden.Update(hostEnv.getHiddenPassthru().Ordered())
 }
 
 // DockerRepo returns the name where we might store this in docker
