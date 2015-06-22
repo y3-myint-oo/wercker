@@ -613,6 +613,12 @@ func (p *Runner) RunStep(shared *RunnerShared, step IStep, order int) (*StepResu
 	}
 	defer finisher.Finish(sr)
 
+	err := shared.pipeline.SyncEnvironment(shared.sessionCtx, shared.sess)
+	if err != nil {
+		// If an error occured, just log and ignore it
+		p.logger.WithField("Error", err).Warn("Unable to sync environment")
+	}
+
 	step.InitEnv(shared.pipeline.Env())
 	p.logger.Debugln("Step Environment")
 	for _, pair := range step.Env().Ordered() {
