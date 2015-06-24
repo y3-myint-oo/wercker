@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"golang.org/x/net/context"
 )
@@ -22,6 +23,7 @@ type Pipeline interface {
 	CollectArtifact(string) (*Artifact, error)
 	SetupGuest(context.Context, *Session) error
 	ExportEnvironment(context.Context, *Session) error
+	SyncEnvironment(context.Context, *Session) error
 
 	LogEnvironment()
 	DockerRepo() string
@@ -233,4 +235,49 @@ func (p *BasePipeline) LogEnvironment() {
 	for _, pair := range p.env.Ordered() {
 		p.logger.Debugln(" ", pair[0], pair[1])
 	}
+}
+
+// SyncEnvironment fetches the current environment from sess, and merges the
+// result with p.env. This requires the `env` command to be available on the
+// container.
+func (p *BasePipeline) SyncEnvironment(sessionCtx context.Context, sess *Session) error {
+	p.logger.Debugln("Syncing environment")
+
+	sess.HideLogs()
+	defer sess.ShowLogs()
+
+	// 'env' with --null parameter, which prevents issues from overlapping \n
+	// inside the values.
+	exit, output, err := sess.SendChecked(sessionCtx, "env --null")
+	if err != nil {
+		return err
+	}
+
+	if exit != 0 {
+		return fmt.Errorf("Unable to sync environment, exit code: %d", exit)
+	}
+
+	// Concat every output line into a single string, then split on the null byte
+	full := strings.Join(output, "")
+	lines := strings.Split(full, "\x00")
+
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		s := strings.SplitN(line, "=", 2)
+
+		if len(s) != 2 {
+			p.logger.Warnf("Unable to parse env line: \"%s\"", line)
+			continue
+		}
+
+		key := s[0]
+		value := s[1]
+
+		p.env.Add(key, value)
+	}
+
+	return nil
 }
