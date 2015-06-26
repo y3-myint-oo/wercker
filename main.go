@@ -535,7 +535,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 		opts := &GetBuildsOptions{
 			Limit:  1,
 			Branch: options.Branch,
-			Result: options.Status,
+			Result: options.Result,
 			Status: "finished",
 			Stack:  5,
 		}
