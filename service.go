@@ -51,6 +51,7 @@ func (b *ServiceBox) Run(env *Environment) (*docker.Container, error) {
 				Cmd:             cmd,
 				Env:             myEnv,
 				NetworkDisabled: b.networkDisabled,
+				DNS:             []string{b.options.DockerDNS},
 			},
 		})
 
@@ -58,7 +59,9 @@ func (b *ServiceBox) Run(env *Environment) (*docker.Container, error) {
 		return nil, err
 	}
 
-	client.StartContainer(container.ID, &docker.HostConfig{})
+	client.StartContainer(container.ID, &docker.HostConfig{
+		DNS: []string{b.options.DockerDNS},
+	})
 	b.container = container
 
 	go func() {
