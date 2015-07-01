@@ -289,6 +289,7 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 				AttachStderr:    true,
 				ExposedPorts:    exposedPorts(b.options.PublishPorts),
 				NetworkDisabled: b.networkDisabled,
+				DNS:             []string{b.options.DockerDNS},
 				// Volumes: volumes,
 			},
 		})
@@ -307,6 +308,7 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 		Binds:        binds,
 		Links:        b.links(),
 		PortBindings: portBindings(b.options.PublishPorts),
+		DNS:          []string{b.options.DockerDNS},
 	})
 	b.container = container
 	return container, nil
