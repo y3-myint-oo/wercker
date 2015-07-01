@@ -114,7 +114,7 @@ type DockerOptions struct {
 	DockerHost      string
 	DockerTLSVerify string
 	DockerCertPath  string
-	DockerDNS       string
+	DockerDNS       []string
 }
 
 func guessAndUpdateDockerOptions(opts *DockerOptions, e *Environment) {
@@ -186,7 +186,7 @@ func NewDockerOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions)
 	dockerHost := c.String("docker-host")
 	dockerTLSVerify := c.String("docker-tls-verify")
 	dockerCertPath := c.String("docker-cert-path")
-	dockerDNS := c.String("docker-dns")
+	dockerDNS := c.StringSlice("docker-dns")
 
 	speculativeOptions := &DockerOptions{
 		GlobalOptions:   globalOpts,
