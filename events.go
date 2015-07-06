@@ -185,6 +185,7 @@ type NormalizedEmitter struct {
 	currentStep  Step             // Set by BuildStepStarted
 }
 
+// NewNormalizedEmitter constructor
 func NewNormalizedEmitter() *NormalizedEmitter {
 	return &NormalizedEmitter{Emitter: emission.NewEmitter()}
 }
@@ -274,7 +275,7 @@ func (e *NormalizedEmitter) Emit(event interface{}, args interface{}) {
 // emitter contains the singleton emitter.
 var emitter = NewNormalizedEmitter()
 
-// GetEmitter will return a singleton event emitter.
+// GetGlobalEmitter will return a singleton event emitter.
 func GetGlobalEmitter() *NormalizedEmitter {
 	return emitter
 }

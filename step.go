@@ -61,7 +61,7 @@ func (sc *StepDesc) Defaults() map[string]string {
 	return m
 }
 
-// IStep interface for steps, to be renamed
+// Step interface for steps, to be renamed
 type Step interface {
 	// Bunch of getters
 	DisplayName() string
@@ -137,7 +137,7 @@ func (s *BaseStep) Version() string {
 	return s.version
 }
 
-// Step is the holder of the Step methods.
+// ExternalStep is the holder of the Step methods.
 type ExternalStep struct {
 	*BaseStep
 	url      string

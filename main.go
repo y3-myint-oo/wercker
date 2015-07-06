@@ -300,6 +300,7 @@ type SoftExit struct {
 	options *GlobalOptions
 }
 
+// NewSoftExit constructor
 func NewSoftExit(options *GlobalOptions) *SoftExit {
 	return &SoftExit{options}
 }
@@ -700,7 +701,7 @@ func cmdVersion(options *VersionOptions) error {
 		if updater.UpdateAvailable() {
 			logger.Infoln("A new version is available:",
 				updater.ServerVersion.FullVersion())
-			logger.Infoln("Download it from:", updater.DownloadUrl())
+			logger.Infoln("Download it from:", updater.DownloadURL())
 			if AskForUpdate() {
 				if err := updater.Update(); err != nil {
 					logger.WithField("Error", err).Warn(
