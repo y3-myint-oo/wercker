@@ -218,7 +218,7 @@ func createDoc(name string) (*os.File, error) {
 func GenerateDocumentation(options *GlobalOptions, app *cli.App) error {
 
 	write := func(name string, templ string, data interface{}) error {
-		var w io.Writer = app.Writer
+		var w = app.Writer
 
 		if !options.Debug {
 			doc, err := createDoc(name)

@@ -53,7 +53,7 @@ type LogsArgs struct {
 	Build   Pipeline
 	Options *PipelineOptions
 	Order   int
-	Step    IStep
+	Step    Step
 	Logs    string
 	Stream  string
 	Hidden  bool
@@ -64,9 +64,9 @@ type LogsArgs struct {
 type BuildStepsAddedArgs struct {
 	Build      Pipeline
 	Options    *PipelineOptions
-	Steps      []IStep
-	StoreStep  IStep
-	AfterSteps []IStep
+	Steps      []Step
+	StoreStep  Step
+	AfterSteps []Step
 }
 
 // BuildStepStartedArgs contains the args associated with the
@@ -76,7 +76,7 @@ type BuildStepStartedArgs struct {
 	Box     *Box
 	Build   Pipeline
 	Order   int
-	Step    IStep
+	Step    Step
 }
 
 // BuildStepFinishedArgs contains the args associated with the
@@ -86,7 +86,7 @@ type BuildStepFinishedArgs struct {
 	Box         *Box
 	Build       Pipeline
 	Order       int
-	Step        IStep
+	Step        Step
 	Successful  bool
 	Message     string
 	ArtifactURL string
@@ -164,7 +164,7 @@ func (h *DebugHandler) Handler(name string) func(interface{}) {
 }
 
 // ListenTo attaches to the emitter
-func (h *DebugHandler) ListenTo(e *emission.Emitter) {
+func (h *DebugHandler) ListenTo(e *NormalizedEmitter) {
 	e.AddListener(BuildStarted, h.Handler("BuildStarted"))
 	e.AddListener(BuildFinished, h.Handler("BuildFinished"))
 	e.AddListener(BuildStepsAdded, h.Handler("BuildStepsAdded"))
@@ -173,10 +173,109 @@ func (h *DebugHandler) ListenTo(e *emission.Emitter) {
 	e.AddListener(FullPipelineFinished, h.Handler("FullPipelineFinished"))
 }
 
-// emitter contains the singleton emitter.
-var emitter = emission.NewEmitter()
+// NormalizedEmitter wraps the emission.Emitter and is smart enough about
+// our events to fill in details as needed so that we don't need so many args
+type NormalizedEmitter struct {
+	*emission.Emitter
 
-// GetEmitter will return a singleton event emitter.
-func GetEmitter() *emission.Emitter {
+	// All these are initially unset
+	options      *PipelineOptions // Set by BuildStarted
+	build        Pipeline         // Set by BuildStepsAdded
+	currentOrder int              // Set by BuildStepStarted
+	currentStep  Step             // Set by BuildStepStarted
+}
+
+// NewNormalizedEmitter constructor
+func NewNormalizedEmitter() *NormalizedEmitter {
+	return &NormalizedEmitter{Emitter: emission.NewEmitter()}
+}
+
+// Emit normalizes our events by storing some state
+func (e *NormalizedEmitter) Emit(event interface{}, args interface{}) {
+	switch event {
+	// store the options for later
+	case BuildStarted:
+		a := args.(*BuildStartedArgs)
+		e.options = a.Options
+		e.Emitter.Emit(event, a)
+	// Store the build, add the options
+	case BuildStepsAdded:
+		a := args.(*BuildStepsAddedArgs)
+		if a.Options == nil {
+			a.Options = e.options
+		}
+		e.build = a.Build
+		e.Emitter.Emit(event, a)
+	// Store step and order, add options, build
+	case BuildStepStarted:
+		a := args.(*BuildStepStartedArgs)
+		if a.Options == nil {
+			a.Options = e.options
+		}
+		if a.Build == nil {
+			a.Build = e.build
+		}
+		e.currentStep = a.Step
+		e.currentOrder = a.Order
+		e.Emitter.Emit(event, a)
+	// Add options, build, step, order, default stream
+	case Logs:
+		a := args.(*LogsArgs)
+		if a.Options == nil {
+			a.Options = e.options
+		}
+		if a.Build == nil {
+			a.Build = e.build
+		}
+		if a.Step == nil {
+			a.Step = e.currentStep
+		}
+		if a.Order == 0 {
+			a.Order = e.currentOrder
+		}
+		if a.Stream == "" {
+			a.Stream = "stdout"
+		}
+		e.Emitter.Emit(event, a)
+	// Add options, build, step, order, reset step and order after
+	case BuildStepFinished:
+		a := args.(*BuildStepFinishedArgs)
+		if a.Options == nil {
+			a.Options = e.options
+		}
+		if a.Build == nil {
+			a.Build = e.build
+		}
+		if a.Step == nil {
+			a.Step = e.currentStep
+		}
+		if a.Order == 0 {
+			a.Order = e.currentOrder
+		}
+		e.Emitter.Emit(event, a)
+		e.currentStep = nil
+		e.currentOrder = -1
+	// Just add the options
+	case BuildFinished:
+		a := args.(*BuildFinishedArgs)
+		if a.Options == nil {
+			a.Options = e.options
+		}
+		e.Emitter.Emit(event, a)
+	// Just add the options
+	case FullPipelineFinished:
+		a := args.(*FullPipelineFinishedArgs)
+		if a.Options == nil {
+			a.Options = e.options
+		}
+		e.Emitter.Emit(event, a)
+	}
+}
+
+// emitter contains the singleton emitter.
+var emitter = NewNormalizedEmitter()
+
+// GetGlobalEmitter will return a singleton event emitter.
+func GetGlobalEmitter() *NormalizedEmitter {
 	return emitter
 }

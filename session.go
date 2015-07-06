@@ -9,7 +9,6 @@ import (
 
 	"code.google.com/p/go-uuid/uuid"
 
-	"github.com/chuckpreslar/emission"
 	"github.com/fsouza/go-dockerclient"
 	"golang.org/x/net/context"
 )
@@ -56,7 +55,6 @@ type Transport interface {
 // DockerTransport for docker containers
 type DockerTransport struct {
 	options     *PipelineOptions
-	e           *emission.Emitter
 	client      *DockerClient
 	containerID string
 	logger      *LogEntry
@@ -69,7 +67,7 @@ func NewDockerTransport(options *PipelineOptions, containerID string) (Transport
 		return nil, err
 	}
 	logger := rootLogger.WithField("Logger", "DockerTransport")
-	return &DockerTransport{options: options, e: GetEmitter(), client: client, containerID: containerID, logger: logger}, nil
+	return &DockerTransport{options: options, client: client, containerID: containerID, logger: logger}, nil
 }
 
 // Attach the given reader and writers to the transport, return a context
@@ -121,7 +119,6 @@ func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, st
 // Session is our way to interact with the docker container
 type Session struct {
 	options    *PipelineOptions
-	e          *emission.Emitter
 	transport  Transport
 	logsHidden bool
 	send       chan string
@@ -135,7 +132,6 @@ func NewSession(options *PipelineOptions, transport Transport) *Session {
 	logger := rootLogger.WithField("Logger", "Session")
 	return &Session{
 		options:    options,
-		e:          GetEmitter(),
 		transport:  transport,
 		logsHidden: false,
 		logger:     logger,
@@ -170,6 +166,7 @@ func (s *Session) ShowLogs() {
 
 // Send an array of commands.
 func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ...string) error {
+	e := GetGlobalEmitter()
 	// Do a quick initial check whether we have a valid session first
 	select {
 	case <-sessionCtx.Done():
@@ -192,11 +189,10 @@ func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ..
 				hidden = forceHidden
 			}
 
-			s.e.Emit(Logs, &LogsArgs{
-				Options: s.options,
-				Hidden:  hidden,
-				Stream:  "stdin",
-				Logs:    command,
+			e.Emit(Logs, &LogsArgs{
+				Hidden: hidden,
+				Stream: "stdin",
+				Logs:   command,
 			})
 		}
 	}
@@ -274,6 +270,7 @@ func smartSplitLines(line, sentinel string) []string {
 // Ways for a command to be successful:
 //  [x] We received the sentinel echo with exit code 0
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
+	e := GetGlobalEmitter()
 	recv := []string{}
 	sentinel := randomSentinel()
 	var err error
@@ -340,20 +337,16 @@ func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (i
 					// If we found the exit code, we're done
 					foundExit, exit := checkLine(subline, sentinel)
 					if foundExit {
-						s.e.Emit(Logs, &LogsArgs{
-							Options: s.options,
-							Hidden:  true,
-							Logs:    subline,
-							Stream:  "stdout",
+						e.Emit(Logs, &LogsArgs{
+							Hidden: true,
+							Logs:   subline,
 						})
 						exitChan <- exit
 						return
 					}
-					s.e.Emit(Logs, &LogsArgs{
-						Options: s.options,
-						Hidden:  s.logsHidden,
-						Logs:    subline,
-						Stream:  "stdout",
+					e.Emit(Logs, &LogsArgs{
+						Hidden: s.logsHidden,
+						Logs:   subline,
 					})
 					recv = append(recv, subline)
 				}

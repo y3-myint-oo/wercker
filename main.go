@@ -300,6 +300,11 @@ type SoftExit struct {
 	options *GlobalOptions
 }
 
+// NewSoftExit constructor
+func NewSoftExit(options *GlobalOptions) *SoftExit {
+	return &SoftExit{options}
+}
+
 // Exit with either an error or a panic
 func (s *SoftExit) Exit(v ...interface{}) error {
 	if s.options.Debug {
@@ -341,7 +346,7 @@ func cmdDeploy(options *PipelineOptions) error {
 }
 
 func cmdCheckConfig(options *PipelineOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	// TODO(termie): this is pretty much copy-paste from the
@@ -414,7 +419,7 @@ func cmdCheckConfig(options *PipelineOptions) error {
 // detectProject inspects the the current directory that sentcli is running in
 // and detects the project's programming language
 func cmdDetect(options *DetectOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	logger.Println("########### Detecting your project! #############")
@@ -465,7 +470,6 @@ outer:
 }
 
 func cmdInspect(options *InspectOptions) error {
-	// soft := &SoftExit{options}
 	repoName := fmt.Sprintf("%s/%s", options.ApplicationOwnerName, options.ApplicationName)
 	tag := options.Tag
 
@@ -478,7 +482,7 @@ func cmdInspect(options *InspectOptions) error {
 }
 
 func cmdLogin(options *LoginOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	logger.Println("########### Logging into wercker! #############")
@@ -498,7 +502,7 @@ func cmdLogin(options *LoginOptions) error {
 }
 
 func cmdLogout(options *LogoutOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	logger.Println("Logging out")
@@ -511,7 +515,7 @@ func cmdLogout(options *LogoutOptions) error {
 }
 
 func cmdPull(c *cli.Context, options *PullOptions) error {
-	soft := &SoftExit{options.GlobalOptions}
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
 
 	if options.Debug {
@@ -643,7 +647,6 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 func emitProgress(counter *CounterReader, total int64, logger *Logger) chan<- bool {
 	stop := make(chan bool)
 	go func(stop chan bool, counter *CounterReader, total int64) {
-		// e := GetEmitter()
 		prev := int64(-1)
 		for {
 			current := counter.Count()
@@ -698,7 +701,7 @@ func cmdVersion(options *VersionOptions) error {
 		if updater.UpdateAvailable() {
 			logger.Infoln("A new version is available:",
 				updater.ServerVersion.FullVersion())
-			logger.Infoln("Download it from:", updater.DownloadUrl())
+			logger.Infoln("Download it from:", updater.DownloadURL())
 			if AskForUpdate() {
 				if err := updater.Update(); err != nil {
 					logger.WithField("Error", err).Warn(
@@ -746,29 +749,28 @@ func getYml(detected string, options *DetectOptions) {
 }
 
 func executePipeline(options *PipelineOptions, getter GetPipeline) error {
-	soft := &SoftExit{options.GlobalOptions}
+	// Boilerplate
+	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
-
-	// Build our common pipeline
-	p := NewRunner(options, getter)
-	e := p.Emitter()
-
+	e := GetGlobalEmitter()
 	f := &Formatter{options.GlobalOptions}
 
-	fullPipelineFinished := p.StartFullPipeline(options)
+	// Set up the runner
+	r := NewRunner(options, getter)
+	runnerCtx := context.Background()
 
-	// All bool properties will be initialized on false
-	pipelineArgs := &FullPipelineFinishedArgs{}
-	defer fullPipelineFinished.Finish(pipelineArgs)
-
-	buildFinisher := p.StartBuild(options)
-
-	// This will be emitted at the end of the execution, we're going to be
+	// These will be emitted at the end of the execution, we're going to be
 	// pessimistic and report that we failed, unless overridden at the end of the
 	// execution.
+	fullPipelineFinisher := r.StartFullPipeline(options)
+	pipelineArgs := &FullPipelineFinishedArgs{}
+	defer fullPipelineFinisher.Finish(pipelineArgs)
+
+	buildFinisher := r.StartBuild(options)
 	buildFinishedArgs := &BuildFinishedArgs{Box: nil, Result: "failed"}
 	defer buildFinisher.Finish(buildFinishedArgs)
 
+	// Debug information
 	dumpOptions(options)
 
 	// Do some sanity checks before starting
@@ -777,23 +779,21 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		return soft.Exit(err)
 	}
 
-	runnerCtx := context.Background()
-
+	// Start copying code
 	logger.Println(f.Info("Executing pipeline"))
-	_, err = p.EnsureCode()
+	_, err = r.EnsureCode()
 	if err != nil {
 		e.Emit(Logs, &LogsArgs{
-			Options: options,
-			Hidden:  false,
-			Stream:  "stderr",
-			Logs:    err.Error() + "\n",
+			Stream: "stderr",
+			Logs:   err.Error() + "\n",
 		})
 		return soft.Exit(err)
 	}
 
+	// Setup environment is still a fairly special step, it needs
+	// to start our boxes and get everything set up
 	logger.Println(f.Info("Running step", "setup environment"))
-
-	shared, err := p.SetupEnvironment(runnerCtx)
+	shared, err := r.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
 		if options.ShouldRemove {
 			defer shared.box.Clean()
@@ -803,10 +803,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	if err != nil {
 		logger.Errorln(f.Fail("Step failed", "setup environment"))
 		e.Emit(Logs, &LogsArgs{
-			Options: options,
-			Hidden:  false,
-			Stream:  "stderr",
-			Logs:    err.Error() + "\n",
+			Stream: "stderr",
+			Logs:   err.Error() + "\n",
 		})
 		return soft.Exit(err)
 	}
@@ -816,16 +814,14 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	// Expand our context object
 	box := shared.box
-	pipeline := shared.pipeline
-
 	buildFinishedArgs.Box = box
-
+	pipeline := shared.pipeline
 	repoName := pipeline.DockerRepo()
 	tag := pipeline.DockerTag()
 	message := pipeline.DockerMessage()
 
 	// TODO(termie): hack for now, probably can be made into a naive class
-	storeStep := &Step{
+	storeStep := &ExternalStep{
 		BaseStep: &BaseStep{
 			name:    "store",
 			owner:   "wercker",
@@ -838,7 +834,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		Steps:      pipeline.Steps(),
 		StoreStep:  storeStep,
 		AfterSteps: pipeline.AfterSteps(),
-		Options:    options,
 	})
 
 	pr := &PipelineResult{
@@ -853,7 +848,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	for _, step := range pipeline.Steps() {
 		logger.Printf(f.Info("Running step", step.DisplayName()))
 
-		sr, err := p.RunStep(shared, step, stepCounter.Increment())
+		sr, err := r.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
 
 			pr.Success = false
@@ -886,7 +881,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		// up by being unable to deliver the artifacts
 
 		// If we are not saving a commit we still need one temporarily to
-		// perform the export.
+		// perform the export, it will get cleaned up when the build finishes.
 		if !options.ShouldCommit {
 			_, err = box.Commit(repoName, tag, message)
 			if err != nil {
@@ -902,7 +897,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				PackageURL: "",
 				ExitCode:   1,
 			}
-			finisher := p.StartStep(shared, storeStep, stepCounter.Increment())
+			finisher := r.StartStep(shared, storeStep, stepCounter.Increment())
 			defer finisher.Finish(sr)
 
 			originalFailedStepName := pr.FailedStepName
@@ -914,13 +909,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				pr.FailedStepMessage = "Unable to store container"
 
 				e.Emit(Logs, &LogsArgs{
-					Build:   pipeline,
-					Options: options,
-					Order:   stepCounter.Current,
-					Step:    storeStep,
-					Logs:    "Exporting container\n",
-					Stream:  "stdout",
-					Hidden:  false,
+					Logs: "Exporting container\n",
 				})
 
 				file, err := ioutil.TempFile("", "export-image-")
@@ -971,13 +960,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					logger.Println("Storing docker repository on S3")
 
 					e.Emit(Logs, &LogsArgs{
-						Build:   pipeline,
-						Options: options,
-						Order:   stepCounter.Current,
-						Step:    storeStep,
-						Logs:    "Storing container\n",
-						Stream:  "stdout",
-						Hidden:  false,
+						Logs: "Storing container\n",
 					})
 
 					s3Store := NewS3Store(options.AWSOptions)
@@ -989,13 +972,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					}
 
 					e.Emit(Logs, &LogsArgs{
-						Build:   pipeline,
-						Options: options,
-						Order:   stepCounter.Current,
-						Step:    storeStep,
-						Logs:    "Storing container complete\n",
-						Stream:  "stdout",
-						Hidden:  false,
+						Logs: "Storing container complete\n",
 					})
 				}
 
@@ -1016,13 +993,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				pr.FailedStepMessage = "Unable to store pipeline output"
 
 				e.Emit(Logs, &LogsArgs{
-					Build:   pipeline,
-					Options: options,
-					Order:   stepCounter.Current,
-					Step:    storeStep,
-					Logs:    "Storing artifacts\n",
-					Stream:  "stdout",
-					Hidden:  false,
+					Logs: "Storing artifacts\n",
 				})
 
 				artifact, err := pipeline.CollectArtifact(shared.containerID)
@@ -1042,13 +1013,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 				}
 
 				e.Emit(Logs, &LogsArgs{
-					Build:   pipeline,
-					Options: options,
-					Order:   stepCounter.Current,
-					Step:    storeStep,
-					Logs:    "Storing artifacts complete\n",
-					Stream:  "stdout",
-					Hidden:  false,
+					Logs: "Storing artifacts complete\n",
 				})
 			}
 
@@ -1098,7 +1063,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		logger.Panicln(err)
 	}
 
-	newSessCtx, newSess, err := p.GetSession(runnerCtx, container.ID)
+	newSessCtx, newSess, err := r.GetSession(runnerCtx, container.ID)
 	if err != nil {
 		logger.Panicln(err)
 	}
@@ -1127,7 +1092,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	for _, step := range pipeline.AfterSteps() {
 		logger.Println(f.Info("Running after-step", step.DisplayName()))
 
-		_, err := p.RunStep(newShared, step, stepCounter.Increment())
+		_, err := r.RunStep(newShared, step, stepCounter.Increment())
 		if err != nil {
 			logger.Println(f.Fail("After-step failed", step.DisplayName()))
 			break

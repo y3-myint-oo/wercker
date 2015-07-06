@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"code.google.com/p/go-uuid/uuid"
-	"github.com/chuckpreslar/emission"
 	"golang.org/x/net/context"
 	"gopkg.in/fsnotify.v1"
 )
@@ -29,7 +28,6 @@ type WatchStep struct {
 	reload bool
 	data   map[string]string
 	logger *LogEntry
-	e      *emission.Emitter
 }
 
 // NewWatchStep is a special step for doing docker pushes
@@ -58,7 +56,6 @@ func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep,
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
 		logger:   rootLogger.WithField("Logger", "WatchStep"),
-		e:        GetEmitter(),
 	}, nil
 }
 
@@ -173,6 +170,7 @@ func (s *WatchStep) killProcesses(containerID string, signal string) error {
 
 // Execute runs a command and optionally reloads it
 func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
+	e := GetGlobalEmitter()
 	// Start watching our stdout
 	stopListening := make(chan struct{})
 	defer func() { stopListening <- struct{}{} }()
@@ -180,11 +178,9 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		for {
 			select {
 			case line := <-sess.recv:
-				sess.e.Emit(Logs, &LogsArgs{
-					Options: sess.options,
-					Hidden:  sess.logsHidden,
-					Logs:    line,
-					Stream:  "stdout",
+				e.Emit(Logs, &LogsArgs{
+					Hidden: sess.logsHidden,
+					Logs:   line,
 				})
 			// We need to make sure we stop eating the stdout from the container
 			// promiscuously when we finish out step

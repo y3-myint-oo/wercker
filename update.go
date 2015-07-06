@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/cheggaaa/pb"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -12,8 +11,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/cheggaaa/pb"
 )
 
+// Updater data structure for versions
 type Updater struct {
 	CurrentVersion *Versions
 	ServerVersion  *Versions
@@ -21,6 +23,7 @@ type Updater struct {
 	l              *LogEntry
 }
 
+// NewUpdater constructor
 func NewUpdater(channel string) (*Updater, error) {
 	serverVersion, err := getServerVersion(channel)
 	if err != nil {
@@ -34,13 +37,13 @@ func NewUpdater(channel string) (*Updater, error) {
 	}, nil
 }
 
-// DownloadUrl returns the url to download the latest version
-func (u *Updater) DownloadUrl() string {
+// DownloadURL returns the url to download the latest version
+func (u *Updater) DownloadURL() string {
 	return fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/%s_%s/wercker", u.channel, runtime.GOOS, runtime.GOARCH)
 }
 
-// DownloadVersionUrl returns the url to download the specified version
-func (u *Updater) DownloadVersionUrl(version string) string {
+// DownloadVersionURL returns the url to download the specified version
+func (u *Updater) DownloadVersionURL(version string) string {
 	return fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/versions/%s/%s_%s/wercker", version, runtime.GOOS, runtime.GOARCH)
 }
 
@@ -65,7 +68,7 @@ func (u *Updater) Update() error {
 	}
 	defer temp.Close()
 
-	newVersion, err := http.Get(u.DownloadUrl())
+	newVersion, err := http.Get(u.DownloadURL())
 	if err != nil {
 		return err
 	}

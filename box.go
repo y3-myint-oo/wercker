@@ -236,7 +236,7 @@ func exposedPortMaps(published []string) ([]ExposedPortMap, error) {
 }
 
 //RecoverInteractive restarts the box with a terminal attached
-func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step IStep) error {
+func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step Step) error {
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {
 		return nil
@@ -523,7 +523,7 @@ func (b *Box) ExportImage(options *ExportImageOptions) error {
 // emitStatus will decode the messages coming from r and decode these into
 // JSONMessage
 func emitStatus(r io.Reader, options *PipelineOptions) {
-	e := GetEmitter()
+	e := GetGlobalEmitter()
 
 	s := NewJSONMessageProcessor()
 	dec := json.NewDecoder(r)
@@ -538,10 +538,8 @@ func emitStatus(r io.Reader, options *PipelineOptions) {
 
 		line := s.ProcessJSONMessage(&m)
 		e.Emit(Logs, &LogsArgs{
-			Options: options,
-			Logs:    line,
-			Stream:  "docker",
-			Hidden:  false,
+			Logs:   line,
+			Stream: "docker",
 		})
 	}
 }
