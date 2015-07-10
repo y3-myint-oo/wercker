@@ -235,7 +235,12 @@ func normalizeRepo(name string) string {
 	if len(parts) == 1 {
 		return name
 	}
-	return strings.Join(parts[len(parts)-2:], "/")
+
+	for strings.Contains(parts[0], ".") {
+		parts = parts[1:]
+	}
+
+	return strings.Join(parts, "/")
 }
 
 func normalizeRegistry(address string) string {
@@ -277,8 +282,12 @@ func normalizeRegistry(address string) string {
 // TODO(termie): this really uses the docker registry code rather than the
 //               client so, maybe this is the wrong place
 func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
+	logger := rootLogger.WithField("Logger", "Docker")
+	logger.Debug("Checking access for ", opts.Repository)
+
 	// Do the steps described here: https://gist.github.com/termie/bc0334b086697a162f67
 	name := normalizeRepo(opts.Repository)
+	logger.Debug("Normalized repo ", name)
 
 	auth := registry.BasicAuth{
 		Username: opts.Auth.Username,
@@ -287,6 +296,8 @@ func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
 	client := registry.NewClient()
 
 	reg := normalizeRegistry(opts.Registry)
+	logger.Debug("Normalized Registry ", reg)
+
 	client.BaseURL, _ = url.Parse(reg)
 
 	if opts.Access == "write" {

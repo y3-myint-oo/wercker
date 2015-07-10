@@ -36,6 +36,7 @@ func TestDockerNormalizeRegistry(t *testing.T) {
 }
 
 func TestDockerNormalizeRepo(t *testing.T) {
+	assert.Equal(t, "gox-mirror", normalizeRepo("example.com/gox-mirror"))
 	assert.Equal(t, "termie/gox-mirror", normalizeRepo("quay.io/termie/gox-mirror"))
 	assert.Equal(t, "termie/gox-mirror", normalizeRepo("termie/gox-mirror"))
 	assert.Equal(t, "mongo", normalizeRepo("mongo"))
