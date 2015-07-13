@@ -131,12 +131,15 @@ func (b *Box) binds() ([]string, error) {
 
 // RunServices runs the services associated with this box
 func (b *Box) RunServices(env *Environment) error {
-	for _, serviceBox := range b.services {
-		b.logger.Debugln("Starting service:", serviceBox.Name)
-		_, err := serviceBox.Run(env)
+	links := []string{}
+
+	for _, service := range b.services {
+		b.logger.Debugln("Startinq service:", service.Name)
+		_, err := service.Run(env, links)
 		if err != nil {
 			return err
 		}
+		links = append(links, fmt.Sprintf("%s:%s", service.container.Name, service.ShortName))
 	}
 	return nil
 }
