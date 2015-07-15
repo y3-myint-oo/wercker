@@ -93,9 +93,13 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
 	stepCounter := &Counter{Current: 3}
 	steps := mapBuildSteps(stepCounter, "mainSteps", args.Steps...)
-	storeStep := mapBuildSteps(stepCounter, "mainSteps", args.StoreStep)
+
+	if args.StoreStep != nil {
+		storeStep := mapBuildSteps(stepCounter, "mainSteps", args.StoreStep)
+		steps = append(steps, storeStep...)
+	}
+
 	afterSteps := mapBuildSteps(stepCounter, "finalSteps", args.AfterSteps...)
-	steps = append(steps, storeStep...)
 	steps = append(steps, afterSteps...)
 
 	opts := &reporter.NewPipelineStepsArgs{
