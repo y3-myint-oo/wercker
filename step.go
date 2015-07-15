@@ -316,6 +316,9 @@ func (s *ExternalStep) Fetch() (string, error) {
 			client := NewAPIClient(s.options.GlobalOptions)
 			stepInfo, err := client.GetStepVersion(s.Owner(), s.Name(), s.Version())
 			if err != nil {
+				if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == 404 {
+					return "", fmt.Errorf("The step \"%s\" was not found", s.ID())
+				}
 				return "", err
 			}
 
