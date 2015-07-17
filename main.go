@@ -820,13 +820,19 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	tag := pipeline.DockerTag()
 	message := pipeline.DockerMessage()
 
+	shouldStore := options.ShouldStoreS3 || options.ShouldStoreLocal
+
 	// TODO(termie): hack for now, probably can be made into a naive class
-	storeStep := &ExternalStep{
-		BaseStep: &BaseStep{
-			name:    "store",
-			owner:   "wercker",
-			version: Version(),
-		},
+	var storeStep Step = nil
+
+	if shouldStore {
+		storeStep = &ExternalStep{
+			BaseStep: &BaseStep{
+				name:    "store",
+				owner:   "wercker",
+				version: Version(),
+			},
+		}
 	}
 
 	e.Emit(BuildStepsAdded, &BuildStepsAddedArgs{
@@ -873,8 +879,6 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	// so that is the number of steps + get code + setup environment + store
 	// TODO(termie): remove all the this "order" stuff completely
 	stepCounter.Current = len(pipeline.Steps()) + 3
-
-	shouldStore := options.ShouldStoreS3 || options.ShouldStoreLocal
 
 	if shouldStore || (pr.Success && options.ShouldArtifacts) {
 		// At this point the build has effectively passed but we can still mess it
