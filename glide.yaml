@@ -12,7 +12,7 @@ import:
     ref:     d3a6a53
     vcs:     git
   - package: github.com/fsouza/go-dockerclient
-    ref:     d197177
+    ref:     f6e9f5396e0e8f34472efe443d0cb7f9af162b88
     vcs:     git
   - package: github.com/termie/go-shutil
     ref:     bcacb06

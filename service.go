@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
 )
 
@@ -38,6 +39,15 @@ func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, e
 
 	// Import the environment and command
 	myEnv := dockerEnv(b.config.Env, env)
+
+	var entrypoint []string
+	if b.entrypoint != "" {
+		entrypoint, err = shlex.Split(b.entrypoint)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	cmd := []string{}
 	if b.config.Cmd != "" {
 		cmd = append(cmd, b.config.Cmd)
@@ -52,6 +62,7 @@ func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, e
 				Env:             myEnv,
 				NetworkDisabled: b.networkDisabled,
 				DNS:             b.options.DockerDNS,
+				Entrypoint:      entrypoint,
 			},
 		})
 
