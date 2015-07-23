@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
 	"golang.org/x/net/context"
 	"gopkg.in/yaml.v2"

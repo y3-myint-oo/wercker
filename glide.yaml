@@ -1,11 +1,8 @@
 package: github.com/wercker/sentcli
 import:
-  - package: code.google.com/p/go-uuid
-    ref:     35bc42037350
-    vcs:     hg
-  - package: code.google.com/p/go.net
-    ref:     937a34c9de13
-    vcs:     hg
+  - package: github.com/pborman/uuid
+    # ref:     35bc42037350
+    # vcs:     hg
   - package: github.com/Sirupsen/logrus
     ref:     844911c
     vcs:     git

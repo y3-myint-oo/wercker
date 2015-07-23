@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/codegangsta/cli"
+	"github.com/pborman/uuid"
 )
 
 // GlobalOptions applicable to everything
@@ -415,9 +415,10 @@ type PipelineOptions struct {
 	ShouldStoreS3    bool
 
 	BuildDir     string
+	CacheDir     string
+	ContainerDir string
 	ProjectDir   string
 	StepDir      string
-	ContainerDir string
 
 	GuestRoot  string
 	MntRoot    string
@@ -609,9 +610,10 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	shouldStoreS3 := c.Bool("store-s3")
 
 	buildDir, _ := filepath.Abs(c.String("build-dir"))
+	cacheDir, _ := filepath.Abs(c.String("cache-dir"))
+	containerDir, _ := filepath.Abs(c.String("container-dir"))
 	projectDir, _ := filepath.Abs(c.String("project-dir"))
 	stepDir, _ := filepath.Abs(c.String("step-dir"))
-	containerDir, _ := filepath.Abs(c.String("container-dir"))
 
 	guestRoot := c.String("guest-root")
 	mntRoot := c.String("mnt-root")
@@ -662,9 +664,10 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		ShouldStoreS3:    shouldStoreS3,
 
 		BuildDir:     buildDir,
+		CacheDir:     cacheDir,
+		ContainerDir: containerDir,
 		ProjectDir:   projectDir,
 		StepDir:      stepDir,
-		ContainerDir: containerDir,
 
 		GuestRoot:  guestRoot,
 		MntRoot:    mntRoot,

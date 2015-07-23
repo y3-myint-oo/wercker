@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/flynn/go-shlex"
+	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
 )
 
