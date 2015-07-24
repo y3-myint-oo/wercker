@@ -158,7 +158,7 @@ func (p *BasePipeline) CommonEnv() [][]string {
 		[]string{"WERCKER_ROOT", p.options.GuestPath("source")},
 		[]string{"WERCKER_SOURCE_DIR", p.options.GuestPath("source", p.options.SourceDir)},
 		// TODO(termie): Support cache dir
-		[]string{"WERCKER_CACHE_DIR", "/cache"},
+		[]string{"WERCKER_CACHE_DIR", p.options.GuestPath("cache")},
 		[]string{"WERCKER_OUTPUT_DIR", p.options.GuestPath("output")},
 		[]string{"WERCKER_PIPELINE_DIR", p.options.GuestPath()},
 		[]string{"WERCKER_REPORT_DIR", p.options.GuestPath("report")},
@@ -180,20 +180,18 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 	cmds := []string{}
 
 	if !p.options.DirectMount {
-		cmds = append(cmds, []string{
+		cmds = append(cmds,
 			// Make sure our guest path exists
 			fmt.Sprintf(`mkdir "%s"`, p.options.GuestPath()),
 			// Make sure the output path exists
 			// Copy the source from the mounted directory to the pipeline dir
 			fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("source"), p.options.GuestPath("source")),
-		}...)
+			// Copy the cache from the mounted directory to the pipeline dir
+			fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("cache"), p.options.GuestPath("cache")),
+		)
 	}
 
-	cmds = append(cmds, []string{
-		fmt.Sprintf(`mkdir "%s"`, p.options.GuestPath("output")),
-		// Make sure the cachedir exists
-		fmt.Sprintf(`mkdir "%s"`, "/cache"),
-	}...)
+	cmds = append(cmds, fmt.Sprintf(`mkdir "%s"`, p.options.GuestPath("output")))
 
 	for _, cmd := range cmds {
 		exit, _, err := sess.SendChecked(sessionCtx, cmd)
@@ -292,7 +290,7 @@ func (p *BasePipeline) CollectCache(containerID string) error {
 	dfc := NewDockerFileCollector(client, containerID)
 
 	// TODO(termie): this is hardcoded everywhere we use it
-	archive, errs := dfc.Collect("/cache")
+	archive, errs := dfc.Collect(p.options.GuestPath("cache"))
 
 	select {
 	case err = <-archive.Multi("cache", p.options.CacheDir, 1024*1024*1000):

@@ -212,8 +212,7 @@ type ExposedPortMap struct {
 }
 
 // exposedPortMaps returns a list of exposed ports and the host
-func exposedPortMaps(published []string) ([]ExposedPortMap, error) {
-	dockerHost := os.Getenv("DOCKER_HOST")
+func exposedPortMaps(dockerHost string, published []string) ([]ExposedPortMap, error) {
 	if dockerHost != "" {
 		docker, err := url.Parse(dockerHost)
 		if err != nil {
