@@ -68,11 +68,11 @@ func (a *Archive) Single(source, target string, maxSize int64) chan error {
 	empty := &ArchiveCheckEmpty{}
 	max := &ArchiveMaxSize{MaxSize: maxSize}
 	extract := &ArchiveExtract{}
-	defer extract.Clean()
 
 	errs := make(chan error)
 	go func() {
 		defer close(errs)
+		defer extract.Clean()
 		err := a.Stream(
 			single,
 			empty,
@@ -97,11 +97,11 @@ func (a *Archive) Multi(source, target string, maxSize int64) chan error {
 	empty := &ArchiveCheckEmpty{}
 	max := &ArchiveMaxSize{MaxSize: maxSize}
 	extract := &ArchiveExtract{}
-	defer extract.Clean()
 
 	errs := make(chan error)
 	go func() {
 		defer close(errs)
+		defer extract.Clean()
 		err := a.Stream(
 			empty,
 			max,
