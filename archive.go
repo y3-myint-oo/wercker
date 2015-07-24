@@ -115,8 +115,7 @@ func (a *Archive) Multi(source, target string, maxSize int64) chan error {
 			errs <- ErrEmptyTarball
 			return
 		}
-		extract.Rename(source, target)
-		errs <- nil
+		errs <- extract.Rename(source, target)
 	}()
 	return errs
 }
@@ -233,6 +232,9 @@ func (p *ArchiveExtract) TempDir() string {
 
 // Rename one of the extracted paths to the target path
 func (p *ArchiveExtract) Rename(source, target string) error {
+	if err := os.RemoveAll(target); err != nil {
+		return err
+	}
 	return os.Rename(filepath.Join(p.tempDir, source), target)
 }
 
