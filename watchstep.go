@@ -232,7 +232,7 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 			s.logger.Errorln(err)
 			return
 		}
-		open, err := exposedPortMaps(s.options.PublishPorts)
+		open, err := exposedPortMaps(s.options.DockerHost, s.options.PublishPorts)
 		if err != nil {
 			s.logger.Warnf(f.Info("There was a problem parsing your docker host."), err)
 			return
