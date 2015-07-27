@@ -207,7 +207,7 @@ func NewArchiveExtract(tempDir string) (*ArchiveExtract, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ArchiveExtract{t}, nil
+	return &ArchiveExtract{workingDir: t}, nil
 }
 
 // Process impl
