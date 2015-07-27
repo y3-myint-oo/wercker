@@ -235,20 +235,7 @@ func (p *ArchiveExtract) Rename(source, target string) error {
 	if err := os.RemoveAll(target); err != nil {
 		return err
 	}
-	sourceFd, err := os.Open(filepath.Join(p.tempDir, source))
-	if err != nil {
-		return err
-	}
-	defer sourceFd.Close()
-	destFd, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-	defer destFd.Close()
-	if _, err = io.Copy(destFd, sourceFd); err != nil {
-		return err
-	}
-	return os.Remove(sourceFd.Name())
+	return os.Rename(filepath.Join(p.tempDir, source), target)
 }
 
 // Clean should be called to clean up the tempdir
