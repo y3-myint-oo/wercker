@@ -63,13 +63,17 @@ EntryLoop:
 }
 
 // Single file extraction with max size and empty check
-func (a *Archive) Single(source, target string, maxSize int64) chan error {
+func (a *Archive) Single(source, target string, maxSize int64) (errs chan error) {
+	errs = make(chan error)
 	single := &ArchiveSingle{Name: source}
 	empty := &ArchiveCheckEmpty{}
 	max := &ArchiveMaxSize{MaxSize: maxSize}
-	extract := &ArchiveExtract{}
+	extract, err := NewArchiveExtract("")
+	if err != nil {
+		errs <- err
+		return errs
+	}
 
-	errs := make(chan error)
 	go func() {
 		defer close(errs)
 		defer extract.Clean()
@@ -93,12 +97,16 @@ func (a *Archive) Single(source, target string, maxSize int64) chan error {
 }
 
 // Multi file extraction with max size and empty check
-func (a *Archive) Multi(source, target string, maxSize int64) chan error {
+func (a *Archive) Multi(source, target string, maxSize int64) (errs chan error) {
+	errs = make(chan error)
 	empty := &ArchiveCheckEmpty{}
 	max := &ArchiveMaxSize{MaxSize: maxSize}
-	extract := &ArchiveExtract{}
+	extract, err := NewArchiveExtract(filepath.Dir(target))
+	if err != nil {
+		errs <- err
+		return errs
+	}
 
-	errs := make(chan error)
 	go func() {
 		defer close(errs)
 		defer extract.Clean()
@@ -189,21 +197,23 @@ func (p *ArchiveMaxSize) Process(hdr *tar.Header, r io.Reader) (*tar.Header, io.
 type ArchiveExtract struct {
 	// Target  string // target path
 	// Source  string // path within the tarball
-	tempDir string // path where temporary extraction occurs
+	workingDir string // path where temporary extraction occurs
+}
+
+// NewArchiveExtract creates a new ArchiveExtract.
+// tempDir is directory to perform work. Leave empty string to use default
+func NewArchiveExtract(tempDir string) (*ArchiveExtract, error) {
+	t, err := ioutil.TempDir(tempDir, "tar-")
+	if err != nil {
+		return nil, err
+	}
+	return &ArchiveExtract{t}, nil
 }
 
 // Process impl
 func (p *ArchiveExtract) Process(hdr *tar.Header, r io.Reader) (*tar.Header, io.Reader, error) {
-	if p.tempDir == "" {
-		t, err := ioutil.TempDir("", "tar-")
-		if err != nil {
-			return hdr, r, err
-		}
-		p.tempDir = t
-	}
-
 	// If a directory make it and continue
-	fpath := filepath.Join(p.tempDir, hdr.Name)
+	fpath := filepath.Join(p.workingDir, hdr.Name)
 	if hdr.FileInfo().IsDir() {
 		err := os.MkdirAll(fpath, 0755)
 		return hdr, r, err
@@ -224,24 +234,18 @@ func (p *ArchiveExtract) Process(hdr *tar.Header, r io.Reader) (*tar.Header, io.
 	return hdr, r, nil
 }
 
-// TempDir is where we temporarily extracted the file, make sure to delete it
-// with Clean()
-func (p *ArchiveExtract) TempDir() string {
-	return p.tempDir
-}
-
 // Rename one of the extracted paths to the target path
 func (p *ArchiveExtract) Rename(source, target string) error {
 	if err := os.RemoveAll(target); err != nil {
 		return err
 	}
-	return os.Rename(filepath.Join(p.tempDir, source), target)
+	return os.Rename(filepath.Join(p.workingDir, source), target)
 }
 
-// Clean should be called to clean up the tempdir
+// Clean should be called to clean up the workingDir
 func (p *ArchiveExtract) Clean() {
-	if p.tempDir != "" {
-		os.RemoveAll(p.tempDir)
+	if p.workingDir != "" {
+		os.RemoveAll(p.workingDir)
 	}
 }
 
