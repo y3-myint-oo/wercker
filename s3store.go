@@ -2,10 +2,10 @@ package main
 
 import (
 	"os"
-	"time"
 
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 // NewS3Store creates a new S3Store
@@ -15,13 +15,20 @@ func NewS3Store(options *AWSOptions) *S3Store {
 		logger.Panic("options cannot be nil")
 	}
 
-	return &S3Store{options, logger}
+	client := s3.New(&aws.Config{Region: &options.AWSRegion})
+
+	return &S3Store{
+		client:  client,
+		logger:  logger,
+		options: options,
+	}
 }
 
 // S3Store stores files in S3
 type S3Store struct {
-	options *AWSOptions
+	client  *s3.S3
 	logger  *LogEntry
+	options *AWSOptions
 }
 
 // StoreFromFile copies the file from args.Path to options.Bucket + args.Key.
@@ -40,55 +47,36 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 	}
 	defer file.Close()
 
-	auth, err := aws.GetAuth(
-		s.options.AWSAccessKeyID,
-		s.options.AWSSecretAccessKey,
-		"",
-		time.Now().Add(time.Minute*10))
+	uploadManager := s3manager.NewUploader(&s3manager.UploadOptions{
+		S3:       s.client,
+		PartSize: s.options.S3PartSize,
+	})
+
+	_, err = uploadManager.Upload(&s3manager.UploadInput{
+		ACL:                  aws.String("private"),
+		Body:                 file,
+		Bucket:               aws.String(s.options.S3Bucket),
+		Key:                  aws.String(args.Key),
+		Metadata:             args.Meta,
+		ServerSideEncryption: aws.String("AES256"),
+	})
+
 	if err != nil {
-		s.logger.WithField("Error", err).Error("Unable to create auth credentials")
+		s.logger.WithFields(LogFields{
+			"Bucket": s.options.S3Bucket,
+			"Path":   args.Path,
+			"Region": s.options.AWSRegion,
+			"S3Key":  args.Key,
+		}).Error("Unable to upload file to S3")
 		return err
 	}
 
-	region := aws.Regions[s.options.AWSRegion]
-	bucket := s3.New(auth, region).Bucket(s.options.S3Bucket)
+	s.logger.WithFields(LogFields{
+		"Bucket": s.options.S3Bucket,
+		"Path":   args.Path,
+		"Region": s.options.AWSRegion,
+		"S3Key":  args.Key,
+	}).Info("Uploading file to S3 complete")
 
-	s.logger.Println("Creating multipart upload")
-
-	multiOptions := s3.Options{
-		SSE:  true,
-		Meta: args.Meta,
-	}
-	multi, err := bucket.Multi(args.Key, args.ContentType, s3.Private, multiOptions)
-	if err != nil {
-		s.logger.WithField("Error", err).Error("Unable to create multipart")
-		return err
-	}
-
-	abort := true
-	defer func() {
-		if abort {
-			s.logger.Warn("Aborting multipart upload")
-			multi.Abort()
-		}
-	}()
-
-	s.logger.Println("Starting to upload to S3")
-
-	parts, err := multi.PutAll(file, s.options.S3PartSize)
-	if err != nil {
-		s.logger.WithField("Error", err).Error("Unable to upload multiparts")
-		return err
-	}
-
-	if err = multi.Complete(parts); err != nil {
-		s.logger.WithField("Error", err).Error("Unable to complete multipart upload")
-		return err
-	}
-
-	// Reset abort flag
-	abort = false
-
-	s.logger.Println("Upload to S3 complete")
 	return nil
 }

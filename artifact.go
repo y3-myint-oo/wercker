@@ -7,10 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
 	"github.com/fsouza/go-dockerclient"
 )
 
@@ -18,6 +15,7 @@ import (
 type Artificer struct {
 	options *PipelineOptions
 	logger  *LogEntry
+	store   Store
 }
 
 // Artifact holds the information required to extract a folder
@@ -36,7 +34,14 @@ type Artifact struct {
 // NewArtificer returns an Artificer
 func NewArtificer(options *PipelineOptions) *Artificer {
 	logger := rootLogger.WithField("Logger", "Artificer")
-	return &Artificer{options: options, logger: logger}
+
+	s3store := NewS3Store(options.AWSOptions)
+
+	return &Artificer{
+		options: options,
+		logger:  logger,
+		store:   s3store,
+	}
 }
 
 // URL returns the artifact's S3 url
@@ -111,41 +116,11 @@ func (a *Artificer) Collect(artifact *Artifact) (*Artifact, error) {
 
 // Upload an artifact to S3
 func (a *Artificer) Upload(artifact *Artifact) error {
-
-	auth, err := aws.GetAuth(
-		a.options.AWSAccessKeyID,
-		a.options.AWSSecretAccessKey,
-		"",
-		time.Now().Add(time.Minute*10))
-	if err != nil {
-		return err
-	}
-
-	a.logger.Println("Uploading artifact:", artifact.RemotePath())
-	region := aws.Regions[a.options.AWSRegion]
-
-	s := s3.New(auth, region)
-	b := s.Bucket(a.options.S3Bucket)
-
-	f, err := os.Open(artifact.HostPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	multi, err := b.Multi(artifact.RemotePath(), "application/x-tar", s3.Private, s3.Options{SSE: true})
-	if err != nil {
-		return err
-	}
-	parts, err := multi.PutAll(f, a.options.S3PartSize)
-	if err != nil {
-		return err
-	}
-	if err = multi.Complete(parts); err != nil {
-		return err
-	}
-
-	return nil
+	return a.store.StoreFromFile(&StoreFromFileArgs{
+		Path:        artifact.HostPath,
+		Key:         artifact.RemotePath(),
+		ContentType: "application/x-tar",
+	})
 }
 
 // FileCollector gets files out of containers

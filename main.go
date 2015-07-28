@@ -955,8 +955,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					ContentType: "application/x-snappy-framed",
 					Path:        file.Name(),
 					Key:         key,
-					Meta: map[string][]string{
-						"Sha256": []string{calculatedHash},
+					Meta: map[string]*string{
+						"Sha256": &calculatedHash,
 					},
 				}
 

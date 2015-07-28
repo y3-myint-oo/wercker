@@ -5,7 +5,7 @@ import "fmt"
 // Store is generic store interface
 type Store interface {
 	// StoreFromFile copies a file from local disk to the store
-	StoreFromFile(StoreFromFileArgs) error
+	StoreFromFile(*StoreFromFileArgs) error
 }
 
 // StoreFromFileArgs are the args for storing a file
@@ -20,7 +20,7 @@ type StoreFromFileArgs struct {
 	ContentType string
 
 	// Meta data associated with the upload (might be ignored)
-	Meta map[string][]string
+	Meta map[string]*string
 }
 
 // GenerateBaseKey generates the base key based on ApplicationID and either
