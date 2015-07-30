@@ -963,3 +963,7 @@ func (s *DockerPushStep) ReportPath(...string) string {
 	// for now we just want something that doesn't exist
 	return uuid.NewRandom().String()
 }
+
+func (s *DockerPushStep) ShouldSyncEnv() bool {
+	return true
+}

@@ -101,3 +101,7 @@ func (s *ShellStep) ReportPath(...string) string {
 	// for now we just want something that doesn't exist
 	return uuid.NewRandom().String()
 }
+
+func (s *ShellStep) ShouldSyncEnv() bool {
+	return false
+}
