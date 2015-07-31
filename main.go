@@ -955,6 +955,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 					ContentType: "application/x-snappy-framed",
 					Path:        file.Name(),
 					Key:         key,
+					MaxTries:    3,
 					Meta: map[string]*string{
 						"Sha256": &calculatedHash,
 					},

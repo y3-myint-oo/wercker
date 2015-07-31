@@ -21,6 +21,9 @@ type StoreFromFileArgs struct {
 
 	// Meta data associated with the upload (might be ignored)
 	Meta map[string]*string
+
+	// MaxTries is the maximum that a store should retry should the store fail.
+	MaxTries int
 }
 
 // GenerateBaseKey generates the base key based on ApplicationID and either

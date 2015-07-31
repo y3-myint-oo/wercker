@@ -33,11 +33,16 @@ type S3Store struct {
 
 // StoreFromFile copies the file from args.Path to options.Bucket + args.Key.
 func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
+	if args.MaxTries == 0 {
+		args.MaxTries = 1
+	}
+
 	s.logger.WithFields(LogFields{
-		"Bucket": s.options.S3Bucket,
-		"Path":   args.Path,
-		"Region": s.options.AWSRegion,
-		"S3Key":  args.Key,
+		"Bucket":   s.options.S3Bucket,
+		"Path":     args.Path,
+		"Region":   s.options.AWSRegion,
+		"S3Key":    args.Key,
+		"MaxTries": args.MaxTries,
 	}).Info("Uploading file to S3")
 
 	file, err := os.Open(args.Path)
@@ -47,36 +52,46 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 	}
 	defer file.Close()
 
-	uploadManager := s3manager.NewUploader(&s3manager.UploadOptions{
-		S3:       s.client,
-		PartSize: s.options.S3PartSize,
-	})
+	var outerErr error = nil
+	for try := 1; try <= args.MaxTries; try++ {
+		uploadManager := s3manager.NewUploader(&s3manager.UploadOptions{
+			S3:       s.client,
+			PartSize: s.options.S3PartSize,
+		})
 
-	_, err = uploadManager.Upload(&s3manager.UploadInput{
-		ACL:                  aws.String("private"),
-		Body:                 file,
-		Bucket:               aws.String(s.options.S3Bucket),
-		Key:                  aws.String(args.Key),
-		Metadata:             args.Meta,
-		ServerSideEncryption: aws.String("AES256"),
-	})
+		_, err = uploadManager.Upload(&s3manager.UploadInput{
+			ACL:                  aws.String("private"),
+			Body:                 file,
+			Bucket:               aws.String(s.options.S3Bucket),
+			Key:                  aws.String(args.Key),
+			Metadata:             args.Meta,
+			ServerSideEncryption: aws.String("AES256"),
+		})
 
-	if err != nil {
+		if err != nil {
+			s.logger.WithFields(LogFields{
+				"Bucket":   s.options.S3Bucket,
+				"Path":     args.Path,
+				"Region":   s.options.AWSRegion,
+				"S3Key":    args.Key,
+				"Try":      try,
+				"MaxTries": args.MaxTries,
+			}).Error("Unable to upload file to S3")
+			outerErr = err
+			continue
+		}
+
 		s.logger.WithFields(LogFields{
-			"Bucket": s.options.S3Bucket,
-			"Path":   args.Path,
-			"Region": s.options.AWSRegion,
-			"S3Key":  args.Key,
-		}).Error("Unable to upload file to S3")
-		return err
+			"Bucket":   s.options.S3Bucket,
+			"Path":     args.Path,
+			"Region":   s.options.AWSRegion,
+			"S3Key":    args.Key,
+			"Try":      try,
+			"MaxTries": args.MaxTries,
+		}).Info("Uploading file to S3 complete")
+
+		return nil
 	}
 
-	s.logger.WithFields(LogFields{
-		"Bucket": s.options.S3Bucket,
-		"Path":   args.Path,
-		"Region": s.options.AWSRegion,
-		"S3Key":  args.Key,
-	}).Info("Uploading file to S3 complete")
-
-	return nil
+	return outerErr
 }
