@@ -72,6 +72,7 @@ type Step interface {
 	Owner() string
 	SafeID() string
 	Version() string
+	ShouldSyncEnv() bool
 
 	// Actual methods
 	Fetch() (string, error)
@@ -533,6 +534,10 @@ func (s *ExternalStep) MntPath(p ...string) string {
 func (s *ExternalStep) ReportPath(p ...string) string {
 	newArgs := append([]string{s.safeID}, p...)
 	return s.options.ReportPath(newArgs...)
+}
+
+func (s *ExternalStep) ShouldSyncEnv() bool {
+	return false
 }
 
 // NewWerckerInitStep returns our fake initial step
