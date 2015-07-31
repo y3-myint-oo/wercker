@@ -1003,5 +1003,9 @@ func (s *DockerPushStep) ReportPath(...string) string {
 
 // ShouldSyncEnv before running this step = TRUE
 func (s *DockerPushStep) ShouldSyncEnv() bool {
+	// If disable-sync is set, only sync if it is not true
+	if disableSync, ok := s.data["disable-sync"]; ok {
+		return disableSync != "true"
+	}
 	return true
 }
