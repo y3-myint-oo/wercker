@@ -492,10 +492,13 @@ func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 		Author:     "wercker",
 	}
 	image, err := client.CommitContainer(commitOptions)
+	if err != nil {
+		return nil, err
+	}
 
 	b.images = append(b.images, image)
 
-	return image, err
+	return image, nil
 }
 
 // ExportImageOptions are the options available for ExportImage.
