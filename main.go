@@ -582,6 +582,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 
 	repository, err := client.GetDockerRepository(buildID)
 	if err != nil {
+		os.Remove(file.Name())
 		return soft.Exit(err)
 	}
 	defer repository.Content.Close()
@@ -602,6 +603,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 	_, err = io.Copy(file, s)
 	if err != nil {
 		logger.WithField("Error", err).Error("Unable to copy data from URL to file")
+		os.Remove(file.Name())
 		return soft.Exit(err)
 	}
 
