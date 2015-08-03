@@ -53,11 +53,11 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 	defer file.Close()
 
 	var outerErr error = nil
+	uploadManager := s3manager.NewUploader(&s3manager.UploadOptions{
+		S3:       s.client,
+		PartSize: s.options.S3PartSize,
+	})
 	for try := 1; try <= args.MaxTries; try++ {
-		uploadManager := s3manager.NewUploader(&s3manager.UploadOptions{
-			S3:       s.client,
-			PartSize: s.options.S3PartSize,
-		})
 
 		_, err = uploadManager.Upload(&s3manager.UploadInput{
 			ACL:                  aws.String("private"),
