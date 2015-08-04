@@ -133,6 +133,7 @@ func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 		StepOrder: args.Order,
 		Duration:  &duration,
 		Success:   &args.Successful,
+		Message:   args.Message,
 	}
 	h.sendPayload(&sendPayloadArgs{
 		p:         p,
@@ -189,7 +190,6 @@ func (h *MetricsEventHandler) sendPayload(args *sendPayloadArgs) {
 	p.PipelineName = pipelineName
 	p.BoxName = boxName
 	p.BoxTag = boxTag
-
 	h.keen.AddEvent(collection, p)
 }
 
@@ -252,6 +252,7 @@ type MetricsPayload struct {
 	StepOrder int    `json:"stepOrder,omitempty"`
 
 	Success   *bool  `json:"success,omitempty"`
+	Message   string `json:"message,omitempty"`
 	Duration  *int64 `json:"duration,omitempty"`
 	StartedBy string `json:"startedBy,omitempty"`
 
