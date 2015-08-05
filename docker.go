@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/signal"
 	"path"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"crypto/sha256"
 
 	"github.com/CenturyLinkLabs/docker-reg-client/registry"
+	dockersignal "github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/term"
 	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
@@ -146,6 +148,15 @@ func (c *DockerClient) AttachInteractive(containerID string, cmd []string, initi
 	}
 	defer term.RestoreTerminal(os.Stdin.Fd(), oldState)
 
+	// Handle resizes
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, dockersignal.SIGWINCH)
+	go func() {
+		for range sigchan {
+			c.ResizeTTY(exec.ID)
+		}
+	}()
+
 	err = c.StartExec(exec.ID, docker.StartExecOptions{
 		InputStream:  stdin,
 		OutputStream: os.Stdout,
@@ -155,6 +166,20 @@ func (c *DockerClient) AttachInteractive(containerID string, cmd []string, initi
 	})
 
 	return err
+}
+
+func (c *DockerClient) ResizeTTY(execID string) error {
+	ws, err := term.GetWinsize(os.Stdout.Fd())
+	if err != nil {
+		c.logger.Debugln("Error getting term size: %s", err)
+		return err
+	}
+	err = c.ResizeExecTTY(execID, int(ws.Height), int(ws.Width))
+	if err != nil {
+		c.logger.Debugln("Error resizing term: %s", err)
+		return err
+	}
+	return nil
 }
 
 // AttachTerminal connects us to container and gives us a terminal

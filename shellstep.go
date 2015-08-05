@@ -16,6 +16,7 @@ type ShellStep struct {
 	Cmd    []string
 	data   map[string]string
 	logger *LogEntry
+	env    *Environment
 }
 
 // NewShellStep is a special step for doing docker pushes
@@ -60,6 +61,7 @@ func (s *ShellStep) InitEnv(env *Environment) {
 	} else {
 		s.Cmd = []string{"/bin/bash"}
 	}
+	s.env = env
 }
 
 // Fetch NOP
@@ -109,5 +111,5 @@ func (s *ShellStep) ReportPath(...string) string {
 }
 
 func (s *ShellStep) ShouldSyncEnv() bool {
-	return false
+	return true
 }
