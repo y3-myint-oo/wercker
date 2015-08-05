@@ -418,6 +418,15 @@ func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
 		return nil, err
 	}
 
+	// Shortcut to speed up local dev
+	if !b.options.DockerLocal {
+		image, err := client.InspectImage(b.Name)
+		if err != nil {
+			return nil, err
+		}
+		return image, nil
+	}
+
 	// Check for access to this image
 	auth := docker.AuthConfiguration{
 		Username: env.Interpolate(b.config.Username),
