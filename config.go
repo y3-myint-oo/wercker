@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"strconv"
 
 	"gopkg.in/yaml.v2"
 )
@@ -49,18 +50,25 @@ type StepConfig struct {
 	Data map[string]string
 }
 
-// ifaceToString takes either a string or bool from yaml and makes it a string
+// ifaceToString takes a value from yaml and makes it a string (currently
+// supported: string, int, bool). Returns an empty string if the type is not
+// supported.
 func ifaceToString(dataValue interface{}) string {
-	assertedValue, ok := dataValue.(string)
-	if !ok {
-		maybeBool, ok := dataValue.(bool)
-		if ok && maybeBool {
-			assertedValue = "true"
-		} else {
-			assertedValue = "false"
-		}
+	switch v := dataValue.(type) {
+	case string:
+		return v
+	case int:
+		return strconv.Itoa(v)
+	case int32:
+		i := int64(v)
+		return strconv.FormatInt(i, 10)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case bool:
+		return strconv.FormatBool(v)
+	default:
+		return ("")
 	}
-	return assertedValue
 }
 
 // UnmarshalYAML is fun, for this one as we're supporting three different
