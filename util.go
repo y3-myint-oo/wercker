@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const homePrefix = "~/"
@@ -400,4 +401,25 @@ func MaxInt(input ...int) int {
 		}
 	}
 	return max
+}
+
+// Timer so we can dump step timings
+type Timer struct {
+	begin time.Time
+}
+
+func NewTimer() *Timer {
+	return &Timer{begin: time.Now()}
+}
+
+func (t *Timer) Reset() {
+	t.begin = time.Now()
+}
+
+func (t *Timer) Elapsed() time.Duration {
+	return time.Now().Sub(t.begin)
+}
+
+func (t *Timer) String() string {
+	return fmt.Sprintf("%.2fs", t.Elapsed().Seconds())
 }

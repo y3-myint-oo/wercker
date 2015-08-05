@@ -759,6 +759,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	r := NewRunner(options, getter)
 	runnerCtx := context.Background()
 
+	// Main timer
+	mainTimer := NewTimer()
+	timer := NewTimer()
+
 	// These will be emitted at the end of the execution, we're going to be
 	// pessimistic and report that we failed, unless overridden at the end of the
 	// execution.
@@ -781,6 +785,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	// Start copying code
 	logger.Println(f.Info("Executing pipeline"))
+	timer.Reset()
 	_, err = r.EnsureCode()
 	if err != nil {
 		e.Emit(Logs, &LogsArgs{
@@ -789,10 +794,14 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		})
 		return soft.Exit(err)
 	}
+	if options.Verbose {
+		logger.Printf(f.Success("Copied working dir", timer.String()))
+	}
 
 	// Setup environment is still a fairly special step, it needs
 	// to start our boxes and get everything set up
 	logger.Println(f.Info("Running step", "setup environment"))
+	timer.Reset()
 	shared, err := r.SetupEnvironment(runnerCtx)
 	if shared.box != nil {
 		if options.ShouldRemove {
@@ -801,7 +810,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		defer shared.box.Stop()
 	}
 	if err != nil {
-		logger.Errorln(f.Fail("Step failed", "setup environment"))
+		logger.Errorln(f.Fail("Step failed", "setup environment", timer.String()))
 		e.Emit(Logs, &LogsArgs{
 			Stream: "stderr",
 			Logs:   err.Error() + "\n",
@@ -809,7 +818,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		return soft.Exit(err)
 	}
 	if options.Verbose {
-		logger.Printf(f.Success("Step passed", "setup environment"))
+		logger.Printf(f.Success("Step passed", "setup environment", timer.String()))
 	}
 
 	// Expand our context object
@@ -853,18 +862,18 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	stepCounter := &Counter{Current: 3}
 	for _, step := range pipeline.Steps() {
 		logger.Printf(f.Info("Running step", step.DisplayName()))
-
+		timer.Reset()
 		sr, err := r.RunStep(shared, step, stepCounter.Increment())
 		if err != nil {
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName()
 			pr.FailedStepMessage = sr.Message
-			logger.Printf(f.Fail("Step failed", step.DisplayName()))
+			logger.Printf(f.Fail("Step failed", step.DisplayName(), timer.String()))
 			break
 		}
 
 		if options.Verbose {
-			logger.Printf(f.Success("Step passed", step.DisplayName()))
+			logger.Printf(f.Success("Step passed", step.DisplayName(), timer.String()))
 		}
 	}
 
@@ -1040,7 +1049,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	// We're sending our build finished but we're not done yet,
 	// now is time to run after-steps if we have any
 	if pr.Success {
-		logger.Println(f.Success("Steps passed"))
+		logger.Println(f.Success("Steps passed", mainTimer.String()))
 		buildFinishedArgs.Result = "passed"
 	}
 	buildFinisher.Finish(buildFinishedArgs)
@@ -1057,9 +1066,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		}
 
 		if pr.Success {
-			logger.Println(f.Success("Pipeline finished"))
+			logger.Println(f.Success("Pipeline finished", mainTimer.String()))
 		} else {
-			logger.Println(f.Fail("Pipeline failed"))
+			logger.Println(f.Fail("Pipeline failed", mainTimer.String()))
 		}
 
 		if !pr.Success {
@@ -1105,13 +1114,13 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	for _, step := range pipeline.AfterSteps() {
 		logger.Println(f.Info("Running after-step", step.DisplayName()))
-
+		timer.Reset()
 		_, err := r.RunStep(newShared, step, stepCounter.Increment())
 		if err != nil {
-			logger.Println(f.Fail("After-step failed", step.DisplayName()))
+			logger.Println(f.Fail("After-step failed", step.DisplayName(), timer.String()))
 			break
 		}
-		logger.Println(f.Success("After-step passed", step.DisplayName()))
+		logger.Println(f.Success("After-step passed", step.DisplayName(), timer.String()))
 	}
 
 	// We're about to end the build, so pull the cache and explode it
@@ -1124,9 +1133,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 
 	if pr.Success {
-		logger.Println(f.Success("Pipeline finished"))
+		logger.Println(f.Success("Pipeline finished", mainTimer.String()))
 	} else {
-		logger.Println(f.Fail("Pipeline failed"))
+		logger.Println(f.Fail("Pipeline failed", mainTimer.String()))
 	}
 
 	if !pr.Success {

@@ -298,6 +298,9 @@ func (p *Runner) AddServices(pipeline Pipeline, rawConfig *Config, box *Box) err
 
 // CopyCache copies the source into the HostPath
 func (p *Runner) CopyCache() error {
+	timer := NewTimer()
+	f := &Formatter{p.options.GlobalOptions}
+
 	err := os.MkdirAll(p.options.CacheDir, 0755)
 	if err != nil {
 		return err
@@ -314,12 +317,18 @@ func (p *Runner) CopyCache() error {
 			return err
 		}
 	}
+
+	if p.options.Verbose {
+		p.logger.Printf(f.Success("Cache -> Staging Area", timer.String()))
+	}
 	return nil
 }
 
 // CopySource copies the source into the HostPath
 func (p *Runner) CopySource() error {
-	// Start setting up the pipeline dir
+	timer := NewTimer()
+	f := &Formatter{p.options.GlobalOptions}
+
 	err := os.MkdirAll(p.options.HostPath(), 0755)
 	if err != nil {
 		return err
@@ -335,6 +344,9 @@ func (p *Runner) CopySource() error {
 		if err != nil {
 			return err
 		}
+	}
+	if p.options.Verbose {
+		p.logger.Printf(f.Success("Source -> Staging Area", timer.String()))
 	}
 	return nil
 }
