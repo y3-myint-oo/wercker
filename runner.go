@@ -306,16 +306,12 @@ func (p *Runner) CopyCache() error {
 		return err
 	}
 
-	if p.options.DirectMount {
-		err = os.Symlink(p.options.CacheDir, p.options.HostPath("cache"))
-		if err != nil {
-			return err
-		}
-	} else {
-		err = shutil.CopyTree(p.options.CacheDir, p.options.HostPath("cache"), nil)
-		if err != nil {
-			return err
-		}
+	err = os.Symlink(p.options.CacheDir, p.options.HostPath("cache"))
+	if err != nil {
+		return err
+	}
+	if p.options.Verbose {
+		p.logger.Printf(f.Success("Cache -> Staging Area", timer.String()))
 	}
 
 	if p.options.Verbose {
@@ -334,16 +330,12 @@ func (p *Runner) CopySource() error {
 		return err
 	}
 
-	if p.options.DirectMount {
-		err = os.Symlink(p.ProjectDir(), p.options.HostPath("source"))
-		if err != nil {
-			return err
-		}
-	} else {
-		err = shutil.CopyTree(p.ProjectDir(), p.options.HostPath("source"), nil)
-		if err != nil {
-			return err
-		}
+	err = os.Symlink(p.ProjectDir(), p.options.HostPath("source"))
+	if err != nil {
+		return err
+	}
+	if p.options.Verbose {
+		p.logger.Printf(f.Success("Source -> Staging Area", timer.String()))
 	}
 	if p.options.Verbose {
 		p.logger.Printf(f.Success("Source -> Staging Area", timer.String()))
@@ -444,6 +436,7 @@ func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
 func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, error) {
 	shared := &RunnerShared{}
 	f := &Formatter{p.options.GlobalOptions}
+	timer := NewTimer()
 
 	sr := &StepResult{
 		Success:  false,
@@ -496,6 +489,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 
 	// Fetch the box
+	timer.Reset()
 	box := pipeline.Box()
 	_, err = box.Fetch(pipeline.Env())
 	if err != nil {
@@ -504,16 +498,24 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 	// TODO(termie): dump some logs about the image
 	shared.box = box
+	if p.options.Verbose {
+		p.logger.Printf(f.Success(fmt.Sprintf("Fetched %s", box.Name), timer.String()))
+	}
 
 	// Fetch the services and add them to the box
 	services := pipeline.Services()
 	for _, service := range services {
+		timer.Reset()
 		_, err = service.Fetch(pipeline.Env())
 		if err != nil {
 			sr.Message = err.Error()
 			return shared, err
 		}
 		box.AddService(service)
+
+		if p.options.Verbose {
+			p.logger.Printf(f.Success(fmt.Sprintf("Fetched %s", service.Name), timer.String()))
+		}
 	}
 
 	// Start setting up the pipeline dir
@@ -537,24 +539,28 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Fetch the steps
 	steps := pipeline.Steps()
 	for _, step := range steps {
-		if p.options.Verbose {
-			p.logger.Println(f.Info("Preparing step", step.Name()))
-		}
+		timer.Reset()
 		if _, err := step.Fetch(); err != nil {
 			sr.Message = err.Error()
 			return shared, err
 		}
+		if p.options.Verbose {
+			p.logger.Printf(f.Success("Prepared step", step.Name(), timer.String()))
+		}
+
 	}
 
 	// ... and the after steps
 	afterSteps := pipeline.AfterSteps()
 	for _, step := range afterSteps {
-		if p.options.Verbose {
-			p.logger.Println(f.Info("Preparing after-step", step.Name()))
-		}
+		timer.Reset()
 		if _, err := step.Fetch(); err != nil {
 			sr.Message = err.Error()
 			return shared, err
+		}
+
+		if p.options.Verbose {
+			p.logger.Printf(f.Success("Prepared step", step.Name(), timer.String()))
 		}
 	}
 

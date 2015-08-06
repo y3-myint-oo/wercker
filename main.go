@@ -1066,6 +1066,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			if err != nil {
 				logger.WithField("Error", err).Error("Unable to store cache")
 			}
+			if options.Verbose {
+				logger.Printf(f.Success("Exported Cache", timer.String()))
+			}
 		}
 
 		if pr.Success {
