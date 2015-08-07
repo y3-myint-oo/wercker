@@ -255,6 +255,7 @@ func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step Step) error
 	env = append(env, pipeline.Env().Hidden.Export()...)
 	env = append(env, step.Env().Export()...)
 	env = append(env, fmt.Sprintf("cd %s", cwd))
+	env = append(env, fmt.Sprintf("clear"))
 	cmd := []string{b.cmd}
 	return client.AttachInteractive(container.ID, cmd, env)
 }
