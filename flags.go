@@ -99,6 +99,18 @@ var (
 
 	// These flags are advanced dev settings
 	internalDevFlags = []cli.Flag{
+		cli.BoolTFlag{Name: "direct-mount", Usage: "Mount our binds read-write to the pipeline path."},
+		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish.", Hidden: true},
+		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
+		cli.BoolTFlag{Name: "enable-dev-steps", Hidden: true, Usage: `
+		Enable internal dev steps.
+		This enables:
+		- internal/watch
+		`},
+	}
+
+	// These flags are advanced build settings
+	internalBuildFlags = []cli.Flag{
 		cli.BoolFlag{Name: "direct-mount", Usage: "Mount our binds read-write to the pipeline path."},
 		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish.", Hidden: true},
 		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
@@ -160,6 +172,18 @@ var (
 	}
 
 	PipelineFlags = [][]cli.Flag{
+		localPathFlags,
+		werckerFlags,
+		dockerFlags,
+		internalBuildFlags,
+		gitFlags,
+		registryFlags,
+		artifactFlags,
+		awsFlags,
+		configFlags,
+	}
+
+	DevPipelineFlags = [][]cli.Flag{
 		localPathFlags,
 		werckerFlags,
 		dockerFlags,

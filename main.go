@@ -61,7 +61,7 @@ var (
 				os.Exit(1)
 			}
 		},
-		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
+		Flags: flagsFor(DevPipelineFlags, WerckerInternalFlags),
 	}
 
 	checkConfigCommand = cli.Command{
@@ -1058,7 +1058,8 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	if len(pipeline.AfterSteps()) == 0 {
 		// We're about to end the build, so pull the cache and explode it
 		// into the CacheDir
-		if pr.Success && !options.DirectMount {
+		if !options.DirectMount {
+			timer.Reset()
 			err = pipeline.CollectCache(shared.containerID)
 			if err != nil {
 				logger.WithField("Error", err).Error("Unable to store cache")
@@ -1125,11 +1126,16 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 
 	// We're about to end the build, so pull the cache and explode it
 	// into the CacheDir
-	if pr.Success && !options.DirectMount {
+	if !options.DirectMount {
+		timer.Reset()
 		err = pipeline.CollectCache(newShared.containerID)
 		if err != nil {
 			logger.WithField("Error", err).Error("Unable to store cache")
 		}
+		if options.Verbose {
+			logger.Printf(f.Success("Exported Cache", timer.String()))
+		}
+
 	}
 
 	if pr.Success {
