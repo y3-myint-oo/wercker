@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"path"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -25,6 +26,12 @@ type BoxConfig struct {
 	Password   string
 	Registry   string
 	Entrypoint string
+	URL        string
+}
+
+// IsExternal tells us if the box (service) is located on disk
+func (c *BoxConfig) IsExternal() bool {
+	return c.URL != "" && strings.HasPrefix(c.URL, "file://")
 }
 
 // UnmarshalYAML first attempts to unmarshal as a string to ID otherwise

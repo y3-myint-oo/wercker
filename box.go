@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/docker/docker/utils"
 	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
+	"golang.org/x/net/context"
 )
 
 // Box is our wrapper for Box operations
@@ -19,7 +18,7 @@ type Box struct {
 	Name            string
 	ShortName       string
 	networkDisabled bool
-	services        []*ServiceBox
+	services        []ServiceBox
 	options         *PipelineOptions
 	container       *docker.Container
 	config          *BoxConfig
@@ -103,10 +102,28 @@ func (b *Box) links() []string {
 	serviceLinks := []string{}
 
 	for _, service := range b.services {
-		serviceLinks = append(serviceLinks, fmt.Sprintf("%s:%s", service.container.Name, service.ShortName))
+		serviceLinks = append(serviceLinks, service.Link())
 	}
 	b.logger.Debugln("Creating links:", serviceLinks)
 	return serviceLinks
+}
+
+// Link gives us the parameter to Docker to link to this box
+func (b *Box) Link() string {
+	return fmt.Sprintf("%s:%s", b.container.Name, b.ShortName)
+}
+
+// GetName gets the box name
+func (b *Box) GetName() string {
+	return b.Name
+}
+
+// GetID gets the container ID or empty string if we don't have a container
+func (b *Box) GetID() string {
+	if b.container != nil {
+		return b.container.ID
+	}
+	return ""
 }
 
 func (b *Box) binds() ([]string, error) {
@@ -136,16 +153,16 @@ func (b *Box) binds() ([]string, error) {
 }
 
 // RunServices runs the services associated with this box
-func (b *Box) RunServices(env *Environment) error {
+func (b *Box) RunServices(ctx context.Context, env *Environment) error {
 	links := []string{}
 
 	for _, service := range b.services {
-		b.logger.Debugln("Startinq service:", service.Name)
-		_, err := service.Run(env, links)
+		b.logger.Debugln("Startinq service:", service.GetName())
+		_, err := service.Run(ctx, env, links)
 		if err != nil {
 			return err
 		}
-		links = append(links, fmt.Sprintf("%s:%s", service.container.Name, service.ShortName))
+		links = append(links, service.Link())
 	}
 	return nil
 }
@@ -266,9 +283,13 @@ func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step Step) error
 	return client.AttachInteractive(container.ID, cmd, env)
 }
 
+func (b *Box) getContainerName() string {
+	return "wercker-pipeline-" + b.options.PipelineID
+}
+
 // Run creates the container and runs it.
-func (b *Box) Run(env *Environment) (*docker.Container, error) {
-	err := b.RunServices(env)
+func (b *Box) Run(ctx context.Context, env *Environment) (*docker.Container, error) {
+	err := b.RunServices(ctx, env)
 	if err != nil {
 		return nil, err
 	}
@@ -296,10 +317,9 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 	}
 
 	// Make and start the container
-	containerName := "wercker-pipeline-" + b.options.PipelineID
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
-			Name: containerName,
+			Name: b.getContainerName(),
 			Config: &docker.Config{
 				Image:           b.Name,
 				Tty:             false,
@@ -345,8 +365,8 @@ func (b *Box) Clean() error {
 	}
 
 	for _, service := range b.services {
-		if service.container != nil {
-			containers = append(containers, service.container.ID)
+		if containerID := service.GetID(); containerID != "" {
+			containers = append(containers, containerID)
 		}
 	}
 
@@ -395,7 +415,7 @@ func (b *Box) Restart() (*docker.Container, error) {
 }
 
 // AddService needed by this Box
-func (b *Box) AddService(service *ServiceBox) {
+func (b *Box) AddService(service ServiceBox) {
 	b.services = append(b.services, service)
 }
 
@@ -406,14 +426,14 @@ func (b *Box) Stop() {
 		return
 	}
 	for _, service := range b.services {
-		b.logger.Debugln("Stopping service", service.Box.container.ID)
-		err := client.StopContainer(service.Box.container.ID, 1)
+		b.logger.Debugln("Stopping service", service.GetID())
+		err := client.StopContainer(service.GetID(), 1)
 
 		if err != nil {
 			if _, ok := err.(*docker.ContainerNotRunning); ok {
 				b.logger.Warnln("Service container has already stopped.")
 			} else {
-				b.logger.WithField("Error", err).Warnln("Wasn't able to stop service container", service.Box.container.ID)
+				b.logger.WithField("Error", err).Warnln("Wasn't able to stop service container", service.GetID())
 			}
 		}
 	}
@@ -432,8 +452,13 @@ func (b *Box) Stop() {
 }
 
 // Fetch an image (or update the local)
-func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
+func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error) {
+
 	client, err := NewDockerClient(b.options.DockerOptions)
+	if err != nil {
+		return nil, err
+	}
+	e, err := EmitterFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +504,7 @@ func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
 	defer w.Close()
 
 	// emitStatusses in a different go routine
-	go emitStatus(r, b.options)
+	go e.EmitStatus(r, b.options)
 
 	options := docker.PullImageOptions{
 		// changeme if we have a private registry
@@ -555,28 +580,4 @@ func (b *Box) ExportImage(options *ExportImageOptions) error {
 	}
 
 	return client.ExportImage(exportImageOptions)
-}
-
-// emitStatus will decode the messages coming from r and decode these into
-// JSONMessage
-func emitStatus(r io.Reader, options *PipelineOptions) {
-	e := GetGlobalEmitter()
-
-	s := NewJSONMessageProcessor()
-	dec := json.NewDecoder(r)
-	for {
-		var m utils.JSONMessage
-		if err := dec.Decode(&m); err == io.EOF {
-			// Once the EOF is reached the function will stop
-			break
-		} else if err != nil {
-			rootLogger.Panic(err)
-		}
-
-		line := s.ProcessJSONMessage(&m)
-		e.Emit(Logs, &LogsArgs{
-			Logs:   line,
-			Stream: "docker",
-		})
-	}
 }

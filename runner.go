@@ -12,9 +12,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-// GetPipeline is a function that will fetch the appropriate pipeline
+// PipelineGetter is a function that will fetch the appropriate pipeline
 // object from the rawConfig.
-type GetPipeline func(*Config, *PipelineOptions) (Pipeline, error)
+type PipelineGetter func(*Config, *PipelineOptions) (Pipeline, error)
 
 // GetDevPipelineFactory makes dev pipelines out of arbitrarily
 // named config sections
@@ -54,17 +54,22 @@ func GetDeployPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipe
 
 // Runner is the base type for running the pipelines.
 type Runner struct {
-	options        *PipelineOptions
-	literalLogger  *LiteralLogHandler
-	metrics        *MetricsEventHandler
-	reporter       *ReportHandler
-	pipelineGetter GetPipeline
-	logger         *LogEntry
+	options       *PipelineOptions
+	literalLogger *LiteralLogHandler
+	metrics       *MetricsEventHandler
+	reporter      *ReportHandler
+	getPipeline   PipelineGetter
+	logger        *LogEntry
+	emitter       *NormalizedEmitter
+	formatter     *Formatter
 }
 
 // NewRunner from global options
-func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
-	e := GetGlobalEmitter()
+func NewRunner(ctx context.Context, options *PipelineOptions, getPipeline PipelineGetter) (*Runner, error) {
+	e, err := EmitterFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	logger := rootLogger.WithField("Logger", "Runner")
 	// h, err := NewLogHandler()
 	// if err != nil {
@@ -102,13 +107,15 @@ func NewRunner(options *PipelineOptions, pipelineGetter GetPipeline) *Runner {
 	}
 
 	return &Runner{
-		options:        options,
-		literalLogger:  l,
-		metrics:        mh,
-		reporter:       r,
-		pipelineGetter: pipelineGetter,
-		logger:         logger,
-	}
+		options:       options,
+		literalLogger: l,
+		metrics:       mh,
+		reporter:      r,
+		getPipeline:   getPipeline,
+		logger:        logger,
+		emitter:       e,
+		formatter:     &Formatter{options.GlobalOptions},
+	}, nil
 }
 
 // ProjectDir returns the directory where we expect to find the code for this project
@@ -225,45 +232,20 @@ func (p *Runner) GetConfig() (*Config, string, error) {
 	return rawConfig, string(werckerYaml), nil
 }
 
-// GetBox fetches and returns the base box for the pipeline.
-func (p *Runner) GetBox(pipeline Pipeline, rawConfig *Config) (*Box, error) {
-	var box *Box
-	var err error
-	box = pipeline.Box()
-
-	if box == nil {
-		if rawConfig.Box == nil {
-			return nil, fmt.Errorf("No box found in wercker.yml, cannot proceed")
-		}
-		// Promote ConfigBox to a real Box. We believe in you, Box!
-		box, err = rawConfig.Box.ToBox(p.options, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	p.logger.Debugln("Box:", box.Name)
-
-	// Make sure we have the box available
-	image, err := box.Fetch(pipeline.Env())
-	if err != nil {
-		return nil, err
-	}
-	if image == nil {
-		return nil, fmt.Errorf("No box fetched.")
-	}
-	p.logger.Debugln("Docker Image:", image.ID)
-	return box, nil
-}
-
 // AddServices fetches and links the services to the base box.
-func (p *Runner) AddServices(pipeline Pipeline, rawConfig *Config, box *Box) error {
+func (p *Runner) AddServices(ctx context.Context, pipeline Pipeline, box *Box) error {
+	f := p.formatter
+	timer := NewTimer()
 	for _, service := range pipeline.Services() {
-		if _, err := service.Fetch(pipeline.Env()); err != nil {
+		timer.Reset()
+		if _, err := service.Fetch(ctx, pipeline.Env()); err != nil {
 			return err
 		}
 
 		box.AddService(service)
+		if p.options.Verbose {
+			p.logger.Printf(f.Success(fmt.Sprintf("Fetched %s", service.GetName()), timer.String()))
+		}
 		// TODO(mh): We want to make sure container is running fully before
 		// allowing build steps to run. We may need custom steps which block
 		// until service services are running.
@@ -274,7 +256,7 @@ func (p *Runner) AddServices(pipeline Pipeline, rawConfig *Config, box *Box) err
 // CopyCache copies the source into the HostPath
 func (p *Runner) CopyCache() error {
 	timer := NewTimer()
-	f := &Formatter{p.options.GlobalOptions}
+	f := p.formatter
 
 	err := os.MkdirAll(p.options.CacheDir, 0755)
 	if err != nil {
@@ -298,7 +280,7 @@ func (p *Runner) CopyCache() error {
 // CopySource copies the source into the HostPath
 func (p *Runner) CopySource() error {
 	timer := NewTimer()
-	f := &Formatter{p.options.GlobalOptions}
+	f := p.formatter
 
 	err := os.MkdirAll(p.options.HostPath(), 0755)
 	if err != nil {
@@ -338,7 +320,7 @@ func (p *Runner) GetSession(runnerContext context.Context, containerID string) (
 
 // GetPipeline returns a pipeline based on the "build" config section
 func (p *Runner) GetPipeline(rawConfig *Config) (Pipeline, error) {
-	return p.pipelineGetter(rawConfig, p.options)
+	return p.getPipeline(rawConfig, p.options)
 }
 
 // RunnerShared holds on to the information we got from setting up our
@@ -354,8 +336,7 @@ type RunnerShared struct {
 
 // StartStep emits BuildStepStarted and returns a Finisher for the end event.
 func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *Finisher {
-	e := GetGlobalEmitter()
-	e.Emit(BuildStepStarted, &BuildStepStartedArgs{
+	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
 		Box:   ctx.box,
 		Step:  step,
 		Order: order,
@@ -366,7 +347,7 @@ func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *Finisher {
 		if r.Artifact != nil {
 			artifactURL = r.Artifact.URL()
 		}
-		e.Emit(BuildStepFinished, &BuildStepFinishedArgs{
+		p.emitter.Emit(BuildStepFinished, &BuildStepFinishedArgs{
 			Box:                 ctx.box,
 			Successful:          r.Success,
 			Message:             r.Message,
@@ -379,21 +360,19 @@ func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *Finisher {
 
 // StartBuild emits a BuildStarted and returns for a Finisher for the end.
 func (p *Runner) StartBuild(options *PipelineOptions) *Finisher {
-	e := GetGlobalEmitter()
-	e.Emit(BuildStarted, &BuildStartedArgs{Options: options})
+	p.emitter.Emit(BuildStarted, &BuildStartedArgs{Options: options})
 	return NewFinisher(func(result interface{}) {
 		r, ok := result.(*BuildFinishedArgs)
 		if !ok {
 			return
 		}
 		r.Options = options
-		e.Emit(BuildFinished, r)
+		p.emitter.Emit(BuildFinished, r)
 	})
 }
 
 // StartFullPipeline emits a FullPipelineFinished when the Finisher is called.
 func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
-	e := GetGlobalEmitter()
 	return NewFinisher(func(result interface{}) {
 		r, ok := result.(*FullPipelineFinishedArgs)
 		if !ok {
@@ -401,7 +380,7 @@ func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
 		}
 
 		r.Options = options
-		e.Emit(FullPipelineFinished, r)
+		p.emitter.Emit(FullPipelineFinished, r)
 	})
 }
 
@@ -430,9 +409,8 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 
-	e := GetGlobalEmitter()
 	if p.options.Verbose {
-		e.Emit(Logs, &LogsArgs{
+		p.emitter.Emit(Logs, &LogsArgs{
 			Logs: fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
 		})
 	}
@@ -458,7 +436,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	shared.pipeline = pipeline
 
 	if p.options.Verbose {
-		e.Emit(Logs, &LogsArgs{
+		p.emitter.Emit(Logs, &LogsArgs{
 			Logs: fmt.Sprintf("Using config:\n%s\n", stringConfig),
 		})
 	}
@@ -466,7 +444,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Fetch the box
 	timer.Reset()
 	box := pipeline.Box()
-	_, err = box.Fetch(pipeline.Env())
+	_, err = box.Fetch(runnerCtx, pipeline.Env())
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err
@@ -478,19 +456,9 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 
 	// Fetch the services and add them to the box
-	services := pipeline.Services()
-	for _, service := range services {
-		timer.Reset()
-		_, err = service.Fetch(pipeline.Env())
-		if err != nil {
-			sr.Message = err.Error()
-			return shared, err
-		}
-		box.AddService(service)
-
-		if p.options.Verbose {
-			p.logger.Printf(f.Success(fmt.Sprintf("Fetched %s", service.Name), timer.String()))
-		}
+	if err := p.AddServices(runnerCtx, pipeline, box); err != nil {
+		sr.Message = err.Error()
+		return shared, err
 	}
 
 	// Start setting up the pipeline dir
@@ -540,7 +508,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 
 	// Boot up our main container, it will run the services
-	container, err := box.Run(pipeline.Env())
+	container, err := box.Run(runnerCtx, pipeline.Env())
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err

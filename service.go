@@ -2,35 +2,159 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
+	"net/url"
+	"path/filepath"
 	"strings"
 
+	"github.com/codegangsta/cli"
 	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
+	"golang.org/x/net/context"
 )
 
-// ServiceBox wraps a box as a service
-type ServiceBox struct {
+// ServiceBox interface to services
+type ServiceBox interface {
+	Run(context.Context, *Environment, []string) (*docker.Container, error)
+	Fetch(ctx context.Context, env *Environment) (*docker.Image, error)
+	Link() string
+	GetID() string
+	GetName() string
+}
+
+// InternalServiceBox wraps a box as a service
+type InternalServiceBox struct {
 	*Box
 	logger *LogEntry
 }
 
+// ExternalServiceBox wraps a box as a service
+type ExternalServiceBox struct {
+	*InternalServiceBox
+	externalConfig *BoxConfig
+	options        *PipelineOptions
+}
+
+// NewExternalServiceBox gives us an ExternalServiceBox from config
+func NewExternalServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*ExternalServiceBox, error) {
+	logger := rootLogger.WithField("Logger", "ExternalService")
+	return &ExternalServiceBox{
+		InternalServiceBox: &InternalServiceBox{logger: logger},
+		externalConfig:     boxConfig,
+		options:            options,
+	}, nil
+}
+
+func (s *ExternalServiceBox) configURL() (*url.URL, error) {
+	return url.Parse(s.externalConfig.URL)
+}
+
+func (s *ExternalServiceBox) getOptions(env *Environment) (*PipelineOptions, error) {
+	c, err := s.configURL()
+	if err != nil {
+		return nil, err
+	}
+	servicePath := filepath.Join(c.Host, c.Path)
+	if !filepath.IsAbs(servicePath) {
+		servicePath, err = filepath.Abs(
+			filepath.Join(s.options.ProjectPath, servicePath))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	flagSet := func(name string, flags []cli.Flag) *flag.FlagSet {
+		set := flag.NewFlagSet(name, flag.ContinueOnError)
+
+		for _, f := range flags {
+			f.Apply(set)
+		}
+		return set
+	}
+
+	set := flagSet("runservice", flagsFor(PipelineFlags, WerckerInternalFlags))
+	args := []string{
+		servicePath,
+	}
+	if err := set.Parse(args); err != nil {
+		return nil, err
+	}
+	ctx := cli.NewContext(nil, set, set)
+	newOptions, err := NewBuildOptions(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	newOptions.ShouldCommit = true
+	newOptions.PublishPorts = s.options.PublishPorts
+	newOptions.DockerLocal = true
+	newOptions.Pipeline = c.Fragment
+	return newOptions, nil
+}
+
+// Fetch the image representation of an ExternalServiceBox
+// this means running the ExternalServiceBox and comitting the image
+func (s *ExternalServiceBox) Fetch(ctx context.Context, env *Environment) (*docker.Image, error) {
+	newOptions, err := s.getOptions(env)
+
+	if err != nil {
+		return nil, err
+	}
+
+	shared, err := cmdBuild(ctx, newOptions)
+	if err != nil {
+		return nil, err
+	}
+	bc := *s.externalConfig
+	bc.ID = fmt.Sprintf("%s:%s", shared.pipeline.DockerRepo(),
+		shared.pipeline.DockerTag())
+
+	box, err := NewBox(&bc, s.options, &BoxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	// mh: don't like this...
+	s.Box = box
+	// will this work for normal services, too?
+	s.ShortName = s.externalConfig.ID
+
+	client, err := NewDockerClient(s.options.DockerOptions)
+	image, err := client.InspectImage(s.Name)
+	if err != nil {
+		return nil, err
+	}
+	return image, nil
+}
+
 // ToServiceBox turns a box into a ServiceBox
-func (b *BoxConfig) ToServiceBox(options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+func (b *BoxConfig) ToServiceBox(options *PipelineOptions, boxOptions *BoxOptions) (ServiceBox, error) {
+	if b.IsExternal() {
+		return NewExternalServiceBox(b, options, boxOptions)
+	}
 	return NewServiceBox(b, options, boxOptions)
 }
 
 // NewServiceBox from a name and other references
-func NewServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*ServiceBox, error) {
+func NewServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*InternalServiceBox, error) {
 	box, err := NewBox(boxConfig, options, boxOptions)
 	logger := rootLogger.WithField("Logger", "Service")
-	return &ServiceBox{Box: box, logger: logger}, err
+	return &InternalServiceBox{Box: box, logger: logger}, err
+}
+
+// TODO(mh) need to add to interface?
+func (b *InternalServiceBox) getContainerName() string {
+	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name, "/", "-", -1), b.options.PipelineID)
+	containerName = strings.Replace(containerName, ":", "_", -1)
+	return strings.Replace(containerName, ":", "_", -1)
 }
 
 // Run executes the service
-func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, error) {
-	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name, "/", "-", -1), b.options.PipelineID)
-	containerName = strings.Replace(containerName, ":", "_", -1)
+func (b *InternalServiceBox) Run(ctx context.Context, env *Environment, links []string) (*docker.Container, error) {
+	e, err := EmitterFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	f := &Formatter{b.options.GlobalOptions}
 
 	client, err := NewDockerClient(b.options.DockerOptions)
@@ -69,7 +193,7 @@ func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, e
 
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
-			Name: containerName,
+			Name: b.getContainerName(),
 			Config: &docker.Config{
 				Image:           b.Name,
 				Cmd:             cmd,
@@ -126,7 +250,6 @@ func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, e
 			if err != nil {
 				b.logger.Panicln(err)
 			}
-			e := GetGlobalEmitter()
 			e.Emit(Logs, &LogsArgs{
 				Stream: fmt.Sprintf("%s-stdout", b.Name),
 				Logs:   outstream.String(),

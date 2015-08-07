@@ -168,6 +168,7 @@ func (c *DockerClient) AttachInteractive(containerID string, cmd []string, initi
 	return err
 }
 
+// ResizeTTY resizes the tty size of docker connection so output looks normal
 func (c *DockerClient) ResizeTTY(execID string) error {
 	ws, err := term.GetWinsize(os.Stdout.Fd())
 	if err != nil {
@@ -670,9 +671,13 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
+	e, err := EmitterFromContext(ctx)
+	if err != nil {
+		return -1, err
+	}
 
 	// emitStatusses in a different go routine
-	go emitStatus(r, s.options)
+	go e.EmitStatus(r, s.options)
 	defer w.Close()
 
 	pushOpts := docker.PushImageOptions{
@@ -865,6 +870,10 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	if err != nil {
 		return 1, err
 	}
+	e, err := EmitterFromContext(ctx)
+	if err != nil {
+		return 1, err
+	}
 
 	s.logger.WithFields(LogFields{
 		"Registry":   s.registry,
@@ -954,7 +963,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		r, w := io.Pipe()
 
 		// emitStatusses in a different go routine
-		go emitStatus(r, s.options)
+		go e.EmitStatus(r, s.options)
 		defer w.Close()
 
 		pushOpts := docker.PushImageOptions{

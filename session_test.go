@@ -93,6 +93,7 @@ func FakeSession(t *testing.T, opts *PipelineOptions) (context.Context, context.
 	}
 	transport := &FakeTransport{}
 	topCtx, cancel := context.WithCancel(context.Background())
+	topCtx = NewEmitterContext(topCtx)
 	session := NewSession(opts, transport)
 
 	sessionCtx, err := session.Attach(topCtx)

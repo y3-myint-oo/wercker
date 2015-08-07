@@ -174,7 +174,10 @@ func (s *WatchStep) killProcesses(containerID string, signal string) error {
 
 // Execute runs a command and optionally reloads it
 func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
-	e := GetGlobalEmitter()
+	e, err := EmitterFromContext(ctx)
+	if err != nil {
+		return -1, err
+	}
 	// Start watching our stdout
 	stopListening := make(chan struct{})
 	defer func() { stopListening <- struct{}{} }()

@@ -37,9 +37,9 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			err = cmdBuild(opts)
+			_, err = cmdBuild(context.Background(), opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
@@ -57,9 +57,9 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			err = cmdDev(opts)
+			_, err = cmdDev(context.Background(), opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 		Flags: flagsFor(DevPipelineFlags, WerckerInternalFlags),
@@ -99,9 +99,9 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			err = cmdDeploy(opts)
+			_, err = cmdDeploy(context.Background(), opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
@@ -120,7 +120,7 @@ var (
 			}
 			err = cmdDetect(opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 	}
@@ -140,7 +140,7 @@ var (
 			}
 			err = cmdInspect(opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
@@ -159,7 +159,7 @@ var (
 			}
 			err = cmdLogin(opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 	}
@@ -176,7 +176,7 @@ var (
 			}
 			err = cmdLogout(opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 	}
@@ -196,7 +196,7 @@ var (
 
 			err = cmdPull(c, opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 	}
@@ -227,7 +227,7 @@ var (
 			}
 			err = cmdVersion(opts)
 			if err != nil {
-				os.Exit(1)
+				cliLogger.Fatal(err)
 			}
 		},
 	}
@@ -243,7 +243,7 @@ var (
 					os.Exit(1)
 				}
 				if err := GenerateDocumentation(opts, app); err != nil {
-					cliLogger.Panic(err)
+					cliLogger.Fatal(err)
 				}
 			},
 		}
@@ -316,31 +316,33 @@ func (s *SoftExit) Exit(v ...interface{}) error {
 	return fmt.Errorf("Exiting.")
 }
 
-func cmdDev(options *PipelineOptions) error {
-	var pipelineGetter GetPipeline
+type pipelineCmd func(context.Context, *PipelineOptions) (*RunnerShared, error)
+
+func cmdDev(ctx context.Context, options *PipelineOptions) (*RunnerShared, error) {
 	if options.Pipeline == "" {
 		options.Pipeline = "dev"
 	}
-	pipelineGetter = GetDevPipelineFactory(options.Pipeline)
-	return executePipeline(options, pipelineGetter)
+	pipelineGetter := GetDevPipelineFactory(options.Pipeline)
+	ctx = NewEmitterContext(ctx)
+	return executePipeline(ctx, options, pipelineGetter)
 }
 
-func cmdBuild(options *PipelineOptions) error {
-	var pipelineGetter GetPipeline
+func cmdBuild(ctx context.Context, options *PipelineOptions) (*RunnerShared, error) {
 	if options.Pipeline == "" {
 		options.Pipeline = "build"
 	}
-	pipelineGetter = GetBuildPipelineFactory(options.Pipeline)
-	return executePipeline(options, pipelineGetter)
+	pipelineGetter := GetBuildPipelineFactory(options.Pipeline)
+	ctx = NewEmitterContext(ctx)
+	return executePipeline(ctx, options, pipelineGetter)
 }
 
-func cmdDeploy(options *PipelineOptions) error {
-	var pipelineGetter GetPipeline
+func cmdDeploy(ctx context.Context, options *PipelineOptions) (*RunnerShared, error) {
 	if options.Pipeline == "" {
 		options.Pipeline = "deploy"
 	}
-	pipelineGetter = GetDeployPipelineFactory(options.Pipeline)
-	return executePipeline(options, pipelineGetter)
+	pipelineGetter := GetDeployPipelineFactory(options.Pipeline)
+	ctx = NewEmitterContext(ctx)
+	return executePipeline(ctx, options, pipelineGetter)
 }
 
 func cmdCheckConfig(options *PipelineOptions) error {
@@ -365,7 +367,6 @@ func cmdCheckConfig(options *PipelineOptions) error {
 
 	// Parse that bad boy.
 	rawConfig, err := ConfigFromYaml(werckerYaml)
-	fmt.Println(rawConfig)
 	if err != nil {
 		return soft.Exit(err)
 	}
@@ -726,16 +727,21 @@ func getYml(detected string, options *DetectOptions) {
 
 }
 
-func executePipeline(options *PipelineOptions, getter GetPipeline) error {
+func executePipeline(runnerCtx context.Context, options *PipelineOptions, getter PipelineGetter) (*RunnerShared, error) {
 	// Boilerplate
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
-	e := GetGlobalEmitter()
+	e, err := EmitterFromContext(runnerCtx)
+	if err != nil {
+		return nil, err
+	}
 	f := &Formatter{options.GlobalOptions}
 
 	// Set up the runner
-	r := NewRunner(options, getter)
-	runnerCtx := context.Background()
+	r, err := NewRunner(runnerCtx, options, getter)
+	if err != nil {
+		return nil, err
+	}
 
 	// Main timer
 	mainTimer := NewTimer()
@@ -756,9 +762,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	dumpOptions(options)
 
 	// Do some sanity checks before starting
-	err := requireDockerEndpoint(options.DockerOptions)
+	err = requireDockerEndpoint(options.DockerOptions)
 	if err != nil {
-		return soft.Exit(err)
+		return nil, soft.Exit(err)
 	}
 
 	// Start copying code
@@ -770,7 +776,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			Stream: "stderr",
 			Logs:   err.Error() + "\n",
 		})
-		return soft.Exit(err)
+		return nil, soft.Exit(err)
 	}
 	if options.Verbose {
 		logger.Printf(f.Success("Copied working dir", timer.String()))
@@ -793,7 +799,7 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 			Stream: "stderr",
 			Logs:   err.Error() + "\n",
 		})
-		return soft.Exit(err)
+		return nil, soft.Exit(err)
 	}
 	if options.Verbose {
 		logger.Printf(f.Success("Step passed", "setup environment", timer.String()))
@@ -1054,9 +1060,9 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 		}
 
 		if !pr.Success {
-			return fmt.Errorf("Step failed: %s", pr.FailedStepName)
+			return nil, fmt.Errorf("Step failed: %s", pr.FailedStepName)
 		}
-		return nil
+		return shared, nil
 	}
 
 	pipelineArgs.RanAfterSteps = true
@@ -1085,13 +1091,13 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	// Set up the base environment
 	err = pipeline.ExportEnvironment(newSessCtx, newSess)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Add the After-Step parts
 	err = pr.ExportEnvironment(newSessCtx, newSess)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, step := range pipeline.AfterSteps() {
@@ -1126,10 +1132,10 @@ func executePipeline(options *PipelineOptions, getter GetPipeline) error {
 	}
 
 	if !pr.Success {
-		return fmt.Errorf("Step failed: %s", pr.FailedStepName)
+		return nil, fmt.Errorf("Step failed: %s", pr.FailedStepName)
 	}
 
 	pipelineArgs.AfterStepSuccessful = pr.Success
 
-	return nil
+	return shared, nil
 }

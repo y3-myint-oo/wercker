@@ -165,7 +165,10 @@ func (s *Session) ShowLogs() {
 
 // Send an array of commands.
 func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ...string) error {
-	e := GetGlobalEmitter()
+	e, err := EmitterFromContext(sessionCtx)
+	if err != nil {
+		return err
+	}
 	// Do a quick initial check whether we have a valid session first
 	select {
 	case <-sessionCtx.Done():
@@ -269,10 +272,12 @@ func smartSplitLines(line, sentinel string) []string {
 // Ways for a command to be successful:
 //  [x] We received the sentinel echo with exit code 0
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
-	e := GetGlobalEmitter()
+	e, err := EmitterFromContext(sessionCtx)
+	if err != nil {
+		return -1, []string{}, err
+	}
 	recv := []string{}
 	sentinel := randomSentinel()
-	var err error
 
 	sendCtx, _ := context.WithTimeout(sessionCtx, time.Duration(s.options.CommandTimeout)*time.Millisecond)
 
