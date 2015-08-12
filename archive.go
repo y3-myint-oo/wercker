@@ -68,11 +68,7 @@ func (a *Archive) Single(source, target string, maxSize int64) (errs chan error)
 	single := &ArchiveSingle{Name: source}
 	empty := &ArchiveCheckEmpty{}
 	max := &ArchiveMaxSize{MaxSize: maxSize}
-	extract, err := NewArchiveExtract("")
-	if err != nil {
-		errs <- err
-		return errs
-	}
+	extract := NewArchiveExtract("")
 
 	go func() {
 		defer close(errs)
@@ -101,11 +97,7 @@ func (a *Archive) Multi(source, target string, maxSize int64) (errs chan error) 
 	errs = make(chan error)
 	empty := &ArchiveCheckEmpty{}
 	max := &ArchiveMaxSize{MaxSize: maxSize}
-	extract, err := NewArchiveExtract(filepath.Dir(target))
-	if err != nil {
-		errs <- err
-		return errs
-	}
+	extract := NewArchiveExtract(filepath.Dir(target))
 
 	go func() {
 		defer close(errs)
@@ -198,20 +190,26 @@ type ArchiveExtract struct {
 	// Target  string // target path
 	// Source  string // path within the tarball
 	workingDir string // path where temporary extraction occurs
+	tempDir    string // base path for temp extraction
 }
 
 // NewArchiveExtract creates a new ArchiveExtract.
 // tempDir is directory to perform work. Leave empty string to use default
-func NewArchiveExtract(tempDir string) (*ArchiveExtract, error) {
-	t, err := ioutil.TempDir(tempDir, "tar-")
-	if err != nil {
-		return nil, err
-	}
-	return &ArchiveExtract{workingDir: t}, nil
+func NewArchiveExtract(tempDir string) *ArchiveExtract {
+	return &ArchiveExtract{tempDir: tempDir}
 }
 
 // Process impl
 func (p *ArchiveExtract) Process(hdr *tar.Header, r io.Reader) (*tar.Header, io.Reader, error) {
+	// make sure we have our tempdir
+	if p.workingDir == "" {
+		t, err := ioutil.TempDir(p.tempDir, "tar-")
+		if err != nil {
+			return hdr, r, err
+		}
+		p.workingDir = t
+	}
+
 	// If a directory make it and continue
 	fpath := filepath.Join(p.workingDir, hdr.Name)
 	if hdr.FileInfo().IsDir() {

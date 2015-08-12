@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"golang.org/x/net/context"
 )
@@ -297,8 +298,12 @@ func (p *BasePipeline) CollectCache(containerID string) error {
 	archive, errs := dfc.Collect(p.options.GuestPath("cache"))
 
 	select {
-	case err = <-archive.Multi("cache", p.options.CacheDir, 1024*1024*1000):
 	case err = <-errs:
+	// TODO(termie): I hate this, but docker command either fails right away
+	//               or we don't care about it, needs to be replaced by some
+	//               sort of cancellable context
+	case <-time.After(1 * time.Second):
+		err = <-archive.Multi("cache", p.options.CacheDir, 1024*1024*1000)
 	}
 
 	if err != nil {
