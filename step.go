@@ -536,6 +536,7 @@ func (s *ExternalStep) ReportPath(p ...string) string {
 	return s.options.ReportPath(newArgs...)
 }
 
+// ShouldSyncEnv before this step, default FALSE
 func (s *ExternalStep) ShouldSyncEnv() bool {
 	return false
 }

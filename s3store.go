@@ -52,7 +52,7 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 	}
 	defer file.Close()
 
-	var outerErr error = nil
+	var outerErr error
 	uploadManager := s3manager.NewUploader(&s3manager.UploadOptions{
 		S3:       s.client,
 		PartSize: s.options.S3PartSize,

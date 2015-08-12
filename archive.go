@@ -193,7 +193,7 @@ func (p *ArchiveMaxSize) Process(hdr *tar.Header, r io.Reader) (*tar.Header, io.
 	return hdr, r, nil
 }
 
-// Extract everything to a tempdir, provide methods for Commit and Cleanup
+// ArchiveExtract everything to a tempdir, methods for Rename and Cleanup
 type ArchiveExtract struct {
 	// Target  string // target path
 	// Source  string // path within the tarball
@@ -268,7 +268,7 @@ type ArchiveBytes struct {
 	*bytes.Buffer
 }
 
-// Proceses writes the bytes for a file to ourselves (a bytes.Buffer)
+// Process writes the bytes for a file to ourselves (a bytes.Buffer)
 func (p *ArchiveBytes) Process(hdr *tar.Header, r io.Reader) (*tar.Header, io.Reader, error) {
 	_, err := io.Copy(p, r)
 	return hdr, r, err

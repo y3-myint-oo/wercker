@@ -408,18 +408,22 @@ type Timer struct {
 	begin time.Time
 }
 
+// NewTimer ctor
 func NewTimer() *Timer {
 	return &Timer{begin: time.Now()}
 }
 
+// Reset that timer
 func (t *Timer) Reset() {
 	t.begin = time.Now()
 }
 
+// Elapsed duration
 func (t *Timer) Elapsed() time.Duration {
 	return time.Now().Sub(t.begin)
 }
 
+// String repr for time
 func (t *Timer) String() string {
 	return fmt.Sprintf("%.2fs", t.Elapsed().Seconds())
 }

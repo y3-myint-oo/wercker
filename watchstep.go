@@ -303,6 +303,7 @@ func (s *WatchStep) ReportPath(...string) string {
 	return uuid.NewRandom().String()
 }
 
+// ShouldSyncEnv guess not
 func (s *WatchStep) ShouldSyncEnv() bool {
 	return false
 }
