@@ -303,7 +303,7 @@ func (s *WatchStep) ReportPath(...string) string {
 	return uuid.NewRandom().String()
 }
 
-// ShouldSyncEnv guess not
+// ShouldSyncEnv before running this step = FALSE
 func (s *WatchStep) ShouldSyncEnv() bool {
 	return false
 }
