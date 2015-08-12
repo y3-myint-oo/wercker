@@ -16,14 +16,15 @@ type RawBoxConfig struct {
 
 // BoxConfig is the type for boxes in the config
 type BoxConfig struct {
-	ID       string
-	Name     string
-	Tag      string
-	Cmd      string
-	Env      map[string]string
-	Username string
-	Password string
-	Registry string
+	ID         string
+	Name       string
+	Tag        string
+	Cmd        string
+	Env        map[string]string
+	Username   string
+	Password   string
+	Registry   string
+	Entrypoint string
 }
 
 // UnmarshalYAML first attempts to unmarshal as a string to ID otherwise

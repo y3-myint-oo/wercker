@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/utils"
+	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
 )
 
@@ -27,6 +28,7 @@ type Box struct {
 	tag             string
 	images          []*docker.Image
 	logger          *LogEntry
+	entrypoint      string
 }
 
 // BoxOptions are box options, duh
@@ -74,6 +76,8 @@ func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptio
 		cmd = "/bin/bash"
 	}
 
+	entrypoint := boxConfig.Entrypoint
+
 	logger := rootLogger.WithFields(LogFields{
 		"Logger":    "Box",
 		"Name":      name,
@@ -90,6 +94,7 @@ func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptio
 		networkDisabled: networkDisabled,
 		logger:          logger,
 		cmd:             cmd,
+		entrypoint:      entrypoint,
 	}, nil
 }
 
@@ -276,6 +281,14 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
 
+	entrypoint := []string{}
+	if b.entrypoint != "" {
+		entrypoint, err = shlex.Split(b.entrypoint)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Make and start the container
 	containerName := "wercker-pipeline-" + b.options.PipelineID
 	container, err := client.CreateContainer(
@@ -293,6 +306,7 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 				ExposedPorts:    exposedPorts(b.options.PublishPorts),
 				NetworkDisabled: b.networkDisabled,
 				DNS:             b.options.DockerDNS,
+				Entrypoint:      entrypoint,
 				// Volumes: volumes,
 			},
 		})
