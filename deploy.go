@@ -78,6 +78,9 @@ func (d *Deploy) InitEnv(hostEnv *Environment) {
 
 // DockerRepo returns the name where we might store this in docker
 func (d *Deploy) DockerRepo() string {
+	if d.options.Repository != "" {
+		return d.options.Repository
+	}
 	return fmt.Sprintf("%s/%s", d.options.ApplicationOwnerName, d.options.ApplicationName)
 }
 

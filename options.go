@@ -412,6 +412,7 @@ type PipelineOptions struct {
 	ApplicationStartedByName string
 
 	ShouldCommit     bool
+	Repository       string
 	Tag              string
 	Message          string
 	ShouldStoreLocal bool
@@ -606,7 +607,8 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		applicationStartedByName = applicationOwnerName
 	}
 
-	shouldCommit := c.Bool("commit")
+	repository := c.String("commit")
+	shouldCommit := (repository != "")
 	tag := guessTag(c, e)
 	message := guessMessage(c, e)
 	shouldStoreLocal := c.Bool("store-local")
@@ -662,6 +664,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 
 		Message:          message,
 		Tag:              tag,
+		Repository:       repository,
 		ShouldCommit:     shouldCommit,
 		ShouldStoreLocal: shouldStoreLocal,
 		ShouldStoreS3:    shouldStoreS3,

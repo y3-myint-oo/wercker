@@ -71,7 +71,7 @@ var (
 
 	// These flags affect our registry interactions
 	registryFlags = []cli.Flag{
-		cli.BoolFlag{Name: "commit", Usage: "Commit the build result locally."},
+		cli.StringFlag{Name: "commit", Value: "", Usage: "Commit the build result locally."},
 		cli.StringFlag{Name: "tag", Value: "", Usage: "Tag for this build.", EnvVar: "WERCKER_GIT_BRANCH"},
 		cli.StringFlag{Name: "message", Value: "", Usage: "Message for this build."},
 	}

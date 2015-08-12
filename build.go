@@ -71,6 +71,9 @@ func (b *Build) InitEnv(hostEnv *Environment) {
 
 // DockerRepo calculates our repo name
 func (b *Build) DockerRepo() string {
+	if b.options.Repository != "" {
+		return b.options.Repository
+	}
 	return fmt.Sprintf("build-%s", b.options.BuildID)
 }
 
