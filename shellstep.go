@@ -108,6 +108,7 @@ func (s *ShellStep) ReportPath(...string) string {
 	return uuid.NewRandom().String()
 }
 
+// ShouldSyncEnv before running this step = TRUE
 func (s *ShellStep) ShouldSyncEnv() bool {
 	return false
 }

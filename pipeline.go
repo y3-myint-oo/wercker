@@ -177,6 +177,9 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 	sess.HideLogs()
 	defer sess.ShowLogs()
 
+	timer := NewTimer()
+	f := &Formatter{p.options.GlobalOptions}
+
 	cmds := []string{}
 
 	if !p.options.DirectMount {
@@ -202,7 +205,9 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 			return fmt.Errorf("Guest command failed: %s", cmd)
 		}
 	}
-
+	if p.options.Verbose {
+		p.logger.Printf(f.Success("Source+Cache -> Guest", timer.String()))
+	}
 	return nil
 }
 
@@ -289,7 +294,6 @@ func (p *BasePipeline) CollectCache(containerID string) error {
 	}
 	dfc := NewDockerFileCollector(client, containerID)
 
-	// TODO(termie): this is hardcoded everywhere we use it
 	archive, errs := dfc.Collect(p.options.GuestPath("cache"))
 
 	select {

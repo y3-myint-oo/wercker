@@ -64,5 +64,11 @@ func FormatMessage(color string, useColors bool, messages ...string) string {
 		}
 	}
 
+	if l > 2 {
+		for _, m := range messages[2:] {
+			segments = append(segments, fmt.Sprintf(" %s", m))
+		}
+	}
+
 	return strings.Join(segments, "")
 }

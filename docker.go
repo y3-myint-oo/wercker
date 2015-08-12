@@ -964,6 +964,7 @@ func (s *DockerPushStep) ReportPath(...string) string {
 	return uuid.NewRandom().String()
 }
 
+// ShouldSyncEnv before running this step = TRUE
 func (s *DockerPushStep) ShouldSyncEnv() bool {
 	return true
 }

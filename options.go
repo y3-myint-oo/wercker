@@ -768,10 +768,6 @@ func NewDevOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	// dev command implies DirectMount
-	pipelineOpts.DirectMount = true
-	pipelineOpts.EnableDevSteps = true
-
 	return pipelineOpts, nil
 }
 
