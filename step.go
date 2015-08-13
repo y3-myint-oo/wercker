@@ -174,12 +174,13 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (Step, error) {
 	if s.ID == "internal/docker-scratch-push" {
 		return NewDockerScratchPushStep(s, options)
 	}
+	if s.ID == "internal/store-container" {
+		return NewStoreContainerStep(s, options)
+	}
 	if strings.HasPrefix(s.ID, "internal/") {
 		if !options.EnableDevSteps {
 			return nil, nil
 		}
-	if s.ID == "internal/store-container" {
-		return NewStoreContainerStep(s, options)
 	}
 	if options.EnableDevSteps {
 		if s.ID == "internal/watch" {

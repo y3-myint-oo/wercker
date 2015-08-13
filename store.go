@@ -123,7 +123,7 @@ func (s *StoreContainerStep) DockerMessage() string {
 }
 
 func (s *StoreContainerStep) Execute(ctx context.Context, sess *Session) (int, error) {
-	e := GetGlobalEmitter()
+	// e := GetGlobalEmitter()
 
 	// TODO(termie): could probably re-use the tansport's client
 	client, err := NewDockerClient(s.options.DockerOptions)
@@ -153,9 +153,9 @@ func (s *StoreContainerStep) Execute(ctx context.Context, sess *Session) (int, e
 	}
 	s.logger.WithField("Image", i).Debug("Commit completed")
 
-	e.Emit(Logs, &LogsArgs{
-		Logs: "Exporting container\n",
-	})
+	//e.Emit(Logs, &LogsArgs{
+	// Logs: "Exporting container\n",
+	//})
 
 	file, err := ioutil.TempFile("", "export-image-")
 	if err != nil {
@@ -191,9 +191,10 @@ func (s *StoreContainerStep) Execute(ctx context.Context, sess *Session) (int, e
 	key = fmt.Sprintf("%s/%s", key, "docker.tar.sz")
 
 	s.artifact = &Artifact{
-		HostPath: file.Name(),
-		Key:      key,
-		Bucket:   s.options.S3Bucket,
+		HostPath:    file.Name(),
+		Key:         key,
+		Bucket:      s.options.S3Bucket,
+		ContentType: "application/x-snappy-framed",
 		Meta: map[string]*string{
 			"Sha256": &calculatedHash,
 		},
