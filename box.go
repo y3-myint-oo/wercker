@@ -281,7 +281,7 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
 
-	entrypoint := []string{}
+	var entrypoint []string
 	if b.entrypoint != "" {
 		entrypoint, err = shlex.Split(b.entrypoint)
 		if err != nil {
