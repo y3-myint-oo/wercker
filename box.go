@@ -433,7 +433,7 @@ func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
 	}
 
 	// Shortcut to speed up local dev
-	if !b.options.DockerLocal {
+	if b.options.DockerLocal {
 		image, err := client.InspectImage(b.Name)
 		if err != nil {
 			return nil, err
