@@ -107,6 +107,7 @@ func (b *Build) CollectArtifact(containerID string) (*Artifact, error) {
 		ApplicationID: b.options.ApplicationID,
 		BuildID:       b.options.BuildID,
 		Bucket:        b.options.S3Bucket,
+		ContentType:   "application/x-tar",
 	}
 
 	sourceArtifact := &Artifact{
@@ -116,6 +117,7 @@ func (b *Build) CollectArtifact(containerID string) (*Artifact, error) {
 		ApplicationID: b.options.ApplicationID,
 		BuildID:       b.options.BuildID,
 		Bucket:        b.options.S3Bucket,
+		ContentType:   "application/x-tar",
 	}
 
 	// Get the output dir, if it is empty grab the source dir.

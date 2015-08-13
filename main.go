@@ -873,18 +873,9 @@ func executePipeline(cmdCtx context.Context, options *PipelineOptions, getter pi
 	// TODO(termie): remove all the this "order" stuff completely
 	stepCounter.Current = len(pipeline.Steps()) + 3
 
-	if shouldStore || (pr.Success && options.ShouldArtifacts) {
+	if pr.Success && options.ShouldArtifacts {
 		// At this point the build has effectively passed but we can still mess it
 		// up by being unable to deliver the artifacts
-
-		// If we are not saving a commit we still need one temporarily to
-		// perform the export, it will get cleaned up when the build finishes.
-		if !options.ShouldCommit {
-			_, err = box.Commit(repoName, tag, message)
-			if err != nil {
-				logger.Errorln("Failed to commit:", err.Error())
-			}
-		}
 
 		err = func() error {
 			sr := &StepResult{
@@ -902,118 +893,31 @@ func executePipeline(cmdCtx context.Context, options *PipelineOptions, getter pi
 
 			pr.FailedStepName = storeStep.Name()
 
-			if shouldStore {
-				pr.FailedStepMessage = "Unable to store container"
+			pr.FailedStepMessage = "Unable to store pipeline output"
 
-				e.Emit(Logs, &LogsArgs{
-					Logs: "Exporting container\n",
-				})
+			e.Emit(Logs, &LogsArgs{
+				Logs: "Storing artifacts\n",
+			})
 
-				file, err := ioutil.TempFile("", "export-image-")
+			artifact, err := pipeline.CollectArtifact(shared.containerID)
+			// Ignore ErrEmptyTarball errors
+			if err != ErrEmptyTarball {
 				if err != nil {
-					logger.WithField("Error", err).Error("Unable to create temporary file")
-					return err
-				}
-				defer os.Remove(file.Name())
-
-				hash := sha256.New()
-				w := snappystream.NewWriter(io.MultiWriter(file, hash))
-
-				logger.WithField("RepositoryName", repoName).Println("Exporting image")
-
-				exportImageOptions := &ExportImageOptions{
-					Name:         repoName,
-					OutputStream: w,
-				}
-				err = box.ExportImage(exportImageOptions)
-				if err != nil {
-					logger.WithField("Error", err).Error("Unable to export image")
 					return err
 				}
 
-				// Copy is done now, so close temporary file and set the calculatedHash
-				file.Close()
-
-				calculatedHash := hex.EncodeToString(hash.Sum(nil))
-
-				logger.WithFields(LogFields{
-					"SHA256":            calculatedHash,
-					"TemporaryLocation": file.Name(),
-				}).Println("Export image successful")
-
-				key := GenerateBaseKey(options)
-				key = fmt.Sprintf("%s/%s", key, "docker.tar.sz")
-
-				storeFromFileArgs := &StoreFromFileArgs{
-					ContentType: "application/x-snappy-framed",
-					Path:        file.Name(),
-					Key:         key,
-					MaxTries:    3,
-					Meta: map[string]*string{
-						"Sha256": &calculatedHash,
-					},
+				artificer := NewArtificer(options)
+				err = artificer.Upload(artifact)
+				if err != nil {
+					return err
 				}
 
-				if options.ShouldStoreS3 {
-					logger.Println("Storing docker repository on S3")
-
-					e.Emit(Logs, &LogsArgs{
-						Logs: "Storing container\n",
-					})
-
-					s3Store := NewS3Store(options.AWSOptions)
-
-					err = s3Store.StoreFromFile(storeFromFileArgs)
-					if err != nil {
-						logger.WithField("Error", err).Error("Unable to store to S3 store")
-						return err
-					}
-
-					e.Emit(Logs, &LogsArgs{
-						Logs: "Storing container complete\n",
-					})
-				}
-
-				if options.ShouldStoreLocal {
-					logger.Println("Storing docker repository to local storage")
-
-					localStore := NewLocalStore(options.ContainerDir)
-
-					err = localStore.StoreFromFile(storeFromFileArgs)
-					if err != nil {
-						logger.WithField("Error", err).Error("Unable to store to local store")
-						return err
-					}
-				}
+				sr.PackageURL = artifact.URL()
 			}
 
-			if pr.Success && options.ShouldArtifacts {
-				pr.FailedStepMessage = "Unable to store pipeline output"
-
-				e.Emit(Logs, &LogsArgs{
-					Logs: "Storing artifacts\n",
-				})
-
-				artifact, err := pipeline.CollectArtifact(shared.containerID)
-				// Ignore ErrEmptyTarball errors
-				if err != ErrEmptyTarball {
-					if err != nil {
-						return err
-					}
-
-					artificer := NewArtificer(options)
-					err = artificer.Upload(artifact)
-					if err != nil {
-						return err
-					}
-
-					sr.PackageURL = artifact.URL()
-				}
-
-				e.Emit(Logs, &LogsArgs{
-					Logs: "Storing artifacts complete\n",
-				})
-			}
+			e.Emit(Logs, &LogsArgs{
+				Logs: "Storing artifacts complete\n",
+			})
 
 			// Everything went ok, so reset failed related fields
 			pr.FailedStepName = originalFailedStepName

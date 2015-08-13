@@ -115,6 +115,7 @@ func (d *Deploy) CollectArtifact(containerID string) (*Artifact, error) {
 		ApplicationID: d.options.ApplicationID,
 		DeployID:      d.options.DeployID,
 		Bucket:        d.options.S3Bucket,
+		ContentType:   "application/x-tar",
 	}
 
 	// Get the output dir, if it is empty grab the source dir.

@@ -29,6 +29,9 @@ type Artifact struct {
 	DeployID      string
 	BuildStepID   string
 	Bucket        string
+	Key           string
+	ContentType   string
+	Meta          map[string]*string
 }
 
 // NewArtificer returns an Artificer
@@ -51,6 +54,9 @@ func (art *Artifact) URL() string {
 
 // RemotePath returns the S3 path for an artifact
 func (art *Artifact) RemotePath() string {
+	if art.Key != "" {
+		return art.Key
+	}
 	path := fmt.Sprintf("project-artifacts/%s", art.ApplicationID)
 	if art.DeployID != "" {
 		path = fmt.Sprintf("%s/deploy/%s", path, art.DeployID)
@@ -119,7 +125,9 @@ func (a *Artificer) Upload(artifact *Artifact) error {
 	return a.store.StoreFromFile(&StoreFromFileArgs{
 		Path:        artifact.HostPath,
 		Key:         artifact.RemotePath(),
-		ContentType: "application/x-tar",
+		ContentType: artifact.ContentType,
+		MaxTries:    3,
+		Meta:        artifact.Meta,
 	})
 }
 
