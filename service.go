@@ -50,7 +50,11 @@ func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, e
 
 	cmd := []string{}
 	if b.config.Cmd != "" {
-		cmd = append(cmd, b.config.Cmd)
+		parts, err := shlex.Split(b.config.Cmd)
+		if err != nil {
+			return nil, err
+		}
+		cmd = append(cmd, parts...)
 	}
 
 	container, err := client.CreateContainer(

@@ -289,6 +289,11 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 		}
 	}
 
+	cmd, err := shlex.Split(b.cmd)
+	if err != nil {
+		return nil, err
+	}
+
 	// Make and start the container
 	containerName := "wercker-pipeline-" + b.options.PipelineID
 	container, err := client.CreateContainer(
@@ -298,7 +303,7 @@ func (b *Box) Run(env *Environment) (*docker.Container, error) {
 				Image:           b.Name,
 				Tty:             false,
 				OpenStdin:       true,
-				Cmd:             []string{b.cmd},
+				Cmd:             cmd,
 				Env:             myEnv,
 				AttachStdin:     true,
 				AttachStdout:    true,
