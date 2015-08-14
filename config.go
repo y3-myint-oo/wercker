@@ -197,14 +197,11 @@ func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 
 // Config is the data type for wercker.yml
 type Config struct {
-	Box               *RawBoxConfig      `yaml:"box"`
-	Build             *RawPipelineConfig `yaml:"build"`
-	CommandTimeout    int                `yaml:"command-timeout"`
-	Deploy            *RawPipelineConfig `yaml:"deploy"`
-	Dev               *RawPipelineConfig `yaml:"dev"`
-	NoResponseTimeout int                `yaml:"no-response-timeout"`
-	Services          []*RawBoxConfig    `yaml:"services"`
-	SourceDir         string             `yaml:"source-dir"`
+	Box               *RawBoxConfig   `yaml:"box"`
+	CommandTimeout    int             `yaml:"command-timeout"`
+	NoResponseTimeout int             `yaml:"no-response-timeout"`
+	Services          []*RawBoxConfig `yaml:"services"`
+	SourceDir         string          `yaml:"source-dir"`
 	PipelinesMap      map[string]*RawPipelineConfig
 }
 
@@ -214,11 +211,8 @@ type RawConfig struct {
 }
 
 var configReservedWords = map[string]struct{}{
-	"box":             struct{}{},
-	"build":           struct{}{},
-	"command-timeout": struct{}{},
-	"deploy":          struct{}{},
-	"dev":             struct{}{},
+	"box":                 struct{}{},
+	"command-timeout":     struct{}{},
 	"no-response-timeout": struct{}{},
 	"services":            struct{}{},
 	"source-dir":          struct{}{},
