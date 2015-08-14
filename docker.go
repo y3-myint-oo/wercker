@@ -885,22 +885,24 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		ServerAddress: s.authServer,
 	}
 
-	checkOpts := CheckAccessOptions{
-		Auth:       auth,
-		Access:     "write",
-		Repository: s.repository,
-		Tag:        s.tag,
-		Registry:   s.registry,
-	}
+	if !s.options.DockerLocal {
+		checkOpts := CheckAccessOptions{
+			Auth:       auth,
+			Access:     "write",
+			Repository: s.repository,
+			Tag:        s.tag,
+			Registry:   s.registry,
+		}
 
-	check, err := client.CheckAccess(checkOpts)
-	if err != nil {
-		s.logger.Errorln("Error during check access")
-		return -1, err
-	}
-	if !check {
-		s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
-		return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
+		check, err := client.CheckAccess(checkOpts)
+		if err != nil {
+			s.logger.Errorln("Error during check access")
+			return -1, err
+		}
+		if !check {
+			s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
+			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
+		}
 	}
 
 	s.logger.Debugln("Init env:", s.data)
@@ -947,29 +949,30 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	}
 	s.logger.WithField("Image", i).Debug("Commit completed")
 
-	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
-	r, w := io.Pipe()
+	if !s.options.DockerLocal {
+		// Create a pipe since we want a io.Reader but Docker expects a io.Writer
+		r, w := io.Pipe()
 
-	// emitStatusses in a different go routine
-	go emitStatus(r, s.options)
-	defer w.Close()
+		// emitStatusses in a different go routine
+		go emitStatus(r, s.options)
+		defer w.Close()
 
-	pushOpts := docker.PushImageOptions{
-		Name:          s.repository,
-		Tag:           s.tag,
-		Registry:      s.registry,
-		OutputStream:  w,
-		RawJSONStream: true,
+		pushOpts := docker.PushImageOptions{
+			Name:          s.repository,
+			Tag:           s.tag,
+			Registry:      s.registry,
+			OutputStream:  w,
+			RawJSONStream: true,
+		}
+
+		s.logger.Println("Push container:", s.repository, s.registry)
+		err = client.PushImage(pushOpts, auth)
+
+		if err != nil {
+			s.logger.Errorln("Failed to push:", err)
+			return 1, err
+		}
 	}
-
-	s.logger.Println("Push container:", s.repository, s.registry)
-	err = client.PushImage(pushOpts, auth)
-
-	if err != nil {
-		s.logger.Errorln("Failed to push:", err)
-		return 1, err
-	}
-
 	return 0, nil
 }
 
