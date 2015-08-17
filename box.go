@@ -29,6 +29,7 @@ type Box struct {
 	images          []*docker.Image
 	logger          *LogEntry
 	entrypoint      string
+	image           *docker.Image
 }
 
 // BoxOptions are box options, duh
@@ -443,6 +444,7 @@ func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
 		if err != nil {
 			return nil, err
 		}
+		b.image = image
 		return image, nil
 	}
 
@@ -474,6 +476,7 @@ func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
 
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
+	defer w.Close()
 
 	// emitStatusses in a different go routine
 	go emitStatus(r, b.options)
@@ -488,15 +491,15 @@ func (b *Box) Fetch(env *Environment) (*docker.Image, error) {
 	}
 
 	err = client.PullImage(options, auth)
-	if err == nil {
-		image, err := client.InspectImage(b.Name)
-		if err == nil {
-			return image, nil
-		}
+	if err != nil {
+		return nil, err
 	}
 
-	// Cleanup the go routine by closing the writer.
-	w.Close()
+	image, err := client.InspectImage(b.Name)
+	if err != nil {
+		return nil, err
+	}
+	b.image = image
 
 	return nil, err
 }
