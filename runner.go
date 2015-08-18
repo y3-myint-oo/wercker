@@ -580,7 +580,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	boxCleanupHandler := &SignalHandler{
 		ID: "box-cleanup",
 		F: func() bool {
-			p.logger.Errorln("Keyboard interrupt detected, cleaning up containers and shutting down")
+			p.logger.Errorln("Interrupt detected, cleaning up containers and shutting down")
 			box.Stop()
 			if p.options.ShouldRemove {
 				box.Clean()
@@ -590,6 +590,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		},
 	}
 	globalSigint.Add(boxCleanupHandler)
+	globalSigterm.Add(boxCleanupHandler)
 
 	p.logger.Debugln("Attaching session to base box")
 	// Start our session
