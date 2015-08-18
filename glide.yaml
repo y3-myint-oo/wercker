@@ -39,6 +39,7 @@ import:
   - package: github.com/docker/docker/pkg/term
   - package: github.com/stretchr/testify/assert
   - package: golang.org/x/net/context
+  - package: golang.org/x/sys/unix
   - package: github.com/mreiferson/go-snappystream
   - package: github.com/wercker/journalhook
   - package: github.com/jtacoma/uritemplates

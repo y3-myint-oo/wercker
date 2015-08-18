@@ -19,6 +19,7 @@ import (
 	"github.com/mreiferson/go-snappystream"
 	"github.com/wercker/journalhook"
 	"golang.org/x/net/context"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -290,6 +291,7 @@ func main() {
 		}
 		// Register the global signal handler
 		globalSigint.Register(os.Interrupt)
+		globalSigterm.Register(unix.SIGTERM)
 		return nil
 	}
 	app.Run(os.Args)

@@ -93,3 +93,4 @@ func (s *SignalMonkey) Register(sig os.Signal) {
 }
 
 var globalSigint = NewSignalMonkey()
+var globalSigterm = NewSignalMonkey()
