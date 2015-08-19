@@ -16,18 +16,6 @@ import (
 // object from the rawConfig.
 type GetPipeline func(*Config, *PipelineOptions) (Pipeline, error)
 
-// GetDevPipeline gets the "dev" section of the yaml
-func GetDevPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-	if rawConfig.Dev == nil {
-		return nil, fmt.Errorf("No dev pipeline definition in wercker.yml")
-	}
-	build, err := rawConfig.ToPipeline(options, rawConfig.Dev)
-	if err != nil {
-		return nil, err
-	}
-	return build, nil
-}
-
 // GetDevPipelineFactory makes dev pipelines out of arbitrarily
 // named config sections
 func GetDevPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipeline, error) {
@@ -40,11 +28,6 @@ func GetDevPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipelin
 	}
 }
 
-// GetBuildPipeline grabs the "build" section of the yaml.
-func GetBuildPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-	return rawConfig.ToPipeline(options, rawConfig.Build)
-}
-
 // GetBuildPipelineFactory makes build pipelines out of arbitrarily
 // named config sections
 func GetBuildPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipeline, error) {
@@ -55,14 +38,6 @@ func GetBuildPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipel
 		}
 		return rawConfig.ToPipeline(options, pipeline)
 	}
-}
-
-// GetDeployPipeline gets the "deploy" section of the yaml.
-func GetDeployPipeline(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-	if rawConfig.Deploy == nil {
-		return nil, fmt.Errorf("No deploy pipeline definition in wercker.yml")
-	}
-	return rawConfig.ToDeploy(options, rawConfig.Deploy)
 }
 
 // GetDeployPipelineFactory makes deploy pipelines out of arbitrarily

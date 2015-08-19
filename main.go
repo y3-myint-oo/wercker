@@ -319,31 +319,28 @@ func (s *SoftExit) Exit(v ...interface{}) error {
 
 func cmdDev(options *PipelineOptions) error {
 	var pipelineGetter GetPipeline
-	if options.Pipeline != "" {
-		pipelineGetter = GetDevPipelineFactory(options.Pipeline)
-	} else {
-		pipelineGetter = GetDevPipeline
+	if options.Pipeline == "" {
+		options.Pipeline = "dev"
 	}
+	pipelineGetter = GetDevPipelineFactory(options.Pipeline)
 	return executePipeline(options, pipelineGetter)
 }
 
 func cmdBuild(options *PipelineOptions) error {
 	var pipelineGetter GetPipeline
-	if options.Pipeline != "" {
-		pipelineGetter = GetBuildPipelineFactory(options.Pipeline)
-	} else {
-		pipelineGetter = GetBuildPipeline
+	if options.Pipeline == "" {
+		options.Pipeline = "build"
 	}
+	pipelineGetter = GetBuildPipelineFactory(options.Pipeline)
 	return executePipeline(options, pipelineGetter)
 }
 
 func cmdDeploy(options *PipelineOptions) error {
 	var pipelineGetter GetPipeline
-	if options.Pipeline != "" {
-		pipelineGetter = GetDeployPipelineFactory(options.Pipeline)
-	} else {
-		pipelineGetter = GetDeployPipeline
+	if options.Pipeline == "" {
+		options.Pipeline = "deploy"
 	}
+	pipelineGetter = GetDeployPipelineFactory(options.Pipeline)
 	return executePipeline(options, pipelineGetter)
 }
 
@@ -382,36 +379,14 @@ func cmdCheckConfig(options *PipelineOptions) error {
 		logger.Println("Found box:", box.Name)
 	}
 
-	if rawConfig.Dev != nil {
-		build, err := rawConfig.ToPipeline(options, rawConfig.Dev)
+	for name, pipeline := range rawConfig.PipelinesMap {
+		build, err := rawConfig.ToPipeline(options, pipeline)
 		if err != nil {
 			return soft.Exit(err)
 		}
-		logger.Println("Found dev section")
+		logger.Println("Found pipeline section:", name)
 		if build.box != nil {
 			logger.Println("  with box:", build.box.Name)
-		}
-	}
-
-	if rawConfig.Build != nil {
-		build, err := rawConfig.ToPipeline(options, rawConfig.Build)
-		if err != nil {
-			return soft.Exit(err)
-		}
-		logger.Println("Found build section")
-		if build.box != nil {
-			logger.Println("  with box:", build.box.Name)
-		}
-	}
-
-	if rawConfig.Deploy != nil {
-		deploy, err := rawConfig.ToDeploy(options, rawConfig.Deploy)
-		if err != nil {
-			return soft.Exit(err)
-		}
-		logger.Println("Found deploy section")
-		if deploy.box != nil {
-			logger.Println("  with box:", deploy.box.Name)
 		}
 	}
 
