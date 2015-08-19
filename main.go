@@ -328,6 +328,7 @@ func cmdDev(ctx context.Context, options *PipelineOptions) (*RunnerShared, error
 }
 
 func cmdBuild(ctx context.Context, options *PipelineOptions) (*RunnerShared, error) {
+
 	if options.Pipeline == "" {
 		options.Pipeline = "build"
 	}
@@ -727,18 +728,18 @@ func getYml(detected string, options *DetectOptions) {
 
 }
 
-func executePipeline(runnerCtx context.Context, options *PipelineOptions, getter pipelineGetter) (*RunnerShared, error) {
+func executePipeline(cmdCtx context.Context, options *PipelineOptions, getter pipelineGetter) (*RunnerShared, error) {
 	// Boilerplate
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")
-	e, err := EmitterFromContext(runnerCtx)
+	e, err := EmitterFromContext(cmdCtx)
 	if err != nil {
 		return nil, err
 	}
 	f := &Formatter{options.GlobalOptions}
 
 	// Set up the runner
-	r, err := NewRunner(runnerCtx, options, getter)
+	r, err := NewRunner(cmdCtx, options, getter)
 	if err != nil {
 		return nil, err
 	}
@@ -786,7 +787,7 @@ func executePipeline(runnerCtx context.Context, options *PipelineOptions, getter
 	// to start our boxes and get everything set up
 	logger.Println(f.Info("Running step", "setup environment"))
 	timer.Reset()
-	shared, err := r.SetupEnvironment(runnerCtx)
+	shared, err := r.SetupEnvironment(cmdCtx)
 	if shared.box != nil {
 		if options.ShouldRemove {
 			defer shared.box.Clean()
@@ -1074,7 +1075,7 @@ func executePipeline(runnerCtx context.Context, options *PipelineOptions, getter
 		logger.Panicln(err)
 	}
 
-	newSessCtx, newSess, err := r.GetSession(runnerCtx, container.ID)
+	newSessCtx, newSess, err := r.GetSession(cmdCtx, container.ID)
 	if err != nil {
 		logger.Panicln(err)
 	}
