@@ -727,7 +727,7 @@ func getYml(detected string, options *DetectOptions) {
 
 }
 
-func executePipeline(runnerCtx context.Context, options *PipelineOptions, getter PipelineGetter) (*RunnerShared, error) {
+func executePipeline(runnerCtx context.Context, options *PipelineOptions, getter pipelineGetter) (*RunnerShared, error) {
 	// Boilerplate
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := rootLogger.WithField("Logger", "Main")

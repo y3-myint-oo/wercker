@@ -12,9 +12,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-// PipelineGetter is a function that will fetch the appropriate pipeline
+// pipelineGetter is a function that will fetch the appropriate pipeline
 // object from the rawConfig.
-type PipelineGetter func(*Config, *PipelineOptions) (Pipeline, error)
+type pipelineGetter func(*Config, *PipelineOptions) (Pipeline, error)
 
 // GetDevPipelineFactory makes dev pipelines out of arbitrarily
 // named config sections
@@ -58,14 +58,14 @@ type Runner struct {
 	literalLogger *LiteralLogHandler
 	metrics       *MetricsEventHandler
 	reporter      *ReportHandler
-	getPipeline   PipelineGetter
+	getPipeline   pipelineGetter
 	logger        *LogEntry
 	emitter       *NormalizedEmitter
 	formatter     *Formatter
 }
 
 // NewRunner from global options
-func NewRunner(ctx context.Context, options *PipelineOptions, getPipeline PipelineGetter) (*Runner, error) {
+func NewRunner(ctx context.Context, options *PipelineOptions, getPipeline pipelineGetter) (*Runner, error) {
 	e, err := EmitterFromContext(ctx)
 	if err != nil {
 		return nil, err
