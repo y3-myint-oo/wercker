@@ -165,10 +165,9 @@ var (
 	}
 
 	logoutCommand = cli.Command{
-		Name:      "logout",
-		ShortName: "l",
-		Usage:     "logout from wercker",
-		Flags:     []cli.Flag{},
+		Name:  "logout",
+		Usage: "logout from wercker",
+		Flags: []cli.Flag{},
 		Action: func(c *cli.Context) {
 			opts, err := NewLogoutOptions(c, NewEnvironment(os.Environ()...))
 			if err != nil {
