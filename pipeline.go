@@ -12,11 +12,11 @@ import (
 // both Build and Deploy
 type Pipeline interface {
 	// Getters
-	Env() *Environment       // base
-	Box() *Box               // base
-	Services() []*ServiceBox //base
-	Steps() []Step           // base
-	AfterSteps() []Step      // base
+	Env() *Environment      // base
+	Box() *Box              // base
+	Services() []ServiceBox //base
+	Steps() []Step          // base
+	AfterSteps() []Step     // base
 
 	// Methods
 	CommonEnv() [][]string // base
@@ -70,7 +70,7 @@ type BasePipeline struct {
 	config     *PipelineConfig
 	env        *Environment
 	box        *Box
-	services   []*ServiceBox
+	services   []ServiceBox
 	steps      []Step
 	afterSteps []Step
 	logger     *LogEntry
@@ -84,7 +84,7 @@ func NewBasePipeline(options *PipelineOptions, pipelineConfig *RawPipelineConfig
 		return nil, err
 	}
 
-	var services []*ServiceBox
+	var services []ServiceBox
 	for _, sbox := range servicesConfig {
 		service, err := sbox.ToServiceBox(options, &BoxOptions{})
 		if err != nil {
@@ -133,7 +133,7 @@ func (p *BasePipeline) Box() *Box {
 }
 
 // Services is a getter for the Services
-func (p *BasePipeline) Services() []*ServiceBox {
+func (p *BasePipeline) Services() []ServiceBox {
 	return p.services
 }
 

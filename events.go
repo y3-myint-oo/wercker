@@ -1,12 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/chuckpreslar/emission"
+	"github.com/docker/docker/utils"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -272,10 +276,38 @@ func (e *NormalizedEmitter) Emit(event interface{}, args interface{}) {
 	}
 }
 
-// emitter contains the singleton emitter.
-var emitter = NewNormalizedEmitter()
+// EmitStatus emits the json message on r
+func EmitStatus(e *NormalizedEmitter, r io.Reader, options *PipelineOptions) {
+	s := NewJSONMessageProcessor()
+	dec := json.NewDecoder(r)
+	for {
+		var m utils.JSONMessage
+		if err := dec.Decode(&m); err == io.EOF {
+			// Once the EOF is reached the function will stop
+			break
+		} else if err != nil {
+			rootLogger.Panic(err)
+		}
 
-// GetGlobalEmitter will return a singleton event emitter.
-func GetGlobalEmitter() *NormalizedEmitter {
-	return emitter
+		line := s.ProcessJSONMessage(&m)
+		e.Emit(Logs, &LogsArgs{
+			Logs:   line,
+			Stream: "docker",
+		})
+	}
+}
+
+// NewEmitterContext gives us a new context with an emitter
+func NewEmitterContext(ctx context.Context) context.Context {
+	e := NewNormalizedEmitter()
+	return context.WithValue(ctx, "Emitter", e)
+}
+
+// EmitterFromContext gives us the emitter attached to the context
+func EmitterFromContext(ctx context.Context) (e *NormalizedEmitter, err error) {
+	e, ok := ctx.Value("Emitter").(*NormalizedEmitter)
+	if !ok {
+		err = fmt.Errorf("Cannot get emitter from context.")
+	}
+	return e, err
 }

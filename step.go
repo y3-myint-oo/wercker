@@ -155,7 +155,11 @@ func (s RawStepsConfig) ToSteps(options *PipelineOptions) ([]Step, error) {
 		if err != nil {
 			return nil, err
 		}
-		steps = append(steps, step)
+		if step != nil {
+			// we can return a nil step if it's internal and EnableDevSteps is
+			// false
+			steps = append(steps, step)
+		}
 	}
 	return steps, nil
 }
@@ -169,6 +173,11 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (Step, error) {
 	}
 	if s.ID == "internal/docker-scratch-push" {
 		return NewDockerScratchPushStep(s, options)
+	}
+	if strings.HasPrefix(s.ID, "internal/") {
+		if !options.EnableDevSteps {
+			return nil, nil
+		}
 	}
 	if options.EnableDevSteps {
 		if s.ID == "internal/watch" {

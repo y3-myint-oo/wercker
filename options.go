@@ -755,6 +755,8 @@ func dumpOptions(options interface{}, indent ...string) {
 
 // Options per Command
 
+type optionsGetter func(*cli.Context, *Environment) (*PipelineOptions, error)
+
 // NewBuildOptions constructor
 func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 	pipelineOpts, err := NewPipelineOptions(c, e)
