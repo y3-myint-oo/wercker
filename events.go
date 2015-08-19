@@ -277,7 +277,7 @@ func (e *NormalizedEmitter) Emit(event interface{}, args interface{}) {
 }
 
 // EmitStatus emits the json message on r
-func (e *NormalizedEmitter) EmitStatus(r io.Reader, options *PipelineOptions) {
+func EmitStatus(e *NormalizedEmitter, r io.Reader, options *PipelineOptions) {
 	s := NewJSONMessageProcessor()
 	dec := json.NewDecoder(r)
 	for {

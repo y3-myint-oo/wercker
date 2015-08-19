@@ -504,7 +504,7 @@ func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error
 	defer w.Close()
 
 	// emitStatusses in a different go routine
-	go e.EmitStatus(r, b.options)
+	go EmitStatus(e, r, b.options)
 
 	options := docker.PullImageOptions{
 		// changeme if we have a private registry

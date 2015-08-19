@@ -677,7 +677,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	}
 
 	// emitStatusses in a different go routine
-	go e.EmitStatus(r, s.options)
+	go EmitStatus(e, r, s.options)
 	defer w.Close()
 
 	pushOpts := docker.PushImageOptions{
@@ -963,7 +963,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		r, w := io.Pipe()
 
 		// emitStatusses in a different go routine
-		go e.EmitStatus(r, s.options)
+		go EmitStatus(e, r, s.options)
 		defer w.Close()
 
 		pushOpts := docker.PushImageOptions{
