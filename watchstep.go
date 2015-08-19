@@ -85,11 +85,15 @@ func (s *WatchStep) filterGitignore(root string) []string {
 	gitignorePath := filepath.Join(root, ".gitignore")
 	file, err := os.Open(gitignorePath)
 	if err == nil {
-		s.logger.Debugln("Excluding file patterns in .gitignore")
+		s.logger.Debug("Excluding file patterns in .gitignore")
 		defer file.Close()
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			filters = append(filters, filepath.Join(root, scanner.Text()))
+			t := strings.Trim(scanner.Text(), " ")
+			if t == "" || strings.HasPrefix(t, "#") {
+				continue
+			}
+			filters = append(filters, filepath.Join(root, t))
 		}
 	}
 	return filters
@@ -129,12 +133,12 @@ func (s *WatchStep) watch(root string) (*fsnotify.Watcher, error) {
 					s.logger.Warnln("Bad exclusion pattern: %s", pattern)
 				}
 				if matchFull {
-					s.logger.Debugf("exclude (%s): %s\n", pattern, path)
+					s.logger.Debugf("exclude (%s): %s", pattern, path)
 					return filepath.SkipDir
 				}
 				matchPartial, _ := filepath.Match(pattern, partialPath)
 				if matchPartial {
-					s.logger.Debugf("exclude (%s): %s\n", pattern, partialPath)
+					s.logger.Debugf("exclude (%s): %s", pattern, partialPath)
 					return filepath.SkipDir
 				}
 			}
@@ -149,7 +153,7 @@ func (s *WatchStep) watch(root string) (*fsnotify.Watcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.logger.Debugf("Watching %d directories\n", watchCount)
+	s.logger.Debugf("Watching %d directories", watchCount)
 	return watcher, nil
 }
 
