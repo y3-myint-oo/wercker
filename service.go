@@ -31,6 +31,7 @@ func NewServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *B
 func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, error) {
 	containerName := fmt.Sprintf("wercker-service-%s-%s", strings.Replace(b.Name, "/", "-", -1), b.options.PipelineID)
 	containerName = strings.Replace(containerName, ":", "_", -1)
+	f := &Formatter{b.options.GlobalOptions}
 
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {
@@ -40,21 +41,30 @@ func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, e
 	// Import the environment and command
 	myEnv := dockerEnv(b.config.Env, env)
 
+	origEntrypoint := b.image.Config.Entrypoint
+	origCmd := b.image.Config.Cmd
+	cmdInfo := []string{}
+
 	var entrypoint []string
 	if b.entrypoint != "" {
 		entrypoint, err = shlex.Split(b.entrypoint)
 		if err != nil {
 			return nil, err
 		}
+		cmdInfo = append(cmdInfo, entrypoint...)
+	} else {
+		cmdInfo = append(cmdInfo, origEntrypoint...)
 	}
 
-	cmd := []string{}
+	var cmd []string
 	if b.config.Cmd != "" {
-		parts, err := shlex.Split(b.config.Cmd)
+		cmd, err = shlex.Split(b.config.Cmd)
 		if err != nil {
 			return nil, err
 		}
-		cmd = append(cmd, parts...)
+		cmdInfo = append(cmdInfo, cmd...)
+	} else {
+		cmdInfo = append(cmdInfo, origCmd...)
 	}
 
 	container, err := client.CreateContainer(
@@ -72,6 +82,18 @@ func (b *ServiceBox) Run(env *Environment, links []string) (*docker.Container, e
 
 	if err != nil {
 		return nil, err
+	}
+
+	out := []string{}
+	for _, part := range cmdInfo {
+		if strings.Contains(part, " ") {
+			out = append(out, fmt.Sprintf("%q", part))
+		} else {
+			out = append(out, part)
+		}
+	}
+	if b.options.Verbose {
+		b.logger.Println(f.Info(fmt.Sprintf("Starting service %s", b.ShortName), strings.Join(out, " ")))
 	}
 
 	client.StartContainer(container.ID, &docker.HostConfig{
