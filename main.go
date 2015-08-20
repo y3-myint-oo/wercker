@@ -328,7 +328,6 @@ func cmdDev(ctx context.Context, options *PipelineOptions) (*RunnerShared, error
 }
 
 func cmdBuild(ctx context.Context, options *PipelineOptions) (*RunnerShared, error) {
-
 	if options.Pipeline == "" {
 		options.Pipeline = "build"
 	}
