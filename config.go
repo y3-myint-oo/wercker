@@ -172,6 +172,9 @@ func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 		StepsMap: make(map[string][]*RawStepConfig),
 	}
 	err := unmarshal(r.PipelineConfig)
+	if err != nil {
+		return err
+	}
 
 	// Then treat it like a map to get the extra fields
 	m := map[string]interface{}{}
@@ -195,7 +198,7 @@ func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 		var otherSteps []*RawStepConfig
 		err = yaml.Unmarshal(b, &otherSteps)
 		if err != nil {
-			return fmt.Errorf("Invalid extra key in pipeline, %s is not a list of steps", k)
+			return &yaml.TypeError{Errors: []string{fmt.Sprintf("Invalid extra key in pipeline, %s is not a list of steps", k)}}
 		}
 		r.PipelineConfig.StepsMap[k] = otherSteps
 	}
@@ -236,30 +239,21 @@ func (r *RawConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	err := unmarshal(r.Config)
 
 	// Then treat it like a map to get the extra fields
-	m := map[string]interface{}{}
+	m := map[string]*RawPipelineConfig{}
 	err = unmarshal(&m)
 	if err != nil {
-		return err
+		if _, ok := err.(*yaml.TypeError); !ok {
+			return err
+		}
 	}
+
 	for k, v := range m {
 		// Skip the fields we already know
 		if _, ok := configReservedWords[k]; ok {
 			continue
 		}
 
-		// Marshal the data so we can use the unmarshal logic on it
-		b, err := yaml.Marshal(v)
-		if err != nil {
-			return err
-		}
-
-		// Finally, unmarshal each section as steps and add it to our map
-		var otherPipelines *RawPipelineConfig
-		err = yaml.Unmarshal(b, &otherPipelines)
-		if err != nil {
-			return fmt.Errorf("Invalid extra key in config, p %s is not a pipeline", k)
-		}
-		r.Config.PipelinesMap[k] = otherPipelines
+		r.Config.PipelinesMap[k] = v
 	}
 	return nil
 }
