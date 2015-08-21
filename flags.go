@@ -101,7 +101,7 @@ var (
 	// These flags are advanced dev settings
 	internalDevFlags = []cli.Flag{
 		cli.BoolTFlag{Name: "direct-mount", Usage: "Mount our binds read-write to the pipeline path."},
-		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish.", Hidden: true},
+		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish."},
 		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
 		cli.BoolTFlag{Name: "enable-dev-steps", Hidden: true, Usage: `
 		Enable internal dev steps.
@@ -113,7 +113,7 @@ var (
 	// These flags are advanced build settings
 	internalBuildFlags = []cli.Flag{
 		cli.BoolFlag{Name: "direct-mount", Usage: "Mount our binds read-write to the pipeline path."},
-		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish.", Hidden: true},
+		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish."},
 		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
 		cli.BoolFlag{Name: "enable-dev-steps", Hidden: true, Usage: `
 		Enable internal dev steps.
