@@ -120,11 +120,11 @@ func (s *ExternalServiceBox) Fetch(ctx context.Context, env *Environment) (*dock
 	s.ShortName = s.externalConfig.ID
 
 	client, err := NewDockerClient(s.options.DockerOptions)
-	image, err := client.InspectImage(s.Name)
+	s.image, err = client.InspectImage(s.Name)
 	if err != nil {
 		return nil, err
 	}
-	return image, nil
+	return s.image, nil
 }
 
 // ToServiceBox turns a box into a ServiceBox
