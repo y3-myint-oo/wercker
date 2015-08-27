@@ -86,6 +86,7 @@ func (s *ExternalServiceBox) getOptions(env *Environment) (*PipelineOptions, err
 		return nil, err
 	}
 
+	newOptions.GlobalOptions = s.options.GlobalOptions
 	newOptions.ShouldCommit = true
 	newOptions.PublishPorts = s.options.PublishPorts
 	newOptions.DockerLocal = true
