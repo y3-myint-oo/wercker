@@ -123,7 +123,7 @@ func (p *Runner) ProjectDir() string {
 	if p.options.DirectMount {
 		return p.options.ProjectPath
 	}
-	return fmt.Sprintf("%s/%s", p.options.ProjectDir, p.options.ApplicationID)
+	return fmt.Sprintf("%s/%s", p.options.ProjectDownloadPath(), p.options.ApplicationID)
 }
 
 // EnsureCode makes sure the code is in the ProjectDir.
@@ -152,11 +152,11 @@ func (p *Runner) EnsureCode() (string, error) {
 		// We were pointed at a path with ProjectPath, copy it to projectDir
 
 		ignoreFiles := []string{
-			p.options.BuildDir,
-			p.options.ProjectDir,
-			p.options.StepDir,
-			p.options.ContainerDir,
-			p.options.CacheDir,
+			p.options.BuildPath(),
+			p.options.ProjectDownloadPath(),
+			p.options.StepPath(),
+			p.options.ContainerPath(),
+			p.options.CachePath(),
 		}
 
 		// Make sure we don't accidentally recurse or copy extra files
@@ -258,12 +258,12 @@ func (p *Runner) CopyCache() error {
 	timer := NewTimer()
 	f := p.formatter
 
-	err := os.MkdirAll(p.options.CacheDir, 0755)
+	err := os.MkdirAll(p.options.CachePath(), 0755)
 	if err != nil {
 		return err
 	}
 
-	err = os.Symlink(p.options.CacheDir, p.options.HostPath("cache"))
+	err = os.Symlink(p.options.CachePath(), p.options.HostPath("cache"))
 	if err != nil {
 		return err
 	}

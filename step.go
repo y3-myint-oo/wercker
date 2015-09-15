@@ -316,7 +316,7 @@ func (s *ExternalStep) Fetch() (string, error) {
 		return s.FetchScript()
 	}
 
-	stepPath := filepath.Join(s.options.StepDir, s.CachedName())
+	stepPath := filepath.Join(s.options.StepPath(), s.CachedName())
 	stepExists, err := exists(stepPath)
 	if err != nil {
 		return "", err

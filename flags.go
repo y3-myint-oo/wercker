@@ -27,6 +27,9 @@ var (
 
 	// These flags control where we store local files
 	localPathFlags = []cli.Flag{
+		cli.StringFlag{Name: "working-dir", Value: "", Usage: "Path where we store working files."},
+
+		// following -dir flags are DEPRECATED, here for BC
 		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "Path where created builds live."},
 		cli.StringFlag{Name: "cache-dir", Value: "./_cache", Usage: "Path for storing pipeline cache."},
 		cli.StringFlag{Name: "container-dir", Value: "./_containers", Usage: "Path where exported containers live."},
