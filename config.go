@@ -159,6 +159,7 @@ type PipelineConfig struct {
 
 var pipelineReservedWords = map[string]struct{}{
 	"box":         struct{}{},
+	"services":    struct{}{},
 	"steps":       struct{}{},
 	"after-steps": struct{}{},
 }
