@@ -17,7 +17,7 @@ dev:
 build:
   steps:
     - install-packages:
-        packages: openssh-client
+        packages: openssh-client pkg-config libsystemd-journal-dev
 
     - add-ssh-key:
         keyname: REPORTER_KEY
@@ -30,8 +30,7 @@ build:
     - setup-go-workspace:
         package-dir: github.com/wercker/sentcli
 
-    - termie/glide-build:
-        build: false
+    - glide-install
 
     - script:
         name: go vet
