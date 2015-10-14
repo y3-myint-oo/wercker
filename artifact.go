@@ -70,6 +70,11 @@ func (art *Artifact) RemotePath() string {
 	return path
 }
 
+// Cleanup removes files from the host
+func (art *Artifact) Cleanup() error {
+	return os.Remove(art.HostPath)
+}
+
 // Collect an artifact from the container, if it doesn't have any files in
 // the tarball return ErrEmptyTarball
 func (a *Artificer) Collect(artifact *Artifact) (*Artifact, error) {

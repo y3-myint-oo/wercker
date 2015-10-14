@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/mreiferson/go-snappystream"
@@ -123,8 +122,10 @@ func (s *StoreContainerStep) DockerMessage() string {
 }
 
 func (s *StoreContainerStep) Execute(ctx context.Context, sess *Session) (int, error) {
-	// e := GetGlobalEmitter()
-
+	e, err := EmitterFromContext(ctx)
+	if err != nil {
+		return -1, err
+	}
 	// TODO(termie): could probably re-use the tansport's client
 	client, err := NewDockerClient(s.options.DockerOptions)
 	if err != nil {
@@ -153,16 +154,15 @@ func (s *StoreContainerStep) Execute(ctx context.Context, sess *Session) (int, e
 	}
 	s.logger.WithField("Image", i).Debug("Commit completed")
 
-	//e.Emit(Logs, &LogsArgs{
-	// Logs: "Exporting container\n",
-	//})
+	e.Emit(Logs, &LogsArgs{
+		Logs: "Exporting container\n",
+	})
 
 	file, err := ioutil.TempFile("", "export-image-")
 	if err != nil {
 		s.logger.WithField("Error", err).Error("Unable to create temporary file")
 		return -1, err
 	}
-	defer os.Remove(file.Name())
 
 	hash := sha256.New()
 	w := snappystream.NewWriter(io.MultiWriter(file, hash))
