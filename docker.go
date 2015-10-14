@@ -462,6 +462,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		Cmd:        s.cmd,
 		Entrypoint: s.entrypoint,
 		Hostname:   containerID[:16],
+		WorkingDir: s.workingDir,
 	}
 
 	// Make the JSON file we need
@@ -758,6 +759,7 @@ type DockerPushStep struct {
 	cmd        []string
 	entrypoint []string
 	logger     *LogEntry
+	workingDir string
 }
 
 // NewDockerPushStep is a special step for doing docker pushes
@@ -831,6 +833,10 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 
 	if volumes, ok := s.data["volumes"]; ok {
 		s.volumes = env.Interpolate(volumes)
+	}
+
+	if workingDir, ok := s.data["working-dir"]; ok {
+		s.workingDir = env.Interpolate(workingDir)
 	}
 
 	if registry, ok := s.data["registry"]; ok {
@@ -919,6 +925,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	config := docker.Config{
 		Cmd:        s.cmd,
 		Entrypoint: s.entrypoint,
+		WorkingDir: s.workingDir,
 	}
 	if s.ports != "" {
 		parts := strings.Split(s.ports, ",")
