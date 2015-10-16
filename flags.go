@@ -124,10 +124,10 @@ var (
 
 	// AWS bits
 	awsFlags = []cli.Flag{
-		cli.StringFlag{Name: "aws-secret-key", Value: "", Usage: "Secret access key."},
-		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "Access key id."},
-		cli.StringFlag{Name: "s3-bucket", Value: "wercker-development", Usage: "Bucket for artifacts."},
-		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "Region."},
+		cli.StringFlag{Name: "aws-secret-key", Value: "", Usage: "Secret access key. Used for artifact storage."},
+		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "Access key id. Used for artifact storage."},
+		cli.StringFlag{Name: "s3-bucket", Value: "wercker-development", Usage: "Bucket for artifact storage."},
+		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "AWS region to use for artifact storage."},
 	}
 
 	// keen.io bits
