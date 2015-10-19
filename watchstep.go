@@ -107,9 +107,9 @@ func (s *WatchStep) watch(root string) (*fsnotify.Watcher, error) {
 	}
 
 	filters := []string{
-		fmt.Sprintf("%s*", s.options.StepDir),
-		fmt.Sprintf("%s*", s.options.ProjectDir),
-		fmt.Sprintf("%s*", s.options.BuildDir),
+		fmt.Sprintf("%s*", s.options.StepPath()),
+		fmt.Sprintf("%s*", s.options.ProjectDownloadPath()),
+		fmt.Sprintf("%s*", s.options.BuildPath()),
 		".*",
 		"_*",
 	}

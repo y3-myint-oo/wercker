@@ -418,11 +418,7 @@ type PipelineOptions struct {
 	ShouldStoreLocal bool
 	ShouldStoreS3    bool
 
-	BuildDir     string
-	CacheDir     string
-	ContainerDir string
-	ProjectDir   string
-	StepDir      string
+	WorkingDir string
 
 	GuestRoot  string
 	MntRoot    string
@@ -614,11 +610,12 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 	shouldStoreLocal := c.Bool("store-local")
 	shouldStoreS3 := c.Bool("store-s3")
 
-	buildDir, _ := filepath.Abs(c.String("build-dir"))
-	cacheDir, _ := filepath.Abs(c.String("cache-dir"))
-	containerDir, _ := filepath.Abs(c.String("container-dir"))
-	projectDir, _ := filepath.Abs(c.String("project-dir"))
-	stepDir, _ := filepath.Abs(c.String("step-dir"))
+	workingDir := c.String("working-dir")
+	if workingDir == "" {
+		// support old-style dir flags for bc
+		workingDir = filepath.Dir(c.String("build-dir"))
+	}
+	workingDir, _ = filepath.Abs(workingDir)
 
 	guestRoot := c.String("guest-root")
 	mntRoot := c.String("mnt-root")
@@ -669,11 +666,7 @@ func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error
 		ShouldStoreLocal: shouldStoreLocal,
 		ShouldStoreS3:    shouldStoreS3,
 
-		BuildDir:     buildDir,
-		CacheDir:     cacheDir,
-		ContainerDir: containerDir,
-		ProjectDir:   projectDir,
-		StepDir:      stepDir,
+		WorkingDir: workingDir,
 
 		GuestRoot:  guestRoot,
 		MntRoot:    mntRoot,
@@ -704,7 +697,7 @@ func (o *PipelineOptions) SourcePath() string {
 
 // HostPath returns a path relative to the build root on the host.
 func (o *PipelineOptions) HostPath(s ...string) string {
-	return path.Join(o.BuildDir, o.PipelineID, path.Join(s...))
+	return path.Join(o.BuildPath(), o.PipelineID, path.Join(s...))
 }
 
 // GuestPath returns a path relative to the build root on the guest.
@@ -720,6 +713,36 @@ func (o *PipelineOptions) MntPath(s ...string) string {
 // ReportPath returns a path relative to the report root on the guest.
 func (o *PipelineOptions) ReportPath(s ...string) string {
 	return path.Join(o.ReportRoot, path.Join(s...))
+}
+
+// ContainerPath returns the path where exported containers live
+func (o *PipelineOptions) ContainerPath() string {
+	return path.Join(o.WorkingDir, "_containers")
+}
+
+// BuildPath returns the path where created builds live
+func (o *PipelineOptions) BuildPath() string {
+	return path.Join(o.WorkingDir, "_builds")
+}
+
+// CachePath returns the path for storing pipeline cache
+func (o *PipelineOptions) CachePath() string {
+	return path.Join(o.WorkingDir, "_cache")
+}
+
+// TempPath returns the path where temporary files live
+func (o *PipelineOptions) TempPath() string {
+	return path.Join(o.WorkingDir, "_temp")
+}
+
+// ProjectDownloadPath returns the path where downloaded projects live
+func (o *PipelineOptions) ProjectDownloadPath() string {
+	return path.Join(o.WorkingDir, "_projects")
+}
+
+// StepPath returns the path where downloaded steps live
+func (o *PipelineOptions) StepPath() string {
+	return path.Join(o.WorkingDir, "_steps")
 }
 
 // dumpOptions prints out a sorted list of options

@@ -303,7 +303,7 @@ func (p *BasePipeline) CollectCache(containerID string) error {
 	//               or we don't care about it, needs to be replaced by some
 	//               sort of cancellable context
 	case <-time.After(1 * time.Second):
-		err = <-archive.Multi("cache", p.options.CacheDir, 1024*1024*1000)
+		err = <-archive.Multi("cache", p.options.CachePath(), 1024*1024*1000)
 	}
 
 	if err != nil {
