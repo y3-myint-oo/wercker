@@ -65,7 +65,6 @@ build:
             mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/latest
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
             cp -r install_script $WERCKER_OUTPUT_DIR/install_script
-
 deploy:
   box: ubuntu:12.04
   steps:

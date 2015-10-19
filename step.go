@@ -174,6 +174,9 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (Step, error) {
 	if s.ID == "internal/docker-scratch-push" {
 		return NewDockerScratchPushStep(s, options)
 	}
+	if s.ID == "internal/store-container" {
+		return NewStoreContainerStep(s, options)
+	}
 	if strings.HasPrefix(s.ID, "internal/") {
 		if !options.EnableDevSteps {
 			return nil, nil
@@ -460,6 +463,7 @@ func (s *ExternalStep) CollectArtifact(containerID string) (*Artifact, error) {
 		DeployID:      s.options.DeployID,
 		BuildStepID:   s.safeID,
 		Bucket:        s.options.S3Bucket,
+		ContentType:   "application/x-tar",
 	}
 
 	fullArtifact, err := artificer.Collect(artifact)

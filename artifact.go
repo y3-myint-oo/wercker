@@ -29,6 +29,9 @@ type Artifact struct {
 	DeployID      string
 	BuildStepID   string
 	Bucket        string
+	Key           string
+	ContentType   string
+	Meta          map[string]*string
 }
 
 // NewArtificer returns an Artificer
@@ -51,6 +54,9 @@ func (art *Artifact) URL() string {
 
 // RemotePath returns the S3 path for an artifact
 func (art *Artifact) RemotePath() string {
+	if art.Key != "" {
+		return art.Key
+	}
 	path := fmt.Sprintf("project-artifacts/%s", art.ApplicationID)
 	if art.DeployID != "" {
 		path = fmt.Sprintf("%s/deploy/%s", path, art.DeployID)
@@ -62,6 +68,11 @@ func (art *Artifact) RemotePath() string {
 	}
 	path = fmt.Sprintf("%s/%s", path, filepath.Base(art.HostPath))
 	return path
+}
+
+// Cleanup removes files from the host
+func (art *Artifact) Cleanup() error {
+	return os.Remove(art.HostPath)
 }
 
 // Collect an artifact from the container, if it doesn't have any files in
@@ -119,7 +130,9 @@ func (a *Artificer) Upload(artifact *Artifact) error {
 	return a.store.StoreFromFile(&StoreFromFileArgs{
 		Path:        artifact.HostPath,
 		Key:         artifact.RemotePath(),
-		ContentType: "application/x-tar",
+		ContentType: artifact.ContentType,
+		MaxTries:    3,
+		Meta:        artifact.Meta,
 	})
 }
 
