@@ -90,6 +90,7 @@ func (s *ExternalServiceBox) getOptions(env *Environment) (*PipelineOptions, err
 	newOptions.ShouldCommit = true
 	newOptions.PublishPorts = s.options.PublishPorts
 	newOptions.DockerLocal = true
+	newOptions.DockerOptions = s.options.DockerOptions
 	newOptions.Pipeline = c.Fragment
 	return newOptions, nil
 }
