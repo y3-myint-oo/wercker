@@ -2,7 +2,6 @@ package main
 
 import (
 	"archive/tar"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,8 +11,6 @@ import (
 	"path"
 	"strings"
 	"time"
-
-	"crypto/sha256"
 
 	"github.com/CenturyLinkLabs/docker-reg-client/registry"
 	dockersignal "github.com/docker/docker/pkg/signal"
@@ -427,13 +424,14 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	// At this point we've written the layer to disk, we're going to add up the
 	// sizes of all the files to add to our json format, and sha256 the data
 	layerFile, err := os.Open(s.options.HostPath("layer.tar"))
-	defer layerFile.Close()
 	if err != nil {
 		return -1, err
 	}
-	layerTar := tar.NewReader(layerFile)
+	defer layerFile.Close()
+
 	var layerSize int64
-	layerSha := sha256.New()
+
+	layerTar := tar.NewReader(layerFile)
 	for {
 		hdr, err := layerTar.Next()
 		if err == io.EOF {
@@ -443,40 +441,20 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		if err != nil {
 			return -1, err
 		}
+
 		// Skip the base dir
 		if hdr.Name == "./" {
 			continue
 		}
-		layerSize = layerSize + hdr.Size
-		_, err = io.Copy(layerSha, layerTar)
-		if err != nil {
-			return -1, err
-		}
+
+		layerSize += hdr.Size
 	}
-	var b []byte
-	layerSum := layerSha.Sum(b)
-	layerSumHex := hex.EncodeToString(layerSum)
-	layerFile.Close()
 
 	config := docker.Config{
 		Cmd:        s.cmd,
 		Entrypoint: s.entrypoint,
 		Hostname:   containerID[:16],
 		WorkingDir: s.workingDir,
-	}
-
-	// Make the JSON file we need
-	imageJSON := DockerImageJSON{
-		Architecture: "amd64",
-		Container:    containerID,
-		ContainerConfig: DockerImageJSONContainerConfig{
-			Hostname: containerID[:16],
-		},
-		DockerVersion: "1.5",
-		Created:       time.Now(),
-		ID:            layerSumHex,
-		OS:            "linux",
-		Size:          layerSize,
 	}
 
 	if s.ports != "" {
@@ -502,7 +480,25 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		config.Volumes = volumemap
 	}
 
-	imageJSON.Config = config
+	layerID, err := GenerateDockerID()
+	if err != nil {
+		return -1, err
+	}
+
+	// Make the JSON file we need
+	imageJSON := DockerImageJSON{
+		Architecture: "amd64",
+		Container:    containerID,
+		ContainerConfig: DockerImageJSONContainerConfig{
+			Hostname: containerID[:16],
+		},
+		DockerVersion: "1.5",
+		Created:       time.Now(),
+		ID:            layerID,
+		OS:            "linux",
+		Size:          layerSize,
+		Config:        config,
+	}
 
 	jsonOut, err := json.MarshalIndent(imageJSON, "", "  ")
 	if err != nil {
@@ -511,14 +507,14 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	s.logger.Debugln(jsonOut)
 
 	// Write out the files to disk that we are going to care about
-	err = os.MkdirAll(s.options.HostPath("scratch", layerSumHex), 0755)
+	err = os.MkdirAll(s.options.HostPath("scratch", layerID), 0755)
 	if err != nil {
 		return -1, err
 	}
 	defer os.RemoveAll(s.options.HostPath("scratch"))
 
 	// VERSION file
-	versionFile, err := os.OpenFile(s.options.HostPath("scratch", layerSumHex, "VERSION"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	versionFile, err := os.OpenFile(s.options.HostPath("scratch", layerID, "VERSION"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return -1, err
 	}
@@ -533,7 +529,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	}
 
 	// json file
-	jsonFile, err := os.OpenFile(s.options.HostPath("scratch", layerSumHex, "json"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	jsonFile, err := os.OpenFile(s.options.HostPath("scratch", layerID, "json"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return -1, err
 	}
@@ -553,7 +549,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		return -1, err
 	}
 	defer repositoriesFile.Close()
-	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{"%s":"%s"}}`, s.repository, s.tag, layerSumHex)))
+	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{"%s":"%s"}}`, s.repository, s.tag, layerID)))
 	if err != nil {
 		return -1, err
 	}
@@ -570,7 +566,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	defer os.Remove(s.options.HostPath("layer.tar"))
 	defer tempLayerFile.Close()
 
-	realLayerFile, err := os.OpenFile(s.options.HostPath("scratch", layerSumHex, "layer.tar"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	realLayerFile, err := os.OpenFile(s.options.HostPath("scratch", layerID, "layer.tar"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return -1, err
 	}

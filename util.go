@@ -3,6 +3,8 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -426,4 +428,15 @@ func (t *Timer) Elapsed() time.Duration {
 // String repr for time
 func (t *Timer) String() string {
 	return fmt.Sprintf("%.2fs", t.Elapsed().Seconds())
+}
+
+// GenerateDockerID will generate a cryptographically random 256 bit hex Docker
+// identifier.
+func GenerateDockerID() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(b), nil
 }

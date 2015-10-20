@@ -9,13 +9,17 @@ import (
 )
 
 func minimalDockerOptions() *DockerOptions {
-
 	opts := &DockerOptions{GlobalOptions: &GlobalOptions{}}
 	guessAndUpdateDockerOptions(opts, NewEnvironment(os.Environ()...))
 	return opts
 }
 
 func dockerOrSkip(t *testing.T) *DockerClient {
+	if os.Getenv("SKIP_DOCKER_TEST") == "true" {
+		t.Skip("$SKIP_DOCKER_TEST=true, skipping test")
+		return nil
+	}
+
 	client, err := NewDockerClient(minimalDockerOptions())
 	err = client.Ping()
 	if err != nil {
