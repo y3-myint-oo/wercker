@@ -402,7 +402,7 @@ func (s *ExternalStep) Execute(sessionCtx context.Context, sess *Session) (int, 
 		return 1, err
 	}
 
-	if s.options.GlobalOptions.Debug {
+	if s.options.GlobalOptions.Verbose {
 		sess.SendChecked(sessionCtx, "set -xv")
 	}
 
