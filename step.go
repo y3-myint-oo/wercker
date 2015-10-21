@@ -402,9 +402,9 @@ func (s *ExternalStep) Execute(sessionCtx context.Context, sess *Session) (int, 
 		return 1, err
 	}
 
-	if s.options.GlobalOptions.Verbose {
-		sess.SendChecked(sessionCtx, "set -xv")
-	}
+	// if s.options.GlobalOptions.Verbose {
+	// 	sess.SendChecked(sessionCtx, "set -xv")
+	// }
 
 	if yes, _ := exists(s.HostPath("init.sh")); yes {
 		exit, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`source "%s"`, s.GuestPath("init.sh")))
