@@ -442,8 +442,10 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 
 	if err := os.Mkdir(p.options.TempPath(), 0755); err != nil {
-		p.logger.WithField("Error", err).Error("Unable to create temporary directory")
-		return shared, err
+		if !os.IsExist(err) {
+			p.logger.WithField("Error", err).Error("Unable to create temporary directory")
+			return shared, err
+		}
 	}
 
 	// Fetch the box
