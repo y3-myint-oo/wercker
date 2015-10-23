@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCounterIncrement(t *testing.T) {
@@ -128,4 +130,16 @@ func TestMaxInt(t *testing.T) {
 
 		assert.Equal(t, test.expected, actual)
 	}
+}
+
+func TestGenerateDockerID(t *testing.T) {
+	id, err := GenerateDockerID()
+	require.NoError(t, err, "Unable to generate Docker ID")
+
+	// The ID needs to be a valid hex value
+	b, err := hex.DecodeString(id)
+	require.NoError(t, err, "Generated Docker ID was not a hex value")
+
+	// The ID needs to be 256 bits
+	assert.Equal(t, 256, len(b)*8)
 }
