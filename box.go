@@ -321,7 +321,7 @@ func (b *Box) Run(ctx context.Context, env *Environment) (*docker.Container, err
 		docker.CreateContainerOptions{
 			Name: b.getContainerName(),
 			Config: &docker.Config{
-				Image:           b.Name,
+				Image:           env.Interpolate(b.Name),
 				Tty:             false,
 				OpenStdin:       true,
 				Cmd:             cmd,
@@ -453,11 +453,11 @@ func (b *Box) Stop() {
 
 // Fetch an image (or update the local)
 func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error) {
-
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {
 		return nil, err
 	}
+
 	e, err := EmitterFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -465,7 +465,7 @@ func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error
 
 	// Shortcut to speed up local dev
 	if b.options.DockerLocal {
-		image, err := client.InspectImage(b.Name)
+		image, err := client.InspectImage(env.Interpolate(b.Name))
 		if err != nil {
 			return nil, err
 		}
@@ -477,8 +477,6 @@ func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error
 	auth := docker.AuthConfiguration{
 		Username: env.Interpolate(b.config.Username),
 		Password: env.Interpolate(b.config.Password),
-		// Email:         s.email,
-		// ServerAddress: s.authServer,
 	}
 
 	checkOpts := CheckAccessOptions{
@@ -494,6 +492,7 @@ func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error
 		b.logger.Errorln("Error during check access")
 		return nil, err
 	}
+
 	if !check {
 		b.logger.Errorln("Not allowed to interact with this repository:", b.repository)
 		return nil, fmt.Errorf("Not allowed to interact with this repository: %s", b.repository)
@@ -520,7 +519,7 @@ func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error
 		return nil, err
 	}
 
-	image, err := client.InspectImage(b.Name)
+	image, err := client.InspectImage(env.Interpolate(b.Name))
 	if err != nil {
 		return nil, err
 	}
