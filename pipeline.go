@@ -186,7 +186,7 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 	if !p.options.DirectMount {
 		cmds = append(cmds,
 			// Make sure our guest path exists
-			fmt.Sprintf(`mkdir "%s"`, p.options.GuestPath()),
+			fmt.Sprintf(`mkdir -p "%s"`, p.options.GuestPath()),
 			// Make sure the output path exists
 			// Copy the source from the mounted directory to the pipeline dir
 			fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("source"), p.options.GuestPath("source")),
@@ -195,7 +195,7 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 		)
 	}
 
-	cmds = append(cmds, fmt.Sprintf(`mkdir "%s"`, p.options.GuestPath("output")))
+	cmds = append(cmds, fmt.Sprintf(`mkdir -p "%s"`, p.options.GuestPath("output")))
 
 	for _, cmd := range cmds {
 		exit, _, err := sess.SendChecked(sessionCtx, cmd)
