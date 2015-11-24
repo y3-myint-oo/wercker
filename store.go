@@ -158,7 +158,7 @@ func (s *StoreContainerStep) Execute(ctx context.Context, sess *Session) (int, e
 		Logs: "Exporting container\n",
 	})
 
-	file, err := ioutil.TempFile(s.options.TempPath(), "export-image-")
+	file, err := ioutil.TempFile(s.options.BuildPath(), "export-image-")
 	if err != nil {
 		s.logger.WithField("Error", err).Error("Unable to create temporary file")
 		return -1, err

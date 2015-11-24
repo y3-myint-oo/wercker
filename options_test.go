@@ -269,7 +269,7 @@ func TestOptionsWorkingDir(t *testing.T) {
 	test := func(c *cli.Context) {
 		opts, err := NewPipelineOptions(c, emptyEnv())
 		assert.Nil(t, err)
-		assert.Equal(t, filepath.Join(tempDir, "_temp"), opts.TempPath())
+		assert.Equal(t, tempDir, opts.WorkingDir)
 	}
 
 	run(t, globalFlags, pipelineFlags, test, args)
@@ -283,23 +283,24 @@ func TestOptionsWorkingDirCWD(t *testing.T) {
 	test := func(c *cli.Context) {
 		opts, err := NewPipelineOptions(c, emptyEnv())
 		assert.Nil(t, err)
-		assert.Equal(t, filepath.Join(cwd, "_temp"), opts.TempPath())
+		assert.Equal(t, cwd, opts.WorkingDir)
 	}
 
 	run(t, globalFlags, pipelineFlags, test, args)
 }
 
-func TestOptionsWorkingDirBC(t *testing.T) {
+func TestOptionsWorkingDirGetsSet(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "wercker-test-")
 	assert.Nil(t, err)
 	defer os.RemoveAll(tempDir)
 
+	// This ignores the _build part, we're only concerned about the working dir
 	args := defaultArgs("--build-dir", filepath.Join(tempDir, "_build"))
 
 	test := func(c *cli.Context) {
 		opts, err := NewPipelineOptions(c, emptyEnv())
 		assert.Nil(t, err)
-		assert.Equal(t, filepath.Join(tempDir, "_temp"), opts.TempPath())
+		assert.Equal(t, tempDir, opts.WorkingDir)
 	}
 
 	run(t, globalFlags, pipelineFlags, test, args)
