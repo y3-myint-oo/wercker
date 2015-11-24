@@ -721,18 +721,13 @@ func (o *PipelineOptions) ContainerPath() string {
 }
 
 // BuildPath returns the path where created builds live
-func (o *PipelineOptions) BuildPath() string {
-	return path.Join(o.WorkingDir, "_builds")
+func (o *PipelineOptions) BuildPath(s ...string) string {
+	return path.Join(o.WorkingDir, "_builds", path.Join(s...))
 }
 
 // CachePath returns the path for storing pipeline cache
 func (o *PipelineOptions) CachePath() string {
 	return path.Join(o.WorkingDir, "_cache")
-}
-
-// TempPath returns the path where temporary files live
-func (o *PipelineOptions) TempPath() string {
-	return path.Join(o.WorkingDir, "_temp")
 }
 
 // ProjectDownloadPath returns the path where downloaded projects live

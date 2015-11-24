@@ -287,12 +287,19 @@ func (p *Runner) CopySource() error {
 		return err
 	}
 
-	err = os.Symlink(p.ProjectDir(), p.options.HostPath("source"))
+	// Link the path to BuildPath("latest") for easy access
+	err = os.RemoveAll(p.options.BuildPath("latest"))
 	if err != nil {
 		return err
 	}
-	if p.options.Verbose {
-		p.logger.Printf(f.Success("Source -> Staging Area", timer.String()))
+	err = os.Symlink(p.options.HostPath(), p.options.BuildPath("latest"))
+	if err != nil {
+		return err
+	}
+
+	err = os.Symlink(p.ProjectDir(), p.options.HostPath("source"))
+	if err != nil {
+		return err
 	}
 	if p.options.Verbose {
 		p.logger.Printf(f.Success("Source -> Staging Area", timer.String()))
@@ -439,13 +446,6 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		p.emitter.Emit(Logs, &LogsArgs{
 			Logs: fmt.Sprintf("Using config:\n%s\n", stringConfig),
 		})
-	}
-
-	if err := os.Mkdir(p.options.TempPath(), 0755); err != nil {
-		if !os.IsExist(err) {
-			p.logger.WithField("Error", err).Error("Unable to create temporary directory")
-			return shared, err
-		}
 	}
 
 	// Fetch the box
