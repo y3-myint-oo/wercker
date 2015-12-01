@@ -289,6 +289,26 @@ func normalizeCode(code string) string {
 	return code
 }
 
+// LocalSymlink makes sure we have an easy to use local symlink
+func (s *ExternalStep) LocalSymlink() {
+	name := strings.Replace(s.DisplayName(), " ", "-", -1)
+	checkName := fmt.Sprintf("step-%s", name)
+	checkPath := s.options.HostPath(checkName)
+
+	counter := 1
+	newPath := checkPath
+	for {
+		already, _ := exists(newPath)
+		if !already {
+			os.Symlink(s.HostPath(), newPath)
+			break
+		}
+
+		newPath = fmt.Sprintf("%s-%d", checkPath, counter)
+		counter++
+	}
+}
+
 // FetchScript turns the raw code in a step into a shell file.
 func (s *ExternalStep) FetchScript() (string, error) {
 	hostStepPath := s.options.HostPath(s.safeID)
@@ -310,6 +330,7 @@ func (s *ExternalStep) FetchScript() (string, error) {
 
 // Fetch grabs the Step content (or calls FetchScript for script steps).
 func (s *ExternalStep) Fetch() (string, error) {
+	defer s.LocalSymlink()
 	// NOTE(termie): polymorphism based on kind, we could probably do something
 	//               with interfaces here, but this is okay for now
 	if s.IsScript() {
