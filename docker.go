@@ -907,7 +907,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 
 		check, err := client.CheckAccess(checkOpts)
 		if err != nil {
-			s.logger.Errorln("Error during check access")
+			s.logger.Errorln("Error during check access", err)
 			return -1, err
 		}
 		if !check {
