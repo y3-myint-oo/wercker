@@ -179,6 +179,7 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (Step, error) {
 	}
 	if strings.HasPrefix(s.ID, "internal/") {
 		if !options.EnableDevSteps {
+			rootLogger.Warnln("Ignoring dev step:", s.ID)
 			return nil, nil
 		}
 	}
