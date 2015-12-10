@@ -330,7 +330,6 @@ func (s *ExternalStep) FetchScript() (string, error) {
 
 // Fetch grabs the Step content (or calls FetchScript for script steps).
 func (s *ExternalStep) Fetch() (string, error) {
-	defer s.LocalSymlink()
 	// NOTE(termie): polymorphism based on kind, we could probably do something
 	//               with interfaces here, but this is okay for now
 	if s.IsScript() {
@@ -399,6 +398,8 @@ func (s *ExternalStep) Fetch() (string, error) {
 
 // SetupGuest ensures that the guest is ready to run a Step.
 func (s *ExternalStep) SetupGuest(sessionCtx context.Context, sess *Session) error {
+	defer s.LocalSymlink()
+
 	// TODO(termie): can this even fail? i.e. exit code != 0
 	sess.HideLogs()
 	defer sess.ShowLogs()
