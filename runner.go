@@ -623,20 +623,24 @@ func (p *Runner) RunStep(shared *RunnerShared, step Step, order int) (*StepResul
 		sr.Success = true
 		sr.ExitCode = 0
 	}
-	if err != nil {
-		sr.Message = err.Error()
-		return sr, err
-	}
 
 	// Grab the message
 	var message bytes.Buffer
-	err = step.CollectFile(shared.containerID, step.ReportPath(), "message.txt", &message)
-	if err != nil {
-		if err != ErrEmptyTarball {
-			return sr, err
+	messageErr := step.CollectFile(shared.containerID, step.ReportPath(), "message.txt", &message)
+	if messageErr != nil {
+		if messageErr != ErrEmptyTarball {
+			return sr, messageErr
 		}
 	}
 	sr.Message = message.String()
+
+	// This is the error from the step.Execute above
+	if err != nil {
+		if sr.Message == "" {
+			sr.Message = err.Error()
+		}
+		return sr, err
+	}
 
 	// Grab artifacts if we want them
 	if p.options.ShouldArtifacts {
