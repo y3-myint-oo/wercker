@@ -19,7 +19,7 @@ func emptyEnv() *Environment {
 }
 
 func emptyPipelineOptions() *PipelineOptions {
-	return &PipelineOptions{}
+	return &PipelineOptions{GlobalOptions: &GlobalOptions{}}
 }
 
 // TestLogWriter writes our logs to the test output
