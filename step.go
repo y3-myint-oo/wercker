@@ -361,8 +361,12 @@ func (s *ExternalStep) Fetch() (string, error) {
 
 		// If we have a file uri let's just copytree it.
 		if strings.HasPrefix(s.url, "file:///") {
-			localPath := s.url[len("file://"):]
-			err = shutil.CopyTree(localPath, stepPath, nil)
+			if s.options.EnableDevSteps {
+				localPath := s.url[len("file://"):]
+				err = shutil.CopyTree(localPath, stepPath, nil)
+			} else {
+				return "", fmt.Errorf("Dev mode is not enabled so refusing to copy local file urls: %s", s.url)
+			}
 		} else {
 			// Grab the tarball and untargzip it
 			resp, err := fetchTarball(s.url)
