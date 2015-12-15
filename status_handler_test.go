@@ -1,21 +1,22 @@
 package main
 
 import (
-	. "gopkg.in/check.v1"
-
 	"testing"
 
 	"github.com/docker/docker/utils"
+	"github.com/stretchr/testify/suite"
 )
 
-// Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) { TestingT(t) }
+type StatusHandlerSuite struct {
+	*TestSuite
+}
 
-type MySuite struct{}
+func TestStatusHandlerSuite(t *testing.T) {
+	suiteTester := &StatusHandlerSuite{&TestSuite{}}
+	suite.Run(t, suiteTester)
+}
 
-var _ = Suite(&MySuite{})
-
-func (m *MySuite) TestPullParallelDownloads(c *C) {
+func (s *StatusHandlerSuite) TestPullParallelDownloads() {
 	testSteps := []struct {
 		in       *utils.JSONMessage
 		expected string
@@ -131,14 +132,14 @@ func (m *MySuite) TestPullParallelDownloads(c *C) {
 		},
 	}
 
-	s := NewJSONMessageProcessor()
+	p := NewJSONMessageProcessor()
 	for _, step := range testSteps {
-		actual := s.ProcessJSONMessage(step.in)
-		c.Assert(actual, Equals, step.expected)
+		actual := p.ProcessJSONMessage(step.in)
+		s.Equal(actual, step.expected)
 	}
 }
 
-func (m *MySuite) TestPushParallelUploads(c *C) {
+func (s *StatusHandlerSuite) TestPushParallelUploads() {
 	testSteps := []struct {
 		in       *utils.JSONMessage
 		expected string
@@ -235,14 +236,14 @@ func (m *MySuite) TestPushParallelUploads(c *C) {
 		},
 	}
 
-	s := NewJSONMessageProcessor()
+	p := NewJSONMessageProcessor()
 	for _, step := range testSteps {
-		actual := s.ProcessJSONMessage(step.in)
-		c.Assert(actual, Equals, step.expected)
+		actual := p.ProcessJSONMessage(step.in)
+		s.Equal(actual, step.expected)
 	}
 }
 
-func (m *MySuite) TestFormatDiskUnitBytes(c *C) {
+func (s *StatusHandlerSuite) TestFormatDiskUnitBytes() {
 	testSteps := []struct {
 		in       int64
 		expected string
@@ -264,6 +265,6 @@ func (m *MySuite) TestFormatDiskUnitBytes(c *C) {
 	}
 	for _, step := range testSteps {
 		actual := formatDiskUnit(step.in)
-		c.Assert(actual, Equals, step.expected)
+		s.Equal(actual, step.expected)
 	}
 }

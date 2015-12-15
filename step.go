@@ -364,6 +364,9 @@ func (s *ExternalStep) Fetch() (string, error) {
 			if s.options.EnableDevSteps {
 				localPath := s.url[len("file://"):]
 				err = shutil.CopyTree(localPath, stepPath, nil)
+				if err != nil {
+					return "", err
+				}
 			} else {
 				return "", fmt.Errorf("Dev mode is not enabled so refusing to copy local file urls: %s", s.url)
 			}

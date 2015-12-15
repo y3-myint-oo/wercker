@@ -30,14 +30,11 @@ import:
   - package: github.com/inconshreveable/go-keen
     ref:     3b8ced9
     vcs:     git
-  - package: gopkg.in/check.v1
-    ref:     6413154
-    vcs:     git
   - package: github.com/joho/godotenv
     ref:     ead2e75
     vcs:     git
   - package: github.com/docker/docker/pkg/term
-  - package: github.com/stretchr/testify/assert
+  - package: github.com/stretchr/testify/suite
   - package: golang.org/x/net/context
   - package: golang.org/x/sys/unix
   - package: github.com/mreiferson/go-snappystream

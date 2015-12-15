@@ -4,35 +4,43 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestConfigBoxStrings(t *testing.T) {
-	b, err := ioutil.ReadFile("./tests/box_strings.yml")
-	assert.Nil(t, err)
-	config, err := ConfigFromYaml(b)
-	require.Nil(t, err)
-	assert.Equal(t, "strings_box", config.Box.ID)
-	assert.Equal(t, "strings_service", config.Services[0].ID)
+type ConfigSuite struct {
+	*TestSuite
 }
 
-func TestConfigBoxStructs(t *testing.T) {
-	b, err := ioutil.ReadFile("./tests/box_structs.yml")
-	assert.Nil(t, err)
+func TestConfigSuite(t *testing.T) {
+	suiteTester := &ConfigSuite{&TestSuite{}}
+	suite.Run(t, suiteTester)
+}
+
+func (s *ConfigSuite) TestConfigBoxStrings() {
+	b, err := ioutil.ReadFile("./tests/box_strings.yml")
+	s.Nil(err)
 	config, err := ConfigFromYaml(b)
-	require.Nil(t, err)
-	assert.Equal(t, "structs_box", config.Box.ID)
-	assert.Equal(t, "structs_service", config.Services[0].ID)
+	s.Require().Nil(err)
+	s.Equal("strings_box", config.Box.ID)
+	s.Equal("strings_service", config.Services[0].ID)
+}
+
+func (s *ConfigSuite) TestConfigBoxStructs() {
+	b, err := ioutil.ReadFile("./tests/box_structs.yml")
+	s.Nil(err)
+	config, err := ConfigFromYaml(b)
+	s.Require().Nil(err)
+	s.Equal("structs_box", config.Box.ID)
+	s.Equal("structs_service", config.Services[0].ID)
 
 	pipeline := config.PipelinesMap["pipeline"]
-	assert.Equal(t, pipeline.Box.ID, "blue")
-	assert.Equal(t, pipeline.Steps[0].ID, "string-step")
-	assert.Equal(t, pipeline.Steps[1].ID, "script")
-	assert.Equal(t, pipeline.Steps[2].ID, "script")
+	s.Equal(pipeline.Box.ID, "blue")
+	s.Equal(pipeline.Steps[0].ID, "string-step")
+	s.Equal(pipeline.Steps[1].ID, "script")
+	s.Equal(pipeline.Steps[2].ID, "script")
 }
 
-func TestIfaceToString(t *testing.T) {
+func (s *ConfigSuite) TestIfaceToString() {
 	tests := []struct {
 		input    interface{}
 		expected string
@@ -52,6 +60,6 @@ func TestIfaceToString(t *testing.T) {
 
 	for _, test := range tests {
 		actual := ifaceToString(test.input)
-		assert.Equal(t, test.expected, actual, "")
+		s.Equal(test.expected, actual, "")
 	}
 }

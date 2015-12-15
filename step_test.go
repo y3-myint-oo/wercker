@@ -1,18 +1,22 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/codegangsta/cli"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func defaultPipelineOptions(t *testing.T, more ...string) *PipelineOptions {
+func defaultPipelineOptions(s *TestSuite, more ...string) *PipelineOptions {
 	args := []string{
 		"wercker",
 		"--debug",
 		"test",
+		"--working-dir",
+		s.WorkingDir(),
 	}
 	args = append(args, more...)
 	os.Clearenv()
@@ -21,7 +25,7 @@ func defaultPipelineOptions(t *testing.T, more ...string) *PipelineOptions {
 
 	action := func(c *cli.Context) {
 		opts, err := NewPipelineOptions(c, emptyEnv())
-		assert.Nil(t, err)
+		s.Nil(err)
 		options = opts
 	}
 
@@ -38,8 +42,17 @@ func defaultPipelineOptions(t *testing.T, more ...string) *PipelineOptions {
 	return options
 }
 
-func TestStepFetchApi(t *testing.T) {
-	options := defaultPipelineOptions(t)
+type StepSuite struct {
+	*TestSuite
+}
+
+func TestStepSuite(t *testing.T) {
+	suiteTester := &StepSuite{&TestSuite{}}
+	suite.Run(t, suiteTester)
+}
+
+func (s *StepSuite) TestFetchApi() {
+	options := defaultPipelineOptions(s.TestSuite)
 
 	cfg := &StepConfig{
 		ID:   "create-file",
@@ -47,43 +60,51 @@ func TestStepFetchApi(t *testing.T) {
 	}
 
 	step, err := NewStep(cfg, options)
-	assert.Nil(t, err)
+	s.Nil(err)
 	_, err = step.Fetch()
-	assert.Nil(t, err)
+	s.Nil(err)
 }
 
-func TestStepFetchTar(t *testing.T) {
-	options := defaultPipelineOptions(t)
+func (s *StepSuite) TestFetchTar() {
+	options := defaultPipelineOptions(s.TestSuite)
 
 	werckerInit := `wercker-init "https://github.com/wercker/wercker-init/archive/v1.0.0.tar.gz"`
 	cfg := &StepConfig{ID: werckerInit, Data: make(map[string]string)}
 
 	step, err := NewStep(cfg, options)
-	assert.Nil(t, err)
+	s.Nil(err)
 	_, err = step.Fetch()
-	assert.Nil(t, err)
+	s.Nil(err)
 }
 
-func TestStepFetchFileNoDev(t *testing.T) {
-	options := defaultPipelineOptions(t)
+func (s *StepSuite) TestFetchFileNoDev() {
+	options := defaultPipelineOptions(s.TestSuite)
 
-	fileStep := `foo "file:///etc/"`
+	tmpdir, err := ioutil.TempDir("", "sentcli")
+	s.Nil(err)
+	defer os.RemoveAll(tmpdir)
+
+	fileStep := fmt.Sprintf(`foo "file:///%s"`, tmpdir)
 	cfg := &StepConfig{ID: fileStep, Data: make(map[string]string)}
 
 	step, err := NewStep(cfg, options)
-	assert.Nil(t, err)
+	s.Nil(err)
 	_, err = step.Fetch()
-	assert.NotNil(t, err)
+	s.NotNil(err)
 }
 
-func TestStepFetchFileDev(t *testing.T) {
-	options := defaultPipelineOptions(t, "--enable-dev-steps")
+func (s *StepSuite) TestFetchFileDev() {
+	options := defaultPipelineOptions(s.TestSuite, "--enable-dev-steps")
 
-	fileStep := `foo "file:///etc/"`
+	tmpdir, err := ioutil.TempDir("", "sentcli")
+	s.Nil(err)
+	defer os.RemoveAll(tmpdir)
+
+	fileStep := fmt.Sprintf(`foo "file:///%s"`, tmpdir)
 	cfg := &StepConfig{ID: fileStep, Data: make(map[string]string)}
 
 	step, err := NewStep(cfg, options)
-	assert.Nil(t, err)
+	s.Nil(err)
 	_, err = step.Fetch()
-	assert.Nil(t, err)
+	s.Nil(err)
 }

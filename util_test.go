@@ -4,95 +4,103 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestCounterIncrement(t *testing.T) {
+type UtilSuite struct {
+	*TestSuite
+}
+
+func TestUtilSuite(t *testing.T) {
+	suiteTester := &UtilSuite{&TestSuite{}}
+	suite.Run(t, suiteTester)
+}
+
+func (s *UtilSuite) TestCounterIncrement() {
 	counter := &Counter{}
-	assert.Equal(t, 0, counter.Current, "expected counter to intialize with 0")
+	s.Equal(0, counter.Current, "expected counter to intialize with 0")
 
 	n1 := counter.Increment()
-	assert.Equal(t, 0, n1, "expected first increment to be 0")
+	s.Equal(0, n1, "expected first increment to be 0")
 
 	n2 := counter.Increment()
-	assert.Equal(t, 1, n2, "expected second increment to be 0")
+	s.Equal(1, n2, "expected second increment to be 0")
 }
 
-func TestCounterIncrement2(t *testing.T) {
+func (s *UtilSuite) TestCounterIncrement2() {
 	counter := &Counter{Current: 3}
-	assert.Equal(t, 3, counter.Current, "expected counter to intialize with 3")
+	s.Equal(3, counter.Current, "expected counter to intialize with 3")
 
 	n1 := counter.Increment()
-	assert.Equal(t, 3, n1, "expected first increment to be 3")
+	s.Equal(3, n1, "expected first increment to be 3")
 
 	n2 := counter.Increment()
-	assert.Equal(t, 4, n2, "expected second increment to be 4")
+	s.Equal(4, n2, "expected second increment to be 4")
 }
 
-func TestParseApplicationIDValid(t *testing.T) {
+func (s *UtilSuite) TestParseApplicationIDValid() {
 	applicationID := "wercker/foobar"
 
 	username, name, err := ParseApplicationID(applicationID)
 
-	assert.Equal(t, nil, err)
-	assert.Equal(t, "wercker", username)
-	assert.Equal(t, "foobar", name)
+	s.Equal(nil, err)
+	s.Equal("wercker", username)
+	s.Equal("foobar", name)
 }
 
-func TestParseApplicationIDInvalid(t *testing.T) {
+func (s *UtilSuite) TestParseApplicationIDInvalid() {
 	applicationID := "foofoo"
 
 	username, name, err := ParseApplicationID(applicationID)
 
-	assert.Error(t, err)
-	assert.Equal(t, "", username)
-	assert.Equal(t, "", name)
+	s.Error(err)
+	s.Equal("", username)
+	s.Equal("", name)
 }
 
-func TestParseApplicationIDInvalid2(t *testing.T) {
+func (s *UtilSuite) TestParseApplicationIDInvalid2() {
 	applicationID := "wercker/foobar/bla"
 
 	username, name, err := ParseApplicationID(applicationID)
 
-	assert.Error(t, err)
-	assert.Equal(t, "", username)
-	assert.Equal(t, "", name)
+	s.Error(err)
+	s.Equal("", username)
+	s.Equal("", name)
 }
 
-func TestIsBuildIDValid(t *testing.T) {
+func (s *UtilSuite) TestIsBuildIDValid() {
 	buildID := "54e5dde34e104f675e007e3b"
 
 	ok := IsBuildID(buildID)
 
-	assert.Equal(t, true, ok)
+	s.Equal(true, ok)
 }
 
-func TestIsBuildIDInvalid(t *testing.T) {
+func (s *UtilSuite) TestIsBuildIDInvalid() {
 	buildID := "54e5dde34e104f675e007e3"
 
 	ok := IsBuildID(buildID)
 
-	assert.Equal(t, false, ok)
+	s.Equal(false, ok)
 }
 
-func TestIsBuildIDInvalid2(t *testing.T) {
+func (s *UtilSuite) TestIsBuildIDInvalid2() {
 	buildID := "invalidinvalidinvalidinv"
 
 	ok := IsBuildID(buildID)
 
-	assert.Equal(t, false, ok)
+	s.Equal(false, ok)
 }
 
-func TestIsBuildIDInvalid3(t *testing.T) {
+func (s *UtilSuite) TestIsBuildIDInvalid3() {
 	buildID := "invalid"
 
 	ok := IsBuildID(buildID)
 
-	assert.Equal(t, false, ok)
+	s.Equal(false, ok)
 }
 
-func TestMinInt(t *testing.T) {
+func (s *UtilSuite) TestMinInt() {
 	testSteps := []struct {
 		input    []int
 		expected int
@@ -108,11 +116,11 @@ func TestMinInt(t *testing.T) {
 	for _, test := range testSteps {
 		actual := MinInt(test.input...)
 
-		assert.Equal(t, test.expected, actual)
+		s.Equal(test.expected, actual)
 	}
 }
 
-func TestMaxInt(t *testing.T) {
+func (s *UtilSuite) TestMaxInt() {
 	testSteps := []struct {
 		input    []int
 		expected int
@@ -128,18 +136,18 @@ func TestMaxInt(t *testing.T) {
 	for _, test := range testSteps {
 		actual := MaxInt(test.input...)
 
-		assert.Equal(t, test.expected, actual)
+		s.Equal(test.expected, actual)
 	}
 }
 
-func TestGenerateDockerID(t *testing.T) {
+func (s *UtilSuite) TestGenerateDockerID() {
 	id, err := GenerateDockerID()
-	require.NoError(t, err, "Unable to generate Docker ID")
+	s.Require().NoError(err, "Unable to generate Docker ID")
 
 	// The ID needs to be a valid hex value
 	b, err := hex.DecodeString(id)
-	require.NoError(t, err, "Generated Docker ID was not a hex value")
+	s.Require().NoError(err, "Generated Docker ID was not a hex value")
 
 	// The ID needs to be 256 bits
-	assert.Equal(t, 256, len(b)*8)
+	s.Equal(256, len(b)*8)
 }
