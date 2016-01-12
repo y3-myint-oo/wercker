@@ -16,12 +16,11 @@ var (
 		cli.StringFlag{Name: "auth-token", Usage: "Authentication token to use."},
 		cli.StringFlag{Name: "auth-token-store", Value: "~/.wercker/token", Usage: "Where to store the token after a login.", Hidden: true},
 	}
-
 	dockerFlags = []cli.Flag{
 		cli.StringFlag{Name: "docker-host", Value: "", Usage: "Docker api endpoint.", EnvVar: "DOCKER_HOST"},
 		cli.StringFlag{Name: "docker-tls-verify", Value: "0", Usage: "Docker api tls verify.", EnvVar: "DOCKER_TLS_VERIFY"},
 		cli.StringFlag{Name: "docker-cert-path", Value: "", Usage: "Docker api cert path.", EnvVar: "DOCKER_CERT_PATH"},
-		cli.StringSliceFlag{Name: "docker-dns", Value: &cli.StringSlice{"8.8.8.8", "8.8.4.4"}, Usage: "Docker DNS server.", EnvVar: "DOCKER_DNS", Hidden: true},
+		cli.StringSliceFlag{Name: "docker-dns", Value: &cli.StringSlice{0: "8.8.8.8", 1: "8.8.4.4"}, Usage: "Docker DNS server.", EnvVar: "DOCKER_DNS", Hidden: true},
 		cli.BoolFlag{Name: "docker-local", Usage: "Don't interact with remote repositories"},
 	}
 

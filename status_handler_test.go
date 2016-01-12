@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/docker/docker/utils"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -18,114 +18,114 @@ func TestStatusHandlerSuite(t *testing.T) {
 
 func (s *StatusHandlerSuite) TestPullParallelDownloads() {
 	testSteps := []struct {
-		in       *utils.JSONMessage
+		in       *jsonmessage.JSONMessage
 		expected string
 	}{
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:     "ubuntu:latest",
 				Status: "The image you are pulling has been verified",
 			},
 			"The image you are pulling has been verified: ubuntu:latest\n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Pulling fs layer",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"Pulling fs layer: 511136ea3c5a\n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Pulling fs layer",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"Pulling fs layer: c7b7c6419568\n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Downloading",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 100},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 100},
 			},
 			"Downloading: 511136ea3c5a (0%)",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Downloading",
-				Progress: &utils.JSONProgress{Current: 50, Start: 0, Total: 100},
+				Progress: &jsonmessage.JSONProgress{Current: 50, Start: 0, Total: 100},
 			},
 			"\rDownloading: 511136ea3c5a (50%)",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Downloading",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 100},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 100},
 			},
 			"\rDownloading: 511136ea3c5a (50%), Downloading: c7b7c6419568 (0%)",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Download complete",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"\rDownload complete: 511136ea3c5a                                \nDownloading: c7b7c6419568 (0%)",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Downloading",
-				Progress: &utils.JSONProgress{Current: 50, Start: 0, Total: 100},
+				Progress: &jsonmessage.JSONProgress{Current: 50, Start: 0, Total: 100},
 			},
 			"\rDownloading: c7b7c6419568 (50%)",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Download complete",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"\rDownload complete: c7b7c6419568\n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Extracting",
-				Progress: &utils.JSONProgress{Current: 10, Start: 0, Total: 100},
+				Progress: &jsonmessage.JSONProgress{Current: 10, Start: 0, Total: 100},
 			},
 			"Extracting: 511136ea3c5a (10%)",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Pull complete",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"\rPull complete: 511136ea3c5a   \n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Extracting",
-				Progress: &utils.JSONProgress{Current: 55, Start: 0, Total: 100},
+				Progress: &jsonmessage.JSONProgress{Current: 55, Start: 0, Total: 100},
 			},
 			"Extracting: c7b7c6419568 (55%)",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Pull complete",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"\rPull complete: c7b7c6419568   \n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				Status: "Status: Downloaded newer image for ubuntu:latest;",
 			},
 			"Status: Downloaded newer image for ubuntu:latest;\n",
@@ -141,95 +141,95 @@ func (s *StatusHandlerSuite) TestPullParallelDownloads() {
 
 func (s *StatusHandlerSuite) TestPushParallelUploads() {
 	testSteps := []struct {
-		in       *utils.JSONMessage
+		in       *jsonmessage.JSONMessage
 		expected string
 	}{
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				Status: "The push refers to a repository [127.0.0.1:3000/bvdberg/pass] (len: 1)",
 			},
 			"Pushing to registry\n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				Status: "Sending image list",
 			},
 			"Sending image list\n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				Status: "Pushing repository 127.0.0.1:3000/bvdberg/pass (1 tags)",
 			},
 			"Pushing 1 tag(s)\n", // TODO
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Pushing",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"Pushing: 511136ea3c5a",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Buffering to disk",
-				Progress: &utils.JSONProgress{Current: 10, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 10, Start: 0, Total: 0},
 			},
 			"\rBuffering to disk: 511136ea3c5a (10 B)",
 		},
 		// buffering done?
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Pushing",
-				Progress: &utils.JSONProgress{Current: 10, Start: 0, Total: 100},
+				Progress: &jsonmessage.JSONProgress{Current: 10, Start: 0, Total: 100},
 			},
 			"\rPushing: 511136ea3c5a (10%)           ",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "511136ea3c5a",
 				Status:   "Image successfully pushed",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"\rImage successfully pushed: 511136ea3c5a\n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Pushing",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"Pushing: c7b7c6419568",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Buffering to disk",
-				Progress: &utils.JSONProgress{Current: 524287, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 524287, Start: 0, Total: 0},
 			},
 			"\rBuffering to disk: c7b7c6419568 (511.9 KB)",
 		},
 		// Buffering done?
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Pushing",
-				Progress: &utils.JSONProgress{Current: 44, Start: 0, Total: 100},
+				Progress: &jsonmessage.JSONProgress{Current: 44, Start: 0, Total: 100},
 			},
 			"\rPushing: c7b7c6419568 (44%)               ",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				ID:       "c7b7c6419568",
 				Status:   "Image successfully pushed",
-				Progress: &utils.JSONProgress{Current: 0, Start: 0, Total: 0},
+				Progress: &jsonmessage.JSONProgress{Current: 0, Start: 0, Total: 0},
 			},
 			"\rImage successfully pushed: c7b7c6419568\n",
 		},
 		{
-			&utils.JSONMessage{
+			&jsonmessage.JSONMessage{
 				Status: "Pushing tag for rev [a636b9702b50] on {http://127.0.0.1:3000/v1/repositories/bvdberg/pass/tags/build-549305dd56000d6d0700027e};",
 			},
 			"Pushing tag for image: a636b9702b50\n", // TODO
