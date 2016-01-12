@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/chuckpreslar/emission"
-	"github.com/docker/docker/utils"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"golang.org/x/net/context"
 )
 
@@ -281,7 +281,7 @@ func EmitStatus(e *NormalizedEmitter, r io.Reader, options *PipelineOptions) {
 	s := NewJSONMessageProcessor()
 	dec := json.NewDecoder(r)
 	for {
-		var m utils.JSONMessage
+		var m jsonmessage.JSONMessage
 		if err := dec.Decode(&m); err == io.EOF {
 			// Once the EOF is reached the function will stop
 			break

@@ -8,12 +8,18 @@ import:
     repo:    git@github.com:wercker/codegangsta-cli
     ref:     863dc328534d8e22f36386bce3da48dc572a8ddf
     vcs:     git
-  - package: github.com/docker/docker
-    ref:     d3a6a53
-    vcs:     git
+  - package: github.com/docker/docker/pkg/term
+  - package: github.com/docker/docker/pkg/signal
+  - package: github.com/docker/docker/utils
+    # subpackages:
+    #   - pkg/term
+    #   - pkg/signal
+    #   - utils
+    # ref:     d3a6a53
+    # vcs:     git
   - package: github.com/fsouza/go-dockerclient
-    ref:     f6e9f5396e0e8f34472efe443d0cb7f9af162b88
-    vcs:     git
+    # ref:     f6e9f5396e0e8f34472efe443d0cb7f9af162b88
+    # vcs:     git
   - package: github.com/termie/go-shutil
     ref:     bcacb06
     vcs:     git
@@ -33,8 +39,8 @@ import:
   - package: github.com/joho/godotenv
     ref:     ead2e75
     vcs:     git
-  - package: github.com/docker/docker/pkg/term
   - package: github.com/stretchr/testify/suite
+  - package: github.com/stretchr/testify/assert
   - package: golang.org/x/net/context
   - package: golang.org/x/sys/unix
   - package: github.com/mreiferson/go-snappystream

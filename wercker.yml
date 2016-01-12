@@ -1,4 +1,4 @@
-box: tcnksm/gox:1.4.2
+box: tcnksm/gox:1.5.1
 dev:
   box:
     id: busybox
@@ -30,7 +30,15 @@ build:
     - setup-go-workspace:
         package-dir: github.com/wercker/sentcli
 
-    - glide-install
+    # - glide-install
+    - script:
+        name: glide install
+        code: |
+          export GO15VENDOREXPERIMENT=1
+          curl -LO https://github.com/Masterminds/glide/releases/download/0.8.3/glide-0.8.3-linux-amd64.tar.gz
+          tar -xvzf glide-0.8.3-linux-amd64.tar.gz
+          cp linux-amd64/glide ./
+          ./glide install
 
     - script:
         name: go vet
@@ -38,11 +46,12 @@ build:
             go get golang.org/x/tools/cmd/vet
             go vet *.go
 
-    - golint
+    - golint:
+        exclude: vendor
 
     - script:
         name: go test
-        code: go test
+        code: go test $(./glide novendor)
 
     - script:
         name: clear out the build binaries

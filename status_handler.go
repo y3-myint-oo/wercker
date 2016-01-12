@@ -7,27 +7,27 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/docker/utils"
+	"github.com/docker/docker/pkg/jsonmessage"
 )
 
 // NewJSONMessageProcessor will create a new JSONMessageProcessor and
 // initialize it.
 func NewJSONMessageProcessor() *JSONMessageProcessor {
 	s := &JSONMessageProcessor{}
-	s.progressMessages = make(map[string]*utils.JSONMessage)
+	s.progressMessages = make(map[string]*jsonmessage.JSONMessage)
 	return s
 }
 
 // A JSONMessageProcessor will process JSONMessages and generate logs.
 type JSONMessageProcessor struct {
 	lastProgressLength int
-	message            *utils.JSONMessage
-	progressMessages   map[string]*utils.JSONMessage
+	message            *jsonmessage.JSONMessage
+	progressMessages   map[string]*jsonmessage.JSONMessage
 }
 
 // ProcessJSONMessage will take JSONMessage m and generate logs based on the
 // message and previous messages.
-func (s *JSONMessageProcessor) ProcessJSONMessage(m *utils.JSONMessage) string {
+func (s *JSONMessageProcessor) ProcessJSONMessage(m *jsonmessage.JSONMessage) string {
 	switch m.Status {
 	case "Extracting":
 		fallthrough
@@ -116,7 +116,7 @@ func (s *JSONMessageProcessor) getOutput() string {
 }
 
 // formatCompleteOutput will format the message m as an completed message.
-func formatCompleteOutput(m *utils.JSONMessage) string {
+func formatCompleteOutput(m *jsonmessage.JSONMessage) string {
 	if strings.HasPrefix(m.Status, "The push refers to a repository") {
 		return "Pushing to registry"
 	}
@@ -146,7 +146,7 @@ func formatCompleteOutput(m *utils.JSONMessage) string {
 }
 
 // formatProgressOutput will format the message m as an progress message.
-func formatProgressOutput(m *utils.JSONMessage) string {
+func formatProgressOutput(m *jsonmessage.JSONMessage) string {
 	if m.Status == "Buffering to disk" {
 		progress := formatDiskUnit(int64(m.Progress.Current))
 		return fmt.Sprintf("%s: %s (%s)", m.Status, m.ID, progress)
@@ -206,10 +206,10 @@ func formatDiskUnit(b int64) string {
 
 // calculateProgress will calculate the percentage based on p. It will return 0
 // if p.Total equals 0.
-func calculateProgress(p *utils.JSONProgress) int {
+func calculateProgress(p *jsonmessage.JSONProgress) int {
 	if p.Total == 0 {
 		return 0
 	}
 
-	return (100 * p.Current) / p.Total
+	return int((100 * p.Current) / p.Total)
 }
