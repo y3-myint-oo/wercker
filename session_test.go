@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"golang.org/x/net/context"
 )
 
@@ -87,7 +87,7 @@ func fakeSessionOptions() *PipelineOptions {
 	}
 }
 
-func FakeSession(t *testing.T, opts *PipelineOptions) (context.Context, context.CancelFunc, *Session, *FakeTransport) {
+func FakeSession(s *TestSuite, opts *PipelineOptions) (context.Context, context.CancelFunc, *Session, *FakeTransport) {
 	if opts == nil {
 		opts = fakeSessionOptions()
 	}
@@ -97,7 +97,7 @@ func FakeSession(t *testing.T, opts *PipelineOptions) (context.Context, context.
 	session := NewSession(opts, transport)
 
 	sessionCtx, err := session.Attach(topCtx)
-	assert.Nil(t, err)
+	s.Nil(err)
 	return sessionCtx, cancel, session, transport
 }
 
@@ -107,21 +107,28 @@ func fakeSentinel(s string) func() string {
 	}
 }
 
-func TestSessionSend(t *testing.T) {
-	setup(t)
-	sessionCtx, _, session, transport := FakeSession(t, nil)
+type SessionSuite struct {
+	*TestSuite
+}
+
+func TestSessionSuite(t *testing.T) {
+	suiteTester := &SessionSuite{&TestSuite{}}
+	suite.Run(t, suiteTester)
+}
+
+func (s *SessionSuite) TestSend() {
+	sessionCtx, _, session, transport := FakeSession(s.TestSuite, nil)
 
 	go func() {
 		session.Send(sessionCtx, false, "foo")
 	}()
 
-	s := <-transport.inchan
-	assert.Equal(t, "foo\n", s)
+	sess := <-transport.inchan
+	s.Equal("foo\n", sess)
 }
 
-func TestSessionSendCancelled(t *testing.T) {
-	setup(t)
-	sessionCtx, cancel, session, _ := FakeSession(t, nil)
+func (s *SessionSuite) TestSendCancelled() {
+	sessionCtx, cancel, session, _ := FakeSession(s.TestSuite, nil)
 	cancel()
 
 	errchan := make(chan error)
@@ -129,12 +136,11 @@ func TestSessionSendCancelled(t *testing.T) {
 		errchan <- session.Send(sessionCtx, false, "foo")
 	}()
 
-	assert.NotNil(t, <-errchan)
+	s.NotNil(<-errchan)
 }
 
-func TestSessionSendChecked(t *testing.T) {
-	setup(t)
-	sessionCtx, _, session, transport := FakeSession(t, nil)
+func (s *SessionSuite) TestSendChecked() {
+	sessionCtx, _, session, transport := FakeSession(s.TestSuite, nil)
 
 	stepper := NewStepper()
 	go func() {
@@ -145,41 +151,39 @@ func TestSessionSendChecked(t *testing.T) {
 
 	// Success
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
-	assert.Nil(t, err)
-	assert.Equal(t, 0, exit)
-	assert.Equal(t, "foo\n", recv[0])
+	s.Nil(err)
+	s.Equal(0, exit)
+	s.Equal("foo\n", recv[0])
 
 	stepper.Step()
 	// Non-zero Exit
 	exit, recv, err = session.SendChecked(sessionCtx, "lala")
-	assert.NotNil(t, err)
-	assert.Equal(t, 1, exit)
-	assert.Equal(t, "bar\n", recv[0])
+	s.NotNil(err)
+	s.Equal(1, exit)
+	s.Equal("bar\n", recv[0])
 }
 
-func TestSessionSendCheckedCommandTimeout(t *testing.T) {
-	setup(t)
+func (s *SessionSuite) TestSendCheckedCommandTimeout() {
 	opts := fakeSessionOptions()
 	opts.CommandTimeout = 0
-	sessionCtx, _, session, transport := FakeSession(t, opts)
+	sessionCtx, _, session, transport := FakeSession(s.TestSuite, opts)
 
 	go func() {
 		transport.ListenAndRespond(0, []string{"foo\n"})
 	}()
 
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
-	assert.NotNil(t, err)
+	s.NotNil(err)
 	// We timed out so -1
-	assert.Equal(t, -1, exit)
+	s.Equal(-1, exit)
 	// We sent some text so we should have gotten that at least
-	assert.Equal(t, 1, len(recv))
+	s.Equal(1, len(recv))
 }
 
-func TestSessionSendCheckedNoResponseTimeout(t *testing.T) {
-	setup(t)
+func (s *SessionSuite) TestSendCheckedNoResponseTimeout() {
 	opts := fakeSessionOptions()
 	opts.NoResponseTimeout = 0
-	sessionCtx, _, session, transport := FakeSession(t, opts)
+	sessionCtx, _, session, transport := FakeSession(s.TestSuite, opts)
 
 	go func() {
 		// Just listen and never send anything
@@ -189,14 +193,13 @@ func TestSessionSendCheckedNoResponseTimeout(t *testing.T) {
 	}()
 
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
-	assert.NotNil(t, err)
-	assert.Equal(t, -1, exit)
-	assert.Equal(t, 0, len(recv))
+	s.NotNil(err)
+	s.Equal(-1, exit)
+	s.Equal(0, len(recv))
 }
 
-func TestSessionSendCheckedEarlyExit(t *testing.T) {
-	setup(t)
-	sessionCtx, _, session, transport := FakeSession(t, nil)
+func (s *SessionSuite) TestSendCheckedEarlyExit() {
+	sessionCtx, _, session, transport := FakeSession(s.TestSuite, nil)
 
 	stepper := NewStepper()
 	randomSentinel = fakeSentinel("test-sentinel")
@@ -218,13 +221,13 @@ func TestSessionSendCheckedEarlyExit(t *testing.T) {
 	}()
 
 	exit, recv, err := session.SendChecked(sessionCtx, "foo")
-	assert.NotNil(t, err)
-	assert.Equal(t, -1, exit)
-	assert.Equal(t, 2, len(recv), "should have gotten two lines of output")
+	s.NotNil(err)
+	s.Equal(-1, exit)
+	s.Equal(2, len(recv), "should have gotten two lines of output")
 
 }
 
-func TestSessionSmartSplitLines(t *testing.T) {
+func (s *SessionSuite) TestSmartSplitLines() {
 	sentinel := "FOO9000"
 	sentinelLine := "FOO9000 1\n"
 	testLine := "some garbage\n"
@@ -232,27 +235,27 @@ func TestSessionSmartSplitLines(t *testing.T) {
 	// Test easy normal return
 	simpleLine := sentinelLine
 	simpleLines := smartSplitLines(simpleLine, sentinel)
-	assert.Equal(t, 1, len(simpleLines))
-	assert.Equal(t, sentinelLine, simpleLines[0])
+	s.Equal(1, len(simpleLines))
+	s.Equal(sentinelLine, simpleLines[0])
 	simpleFound, simpleExit := checkLine(simpleLines[0], sentinel)
-	assert.Equal(t, true, simpleFound)
-	assert.Equal(t, 1, simpleExit)
+	s.Equal(true, simpleFound)
+	s.Equal(1, simpleExit)
 
 	// Test return on same logical line as other stuff
 	mixedLine := fmt.Sprintf("%s%s", testLine, sentinelLine)
 	mixedLines := smartSplitLines(mixedLine, sentinel)
-	assert.Equal(t, 2, len(mixedLines))
-	assert.Equal(t, testLine, mixedLines[0])
-	assert.Equal(t, sentinelLine, mixedLines[1])
+	s.Equal(2, len(mixedLines))
+	s.Equal(testLine, mixedLines[0])
+	s.Equal(sentinelLine, mixedLines[1])
 	mixedFound, mixedExit := checkLine(mixedLines[1], sentinel)
-	assert.Equal(t, true, mixedFound)
-	assert.Equal(t, 1, mixedExit)
+	s.Equal(true, mixedFound)
+	s.Equal(1, mixedExit)
 
 	// Test no return
 	uselessLine := fmt.Sprintf("%s%s", testLine, testLine)
 	uselessLines := smartSplitLines(uselessLine, sentinel)
-	assert.Equal(t, 1, len(uselessLines))
-	assert.Equal(t, uselessLine, uselessLines[0])
+	s.Equal(1, len(uselessLines))
+	s.Equal(uselessLine, uselessLines[0])
 	uselessFound, _ := checkLine(uselessLines[0], sentinel)
-	assert.Equal(t, false, uselessFound)
+	s.Equal(false, uselessFound)
 }

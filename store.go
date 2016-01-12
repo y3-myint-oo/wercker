@@ -51,6 +51,7 @@ func GenerateBaseKey(options *PipelineOptions) string {
 	return key
 }
 
+// StoreContainerStep stores the container that was built
 type StoreContainerStep struct {
 	*BaseStep
 	data     map[string]string
@@ -58,6 +59,7 @@ type StoreContainerStep struct {
 	artifact *Artifact
 }
 
+// NewStoreContainerStep constructor
 func NewStoreContainerStep(stepConfig *StepConfig, options *PipelineOptions) (*StoreContainerStep, error) {
 	name := "store-container"
 	displayName := "store container"
@@ -87,10 +89,12 @@ func NewStoreContainerStep(stepConfig *StepConfig, options *PipelineOptions) (*S
 
 }
 
+// InitEnv preps our env
 func (s *StoreContainerStep) InitEnv(env *Environment) {
 	// NOP
 }
 
+// Fetch NOP
 func (s *StoreContainerStep) Fetch() (string, error) {
 	// nop
 	return "", nil
@@ -121,6 +125,7 @@ func (s *StoreContainerStep) DockerMessage() string {
 	return message
 }
 
+// Execute does the actual export and upload of the container
 func (s *StoreContainerStep) Execute(ctx context.Context, sess *Session) (int, error) {
 	e, err := EmitterFromContext(ctx)
 	if err != nil {

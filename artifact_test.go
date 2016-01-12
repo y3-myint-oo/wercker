@@ -6,37 +6,46 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestDockerFileCollectorSingle(t *testing.T) {
-	client := dockerOrSkip(t)
+type ArtifactSuite struct {
+	*TestSuite
+}
+
+func TestArtifactSuite(t *testing.T) {
+	suiteTester := &ArtifactSuite{&TestSuite{}}
+	suite.Run(t, suiteTester)
+}
+
+func (s *ArtifactSuite) TestDockerFileCollectorSingle() {
+	client := s.DockerOrSkip()
 
 	container, err := tempBusybox(client)
-	assert.Nil(t, err)
+	s.Nil(err)
 	defer container.Remove()
 
 	dfc := NewDockerFileCollector(client, container.ID)
 
-	archive, errs := dfc.Collect("/etc/issue")
+	archive, errs := dfc.Collect("/etc/alpine-release")
 	var b bytes.Buffer
 
 	select {
-	case err := <-archive.SingleBytes("issue", &b):
-		assert.Nil(t, err)
+	case err := <-archive.SingleBytes("alpine-release", &b):
+		s.Nil(err)
 	case err := <-errs:
-		assert.Nil(t, err)
-		t.FailNow()
+		s.Nil(err)
+		s.T().FailNow()
 	}
 
-	assert.Equal(t, "Welcome to Buildroot\n", b.String())
+	s.Equal("3.1.4\n", b.String())
 }
 
-func TestDockerFileCollectorSingleNotFound(t *testing.T) {
-	client := dockerOrSkip(t)
+func (s *ArtifactSuite) TestDockerFileCollectorSingleNotFound() {
+	client := s.DockerOrSkip()
 
 	container, err := tempBusybox(client)
-	assert.Nil(t, err)
+	s.Nil(err)
 	defer container.Remove()
 
 	dfc := NewDockerFileCollector(client, container.ID)
@@ -46,9 +55,9 @@ func TestDockerFileCollectorSingleNotFound(t *testing.T) {
 	var b bytes.Buffer
 	select {
 	case <-archive.SingleBytes("file", &b):
-		t.FailNow()
+		s.T().FailNow()
 	case err := <-errs:
-		assert.Equal(t, err, ErrEmptyTarball)
+		s.Equal(err, ErrEmptyTarball)
 	}
 
 	// Or from archive
@@ -56,68 +65,63 @@ func TestDockerFileCollectorSingleNotFound(t *testing.T) {
 	var b2 bytes.Buffer
 	select {
 	case err := <-archive.SingleBytes("notfound", &b2):
-		assert.Equal(t, err, ErrEmptyTarball)
+		s.Equal(err, ErrEmptyTarball)
 	case <-errs:
-		t.FailNow()
+		s.T().FailNow()
 	}
-
 }
 
-func TestDockerFileCollectorMulti(t *testing.T) {
-	client := dockerOrSkip(t)
+func (s *ArtifactSuite) TestDockerFileCollectorMulti() {
+	client := s.DockerOrSkip()
 
 	container, err := tempBusybox(client)
-	assert.Nil(t, err)
+	s.Nil(err)
 	defer container.Remove()
 
 	dfc := NewDockerFileCollector(client, container.ID)
 
-	archive, errs := dfc.Collect("/etc/network")
+	archive, errs := dfc.Collect("/etc/apk")
 	var b bytes.Buffer
 
 	select {
-	case err := <-archive.SingleBytes("network/interfaces", &b):
-		assert.Nil(t, err)
+	case err := <-archive.SingleBytes("apk/arch", &b):
+		s.Nil(err)
 	case <-errs:
-		t.FailNow()
+		s.T().FailNow()
 	}
 
-	check := `# Configure Loopback
-auto lo
-iface lo inet loopback
-
-`
-	assert.Equal(t, check, b.String())
+	check := "x86_64\n"
+	s.Equal(check, b.String())
 }
 
-func TestDockerFileCollectorMultiEmptyTarball(t *testing.T) {
-	client := dockerOrSkip(t)
+func (s *ArtifactSuite) TestDockerFileCollectorMultiEmptyTarball() {
+	client := s.DockerOrSkip()
 
 	container, err := tempBusybox(client)
-	assert.Nil(t, err)
+	s.Nil(err)
 	defer container.Remove()
 
 	dfc := NewDockerFileCollector(client, container.ID)
 
-	archive, errs := dfc.Collect("/home/default")
+	archive, errs := dfc.Collect("/var/tmp")
 
 	tmp, err := ioutil.TempDir("", "test-")
-	assert.Nil(t, err)
+	s.Nil(err)
 	defer os.RemoveAll(tmp)
 
 	select {
-	case err := <-archive.Multi("default", tmp, 1024*1024*1000):
-		assert.Equal(t, err, ErrEmptyTarball)
+	case err := <-archive.Multi("tmp", tmp, 1024*1024*1000):
+		s.Equal(err, ErrEmptyTarball)
 	case <-errs:
-		t.FailNow()
+		s.FailNow()
 	}
 }
 
-func TestDockerFileCollectorMultiNotFound(t *testing.T) {
-	client := dockerOrSkip(t)
+func (s *ArtifactSuite) TestDockerFileCollectorMultiNotFound() {
+	client := s.DockerOrSkip()
 
 	container, err := tempBusybox(client)
-	assert.Nil(t, err)
+	s.Nil(err)
 	defer container.Remove()
 
 	dfc := NewDockerFileCollector(client, container.ID)
@@ -125,13 +129,13 @@ func TestDockerFileCollectorMultiNotFound(t *testing.T) {
 	archive, errs := dfc.Collect("/notfound")
 
 	tmp, err := ioutil.TempDir("", "test-")
-	assert.Nil(t, err)
+	s.Nil(err)
 	defer os.RemoveAll(tmp)
 
 	select {
 	case <-archive.Multi("default", tmp, 1024*1024*1000):
-		t.FailNow()
+		s.FailNow()
 	case err := <-errs:
-		assert.Equal(t, err, ErrEmptyTarball)
+		s.Equal(err, ErrEmptyTarball)
 	}
 }
