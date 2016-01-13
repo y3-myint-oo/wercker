@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"crypto/rand"
 	"encoding/hex"
@@ -197,6 +198,45 @@ func tarPath(writer io.Writer, root string) error {
 		return err
 	}
 	return nil
+}
+
+//parseGitIgnore goes through a file and returns the files a gitignore wants to
+//ignore and unignore as arrays
+func parseGitIgnore(gitIgnore []byte) ([]string, []string, error) {
+	buf := bytes.NewBuffer(gitIgnore)
+	var ignoreFiles []string
+	var unignoreFiles []string
+	for {
+		line, err := buf.ReadString('\n')
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
+			if err != nil && err == io.EOF {
+				return ignoreFiles, unignoreFiles, nil
+			}
+		}
+		if err != nil && err != io.EOF {
+			return nil, nil, err
+		}
+		if line[0] == '#' {
+			//skip empty lines
+			continue
+		}
+		var isNegative bool
+		if line[0] == '!' {
+			isNegative = true
+		}
+		if isNegative {
+			line = line[1:]
+		}
+		if line[0] == '/' {
+			line = line[1:]
+		}
+		if isNegative {
+			unignoreFiles = append(unignoreFiles, line)
+		} else {
+			ignoreFiles = append(ignoreFiles, line)
+		}
+	}
 }
 
 // Finisher is a helper class for running something either right away or

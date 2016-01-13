@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/pborman/uuid"
-	"github.com/termie/go-shutil"
 	"golang.org/x/net/context"
 )
 
@@ -158,6 +157,22 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.options.ContainerPath(),
 			p.options.CachePath(),
 		}
+		var unignoreFiles []string
+		if exists(".gitignore") {
+			//parse gitignore
+			//add those files to ignoreFiles
+			gitIgnore, err := ioutil.ReadFile(".gitignore")
+			if err != nil {
+				return nil, err
+			}
+			ignore, unignoreFiles, err := parseGitIgnore(gitIgnore)
+			if err != nil {
+				return nil, err
+			}
+			for _, file := range ignore {
+				ignoreFiles = append(ignoreFiles, file)
+			}
+		}
 
 		// Make sure we don't accidentally recurse or copy extra files
 		ignoreFunc := func(src string, files []os.FileInfo) []string {
@@ -169,7 +184,7 @@ func (p *Runner) EnsureCode() (string, error) {
 					panic(err)
 				}
 
-				if ContainsString(ignoreFiles, abspath) {
+				if ContainsString(ignoreFiles, abspath) && !ContainsString(unignoreFiles, abspath) {
 					ignores = append(ignores, file.Name())
 				}
 				// TODO(termie): maybe ignore .gitignore files?
