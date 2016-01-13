@@ -38,7 +38,7 @@ build:
           curl -LO https://github.com/Masterminds/glide/releases/download/0.8.3/glide-0.8.3-linux-amd64.tar.gz
           tar -xvzf glide-0.8.3-linux-amd64.tar.gz
           cp linux-amd64/glide ./
-          ./glide install
+          ./glide install --quick
 
     - script:
         name: go vet

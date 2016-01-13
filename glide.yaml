@@ -11,6 +11,7 @@ import:
   - package: github.com/docker/docker/pkg/term
   - package: github.com/docker/docker/pkg/signal
   - package: github.com/docker/docker/utils
+  - package: github.com/docker/go-units
     # subpackages:
     #   - pkg/term
     #   - pkg/signal
