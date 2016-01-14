@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/pborman/uuid"
+	"github.com/termie/go-shutil"
+	ignoreparser "github.com/wercker/go-git-ignore"
 	"golang.org/x/net/context"
 )
 
@@ -158,14 +160,14 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.options.ContainerPath(),
 			p.options.CachePath(),
 		}
-		var unignoreFiles []string
-		if exists(".gitignore") {
+		var gitIgnoreRules *ignoreparser.GitIgnore
+		if hasGitIgnore, _ := exists(".gitignore"); hasGitIgnore {
 			gitIgnoreFile, err := ioutil.ReadFile(".gitignore")
 			if err != nil {
 				return projectDir, err
 			}
-			gitIgnoreLines := strings.Split(string(gitIgnore), "/n")
-			gitIgnoreRules, err := ignoreparser(gitIgnoreLines...)
+			gitIgnoreLines := strings.Split(string(gitIgnoreFile), "/n")
+			gitIgnoreRules, err = ignoreparser.CompileIgnoreLines(gitIgnoreLines...)
 			if err != nil {
 				return projectDir, err
 			}
@@ -181,7 +183,7 @@ func (p *Runner) EnsureCode() (string, error) {
 					panic(err)
 				}
 
-				if ContainsString(ignoreFiles, abspath) || gitIgnoreRules.MatchesPath(file.Name) {
+				if ContainsString(ignoreFiles, abspath) || gitIgnoreRules.MatchesPath(file.Name()) {
 					ignores = append(ignores, file.Name())
 				}
 			}
