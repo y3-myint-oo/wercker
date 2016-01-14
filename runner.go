@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
@@ -159,18 +160,14 @@ func (p *Runner) EnsureCode() (string, error) {
 		}
 		var unignoreFiles []string
 		if exists(".gitignore") {
-			//parse gitignore
-			//add those files to ignoreFiles
-			gitIgnore, err := ioutil.ReadFile(".gitignore")
+			gitIgnoreFile, err := ioutil.ReadFile(".gitignore")
 			if err != nil {
-				return nil, err
+				return projectDir, err
 			}
-			ignore, unignoreFiles, err := parseGitIgnore(gitIgnore)
+			gitIgnoreLines := strings.Split(string(gitIgnore), "/n")
+			gitIgnoreRules, err := ignoreparser(gitIgnoreLines...)
 			if err != nil {
-				return nil, err
-			}
-			for _, file := range ignore {
-				ignoreFiles = append(ignoreFiles, file)
+				return projectDir, err
 			}
 		}
 
@@ -184,10 +181,9 @@ func (p *Runner) EnsureCode() (string, error) {
 					panic(err)
 				}
 
-				if ContainsString(ignoreFiles, abspath) && !ContainsString(unignoreFiles, abspath) {
+				if ContainsString(ignoreFiles, abspath) || gitIgnoreRules.MatchesPath(file.Name) {
 					ignores = append(ignores, file.Name())
 				}
-				// TODO(termie): maybe ignore .gitignore files?
 			}
 			return ignores
 		}
