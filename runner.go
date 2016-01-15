@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
@@ -160,14 +159,16 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.options.ContainerPath(),
 			p.options.CachePath(),
 		}
+
 		var gitIgnoreRules *ignore.GitIgnore
-		if hasGitIgnore, _ := exists(filepath.Join(projectDir, ".gitignore")); hasGitIgnore {
-			gitIgnoreFile, err := ioutil.ReadFile(filepath.Join(projectDir, ".gitignore"))
+		var err error
+		gitIgnorePath := filepath.Join(projectDir, ".gitignore")
+
+		if hasGitIgnore, _ := exists(gitIgnorePath); hasGitIgnore {
+			gitIgnoreRules, err = ignore.CompileIgnoreFile(gitIgnorePath)
 			if err != nil {
 				return projectDir, err
 			}
-			gitIgnoreLines := strings.Split(string(gitIgnoreFile), "\n")
-			gitIgnoreRules, _ = ignore.CompileIgnoreLines(gitIgnoreLines...)
 		}
 		// Make sure we don't accidentally recurse or copy extra files
 		ignoreFunc := func(src string, files []os.FileInfo) []string {
@@ -178,7 +179,9 @@ func (p *Runner) EnsureCode() (string, error) {
 					// Something went sufficiently wrong
 					panic(err)
 				}
-				if ContainsString(ignoreFiles, abspath) || gitIgnoreRules.MatchesPath(file.Name()) {
+				if ContainsString(ignoreFiles, abspath) {
+					ignores = append(ignores, file.Name())
+				} else if gitIgnoreRules != nil && gitIgnoreRules.MatchesPath(file.Name()) {
 					ignores = append(ignores, file.Name())
 				}
 			}
@@ -186,7 +189,7 @@ func (p *Runner) EnsureCode() (string, error) {
 		}
 		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy}
 		os.Rename(projectDir, fmt.Sprintf("%s-%s", projectDir, uuid.NewRandom().String()))
-		err := shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
+		err = shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
 		if err != nil {
 			return projectDir, err
 		}
