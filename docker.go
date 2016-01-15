@@ -862,7 +862,10 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	}
 
 	if env, ok := s.data["env"]; ok {
-		s.env = env.Interpolate(env)
+		parsedEnv, err := shlex.Split(env)
+		if err == nil {
+			s.env = parsedEnv
+		}
 	}
 
 	if stopsignal, ok := s.data["stopsignal"]; ok {
@@ -870,7 +873,15 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	}
 
 	if labels, ok := s.data["labels"]; ok {
-		s.labels = env.Interpolate(labels)
+		parsedLabels, err := shlex.Split(labels)
+		if err == nil {
+			labelMap := make(map[string]string)
+			for _, labelPair := range parts {
+				pair := strings.Split(labelPair, "=")
+				labelMap[pair[0]] = pair[1]
+			}
+			s.labels = labelMap
+		}
 	}
 
 	if user, ok := s.data["user"]; ok {
