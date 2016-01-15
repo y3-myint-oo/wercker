@@ -201,7 +201,7 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 	defer sess.ShowLogs()
 
 	timer := util.NewTimer()
-	f := &Formatter{p.options.GlobalOptions}
+	f := &util.Formatter{p.options.GlobalOptions.ShowColors}
 
 	cmds := []string{}
 

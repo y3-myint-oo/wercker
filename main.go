@@ -755,7 +755,7 @@ func executePipeline(cmdCtx context.Context, options *PipelineOptions, getter pi
 	if err != nil {
 		return nil, err
 	}
-	f := &Formatter{options.GlobalOptions}
+	f := &util.Formatter{options.GlobalOptions.ShowColors}
 
 	// Set up the runner
 	r, err := NewRunner(cmdCtx, options, getter)

@@ -233,7 +233,7 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		s.killProcesses(containerID, "INT")
 		return 0, nil
 	}
-	f := Formatter{s.options.GlobalOptions}
+	f := &util.Formatter{s.options.GlobalOptions.ShowColors}
 	s.logger.Info(f.Info("Reloading on file changes"))
 	doCmd := func() {
 		err := sess.Send(ctx, false, "set +e", s.Code)

@@ -158,7 +158,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 	if err != nil {
 		return nil, err
 	}
-	f := &Formatter{b.options.GlobalOptions}
+	f := &util.Formatter{b.options.GlobalOptions.ShowColors}
 
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {

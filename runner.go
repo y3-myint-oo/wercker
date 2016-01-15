@@ -63,7 +63,7 @@ type Runner struct {
 	getPipeline   pipelineGetter
 	logger        *util.LogEntry
 	emitter       *NormalizedEmitter
-	formatter     *Formatter
+	formatter     *util.Formatter
 }
 
 // NewRunner from global options
@@ -116,7 +116,7 @@ func NewRunner(ctx context.Context, options *PipelineOptions, getPipeline pipeli
 		getPipeline:   getPipeline,
 		logger:        logger,
 		emitter:       e,
-		formatter:     &Formatter{options.GlobalOptions},
+		formatter:     &util.Formatter{options.GlobalOptions.ShowColors},
 	}, nil
 }
 
@@ -410,7 +410,7 @@ func (p *Runner) StartFullPipeline(options *PipelineOptions) *util.Finisher {
 // the entire "Setup Environment" step.
 func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, error) {
 	shared := &RunnerShared{}
-	f := &Formatter{p.options.GlobalOptions}
+	f := &util.Formatter{p.options.GlobalOptions.ShowColors}
 	timer := util.NewTimer()
 
 	sr := &StepResult{

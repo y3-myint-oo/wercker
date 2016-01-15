@@ -1,4 +1,18 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package util
 
 import (
 	"fmt"
@@ -15,22 +29,22 @@ const (
 // Formatter formats the messages, and optionally disabling colors. See
 // FormatMessage for the structure of messages.
 type Formatter struct {
-	options *GlobalOptions
+	ShowColors bool
 }
 
 // Info uses no color.
 func (f *Formatter) Info(messages ...string) string {
-	return FormatMessage("", f.options.ShowColors, messages...)
+	return FormatMessage("", f.ShowColors, messages...)
 }
 
 // Success uses successColor (green) as color.
 func (f *Formatter) Success(messages ...string) string {
-	return FormatMessage(successColor, f.options.ShowColors, messages...)
+	return FormatMessage(successColor, f.ShowColors, messages...)
 }
 
 // Fail uses failColor (red) as color.
 func (f *Formatter) Fail(messages ...string) string {
-	return FormatMessage(failColor, f.options.ShowColors, messages...)
+	return FormatMessage(failColor, f.ShowColors, messages...)
 }
 
 // FormatMessage handles one or two messages. If more messages are used, those
