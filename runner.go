@@ -9,6 +9,7 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
+	"github.com/wercker/go-gitignore"
 	"golang.org/x/net/context"
 )
 
@@ -159,6 +160,15 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.options.CachePath(),
 		}
 
+		var gitIgnoreRules *ignore.GitIgnore
+		var err error
+		gitIgnorePath := filepath.Join(p.options.ProjectPath, ".gitignore")
+		if hasGitIgnore, _ := exists(gitIgnorePath); hasGitIgnore {
+			gitIgnoreRules, err = ignore.CompileIgnoreFile(gitIgnorePath)
+			if err != nil {
+				return projectDir, err
+			}
+		}
 		// Make sure we don't accidentally recurse or copy extra files
 		ignoreFunc := func(src string, files []os.FileInfo) []string {
 			ignores := []string{}
@@ -168,17 +178,17 @@ func (p *Runner) EnsureCode() (string, error) {
 					// Something went sufficiently wrong
 					panic(err)
 				}
-
 				if ContainsString(ignoreFiles, abspath) {
 					ignores = append(ignores, file.Name())
+				} else if gitIgnoreRules != nil && gitIgnoreRules.MatchesPath(file.Name()) {
+					ignores = append(ignores, file.Name())
 				}
-				// TODO(termie): maybe ignore .gitignore files?
 			}
 			return ignores
 		}
 		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy}
 		os.Rename(projectDir, fmt.Sprintf("%s-%s", projectDir, uuid.NewRandom().String()))
-		err := shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
+		err = shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
 		if err != nil {
 			return projectDir, err
 		}
