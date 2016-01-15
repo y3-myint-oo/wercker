@@ -206,7 +206,7 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 
 	// Set up a signal handler to end our step.
 	finishedStep := make(chan struct{})
-	stopWatchHandler := &SignalHandler{
+	stopWatchHandler := &util.SignalHandler{
 		ID: "stop-watch",
 		// Signal our stuff to stop and finish the step, return false to
 		// signify that we've handled the signal and don't process further
@@ -216,11 +216,11 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 			return false
 		},
 	}
-	globalSigint.Add(stopWatchHandler)
+	util.GlobalSigint().Add(stopWatchHandler)
 	// NOTE(termie): I think the only way to exit this code is via this
 	//               signal handler and the signal monkey removes handlers
 	//               after it processes them, so this may be superfluous
-	defer globalSigint.Remove(stopWatchHandler)
+	defer util.GlobalSigint().Remove(stopWatchHandler)
 
 	// If we're not going to reload just run the thing once, synchronously
 	if !s.reload {

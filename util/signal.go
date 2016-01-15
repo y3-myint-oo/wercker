@@ -1,11 +1,23 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package util
 
 import (
 	"os"
 	"os/signal"
 	"sync"
-
-	"github.com/wercker/sentcli/util"
 )
 
 // SignalHandler is a little struct to hold our signal handling functions
@@ -87,7 +99,7 @@ func (s *SignalMonkey) Register(sig os.Signal) {
 					s.Dispatch()
 					tries--
 				} else {
-					util.RootLogger().Fatal("Exiting forcefully, containers and data may not have been cleaned up")
+					RootLogger().Fatal("Exiting forcefully, containers and data may not have been cleaned up")
 				}
 			}()
 		}
@@ -96,3 +108,13 @@ func (s *SignalMonkey) Register(sig os.Signal) {
 
 var globalSigint = NewSignalMonkey()
 var globalSigterm = NewSignalMonkey()
+
+// GlobalSigint returns the sigint registry
+func GlobalSigint() *SignalMonkey {
+	return globalSigint
+}
+
+// GlobalSigterm returns the sigterm registry
+func GlobalSigterm() *SignalMonkey {
+	return globalSigterm
+}

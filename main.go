@@ -291,8 +291,8 @@ func main() {
 			util.RootLogger().Out = ioutil.Discard
 		}
 		// Register the global signal handler
-		globalSigint.Register(os.Interrupt)
-		globalSigterm.Register(unix.SIGTERM)
+		util.GlobalSigint().Register(os.Interrupt)
+		util.GlobalSigterm().Register(unix.SIGTERM)
 		return nil
 	}
 	app.Run(os.Args)

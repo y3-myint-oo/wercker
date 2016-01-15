@@ -541,7 +541,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	//               to be run since it calls exit, in the future we might be
 	//               able to do something like close the calling context and
 	//               short circuit / let the rest of things play out
-	boxCleanupHandler := &SignalHandler{
+	boxCleanupHandler := &util.SignalHandler{
 		ID: "box-cleanup",
 		F: func() bool {
 			p.logger.Errorln("Interrupt detected, cleaning up containers and shutting down")
@@ -553,8 +553,8 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 			return true
 		},
 	}
-	globalSigint.Add(boxCleanupHandler)
-	globalSigterm.Add(boxCleanupHandler)
+	util.GlobalSigint().Add(boxCleanupHandler)
+	util.GlobalSigterm().Add(boxCleanupHandler)
 
 	p.logger.Debugln("Attaching session to base box")
 	// Start our session
