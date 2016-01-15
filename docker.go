@@ -744,6 +744,10 @@ type DockerPushStep struct {
 	username   string
 	password   string
 	email      string
+	env        []string
+	stopSignal string
+	labels     map[string]string
+	user       string
 	authServer string
 	repository string
 	author     string
@@ -856,6 +860,22 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 			s.entrypoint = parts
 		}
 	}
+
+	if env, ok := s.data["env"]; ok {
+		s.env = env.Interpolate(env)
+	}
+
+	if stopsignal, ok := s.data["stopsignal"]; ok {
+		s.stopsignal = env.Interpolate(stopsignal)
+	}
+
+	if labels, ok := s.data["labels"]; ok {
+		s.labels = env.Interpolate(labels)
+	}
+
+	if user, ok := s.data["user"]; ok {
+		s.user = env.Interpolate(user)
+	}
 }
 
 // Fetch NOP
@@ -922,6 +942,10 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		Cmd:        s.cmd,
 		Entrypoint: s.entrypoint,
 		WorkingDir: s.workingDir,
+		User:       s.user,
+		Env:        s.env,
+		StopSignal: s.stopSignal,
+		Labels:     s.labels,
 	}
 	if s.ports != "" {
 		parts := strings.Split(s.ports, ",")
