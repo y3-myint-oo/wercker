@@ -162,8 +162,7 @@ func (p *Runner) EnsureCode() (string, error) {
 
 		var gitIgnoreRules *ignore.GitIgnore
 		var err error
-		gitIgnorePath := filepath.Join(projectDir, ".gitignore")
-
+		gitIgnorePath := filepath.Join(p.options.ProjectPath, ".gitignore")
 		if hasGitIgnore, _ := exists(gitIgnorePath); hasGitIgnore {
 			gitIgnoreRules, err = ignore.CompileIgnoreFile(gitIgnorePath)
 			if err != nil {
