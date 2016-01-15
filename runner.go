@@ -161,18 +161,14 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.options.CachePath(),
 		}
 		var gitIgnoreRules *ignoreparser.GitIgnore
-		if hasGitIgnore, _ := exists(".gitignore"); hasGitIgnore {
-			gitIgnoreFile, err := ioutil.ReadFile(".gitignore")
+		if hasGitIgnore, _ := exists(filepath.Join(projectDir, ".gitignore")); hasGitIgnore {
+			gitIgnoreFile, err := ioutil.ReadFile(filepath.Join(projectDir, ".gitignore"))
 			if err != nil {
 				return projectDir, err
 			}
-			gitIgnoreLines := strings.Split(string(gitIgnoreFile), "/n")
-			gitIgnoreRules, err = ignoreparser.CompileIgnoreLines(gitIgnoreLines...)
-			if err != nil {
-				return projectDir, err
-			}
+			gitIgnoreLines := strings.Split(string(gitIgnoreFile), "\n")
+			gitIgnoreRules, _ = ignoreparser.CompileIgnoreLines(gitIgnoreLines...)
 		}
-
 		// Make sure we don't accidentally recurse or copy extra files
 		ignoreFunc := func(src string, files []os.FileInfo) []string {
 			ignores := []string{}
@@ -182,7 +178,6 @@ func (p *Runner) EnsureCode() (string, error) {
 					// Something went sufficiently wrong
 					panic(err)
 				}
-
 				if ContainsString(ignoreFiles, abspath) || gitIgnoreRules.MatchesPath(file.Name()) {
 					ignores = append(ignores, file.Name())
 				}
