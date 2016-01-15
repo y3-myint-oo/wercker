@@ -8,9 +8,10 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 )
 
-func defaultPipelineOptions(s *TestSuite, more ...string) *PipelineOptions {
+func defaultPipelineOptions(s *util.TestSuite, more ...string) *PipelineOptions {
 	args := []string{
 		"wercker",
 		"--debug",
@@ -43,11 +44,11 @@ func defaultPipelineOptions(s *TestSuite, more ...string) *PipelineOptions {
 }
 
 type StepSuite struct {
-	*TestSuite
+	*util.TestSuite
 }
 
 func TestStepSuite(t *testing.T) {
-	suiteTester := &StepSuite{&TestSuite{}}
+	suiteTester := &StepSuite{&util.TestSuite{}}
 	suite.Run(t, suiteTester)
 }
 

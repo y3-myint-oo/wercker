@@ -2,6 +2,8 @@ package main
 
 import (
 	"archive/tar"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +21,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
@@ -47,10 +50,21 @@ or the --docker-host command-line flag.`, options.DockerHost)
 	return nil
 }
 
+// GenerateDockerID will generate a cryptographically random 256 bit hex Docker
+// identifier.
+func GenerateDockerID() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(b), nil
+}
+
 // DockerClient is our wrapper for docker.Client
 type DockerClient struct {
 	*docker.Client
-	logger *LogEntry
+	logger *util.LogEntry
 }
 
 // NewDockerClient based on options and env
@@ -58,7 +72,7 @@ func NewDockerClient(options *DockerOptions) (*DockerClient, error) {
 	dockerHost := options.DockerHost
 	tlsVerify := options.DockerTLSVerify
 
-	logger := rootLogger.WithField("Logger", "Docker")
+	logger := util.RootLogger().WithField("Logger", "Docker")
 
 	var (
 		client *docker.Client
@@ -267,7 +281,7 @@ func normalizeRepo(name string) string {
 }
 
 func normalizeRegistry(address string) string {
-	logger := rootLogger.WithField("Logger", "Docker")
+	logger := util.RootLogger().WithField("Logger", "Docker")
 	if address == "" {
 		logger.Debugln("No registry address provided, using https://registry.hub.docker.com")
 		return "https://registry.hub.docker.com/v1/"
@@ -305,7 +319,7 @@ func normalizeRegistry(address string) string {
 // TODO(termie): this really uses the docker registry code rather than the
 //               client so, maybe this is the wrong place
 func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
-	logger := rootLogger.WithField("Logger", "Docker")
+	logger := util.RootLogger().WithField("Logger", "Docker")
 	logger.Debug("Checking access for ", opts.Repository)
 
 	// Do the steps described here: https://gist.github.com/termie/bc0334b086697a162f67
@@ -404,7 +418,7 @@ func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) 
 	dockerPushStep := &DockerPushStep{
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
-		logger:   rootLogger.WithField("Logger", "DockerScratchPushStep"),
+		logger:   util.RootLogger().WithField("Logger", "DockerScratchPushStep"),
 	}
 
 	return &DockerScratchPushStep{DockerPushStep: dockerPushStep}, nil
@@ -606,7 +620,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	if err != nil {
 		return -1, err
 	}
-	err = tarPath(imageFile, s.options.HostPath("scratch"))
+	err = util.TarPath(imageFile, s.options.HostPath("scratch"))
 	if err != nil {
 		return -1, err
 	}
@@ -622,7 +636,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		return 1, err
 	}
 
-	s.logger.WithFields(LogFields{
+	s.logger.WithFields(util.LogFields{
 		"Registry":   s.registry,
 		"Repository": s.repository,
 		"Tags":       s.tags,
@@ -756,7 +770,7 @@ type DockerPushStep struct {
 	volumes    map[string]struct{}
 	cmd        []string
 	entrypoint []string
-	logger     *LogEntry
+	logger     *util.LogEntry
 	forceTags  bool
 	workingDir string
 }
@@ -786,7 +800,7 @@ func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*Docke
 	return &DockerPushStep{
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
-		logger:   rootLogger.WithField("Logger", "DockerPushStep"),
+		logger:   util.RootLogger().WithField("Logger", "DockerPushStep"),
 	}, nil
 }
 
@@ -943,7 +957,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		return 1, err
 	}
 
-	s.logger.WithFields(LogFields{
+	s.logger.WithFields(util.LogFields{
 		"Registry":   s.registry,
 		"Repository": s.repository,
 		"Tags":       s.tags,

@@ -1,12 +1,25 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/wercker/sentcli/util"
+
 	"golang.org/x/net/context"
 )
+
+// ParseApplicationID parses input and returns the username and application
+// name. A valid application ID is two strings separated by a /.
+func ParseApplicationID(input string) (username, name string, err error) {
+	split := strings.Split(input, "/")
+	if len(split) == 2 {
+		return split[0], split[1], nil
+	}
+	return "", "", errors.New("Unable to parse applicationID")
+}
 
 // Pipeline is a set of steps to run, this is the interface shared by
 // both Build and Deploy
@@ -73,7 +86,7 @@ type BasePipeline struct {
 	services   []ServiceBox
 	steps      []Step
 	afterSteps []Step
-	logger     *LogEntry
+	logger     *util.LogEntry
 }
 
 // NewBasePipeline initialize our pipeline from our configs
@@ -115,7 +128,7 @@ func NewBasePipeline(options *PipelineOptions, pipelineConfig *RawPipelineConfig
 		afterSteps = append(afterSteps, realAfterSteps...)
 	}
 
-	logger := rootLogger.WithField("Logger", "Pipeline")
+	logger := util.RootLogger().WithField("Logger", "Pipeline")
 	return &BasePipeline{
 		options:    options,
 		env:        NewEnvironment(),
@@ -178,7 +191,7 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 	sess.HideLogs()
 	defer sess.ShowLogs()
 
-	timer := NewTimer()
+	timer := util.NewTimer()
 	f := &Formatter{p.options.GlobalOptions}
 
 	cmds := []string{}

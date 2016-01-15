@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/flynn/go-shlex"
+	"github.com/google/shlex"
 	"github.com/pborman/uuid"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
@@ -15,7 +16,7 @@ type ShellStep struct {
 	Code   string
 	Cmd    []string
 	data   map[string]string
-	logger *LogEntry
+	logger *util.LogEntry
 	env    *Environment
 }
 
@@ -44,7 +45,7 @@ func NewShellStep(stepConfig *StepConfig, options *PipelineOptions) (*ShellStep,
 	return &ShellStep{
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
-		logger:   rootLogger.WithField("Logger", "ShellStep"),
+		logger:   util.RootLogger().WithField("Logger", "ShellStep"),
 	}, nil
 }
 

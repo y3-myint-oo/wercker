@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/wercker/sentcli/util"
 	"gopkg.in/yaml.v2"
 )
 
@@ -265,7 +266,7 @@ func findYaml(searchDirs []string) (string, error) {
 	for _, v := range searchDirs {
 		for _, y := range possibleYaml {
 			possibleYaml := path.Join(v, y)
-			ymlExists, err := exists(possibleYaml)
+			ymlExists, err := util.Exists(possibleYaml)
 			if err != nil {
 				return "", err
 			}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/inconshreveable/go-keen"
+	"github.com/wercker/sentcli/util"
 )
 
 // NewMetricsHandler will create a new NewMetricsHandler.
@@ -269,7 +270,7 @@ func getPipelineName(options *PipelineOptions) string {
 		return "deploy"
 	}
 
-	rootLogger.WithField("Logger", "Metrics").Panic("Metrics is only able to send metrics for builds or deploys")
+	util.RootLogger().WithField("Logger", "Metrics").Panic("Metrics is only able to send metrics for builds or deploys")
 	return ""
 }
 
@@ -282,7 +283,7 @@ func getCollection(options *PipelineOptions) string {
 		return "deploy-events"
 	}
 
-	rootLogger.WithField("Logger", "Metrics").Panic("Metrics is only able to send metrics for builds or deploys")
+	util.RootLogger().WithField("Logger", "Metrics").Panic("Metrics is only able to send metrics for builds or deploys")
 	return ""
 }
 

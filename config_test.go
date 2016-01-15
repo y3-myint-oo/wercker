@@ -5,14 +5,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 )
 
 type ConfigSuite struct {
-	*TestSuite
+	*util.TestSuite
 }
 
 func TestConfigSuite(t *testing.T) {
-	suiteTester := &ConfigSuite{&TestSuite{}}
+	suiteTester := &ConfigSuite{&util.TestSuite{}}
 	suite.Run(t, suiteTester)
 }
 

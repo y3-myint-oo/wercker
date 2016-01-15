@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"regexp"
+)
 
 // Build is our basic wrapper for Build operations
 type Build struct {
@@ -134,4 +137,12 @@ func (b *Build) CollectArtifact(containerID string) (*Artifact, error) {
 	}
 
 	return fullArtifact, nil
+}
+
+var buildRegex = regexp.MustCompile("^[0-9a-fA-F]{24}$")
+
+// IsBuildID checks if input is a BuildID. BuildID is defined as a 24 character
+// hex string.
+func IsBuildID(input string) bool {
+	return buildRegex.Match([]byte(input))
 }

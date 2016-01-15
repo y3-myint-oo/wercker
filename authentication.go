@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/pkg/term"
+	"github.com/wercker/sentcli/util"
 )
 
 // Credentials holds credentials and auth scope to authenticate with api
@@ -32,7 +33,7 @@ type AuthResult struct {
 	Token string `json:"token"`
 }
 
-var authLogger = rootLogger.WithField("Logger", "Authentication")
+var authLogger = util.RootLogger().WithField("Logger", "Authentication")
 
 func readUsername() string {
 	print("Username: ")

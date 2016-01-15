@@ -3,16 +3,17 @@ package main
 import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/wercker/reporter"
+	"github.com/wercker/sentcli/util"
 )
 
 // NewLiteralLogHandler will create a new LiteralLogHandler.
 func NewLiteralLogHandler(options *PipelineOptions) (*LiteralLogHandler, error) {
-	var logger *Logger
+	var logger *util.Logger
 
 	if options.Debug {
-		logger = rootLogger
+		logger = util.RootLogger()
 	} else {
-		logger = NewLogger()
+		logger = util.NewLogger()
 		logger.Formatter = &reporter.LiteralFormatter{}
 		logger.Level = log.InfoLevel
 	}
@@ -22,7 +23,7 @@ func NewLiteralLogHandler(options *PipelineOptions) (*LiteralLogHandler, error) 
 
 // A LiteralLogHandler logs all events using Logrus.
 type LiteralLogHandler struct {
-	l       *Logger
+	l       *util.Logger
 	options *PipelineOptions
 }
 
@@ -36,7 +37,7 @@ func (h *LiteralLogHandler) Logs(args *LogsArgs) {
 		if args.Hidden {
 			shown = "[ ]"
 		}
-		h.l.WithFields(LogFields{
+		h.l.WithFields(util.LogFields{
 			"Logger": "Literal",
 			"Hidden": args.Hidden,
 			"Stream": args.Stream,

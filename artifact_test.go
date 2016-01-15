@@ -7,19 +7,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 )
 
 type ArtifactSuite struct {
-	*TestSuite
+	*util.TestSuite
 }
 
 func TestArtifactSuite(t *testing.T) {
-	suiteTester := &ArtifactSuite{&TestSuite{}}
+	suiteTester := &ArtifactSuite{&util.TestSuite{}}
 	suite.Run(t, suiteTester)
 }
 
 func (s *ArtifactSuite) TestDockerFileCollectorSingle() {
-	client := s.DockerOrSkip()
+	client := DockerOrSkip(s.T())
 
 	container, err := tempBusybox(client)
 	s.Nil(err)
@@ -42,7 +43,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorSingle() {
 }
 
 func (s *ArtifactSuite) TestDockerFileCollectorSingleNotFound() {
-	client := s.DockerOrSkip()
+	client := DockerOrSkip(s.T())
 
 	container, err := tempBusybox(client)
 	s.Nil(err)
@@ -72,7 +73,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorSingleNotFound() {
 }
 
 func (s *ArtifactSuite) TestDockerFileCollectorMulti() {
-	client := s.DockerOrSkip()
+	client := DockerOrSkip(s.T())
 
 	container, err := tempBusybox(client)
 	s.Nil(err)
@@ -95,7 +96,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorMulti() {
 }
 
 func (s *ArtifactSuite) TestDockerFileCollectorMultiEmptyTarball() {
-	client := s.DockerOrSkip()
+	client := DockerOrSkip(s.T())
 
 	container, err := tempBusybox(client)
 	s.Nil(err)
@@ -118,7 +119,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorMultiEmptyTarball() {
 }
 
 func (s *ArtifactSuite) TestDockerFileCollectorMultiNotFound() {
-	client := s.DockerOrSkip()
+	client := DockerOrSkip(s.T())
 
 	container, err := tempBusybox(client)
 	s.Nil(err)

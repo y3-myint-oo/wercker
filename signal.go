@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+
+	"github.com/wercker/sentcli/util"
 )
 
 // SignalHandler is a little struct to hold our signal handling functions
@@ -85,7 +87,7 @@ func (s *SignalMonkey) Register(sig os.Signal) {
 					s.Dispatch()
 					tries--
 				} else {
-					rootLogger.Fatal("Exiting forcefully, containers and data may not have been cleaned up")
+					util.RootLogger().Fatal("Exiting forcefully, containers and data may not have been cleaned up")
 				}
 			}()
 		}

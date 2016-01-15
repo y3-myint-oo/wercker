@@ -10,6 +10,7 @@ import (
 
 	"github.com/chuckpreslar/emission"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
@@ -111,12 +112,12 @@ type FullPipelineFinishedArgs struct {
 
 // DebugHandler dumps events
 type DebugHandler struct {
-	logger *LogEntry
+	logger *util.LogEntry
 }
 
 // NewDebugHandler constructor
 func NewDebugHandler() *DebugHandler {
-	logger := rootLogger.WithField("Logger", "Events")
+	logger := util.RootLogger().WithField("Logger", "Events")
 	return &DebugHandler{logger: logger}
 }
 
@@ -286,7 +287,7 @@ func EmitStatus(e *NormalizedEmitter, r io.Reader, options *PipelineOptions) {
 			// Once the EOF is reached the function will stop
 			break
 		} else if err != nil {
-			rootLogger.Panic(err)
+			util.RootLogger().Panic(err)
 		}
 
 		line := s.ProcessJSONMessage(&m)

@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/cheggaaa/pb"
+	"github.com/wercker/sentcli/util"
 )
 
 // Updater data structure for versions
@@ -20,7 +21,7 @@ type Updater struct {
 	CurrentVersion *Versions
 	ServerVersion  *Versions
 	channel        string
-	l              *LogEntry
+	l              *util.LogEntry
 }
 
 // NewUpdater constructor
@@ -33,7 +34,7 @@ func NewUpdater(channel string) (*Updater, error) {
 		CurrentVersion: GetVersions(),
 		ServerVersion:  serverVersion,
 		channel:        channel,
-		l:              rootLogger.WithField("Logger", "Updater"),
+		l:              util.RootLogger().WithField("Logger", "Updater"),
 	}, nil
 }
 
@@ -89,7 +90,7 @@ func (u *Updater) Update() error {
 }
 
 func getServerVersion(channel string) (*Versions, error) {
-	logger := rootLogger.WithField("Logger", "getServerVersion")
+	logger := util.RootLogger().WithField("Logger", "getServerVersion")
 
 	url := fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/version.json", channel)
 
@@ -128,7 +129,7 @@ func AskForUpdate() bool {
 	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
 	if err != nil {
-		rootLogger.Errorln("Problem reading answer", err)
+		util.RootLogger().Errorln("Problem reading answer", err)
 		return false
 	}
 	return strings.HasPrefix(strings.ToLower(line), "y")

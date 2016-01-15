@@ -9,12 +9,13 @@ import (
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/wercker/sentcli/util"
 )
 
 // Artificer collects artifacts from containers and uploads them.
 type Artificer struct {
 	options *PipelineOptions
-	logger  *LogEntry
+	logger  *util.LogEntry
 	store   Store
 }
 
@@ -36,7 +37,7 @@ type Artifact struct {
 
 // NewArtificer returns an Artificer
 func NewArtificer(options *PipelineOptions) *Artificer {
-	logger := rootLogger.WithField("Logger", "Artificer")
+	logger := util.RootLogger().WithField("Logger", "Artificer")
 
 	s3store := NewS3Store(options.AWSOptions)
 
@@ -145,7 +146,7 @@ type FileCollector interface {
 type DockerFileCollector struct {
 	client      *DockerClient
 	containerID string
-	logger      *LogEntry
+	logger      *util.LogEntry
 }
 
 // NewDockerFileCollector constructor
@@ -153,7 +154,7 @@ func NewDockerFileCollector(client *DockerClient, containerID string) FileCollec
 	return &DockerFileCollector{
 		client:      client,
 		containerID: containerID,
-		logger:      rootLogger.WithField("Logger", "DockerFileCollector"),
+		logger:      util.RootLogger().WithField("Logger", "DockerFileCollector"),
 	}
 }
 

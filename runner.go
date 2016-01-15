@@ -10,6 +10,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
 	"github.com/wercker/go-gitignore"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
@@ -60,7 +61,7 @@ type Runner struct {
 	metrics       *MetricsEventHandler
 	reporter      *ReportHandler
 	getPipeline   pipelineGetter
-	logger        *LogEntry
+	logger        *util.LogEntry
 	emitter       *NormalizedEmitter
 	formatter     *Formatter
 }
@@ -71,7 +72,7 @@ func NewRunner(ctx context.Context, options *PipelineOptions, getPipeline pipeli
 	if err != nil {
 		return nil, err
 	}
-	logger := rootLogger.WithField("Logger", "Runner")
+	logger := util.RootLogger().WithField("Logger", "Runner")
 	// h, err := NewLogHandler()
 	// if err != nil {
 	//   p.logger.WithField("Error", err).Panic("Unable to LogHandler")
@@ -141,11 +142,11 @@ func (p *Runner) EnsureCode() (string, error) {
 
 	// If the target is a tarball feetch and build that
 	if p.options.ProjectURL != "" {
-		resp, err := fetchTarball(p.options.ProjectURL)
+		resp, err := util.FetchTarball(p.options.ProjectURL)
 		if err != nil {
 			return projectDir, err
 		}
-		err = untargzip(projectDir, resp.Body)
+		err = util.Untargzip(projectDir, resp.Body)
 		if err != nil {
 			return projectDir, err
 		}
@@ -181,7 +182,7 @@ func (p *Runner) EnsureCode() (string, error) {
 					// Something went sufficiently wrong
 					panic(err)
 				}
-				if ContainsString(ignoreFiles, abspath) {
+				if util.ContainsString(ignoreFiles, abspath) {
 					ignores = append(ignores, file.Name())
 				} else if gitIgnoreRules != nil && gitIgnoreRules.MatchesPath(file.Name()) {
 					ignores = append(ignores, file.Name())
@@ -231,13 +232,13 @@ func (p *Runner) GetConfig() (*Config, string, error) {
 	MaxNoResponseTimeout := 60 // minutes
 
 	if rawConfig.CommandTimeout > 0 {
-		commandTimeout := MinInt(rawConfig.CommandTimeout, MaxCommandTimeout)
+		commandTimeout := util.MinInt(rawConfig.CommandTimeout, MaxCommandTimeout)
 		p.options.CommandTimeout = commandTimeout * 60 * 1000 // convert to milliseconds
 		p.logger.Debugln("CommandTimeout set in config, new CommandTimeout:", commandTimeout)
 	}
 
 	if rawConfig.NoResponseTimeout > 0 {
-		noResponseTimeout := MinInt(rawConfig.NoResponseTimeout, MaxNoResponseTimeout)
+		noResponseTimeout := util.MinInt(rawConfig.NoResponseTimeout, MaxNoResponseTimeout)
 		p.options.NoResponseTimeout = noResponseTimeout * 60 * 1000 // convert to milliseconds
 		p.logger.Debugln("NoReponseTimeout set in config, new NoReponseTimeout:", noResponseTimeout)
 	}
@@ -248,7 +249,7 @@ func (p *Runner) GetConfig() (*Config, string, error) {
 // AddServices fetches and links the services to the base box.
 func (p *Runner) AddServices(ctx context.Context, pipeline Pipeline, box *Box) error {
 	f := p.formatter
-	timer := NewTimer()
+	timer := util.NewTimer()
 	for _, service := range pipeline.Services() {
 		timer.Reset()
 		if _, err := service.Fetch(ctx, pipeline.Env()); err != nil {
@@ -268,7 +269,7 @@ func (p *Runner) AddServices(ctx context.Context, pipeline Pipeline, box *Box) e
 
 // CopyCache copies the source into the HostPath
 func (p *Runner) CopyCache() error {
-	timer := NewTimer()
+	timer := util.NewTimer()
 	f := p.formatter
 
 	err := os.MkdirAll(p.options.CachePath(), 0755)
@@ -292,7 +293,7 @@ func (p *Runner) CopyCache() error {
 
 // CopySource copies the source into the HostPath
 func (p *Runner) CopySource() error {
-	timer := NewTimer()
+	timer := util.NewTimer()
 	f := p.formatter
 
 	err := os.MkdirAll(p.options.HostPath(), 0755)
@@ -355,13 +356,13 @@ type RunnerShared struct {
 }
 
 // StartStep emits BuildStepStarted and returns a Finisher for the end event.
-func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *Finisher {
+func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *util.Finisher {
 	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
 		Box:   ctx.box,
 		Step:  step,
 		Order: order,
 	})
-	return NewFinisher(func(result interface{}) {
+	return util.NewFinisher(func(result interface{}) {
 		r := result.(*StepResult)
 		artifactURL := ""
 		if r.Artifact != nil {
@@ -379,9 +380,9 @@ func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *Finisher {
 }
 
 // StartBuild emits a BuildStarted and returns for a Finisher for the end.
-func (p *Runner) StartBuild(options *PipelineOptions) *Finisher {
+func (p *Runner) StartBuild(options *PipelineOptions) *util.Finisher {
 	p.emitter.Emit(BuildStarted, &BuildStartedArgs{Options: options})
-	return NewFinisher(func(result interface{}) {
+	return util.NewFinisher(func(result interface{}) {
 		r, ok := result.(*BuildFinishedArgs)
 		if !ok {
 			return
@@ -392,8 +393,8 @@ func (p *Runner) StartBuild(options *PipelineOptions) *Finisher {
 }
 
 // StartFullPipeline emits a FullPipelineFinished when the Finisher is called.
-func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
-	return NewFinisher(func(result interface{}) {
+func (p *Runner) StartFullPipeline(options *PipelineOptions) *util.Finisher {
+	return util.NewFinisher(func(result interface{}) {
 		r, ok := result.(*FullPipelineFinishedArgs)
 		if !ok {
 			return
@@ -410,7 +411,7 @@ func (p *Runner) StartFullPipeline(options *PipelineOptions) *Finisher {
 func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, error) {
 	shared := &RunnerShared{}
 	f := &Formatter{p.options.GlobalOptions}
-	timer := NewTimer()
+	timer := util.NewTimer()
 
 	sr := &StepResult{
 		Success:  false,

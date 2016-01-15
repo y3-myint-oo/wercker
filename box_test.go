@@ -5,6 +5,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 )
 
 func boxByID(s string) (*Box, error) {
@@ -12,11 +13,11 @@ func boxByID(s string) (*Box, error) {
 }
 
 type BoxSuite struct {
-	*TestSuite
+	*util.TestSuite
 }
 
 func TestBoxSuite(t *testing.T) {
-	suiteTester := &BoxSuite{&TestSuite{}}
+	suiteTester := &BoxSuite{&util.TestSuite{}}
 	suite.Run(t, suiteTester)
 }
 

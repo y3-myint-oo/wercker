@@ -10,9 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pborman/uuid"
-	"golang.org/x/net/context"
 	"gopkg.in/fsnotify.v1"
+
+	"github.com/pborman/uuid"
+	"github.com/wercker/sentcli/util"
+	"golang.org/x/net/context"
 )
 
 // test TODO (mh)
@@ -27,7 +29,7 @@ type WatchStep struct {
 	Code   string
 	reload bool
 	data   map[string]string
-	logger *LogEntry
+	logger *util.LogEntry
 }
 
 // NewWatchStep is a special step for doing docker pushes
@@ -55,7 +57,7 @@ func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep,
 	return &WatchStep{
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
-		logger:   rootLogger.WithField("Logger", "WatchStep"),
+		logger:   util.RootLogger().WithField("Logger", "WatchStep"),
 	}, nil
 }
 

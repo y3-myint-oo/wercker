@@ -4,18 +4,20 @@ import (
 	"io"
 	"os"
 	"path"
+
+	"github.com/wercker/sentcli/util"
 )
 
 // NewLocalStore creates a new LocalStore.
 func NewLocalStore(baseDirectory string) *LocalStore {
-	logger := rootLogger.WithField("Logger", "LocalStore")
+	logger := util.RootLogger().WithField("Logger", "LocalStore")
 	return &LocalStore{base: baseDirectory, logger: logger}
 }
 
 // LocalStore stores content in base.
 type LocalStore struct {
 	base   string
-	logger *LogEntry
+	logger *util.LogEntry
 }
 
 // StoreFromFile copies the file from args.Path to s.base + args.Key.

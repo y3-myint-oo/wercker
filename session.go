@@ -9,6 +9,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pborman/uuid"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
@@ -56,7 +57,7 @@ type DockerTransport struct {
 	options     *PipelineOptions
 	client      *DockerClient
 	containerID string
-	logger      *LogEntry
+	logger      *util.LogEntry
 }
 
 // NewDockerTransport constructor
@@ -65,7 +66,7 @@ func NewDockerTransport(options *PipelineOptions, containerID string) (Transport
 	if err != nil {
 		return nil, err
 	}
-	logger := rootLogger.WithField("Logger", "DockerTransport")
+	logger := util.RootLogger().WithField("Logger", "DockerTransport")
 	return &DockerTransport{options: options, client: client, containerID: containerID, logger: logger}, nil
 }
 
@@ -123,12 +124,12 @@ type Session struct {
 	send       chan string
 	recv       chan string
 	exit       chan int
-	logger     *LogEntry
+	logger     *util.LogEntry
 }
 
 // NewSession returns a new interactive session to a container.
 func NewSession(options *PipelineOptions, transport Transport) *Session {
-	logger := rootLogger.WithField("Logger", "Session")
+	logger := util.RootLogger().WithField("Logger", "Session")
 	return &Session{
 		options:    options,
 		transport:  transport,

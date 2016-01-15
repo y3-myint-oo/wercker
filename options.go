@@ -18,6 +18,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/pborman/uuid"
+	"github.com/wercker/sentcli/util"
 )
 
 // GlobalOptions applicable to everything
@@ -40,13 +41,13 @@ func guessAuthToken(c *cli.Context, e *Environment, authTokenStore string) strin
 	if token != "" {
 		return token
 	}
-	if foundToken, _ := exists(authTokenStore); !foundToken {
+	if foundToken, _ := util.Exists(authTokenStore); !foundToken {
 		return ""
 	}
 
 	tokenBytes, err := ioutil.ReadFile(authTokenStore)
 	if err != nil {
-		rootLogger.WithField("Logger", "Options").Errorln(err)
+		util.RootLogger().WithField("Logger", "Options").Errorln(err)
 		return ""
 	}
 	return strings.TrimSpace(string(tokenBytes))
@@ -60,7 +61,7 @@ func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
 	verbose := c.GlobalBool("verbose")
 	showColors := !c.GlobalBool("no-colors")
 
-	authTokenStore := expandHomePath(c.GlobalString("auth-token-store"), e.Get("HOME"))
+	authTokenStore := util.ExpandHomePath(c.GlobalString("auth-token-store"), e.Get("HOME"))
 	authToken := guessAuthToken(c, e, authTokenStore)
 
 	// If debug is true, than force verbose and do not use colors.
@@ -123,7 +124,7 @@ func guessAndUpdateDockerOptions(opts *DockerOptions, e *Environment) {
 		return
 	}
 
-	logger := rootLogger.WithField("Logger", "docker")
+	logger := util.RootLogger().WithField("Logger", "docker")
 	f := &Formatter{opts.GlobalOptions}
 
 	// Check the unix socket, default on linux
@@ -757,7 +758,7 @@ func dumpOptions(options interface{}, indent ...string) {
 		}
 	}
 	sort.Strings(names)
-	logger := rootLogger.WithField("Logger", "Options")
+	logger := util.RootLogger().WithField("Logger", "Options")
 
 	for _, name := range names {
 		r := reflect.ValueOf(options)

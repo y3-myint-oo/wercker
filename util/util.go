@@ -1,12 +1,23 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package util
 
 import (
 	"archive/tar"
 	"compress/gzip"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,7 +25,6 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,8 +34,8 @@ import (
 
 const homePrefix = "~/"
 
-// expandHomePath will expand ~/ in p to home.
-func expandHomePath(p string, home string) string {
+// ExpandHomePath will expand ~/ in p to home.
+func ExpandHomePath(p string, home string) string {
 	if strings.HasPrefix(p, homePrefix) {
 		return path.Join(home, strings.TrimPrefix(p, homePrefix))
 	}
@@ -34,7 +44,7 @@ func expandHomePath(p string, home string) string {
 }
 
 // exists is like python's os.path.exists and too many lines in Go
-func exists(path string) (bool, error) {
+func Exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
@@ -45,10 +55,10 @@ func exists(path string) (bool, error) {
 	return false, err
 }
 
-// fetchTarball tries to fetch a tarball
+// FetchTarball tries to fetch a tarball
 // For now this is pretty naive and useless, but we are doing it in a couple
 // places and this is a fine stub to expand upon.
-func fetchTarball(url string) (*http.Response, error) {
+func FetchTarball(url string) (*http.Response, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -60,8 +70,8 @@ func fetchTarball(url string) (*http.Response, error) {
 	return resp, nil
 }
 
-// Write the contents up a single file to dst
-func untarOne(name string, dst io.Writer, src io.ReadCloser) error {
+// UntarOne writes the contents up a single file to dst
+func UntarOne(name string, dst io.Writer, src io.ReadCloser) error {
 	// ungzipped, err := gzip.NewReader(src)
 	// if err != nil {
 	//   return err
@@ -91,8 +101,8 @@ func untarOne(name string, dst io.Writer, src io.ReadCloser) error {
 	return nil
 }
 
-// untargzip tries to untar-gzip stuff to a path
-func untargzip(path string, r io.Reader) error {
+// Untargzip tries to untar-gzip stuff to a path
+func Untargzip(path string, r io.Reader) error {
 	ungzipped, err := gzip.NewReader(r)
 	if err != nil {
 		return err
@@ -156,8 +166,8 @@ func untargzip(path string, r io.Reader) error {
 	return nil
 }
 
-// tarPath makes a tarball out of a directory
-func tarPath(writer io.Writer, root string) error {
+// TarPath makes a tarball out of a directory
+func TarPath(writer io.Writer, root string) error {
 	tw := tar.NewWriter(writer)
 	defer tw.Close()
 	walkFn := func(path string, info os.FileInfo, err error) error {
@@ -221,25 +231,6 @@ func (f *Finisher) Finish(result interface{}) {
 	f.callback(result)
 }
 
-// Retrieving user input utility functions
-
-func askForConfirmation() bool {
-	var response string
-	_, err := fmt.Scanln(&response)
-	if err != nil {
-		rootLogger.WithField("Logger", "Util").Fatal(err)
-	}
-	response = strings.ToLower(response)
-	if strings.HasPrefix(response, "y") {
-		return true
-	} else if strings.HasPrefix(response, "n") {
-		return false
-	} else {
-		println("Please type yes or no and then press enter:")
-		return askForConfirmation()
-	}
-}
-
 // Counter is a simple struct
 type Counter struct {
 	Current int
@@ -268,10 +259,10 @@ func ContainsString(items []string, target string) bool {
 	return false
 }
 
-// queryString converts a struct to a map. It looks for items with a qs tag.
+// QueryString converts a struct to a map. It looks for items with a qs tag.
 // This code was taken from the fsouza/go-dockerclient, and then slightly
 // modified. See: https://github.com/fsouza/go-dockerclient/blob/5fa67ac8b52afe9430a490391a639085e9357e1e/client.go#L535
-func queryString(opts interface{}) map[string]interface{} {
+func QueryString(opts interface{}) map[string]interface{} {
 	items := map[string]interface{}{}
 	if opts == nil {
 		return items
@@ -333,24 +324,6 @@ func SplitSpaceOrComma(str string) []string {
 	return strings.FieldsFunc(str, func(c rune) bool {
 		return unicode.IsSpace(c) || c == ','
 	})
-}
-
-var buildRegex = regexp.MustCompile("^[0-9a-fA-F]{24}$")
-
-// IsBuildID checks if input is a BuildID. BuildID is defined as a 24 character
-// hex string.
-func IsBuildID(input string) bool {
-	return buildRegex.Match([]byte(input))
-}
-
-// ParseApplicationID parses input and returns the username and application
-// name. A valid application ID is two strings separated by a /.
-func ParseApplicationID(input string) (username, name string, err error) {
-	split := strings.Split(input, "/")
-	if len(split) == 2 {
-		return split[0], split[1], nil
-	}
-	return "", "", errors.New("Unable to parse applicationID")
 }
 
 // CounterReader is a io.Reader which wraps a other io.Reader and stores the
@@ -435,15 +408,4 @@ func (t *Timer) Elapsed() time.Duration {
 // String repr for time
 func (t *Timer) String() string {
 	return fmt.Sprintf("%.2fs", t.Elapsed().Seconds())
-}
-
-// GenerateDockerID will generate a cryptographically random 256 bit hex Docker
-// identifier.
-func GenerateDockerID() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(b), nil
 }

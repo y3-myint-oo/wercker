@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/wercker/reporter"
+	"github.com/wercker/sentcli/util"
 )
 
 // NewReportHandler will create a new ReportHandler.
@@ -14,7 +15,7 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	}
 
 	writers := make(map[string]*reporter.LogWriter)
-	logger := rootLogger.WithField("Logger", "Reporter")
+	logger := util.RootLogger().WithField("Logger", "Reporter")
 	h := &ReportHandler{
 		reporter: r,
 		writers:  writers,
@@ -23,7 +24,7 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	return h, nil
 }
 
-func mapBuildSteps(counter *Counter, phase string, steps ...Step) []*reporter.NewStep {
+func mapBuildSteps(counter *util.Counter, phase string, steps ...Step) []*reporter.NewStep {
 	buffer := make([]*reporter.NewStep, len(steps))
 	for i, s := range steps {
 		buffer[i] = &reporter.NewStep{
@@ -40,7 +41,7 @@ func mapBuildSteps(counter *Counter, phase string, steps ...Step) []*reporter.Ne
 type ReportHandler struct {
 	reporter *reporter.Reporter
 	writers  map[string]*reporter.LogWriter
-	logger   *LogEntry
+	logger   *util.LogEntry
 }
 
 // BuildStepStarted will handle the BuildStepStarted event.
@@ -91,7 +92,7 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 
 // BuildStepsAdded will handle the BuildStepsAdded event.
 func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
-	stepCounter := &Counter{Current: 3}
+	stepCounter := &util.Counter{Current: 3}
 	steps := mapBuildSteps(stepCounter, "mainSteps", args.Steps...)
 
 	if args.StoreStep != nil {

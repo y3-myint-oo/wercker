@@ -9,11 +9,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
-	"gopkg.in/yaml.v2"
 )
 
 // StepDesc represents a wercker-step.yml
@@ -144,7 +146,7 @@ type ExternalStep struct {
 	url      string
 	data     map[string]string
 	stepDesc *StepDesc
-	logger   *LogEntry
+	logger   *util.LogEntry
 }
 
 // ToSteps builds a list of steps from RawStepsConfig
@@ -179,7 +181,7 @@ func (s *StepConfig) ToStep(options *PipelineOptions) (Step, error) {
 	}
 	if strings.HasPrefix(s.ID, "internal/") {
 		if !options.EnableDevSteps {
-			rootLogger.Warnln("Ignoring dev step:", s.ID)
+			util.RootLogger().Warnln("Ignoring dev step:", s.ID)
 			return nil, nil
 		}
 	}
@@ -252,7 +254,7 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*ExternalStep, e
 		displayName = name
 	}
 
-	logger := rootLogger.WithFields(LogFields{
+	logger := util.RootLogger().WithFields(util.LogFields{
 		"Logger": "Step",
 		"SafeID": stepSafeID,
 	})
@@ -299,7 +301,7 @@ func (s *ExternalStep) LocalSymlink() {
 	counter := 1
 	newPath := checkPath
 	for {
-		already, _ := exists(newPath)
+		already, _ := util.Exists(newPath)
 		if !already {
 			os.Symlink(s.HostPath(), newPath)
 			break
@@ -338,7 +340,7 @@ func (s *ExternalStep) Fetch() (string, error) {
 	}
 
 	stepPath := filepath.Join(s.options.StepPath(), s.CachedName())
-	stepExists, err := exists(stepPath)
+	stepExists, err := util.Exists(stepPath)
 	if err != nil {
 		return "", err
 	}
@@ -371,14 +373,14 @@ func (s *ExternalStep) Fetch() (string, error) {
 				return "", fmt.Errorf("Dev mode is not enabled so refusing to copy local file urls: %s", s.url)
 			}
 		} else {
-			// Grab the tarball and untargzip it
-			resp, err := fetchTarball(s.url)
+			// Grab the tarball and util.Untargzip it
+			resp, err := util.FetchTarball(s.url)
 			if err != nil {
 				return "", err
 			}
 
 			// Assuming we have a gzip'd tarball at this point
-			err = untargzip(stepPath, resp.Body)
+			err = util.Untargzip(stepPath, resp.Body)
 			if err != nil {
 				return "", err
 			}
@@ -436,7 +438,7 @@ func (s *ExternalStep) Execute(sessionCtx context.Context, sess *Session) (int, 
 	// 	sess.SendChecked(sessionCtx, "set -xv")
 	// }
 
-	if yes, _ := exists(s.HostPath("init.sh")); yes {
+	if yes, _ := util.Exists(s.HostPath("init.sh")); yes {
 		exit, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`source "%s"`, s.GuestPath("init.sh")))
 		if exit != 0 {
 			return exit, errors.New("Ack!")
@@ -446,7 +448,7 @@ func (s *ExternalStep) Execute(sessionCtx context.Context, sess *Session) (int, 
 		}
 	}
 
-	if yes, _ := exists(s.HostPath("run.sh")); yes {
+	if yes, _ := util.Exists(s.HostPath("run.sh")); yes {
 		exit, _, err := sess.SendChecked(sessionCtx, fmt.Sprintf(`source "%s" < /dev/null`, s.GuestPath("run.sh")))
 		return exit, err
 	}
@@ -471,7 +473,7 @@ func (s *ExternalStep) CollectFile(containerID, path, name string, dst io.Writer
 	errs := make(chan error)
 	go func() {
 		defer close(errs)
-		errs <- untarOne(name, dst, pipeReader)
+		errs <- util.UntarOne(name, dst, pipeReader)
 	}()
 
 	if err = client.CopyFromContainer(opts); err != nil {

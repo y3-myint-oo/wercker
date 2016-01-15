@@ -8,8 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/google/shlex"
+	"github.com/wercker/sentcli/util"
+
 	"golang.org/x/net/context"
 )
 
@@ -26,7 +28,7 @@ type Box struct {
 	repository      string
 	tag             string
 	images          []*docker.Image
-	logger          *LogEntry
+	logger          *util.LogEntry
 	entrypoint      string
 	image           *docker.Image
 }
@@ -78,7 +80,7 @@ func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptio
 
 	entrypoint := boxConfig.Entrypoint
 
-	logger := rootLogger.WithFields(LogFields{
+	logger := util.RootLogger().WithFields(util.LogFields{
 		"Logger":    "Box",
 		"Name":      name,
 		"ShortName": shortName,
@@ -529,7 +531,7 @@ func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error
 
 // Commit the current running Docker container to an Docker image.
 func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
-	b.logger.WithFields(LogFields{
+	b.logger.WithFields(util.LogFields{
 		"Name": name,
 		"Tag":  tag,
 	}).Debugln("Commit container:", name, tag)

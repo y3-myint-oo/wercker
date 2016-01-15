@@ -4,14 +4,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 )
 
 type DockerSuite struct {
-	*TestSuite
+	*util.TestSuite
 }
 
 func TestDockerSuite(t *testing.T) {
-	suiteTester := &DockerSuite{&TestSuite{}}
+	suiteTester := &DockerSuite{&util.TestSuite{}}
 	suite.Run(t, suiteTester)
 }
 
@@ -38,7 +39,7 @@ func (s *DockerSuite) TestNormalizeRepo() {
 }
 
 func (s *DockerSuite) TestPing() {
-	client := s.DockerOrSkip()
+	client := DockerOrSkip(s.T())
 	err := client.Ping()
 	s.Nil(err)
 }

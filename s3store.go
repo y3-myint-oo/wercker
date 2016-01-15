@@ -6,11 +6,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/wercker/sentcli/util"
 )
 
 // NewS3Store creates a new S3Store
 func NewS3Store(options *AWSOptions) *S3Store {
-	logger := rootLogger.WithField("Logger", "S3Store")
+	logger := util.RootLogger().WithField("Logger", "S3Store")
 	if options == nil {
 		logger.Panic("options cannot be nil")
 	}
@@ -27,7 +28,7 @@ func NewS3Store(options *AWSOptions) *S3Store {
 // S3Store stores files in S3
 type S3Store struct {
 	client  *s3.S3
-	logger  *LogEntry
+	logger  *util.LogEntry
 	options *AWSOptions
 }
 
@@ -37,7 +38,7 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 		args.MaxTries = 1
 	}
 
-	s.logger.WithFields(LogFields{
+	s.logger.WithFields(util.LogFields{
 		"Bucket":   s.options.S3Bucket,
 		"Path":     args.Path,
 		"Region":   s.options.AWSRegion,
@@ -69,7 +70,7 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 		})
 
 		if err != nil {
-			s.logger.WithFields(LogFields{
+			s.logger.WithFields(util.LogFields{
 				"Bucket":   s.options.S3Bucket,
 				"Path":     args.Path,
 				"Region":   s.options.AWSRegion,
@@ -81,7 +82,7 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 			continue
 		}
 
-		s.logger.WithFields(LogFields{
+		s.logger.WithFields(util.LogFields{
 			"Bucket":   s.options.S3Bucket,
 			"Path":     args.Path,
 			"Region":   s.options.AWSRegion,

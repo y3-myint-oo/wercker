@@ -9,8 +9,9 @@ import (
 	"strings"
 
 	"github.com/codegangsta/cli"
-	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/google/shlex"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
@@ -26,7 +27,7 @@ type ServiceBox interface {
 // InternalServiceBox wraps a box as a service
 type InternalServiceBox struct {
 	*Box
-	logger *LogEntry
+	logger *util.LogEntry
 }
 
 // ExternalServiceBox wraps a box as a service
@@ -38,7 +39,7 @@ type ExternalServiceBox struct {
 
 // NewExternalServiceBox gives us an ExternalServiceBox from config
 func NewExternalServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*ExternalServiceBox, error) {
-	logger := rootLogger.WithField("Logger", "ExternalService")
+	logger := util.RootLogger().WithField("Logger", "ExternalService")
 	return &ExternalServiceBox{
 		InternalServiceBox: &InternalServiceBox{logger: logger},
 		externalConfig:     boxConfig,
@@ -140,7 +141,7 @@ func (b *BoxConfig) ToServiceBox(options *PipelineOptions, boxOptions *BoxOption
 // NewServiceBox from a name and other references
 func NewServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*InternalServiceBox, error) {
 	box, err := NewBox(boxConfig, options, boxOptions)
-	logger := rootLogger.WithField("Logger", "Service")
+	logger := util.RootLogger().WithField("Logger", "Service")
 	return &InternalServiceBox{Box: box, logger: logger}, err
 }
 

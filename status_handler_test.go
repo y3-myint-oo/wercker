@@ -5,14 +5,15 @@ import (
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 )
 
 type StatusHandlerSuite struct {
-	*TestSuite
+	*util.TestSuite
 }
 
 func TestStatusHandlerSuite(t *testing.T) {
-	suiteTester := &StatusHandlerSuite{&TestSuite{}}
+	suiteTester := &StatusHandlerSuite{&util.TestSuite{}}
 	suite.Run(t, suiteTester)
 }
 

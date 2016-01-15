@@ -10,6 +10,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/mreiferson/go-snappystream"
 	"github.com/pborman/uuid"
+	"github.com/wercker/sentcli/util"
 
 	"golang.org/x/net/context"
 )
@@ -55,7 +56,7 @@ func GenerateBaseKey(options *PipelineOptions) string {
 type StoreContainerStep struct {
 	*BaseStep
 	data     map[string]string
-	logger   *LogEntry
+	logger   *util.LogEntry
 	artifact *Artifact
 }
 
@@ -84,7 +85,7 @@ func NewStoreContainerStep(stepConfig *StepConfig, options *PipelineOptions) (*S
 	return &StoreContainerStep{
 		BaseStep: baseStep,
 		data:     stepConfig.Data,
-		logger:   rootLogger.WithField("Logger", "StoreContainerStep"),
+		logger:   util.RootLogger().WithField("Logger", "StoreContainerStep"),
 	}, nil
 
 }
@@ -187,7 +188,7 @@ func (s *StoreContainerStep) Execute(ctx context.Context, sess *Session) (int, e
 
 	calculatedHash := hex.EncodeToString(hash.Sum(nil))
 
-	s.logger.WithFields(LogFields{
+	s.logger.WithFields(util.LogFields{
 		"SHA256":            calculatedHash,
 		"TemporaryLocation": file.Name(),
 	}).Println("Export image successful")

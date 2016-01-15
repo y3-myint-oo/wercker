@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/codegangsta/cli"
@@ -18,12 +19,13 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/mreiferson/go-snappystream"
 	"github.com/wercker/journalhook"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 )
 
 var (
-	cliLogger    = rootLogger.WithField("Logger", "CLI")
+	cliLogger    = util.RootLogger().WithField("Logger", "CLI")
 	buildCommand = cli.Command{
 		Name:      "build",
 		ShortName: "b",
@@ -252,8 +254,8 @@ var (
 
 func main() {
 	// logger.SetLevel(logger.DebugLevel)
-	// rootLogger.SetLevel("debug")
-	// rootLogger.Formatter = &logger.JSONFormatter{}
+	// util.RootLogger().SetLevel("debug")
+	// util.RootLogger().Formatter = &logger.JSONFormatter{}
 
 	app := cli.NewApp()
 	setupUsageFormatter(app)
@@ -278,15 +280,15 @@ func main() {
 	}
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {
-			rootLogger.Formatter = &VerboseFormatter{}
-			rootLogger.SetLevel("debug")
+			util.RootLogger().Formatter = &util.VerboseFormatter{}
+			util.RootLogger().SetLevel("debug")
 		} else {
-			rootLogger.Formatter = &TerseFormatter{}
-			rootLogger.SetLevel("info")
+			util.RootLogger().Formatter = &util.TerseFormatter{}
+			util.RootLogger().SetLevel("info")
 		}
 		if ctx.GlobalBool("journal") {
-			rootLogger.Hooks.Add(&journalhook.JournalHook{})
-			rootLogger.Out = ioutil.Discard
+			util.RootLogger().Hooks.Add(&journalhook.JournalHook{})
+			util.RootLogger().Out = ioutil.Discard
 		}
 		// Register the global signal handler
 		globalSigint.Register(os.Interrupt)
@@ -310,9 +312,9 @@ func NewSoftExit(options *GlobalOptions) *SoftExit {
 func (s *SoftExit) Exit(v ...interface{}) error {
 	if s.options.Debug {
 		// Clearly this will cause it's own exit if it gets called.
-		rootLogger.Panicln(v...)
+		util.RootLogger().Panicln(v...)
 	}
-	rootLogger.Errorln(v...)
+	util.RootLogger().Errorln(v...)
 	return fmt.Errorf("Exiting.")
 }
 
@@ -347,7 +349,7 @@ func cmdDeploy(ctx context.Context, options *PipelineOptions) (*RunnerShared, er
 
 func cmdCheckConfig(options *PipelineOptions) error {
 	soft := NewSoftExit(options.GlobalOptions)
-	logger := rootLogger.WithField("Logger", "Main")
+	logger := util.RootLogger().WithField("Logger", "Main")
 
 	// TODO(termie): this is pretty much copy-paste from the
 	//               runner.GetConfig step, we should probably refactor
@@ -397,7 +399,7 @@ func cmdCheckConfig(options *PipelineOptions) error {
 // and detects the project's programming language
 func cmdDetect(options *DetectOptions) error {
 	soft := NewSoftExit(options.GlobalOptions)
-	logger := rootLogger.WithField("Logger", "Main")
+	logger := util.RootLogger().WithField("Logger", "Main")
 
 	logger.Println("########### Detecting your project! #############")
 
@@ -460,7 +462,7 @@ func cmdInspect(options *InspectOptions) error {
 
 func cmdLogin(options *LoginOptions) error {
 	soft := NewSoftExit(options.GlobalOptions)
-	logger := rootLogger.WithField("Logger", "Main")
+	logger := util.RootLogger().WithField("Logger", "Main")
 
 	logger.Println("########### Logging into wercker! #############")
 	url := fmt.Sprintf("%s/api/1.0/%s", options.BaseURL, "oauth/basicauthaccesstoken")
@@ -480,7 +482,7 @@ func cmdLogin(options *LoginOptions) error {
 
 func cmdLogout(options *LogoutOptions) error {
 	soft := NewSoftExit(options.GlobalOptions)
-	logger := rootLogger.WithField("Logger", "Main")
+	logger := util.RootLogger().WithField("Logger", "Main")
 
 	logger.Println("Logging out")
 
@@ -493,7 +495,7 @@ func cmdLogout(options *LogoutOptions) error {
 
 func cmdPull(c *cli.Context, options *PullOptions) error {
 	soft := NewSoftExit(options.GlobalOptions)
-	logger := rootLogger.WithField("Logger", "Main")
+	logger := util.RootLogger().WithField("Logger", "Main")
 
 	if options.Debug {
 		dumpOptions(options)
@@ -540,7 +542,7 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 	logger.Println("Downloading Docker repository for build", buildID)
 
 	if !options.Force {
-		outputExists, err := exists(options.Output)
+		outputExists, err := util.Exists(options.Output)
 		if err != nil {
 			logger.WithField("Error", err).Error("Unable to create output file")
 			return soft.Exit(err)
@@ -569,9 +571,9 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 	//               |
 	//               +--> hash       *Legend: --> == write, <-- == read
 
-	counter := NewCounterReader(repository.Content)
+	counter := util.NewCounterReader(repository.Content)
 
-	stopEmit := emitProgress(counter, repository.Size, NewRawLogger())
+	stopEmit := emitProgress(counter, repository.Size, util.NewRawLogger())
 
 	hash := sha256.New()
 	tee := io.TeeReader(counter, hash)
@@ -621,11 +623,29 @@ func cmdPull(c *cli.Context, options *PullOptions) error {
 	return nil
 }
 
+// Retrieving user input utility functions
+func askForConfirmation() bool {
+	var response string
+	_, err := fmt.Scanln(&response)
+	if err != nil {
+		util.RootLogger().WithField("Logger", "Util").Fatal(err)
+	}
+	response = strings.ToLower(response)
+	if strings.HasPrefix(response, "y") {
+		return true
+	} else if strings.HasPrefix(response, "n") {
+		return false
+	} else {
+		println("Please type yes or no and then press enter:")
+		return askForConfirmation()
+	}
+}
+
 // emitProgress will keep emitting progress until a value is send into the
 // returned channel.
-func emitProgress(counter *CounterReader, total int64, logger *Logger) chan<- bool {
+func emitProgress(counter *util.CounterReader, total int64, logger *util.Logger) chan<- bool {
 	stop := make(chan bool)
-	go func(stop chan bool, counter *CounterReader, total int64) {
+	go func(stop chan bool, counter *util.CounterReader, total int64) {
 		prev := int64(-1)
 		for {
 			current := counter.Count()
@@ -648,7 +668,7 @@ func emitProgress(counter *CounterReader, total int64, logger *Logger) chan<- bo
 }
 
 func cmdVersion(options *VersionOptions) error {
-	logger := rootLogger.WithField("Logger", "Main")
+	logger := util.RootLogger().WithField("Logger", "Main")
 	v := GetVersions()
 
 	if options.OutputJSON {
@@ -697,7 +717,7 @@ func cmdVersion(options *VersionOptions) error {
 
 // TODO(mies): maybe move to util.go at some point
 func getYml(detected string, options *DetectOptions) {
-	logger := rootLogger.WithField("Logger", "Main")
+	logger := util.RootLogger().WithField("Logger", "Main")
 
 	yml := "wercker.yml"
 	if _, err := os.Stat(yml); err == nil {
@@ -730,7 +750,7 @@ func getYml(detected string, options *DetectOptions) {
 func executePipeline(cmdCtx context.Context, options *PipelineOptions, getter pipelineGetter) (*RunnerShared, error) {
 	// Boilerplate
 	soft := NewSoftExit(options.GlobalOptions)
-	logger := rootLogger.WithField("Logger", "Main")
+	logger := util.RootLogger().WithField("Logger", "Main")
 	e, err := EmitterFromContext(cmdCtx)
 	if err != nil {
 		return nil, err
@@ -744,8 +764,8 @@ func executePipeline(cmdCtx context.Context, options *PipelineOptions, getter pi
 	}
 
 	// Main timer
-	mainTimer := NewTimer()
-	timer := NewTimer()
+	mainTimer := util.NewTimer()
+	timer := util.NewTimer()
 
 	// These will be emitted at the end of the execution, we're going to be
 	// pessimistic and report that we failed, unless overridden at the end of the
@@ -843,7 +863,7 @@ func executePipeline(cmdCtx context.Context, options *PipelineOptions, getter pi
 
 	// stepCounter starts at 3, step 1 is "get code", step 2 is "setup
 	// environment".
-	stepCounter := &Counter{Current: 3}
+	stepCounter := &util.Counter{Current: 3}
 	for _, step := range pipeline.Steps() {
 		logger.Printf(f.Info("Running step", step.DisplayName()))
 		timer.Reset()

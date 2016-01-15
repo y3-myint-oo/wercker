@@ -10,10 +10,11 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 )
 
 func run(s suite.TestingSuite, gFlags []cli.Flag, cFlags []cli.Flag, action func(c *cli.Context), args []string) {
-	rootLogger.SetLevel("debug")
+	util.RootLogger().SetLevel("debug")
 	os.Clearenv()
 	app := cli.NewApp()
 	app.Flags = gFlags
@@ -49,11 +50,11 @@ func defaultArgs(more ...string) []string {
 }
 
 type OptionsSuite struct {
-	*TestSuite
+	*util.TestSuite
 }
 
 func TestOptionsSuite(t *testing.T) {
-	suiteTester := &OptionsSuite{&TestSuite{}}
+	suiteTester := &OptionsSuite{&util.TestSuite{}}
 	suite.Run(t, suiteTester)
 }
 

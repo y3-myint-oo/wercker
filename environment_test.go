@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 )
 
 type EnvironmentSuite struct {
-	TestSuite
+	util.TestSuite
 }
 
 func (s *EnvironmentSuite) SetupTest() {

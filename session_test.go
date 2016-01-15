@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
@@ -36,7 +37,7 @@ func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdo
 			p = make([]byte, 1024)
 			i, err := t.stdin.Read(p)
 			s := string(p[:i])
-			rootLogger.Println(fmt.Sprintf("(test)  stdin: %q", s))
+			util.RootLogger().Println(fmt.Sprintf("(test)  stdin: %q", s))
 			t.inchan <- s
 			if err != nil {
 				close(t.inchan)
@@ -48,7 +49,7 @@ func (t *FakeTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdo
 	go func() {
 		for {
 			s := <-t.outchan
-			rootLogger.Println(fmt.Sprintf("(test) stdout: %q", s))
+			util.RootLogger().Println(fmt.Sprintf("(test) stdout: %q", s))
 			_, err := t.stdout.Write([]byte(s))
 			if err != nil {
 				close(t.outchan)
@@ -87,7 +88,7 @@ func fakeSessionOptions() *PipelineOptions {
 	}
 }
 
-func FakeSession(s *TestSuite, opts *PipelineOptions) (context.Context, context.CancelFunc, *Session, *FakeTransport) {
+func FakeSession(s *util.TestSuite, opts *PipelineOptions) (context.Context, context.CancelFunc, *Session, *FakeTransport) {
 	if opts == nil {
 		opts = fakeSessionOptions()
 	}
@@ -108,11 +109,11 @@ func fakeSentinel(s string) func() string {
 }
 
 type SessionSuite struct {
-	*TestSuite
+	*util.TestSuite
 }
 
 func TestSessionSuite(t *testing.T) {
-	suiteTester := &SessionSuite{&TestSuite{}}
+	suiteTester := &SessionSuite{&util.TestSuite{}}
 	suite.Run(t, suiteTester)
 }
 
@@ -142,7 +143,7 @@ func (s *SessionSuite) TestSendCancelled() {
 func (s *SessionSuite) TestSendChecked() {
 	sessionCtx, _, session, transport := FakeSession(s.TestSuite, nil)
 
-	stepper := NewStepper()
+	stepper := util.NewStepper()
 	go func() {
 		transport.ListenAndRespond(0, []string{"foo\n"})
 		stepper.Wait()
@@ -201,7 +202,7 @@ func (s *SessionSuite) TestSendCheckedNoResponseTimeout() {
 func (s *SessionSuite) TestSendCheckedEarlyExit() {
 	sessionCtx, _, session, transport := FakeSession(s.TestSuite, nil)
 
-	stepper := NewStepper()
+	stepper := util.NewStepper()
 	randomSentinel = fakeSentinel("test-sentinel")
 
 	go func() {

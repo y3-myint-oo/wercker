@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jtacoma/uritemplates"
+	"github.com/wercker/sentcli/util"
 )
 
 // routes is a map containing all UriTemplates indexed by name.
@@ -36,12 +37,12 @@ type APIClient struct {
 	baseURL string
 	client  *http.Client
 	options *GlobalOptions
-	logger  *LogEntry
+	logger  *util.LogEntry
 }
 
 // NewAPIClient returns our dumb client
 func NewAPIClient(options *GlobalOptions) *APIClient {
-	logger := rootLogger.WithFields(LogFields{
+	logger := util.RootLogger().WithFields(util.LogFields{
 		"Logger": "API",
 	})
 	return &APIClient{
@@ -125,7 +126,7 @@ type APIBuild struct {
 
 // GetBuilds will fetch multiple builds for application username/name.
 func (c *APIClient) GetBuilds(username, name string, options *GetBuildsOptions) ([]*APIBuild, error) {
-	model := queryString(options)
+	model := util.QueryString(options)
 	model["username"] = username
 	model["name"] = name
 
