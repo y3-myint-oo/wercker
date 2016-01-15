@@ -10,7 +10,7 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
-	ignoreparser "github.com/wercker/go-git-ignore"
+	"github.com/wercker/go-gitignore"
 	"golang.org/x/net/context"
 )
 
@@ -160,14 +160,14 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.options.ContainerPath(),
 			p.options.CachePath(),
 		}
-		var gitIgnoreRules *ignoreparser.GitIgnore
+		var gitIgnoreRules *ignore.GitIgnore
 		if hasGitIgnore, _ := exists(filepath.Join(projectDir, ".gitignore")); hasGitIgnore {
 			gitIgnoreFile, err := ioutil.ReadFile(filepath.Join(projectDir, ".gitignore"))
 			if err != nil {
 				return projectDir, err
 			}
 			gitIgnoreLines := strings.Split(string(gitIgnoreFile), "\n")
-			gitIgnoreRules, _ = ignoreparser.CompileIgnoreLines(gitIgnoreLines...)
+			gitIgnoreRules, _ = ignore.CompileIgnoreLines(gitIgnoreLines...)
 		}
 		// Make sure we don't accidentally recurse or copy extra files
 		ignoreFunc := func(src string, files []os.FileInfo) []string {

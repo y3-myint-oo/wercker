@@ -1,7 +1,7 @@
 package: github.com/wercker/sentcli
 import:
   - package: github.com/pborman/uuid
-  - package: github.com/wercker/go-git-ignore
+  - package: github.com/wercker/go-gitignore
   - package: github.com/Sirupsen/logrus
     ref:     844911c
     vcs:     git
