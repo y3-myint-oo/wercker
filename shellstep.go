@@ -17,7 +17,7 @@ type ShellStep struct {
 	Cmd    []string
 	data   map[string]string
 	logger *util.LogEntry
-	env    *Environment
+	env    *util.Environment
 }
 
 // NewShellStep is a special step for doing docker pushes
@@ -33,7 +33,7 @@ func NewShellStep(stepConfig *StepConfig, options *PipelineOptions) (*ShellStep,
 
 	baseStep := &BaseStep{
 		displayName: displayName,
-		env:         &Environment{},
+		env:         &util.Environment{},
 		id:          name,
 		name:        name,
 		options:     options,
@@ -50,7 +50,7 @@ func NewShellStep(stepConfig *StepConfig, options *PipelineOptions) (*ShellStep,
 }
 
 // InitEnv parses our data into our config
-func (s *ShellStep) InitEnv(env *Environment) {
+func (s *ShellStep) InitEnv(env *util.Environment) {
 	if code, ok := s.data["code"]; ok {
 		s.Code = code
 	}

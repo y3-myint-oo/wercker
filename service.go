@@ -17,8 +17,8 @@ import (
 
 // ServiceBox interface to services
 type ServiceBox interface {
-	Run(context.Context, *Environment, []string) (*docker.Container, error)
-	Fetch(ctx context.Context, env *Environment) (*docker.Image, error)
+	Run(context.Context, *util.Environment, []string) (*docker.Container, error)
+	Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error)
 	Link() string
 	GetID() string
 	GetName() string
@@ -51,7 +51,7 @@ func (s *ExternalServiceBox) configURL() (*url.URL, error) {
 	return url.Parse(s.externalConfig.URL)
 }
 
-func (s *ExternalServiceBox) getOptions(env *Environment) (*PipelineOptions, error) {
+func (s *ExternalServiceBox) getOptions(env *util.Environment) (*PipelineOptions, error) {
 	c, err := s.configURL()
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (s *ExternalServiceBox) getOptions(env *Environment) (*PipelineOptions, err
 
 // Fetch the image representation of an ExternalServiceBox
 // this means running the ExternalServiceBox and comitting the image
-func (s *ExternalServiceBox) Fetch(ctx context.Context, env *Environment) (*docker.Image, error) {
+func (s *ExternalServiceBox) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
 	newOptions, err := s.getOptions(env)
 
 	if err != nil {
@@ -153,7 +153,7 @@ func (b *InternalServiceBox) getContainerName() string {
 }
 
 // Run executes the service
-func (b *InternalServiceBox) Run(ctx context.Context, env *Environment, links []string) (*docker.Container, error) {
+func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, links []string) (*docker.Container, error) {
 	e, err := EmitterFromContext(ctx)
 	if err != nil {
 		return nil, err

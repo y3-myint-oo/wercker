@@ -1,14 +1,27 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package util
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/wercker/sentcli/util"
 )
 
 type EnvironmentSuite struct {
-	util.TestSuite
+	TestSuite
 }
 
 func (s *EnvironmentSuite) SetupTest() {
@@ -22,14 +35,14 @@ func TestEnvironmentSuite(t *testing.T) {
 
 func (s *EnvironmentSuite) TestPassthru() {
 	env := NewEnvironment("X_PUBLIC=foo", "XXX_PRIVATE=bar", "NOT=included")
-	s.Equal(1, len(env.getPassthru().Ordered()))
-	s.Equal(1, len(env.getHiddenPassthru().Ordered()))
+	s.Equal(1, len(env.GetPassthru().Ordered()))
+	s.Equal(1, len(env.GetHiddenPassthru().Ordered()))
 }
 
 func (s *EnvironmentSuite) TestInterpolate() {
 	env := NewEnvironment("PUBLIC=foo", "X_PRIVATE=zed", "XXX_OTHER=otter")
-	env.Update(env.getPassthru().Ordered())
-	env.Hidden.Update(env.getHiddenPassthru().Ordered())
+	env.Update(env.GetPassthru().Ordered())
+	env.Hidden.Update(env.GetHiddenPassthru().Ordered())
 
 	// this is impossible to set because the order the variables are applied is
 	// defined by the caller

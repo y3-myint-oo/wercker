@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,19 +22,27 @@ func ParseApplicationID(input string) (username, name string, err error) {
 	return "", "", errors.New("Unable to parse applicationID")
 }
 
+var buildRegex = regexp.MustCompile("^[0-9a-fA-F]{24}$")
+
+// IsBuildID checks if input is a BuildID. BuildID is defined as a 24 character
+// hex string.
+func IsBuildID(input string) bool {
+	return buildRegex.Match([]byte(input))
+}
+
 // Pipeline is a set of steps to run, this is the interface shared by
 // both Build and Deploy
 type Pipeline interface {
 	// Getters
-	Env() *Environment      // base
+	Env() *util.Environment // base
 	Box() *Box              // base
 	Services() []ServiceBox //base
 	Steps() []Step          // base
 	AfterSteps() []Step     // base
 
 	// Methods
-	CommonEnv() [][]string // base
-	InitEnv(*Environment)  // impl
+	CommonEnv() [][]string     // base
+	InitEnv(*util.Environment) // impl
 	CollectArtifact(string) (*Artifact, error)
 	CollectCache(string) error
 	SetupGuest(context.Context, *Session) error
@@ -56,7 +65,7 @@ type PipelineResult struct {
 
 // ExportEnvironment for this pipeline result (used in after-steps)
 func (pr *PipelineResult) ExportEnvironment(sessionCtx context.Context, sess *Session) error {
-	e := NewEnvironment()
+	e := util.NewEnvironment()
 	result := "failed"
 	if pr.Success {
 		result = "passed"
@@ -81,7 +90,7 @@ func (pr *PipelineResult) ExportEnvironment(sessionCtx context.Context, sess *Se
 type BasePipeline struct {
 	options    *PipelineOptions
 	config     *PipelineConfig
-	env        *Environment
+	env        *util.Environment
 	box        *Box
 	services   []ServiceBox
 	steps      []Step
@@ -131,7 +140,7 @@ func NewBasePipeline(options *PipelineOptions, pipelineConfig *RawPipelineConfig
 	logger := util.RootLogger().WithField("Logger", "Pipeline")
 	return &BasePipeline{
 		options:    options,
-		env:        NewEnvironment(),
+		env:        util.NewEnvironment(),
 		box:        box,
 		services:   services,
 		steps:      steps,
@@ -161,7 +170,7 @@ func (p *BasePipeline) AfterSteps() []Step {
 }
 
 // Env is a getter for env
-func (p *BasePipeline) Env() *Environment {
+func (p *BasePipeline) Env() *util.Environment {
 	return p.env
 }
 

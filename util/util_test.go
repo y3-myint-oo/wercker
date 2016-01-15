@@ -15,7 +15,6 @@
 package util
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -50,68 +49,6 @@ func (s *UtilSuite) TestCounterIncrement2() {
 
 	n2 := counter.Increment()
 	s.Equal(4, n2, "expected second increment to be 4")
-}
-
-func (s *UtilSuite) TestParseApplicationIDValid() {
-	applicationID := "wercker/foobar"
-
-	username, name, err := ParseApplicationID(applicationID)
-
-	s.Equal(nil, err)
-	s.Equal("wercker", username)
-	s.Equal("foobar", name)
-}
-
-func (s *UtilSuite) TestParseApplicationIDInvalid() {
-	applicationID := "foofoo"
-
-	username, name, err := ParseApplicationID(applicationID)
-
-	s.Error(err)
-	s.Equal("", username)
-	s.Equal("", name)
-}
-
-func (s *UtilSuite) TestParseApplicationIDInvalid2() {
-	applicationID := "wercker/foobar/bla"
-
-	username, name, err := ParseApplicationID(applicationID)
-
-	s.Error(err)
-	s.Equal("", username)
-	s.Equal("", name)
-}
-
-func (s *UtilSuite) TestIsBuildIDValid() {
-	buildID := "54e5dde34e104f675e007e3b"
-
-	ok := IsBuildID(buildID)
-
-	s.Equal(true, ok)
-}
-
-func (s *UtilSuite) TestIsBuildIDInvalid() {
-	buildID := "54e5dde34e104f675e007e3"
-
-	ok := IsBuildID(buildID)
-
-	s.Equal(false, ok)
-}
-
-func (s *UtilSuite) TestIsBuildIDInvalid2() {
-	buildID := "invalidinvalidinvalidinv"
-
-	ok := IsBuildID(buildID)
-
-	s.Equal(false, ok)
-}
-
-func (s *UtilSuite) TestIsBuildIDInvalid3() {
-	buildID := "invalid"
-
-	ok := IsBuildID(buildID)
-
-	s.Equal(false, ok)
 }
 
 func (s *UtilSuite) TestMinInt() {
@@ -152,18 +89,6 @@ func (s *UtilSuite) TestMaxInt() {
 
 		s.Equal(test.expected, actual)
 	}
-}
-
-func (s *UtilSuite) TestGenerateDockerID() {
-	id, err := GenerateDockerID()
-	s.Require().NoError(err, "Unable to generate Docker ID")
-
-	// The ID needs to be a valid hex value
-	b, err := hex.DecodeString(id)
-	s.Require().NoError(err, "Generated Docker ID was not a hex value")
-
-	// The ID needs to be 256 bits
-	s.Equal(256, len(b)*8)
 }
 
 func (s *UtilSuite) TestSplitFunc() {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/wercker/sentcli/util"
 )
 
 var (
@@ -31,8 +32,8 @@ func DockerOrSkip(t *testing.T) *DockerClient {
 	return client
 }
 
-func emptyEnv() *Environment {
-	return NewEnvironment()
+func emptyEnv() *util.Environment {
+	return util.NewEnvironment()
 }
 
 func emptyPipelineOptions() *PipelineOptions {
@@ -41,7 +42,7 @@ func emptyPipelineOptions() *PipelineOptions {
 
 func minimalDockerOptions() *DockerOptions {
 	opts := &DockerOptions{GlobalOptions: &GlobalOptions{}}
-	guessAndUpdateDockerOptions(opts, NewEnvironment(os.Environ()...))
+	guessAndUpdateDockerOptions(opts, util.NewEnvironment(os.Environ()...))
 	return opts
 }
 

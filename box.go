@@ -155,7 +155,7 @@ func (b *Box) binds() ([]string, error) {
 }
 
 // RunServices runs the services associated with this box
-func (b *Box) RunServices(ctx context.Context, env *Environment) error {
+func (b *Box) RunServices(ctx context.Context, env *util.Environment) error {
 	links := []string{}
 
 	for _, service := range b.services {
@@ -169,7 +169,7 @@ func (b *Box) RunServices(ctx context.Context, env *Environment) error {
 	return nil
 }
 
-func dockerEnv(boxEnv map[string]string, env *Environment) []string {
+func dockerEnv(boxEnv map[string]string, env *util.Environment) []string {
 	s := []string{}
 	for k, v := range boxEnv {
 		s = append(s, fmt.Sprintf("%s=%s", strings.ToUpper(k), env.Interpolate(v)))
@@ -290,7 +290,7 @@ func (b *Box) getContainerName() string {
 }
 
 // Run creates the container and runs it.
-func (b *Box) Run(ctx context.Context, env *Environment) (*docker.Container, error) {
+func (b *Box) Run(ctx context.Context, env *util.Environment) (*docker.Container, error) {
 	err := b.RunServices(ctx, env)
 	if err != nil {
 		return nil, err
@@ -454,7 +454,7 @@ func (b *Box) Stop() {
 }
 
 // Fetch an image (or update the local)
-func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error) {
+func (b *Box) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
 	client, err := NewDockerClient(b.options.DockerOptions)
 	if err != nil {
 		return nil, err

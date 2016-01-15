@@ -73,7 +73,7 @@ func NewStoreContainerStep(stepConfig *StepConfig, options *PipelineOptions) (*S
 
 	baseStep := &BaseStep{
 		displayName: displayName,
-		env:         &Environment{},
+		env:         &util.Environment{},
 		id:          name,
 		name:        name,
 		options:     options,
@@ -91,7 +91,7 @@ func NewStoreContainerStep(stepConfig *StepConfig, options *PipelineOptions) (*S
 }
 
 // InitEnv preps our env
-func (s *StoreContainerStep) InitEnv(env *Environment) {
+func (s *StoreContainerStep) InitEnv(env *util.Environment) {
 	// NOP
 }
 

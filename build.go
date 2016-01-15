@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"regexp"
+
+	"github.com/wercker/sentcli/util"
 )
 
 // Build is our basic wrapper for Build operations
@@ -50,7 +51,7 @@ func (c *Config) ToPipeline(options *PipelineOptions, pipelineConfig *RawPipelin
 }
 
 // InitEnv sets up the internal state of the environment for the build
-func (b *Build) InitEnv(hostEnv *Environment) {
+func (b *Build) InitEnv(hostEnv *util.Environment) {
 	env := b.Env()
 
 	a := [][]string{
@@ -67,9 +68,9 @@ func (b *Build) InitEnv(hostEnv *Environment) {
 
 	env.Update(b.CommonEnv())
 	env.Update(a)
-	env.Update(hostEnv.getMirror())
-	env.Update(hostEnv.getPassthru().Ordered())
-	env.Hidden.Update(hostEnv.getHiddenPassthru().Ordered())
+	env.Update(hostEnv.GetMirror())
+	env.Update(hostEnv.GetPassthru().Ordered())
+	env.Hidden.Update(hostEnv.GetHiddenPassthru().Ordered())
 }
 
 // DockerRepo calculates our repo name
@@ -137,12 +138,4 @@ func (b *Build) CollectArtifact(containerID string) (*Artifact, error) {
 	}
 
 	return fullArtifact, nil
-}
-
-var buildRegex = regexp.MustCompile("^[0-9a-fA-F]{24}$")
-
-// IsBuildID checks if input is a BuildID. BuildID is defined as a 24 character
-// hex string.
-func IsBuildID(input string) bool {
-	return buildRegex.Match([]byte(input))
 }

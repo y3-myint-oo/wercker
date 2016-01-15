@@ -36,7 +36,7 @@ type GlobalOptions struct {
 
 // guessAuthToken will attempt to read from the token store location if
 // no auth token was provided
-func guessAuthToken(c *cli.Context, e *Environment, authTokenStore string) string {
+func guessAuthToken(c *cli.Context, e *util.Environment, authTokenStore string) string {
 	token := c.GlobalString("auth-token")
 	if token != "" {
 		return token
@@ -54,7 +54,7 @@ func guessAuthToken(c *cli.Context, e *Environment, authTokenStore string) strin
 }
 
 // NewGlobalOptions constructor
-func NewGlobalOptions(c *cli.Context, e *Environment) (*GlobalOptions, error) {
+func NewGlobalOptions(c *cli.Context, e *util.Environment) (*GlobalOptions, error) {
 	baseURL := strings.TrimRight(c.GlobalString("base-url"), "/")
 	debug := c.GlobalBool("debug")
 	journal := c.GlobalBool("journal")
@@ -93,7 +93,7 @@ type AWSOptions struct {
 }
 
 // NewAWSOptions constructor
-func NewAWSOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*AWSOptions, error) {
+func NewAWSOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalOptions) (*AWSOptions, error) {
 	awsAccessKeyID := c.String("aws-access-key")
 	awsRegion := c.String("aws-region")
 	awsSecretAccessKey := c.String("aws-secret-key")
@@ -119,7 +119,7 @@ type DockerOptions struct {
 	DockerLocal     bool
 }
 
-func guessAndUpdateDockerOptions(opts *DockerOptions, e *Environment) {
+func guessAndUpdateDockerOptions(opts *DockerOptions, e *util.Environment) {
 	if opts.DockerHost != "" {
 		return
 	}
@@ -184,7 +184,7 @@ func guessAndUpdateDockerOptions(opts *DockerOptions, e *Environment) {
 }
 
 // NewDockerOptions constructor
-func NewDockerOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*DockerOptions, error) {
+func NewDockerOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalOptions) (*DockerOptions, error) {
 	dockerHost := c.String("docker-host")
 	dockerTLSVerify := c.String("docker-tls-verify")
 	dockerCertPath := c.String("docker-cert-path")
@@ -217,7 +217,7 @@ type GitOptions struct {
 	GitRepository string
 }
 
-func guessGitBranch(c *cli.Context, e *Environment) string {
+func guessGitBranch(c *cli.Context, e *util.Environment) string {
 	branch := c.String("git-branch")
 	if branch != "" {
 		return branch
@@ -249,7 +249,7 @@ func guessGitBranch(c *cli.Context, e *Environment) string {
 	return strings.Trim(out.String(), "\n")
 }
 
-func guessGitCommit(c *cli.Context, e *Environment) string {
+func guessGitCommit(c *cli.Context, e *util.Environment) string {
 	commit := c.String("git-commit")
 	if commit != "" {
 		return commit
@@ -281,7 +281,7 @@ func guessGitCommit(c *cli.Context, e *Environment) string {
 	return strings.Trim(out.String(), "\n")
 }
 
-func guessGitOwner(c *cli.Context, e *Environment) string {
+func guessGitOwner(c *cli.Context, e *util.Environment) string {
 	owner := c.String("git-owner")
 	if owner != "" {
 		return owner
@@ -294,7 +294,7 @@ func guessGitOwner(c *cli.Context, e *Environment) string {
 	return owner
 }
 
-func guessGitRepository(c *cli.Context, e *Environment) string {
+func guessGitRepository(c *cli.Context, e *util.Environment) string {
 	repository := c.String("git-repository")
 	if repository != "" {
 		return repository
@@ -307,7 +307,7 @@ func guessGitRepository(c *cli.Context, e *Environment) string {
 }
 
 // NewGitOptions constructor
-func NewGitOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*GitOptions, error) {
+func NewGitOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalOptions) (*GitOptions, error) {
 	gitBranch := guessGitBranch(c, e)
 	gitCommit := guessGitCommit(c, e)
 	gitDomain := c.String("git-domain")
@@ -333,7 +333,7 @@ type KeenOptions struct {
 }
 
 // NewKeenOptions constructor
-func NewKeenOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*KeenOptions, error) {
+func NewKeenOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalOptions) (*KeenOptions, error) {
 	keenMetrics := c.Bool("keen-metrics")
 	keenProjectWriteKey := c.String("keen-project-write-key")
 	keenProjectID := c.String("keen-project-id")
@@ -365,7 +365,7 @@ type ReporterOptions struct {
 }
 
 // NewReporterOptions constructor
-func NewReporterOptions(c *cli.Context, e *Environment, globalOpts *GlobalOptions) (*ReporterOptions, error) {
+func NewReporterOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalOptions) (*ReporterOptions, error) {
 	shouldReport := c.Bool("report")
 	reporterHost := c.String("wercker-host")
 	reporterKey := c.String("wercker-token")
@@ -399,7 +399,7 @@ type PipelineOptions struct {
 
 	// TODO(termie): i'd like to remove this, it is only used in a couple
 	//               places by BasePipeline
-	HostEnv *Environment
+	HostEnv *util.Environment
 
 	BuildID      string
 	DeployID     string
@@ -443,7 +443,7 @@ type PipelineOptions struct {
 	WerckerYml     string
 }
 
-func guessApplicationID(c *cli.Context, e *Environment, name string) string {
+func guessApplicationID(c *cli.Context, e *util.Environment, name string) string {
 	id := c.String("application-id")
 	if id == "" {
 		id = name
@@ -452,7 +452,7 @@ func guessApplicationID(c *cli.Context, e *Environment, name string) string {
 }
 
 // Some logic to guess the application name
-func guessApplicationName(c *cli.Context, e *Environment) (string, error) {
+func guessApplicationName(c *cli.Context, e *util.Environment) (string, error) {
 	applicationName := c.String("application-name")
 	if applicationName != "" {
 		return applicationName, nil
@@ -488,7 +488,7 @@ func guessApplicationName(c *cli.Context, e *Environment) (string, error) {
 	return filepath.Base(abspath), nil
 }
 
-func guessApplicationOwnerName(c *cli.Context, e *Environment) string {
+func guessApplicationOwnerName(c *cli.Context, e *util.Environment) string {
 	name := c.String("application-owner-name")
 	if name == "" {
 		u, err := user.Current()
@@ -502,12 +502,12 @@ func guessApplicationOwnerName(c *cli.Context, e *Environment) string {
 	return name
 }
 
-func guessMessage(c *cli.Context, e *Environment) string {
+func guessMessage(c *cli.Context, e *util.Environment) string {
 	message := c.String("message")
 	return message
 }
 
-func guessTag(c *cli.Context, e *Environment) string {
+func guessTag(c *cli.Context, e *util.Environment) string {
 	tag := c.String("tag")
 	if tag == "" {
 		tag = guessGitBranch(c, e)
@@ -520,7 +520,7 @@ func looksLikeURL(s string) bool {
 	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 }
 
-func guessProjectID(c *cli.Context, e *Environment) string {
+func guessProjectID(c *cli.Context, e *util.Environment) string {
 	projectID := c.String("project-id")
 	if projectID != "" {
 		return projectID
@@ -531,7 +531,7 @@ func guessProjectID(c *cli.Context, e *Environment) string {
 	return name
 }
 
-func guessProjectPath(c *cli.Context, e *Environment) string {
+func guessProjectPath(c *cli.Context, e *util.Environment) string {
 	target := c.Args().First()
 	if looksLikeURL(target) {
 		return ""
@@ -543,7 +543,7 @@ func guessProjectPath(c *cli.Context, e *Environment) string {
 	return abs
 }
 
-func guessProjectURL(c *cli.Context, e *Environment) string {
+func guessProjectURL(c *cli.Context, e *util.Environment) string {
 	target := c.Args().First()
 	if !looksLikeURL(target) {
 		return ""
@@ -552,7 +552,7 @@ func guessProjectURL(c *cli.Context, e *Environment) string {
 }
 
 // NewPipelineOptions big-ass constructor
-func NewPipelineOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+func NewPipelineOptions(c *cli.Context, e *util.Environment) (*PipelineOptions, error) {
 	globalOpts, err := NewGlobalOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -777,10 +777,10 @@ func dumpOptions(options interface{}, indent ...string) {
 
 // Options per Command
 
-type optionsGetter func(*cli.Context, *Environment) (*PipelineOptions, error)
+type optionsGetter func(*cli.Context, *util.Environment) (*PipelineOptions, error)
 
 // NewBuildOptions constructor
-func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+func NewBuildOptions(c *cli.Context, e *util.Environment) (*PipelineOptions, error) {
 	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -793,7 +793,7 @@ func NewBuildOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 }
 
 // NewDevOptions ctor
-func NewDevOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+func NewDevOptions(c *cli.Context, e *util.Environment) (*PipelineOptions, error) {
 	pipelineOpts, err := NewBuildOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -802,7 +802,7 @@ func NewDevOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
 }
 
 // NewCheckConfigOptions constructor
-func NewCheckConfigOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+func NewCheckConfigOptions(c *cli.Context, e *util.Environment) (*PipelineOptions, error) {
 	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -811,7 +811,7 @@ func NewCheckConfigOptions(c *cli.Context, e *Environment) (*PipelineOptions, er
 }
 
 // NewDeployOptions constructor
-func NewDeployOptions(c *cli.Context, e *Environment) (*PipelineOptions, error) {
+func NewDeployOptions(c *cli.Context, e *util.Environment) (*PipelineOptions, error) {
 	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -829,7 +829,7 @@ type DetectOptions struct {
 }
 
 // NewDetectOptions constructor
-func NewDetectOptions(c *cli.Context, e *Environment) (*DetectOptions, error) {
+func NewDetectOptions(c *cli.Context, e *util.Environment) (*DetectOptions, error) {
 	globalOpts, err := NewGlobalOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -843,7 +843,7 @@ type InspectOptions struct {
 }
 
 // NewInspectOptions constructor
-func NewInspectOptions(c *cli.Context, e *Environment) (*InspectOptions, error) {
+func NewInspectOptions(c *cli.Context, e *util.Environment) (*InspectOptions, error) {
 	pipelineOpts, err := NewPipelineOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -857,7 +857,7 @@ type LoginOptions struct {
 }
 
 // NewLoginOptions constructor
-func NewLoginOptions(c *cli.Context, e *Environment) (*LoginOptions, error) {
+func NewLoginOptions(c *cli.Context, e *util.Environment) (*LoginOptions, error) {
 	globalOpts, err := NewGlobalOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -871,7 +871,7 @@ type LogoutOptions struct {
 }
 
 // NewLogoutOptions constructor
-func NewLogoutOptions(c *cli.Context, e *Environment) (*LogoutOptions, error) {
+func NewLogoutOptions(c *cli.Context, e *util.Environment) (*LogoutOptions, error) {
 	globalOpts, err := NewGlobalOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -895,7 +895,7 @@ type PullOptions struct {
 }
 
 // NewPullOptions constructor
-func NewPullOptions(c *cli.Context, e *Environment) (*PullOptions, error) {
+func NewPullOptions(c *cli.Context, e *util.Environment) (*PullOptions, error) {
 	globalOpts, err := NewGlobalOptions(c, e)
 	if err != nil {
 		return nil, err
@@ -939,7 +939,7 @@ type VersionOptions struct {
 }
 
 // NewVersionOptions constructor
-func NewVersionOptions(c *cli.Context, e *Environment) (*VersionOptions, error) {
+func NewVersionOptions(c *cli.Context, e *util.Environment) (*VersionOptions, error) {
 	return &VersionOptions{
 		OutputJSON:     c.Bool("json"),
 		BetaChannel:    c.Bool("beta"),

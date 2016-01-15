@@ -67,7 +67,7 @@ func (sc *StepDesc) Defaults() map[string]string {
 type Step interface {
 	// Bunch of getters
 	DisplayName() string
-	Env() *Environment
+	Env() *util.Environment
 	Cwd() string
 	ID() string
 	Name() string
@@ -79,7 +79,7 @@ type Step interface {
 	// Actual methods
 	Fetch() (string, error)
 
-	InitEnv(*Environment)
+	InitEnv(*util.Environment)
 	Execute(context.Context, *Session) (int, error)
 	CollectFile(string, string, string, io.Writer) error
 	CollectArtifact(string) (*Artifact, error)
@@ -90,7 +90,7 @@ type Step interface {
 // BaseStep type for extending
 type BaseStep struct {
 	displayName string
-	env         *Environment
+	env         *util.Environment
 	id          string
 	name        string
 	options     *PipelineOptions
@@ -106,7 +106,7 @@ func (s *BaseStep) DisplayName() string {
 }
 
 // Env getter
-func (s *BaseStep) Env() *Environment {
+func (s *BaseStep) Env() *util.Environment {
 	return s.env
 }
 
@@ -262,7 +262,7 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*ExternalStep, e
 	return &ExternalStep{
 		BaseStep: &BaseStep{
 			displayName: displayName,
-			env:         NewEnvironment(),
+			env:         util.NewEnvironment(),
 			id:          identifier,
 			name:        name,
 			options:     options,
@@ -514,7 +514,7 @@ func (s *ExternalStep) CollectArtifact(containerID string) (*Artifact, error) {
 }
 
 // InitEnv sets up the internal environment for the Step.
-func (s *ExternalStep) InitEnv(env *Environment) {
+func (s *ExternalStep) InitEnv(env *util.Environment) {
 	a := [][]string{
 		[]string{"WERCKER_STEP_ROOT", s.GuestPath()},
 		[]string{"WERCKER_STEP_ID", s.safeID},

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -42,4 +43,16 @@ func (s *DockerSuite) TestPing() {
 	client := DockerOrSkip(s.T())
 	err := client.Ping()
 	s.Nil(err)
+}
+
+func (s *DockerSuite) TestGenerateDockerID() {
+	id, err := GenerateDockerID()
+	s.Require().NoError(err, "Unable to generate Docker ID")
+
+	// The ID needs to be a valid hex value
+	b, err := hex.DecodeString(id)
+	s.Require().NoError(err, "Generated Docker ID was not a hex value")
+
+	// The ID needs to be 256 bits
+	s.Equal(256, len(b)*8)
 }

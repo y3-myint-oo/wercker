@@ -1,4 +1,18 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package util
 
 import (
 	"fmt"
@@ -79,7 +93,7 @@ func (e *Environment) Ordered() [][]string {
 // identified by $VAR with the value of the VAR pipeline environment variable
 // NOTE(termie): This will check the hidden env, too.
 func (e *Environment) Interpolate(s string) string {
-	return os.Expand(s, e.getInclHidden)
+	return os.Expand(s, e.GetInclHidden)
 }
 
 var mirroredEnv = [...]string{
@@ -88,7 +102,7 @@ var mirroredEnv = [...]string{
 }
 
 // Collect passthru variables from the project
-func (e *Environment) getPassthru() (env *Environment) {
+func (e *Environment) GetPassthru() (env *Environment) {
 	a := [][]string{}
 	for key, value := range e.Map {
 		if strings.HasPrefix(key, "X_") {
@@ -101,7 +115,7 @@ func (e *Environment) getPassthru() (env *Environment) {
 }
 
 // Collect the hidden passthru variables
-func (e *Environment) getHiddenPassthru() (env *Environment) {
+func (e *Environment) GetHiddenPassthru() (env *Environment) {
 	a := [][]string{}
 	for key, value := range e.Map {
 		if strings.HasPrefix(key, "XXX_") {
@@ -113,7 +127,7 @@ func (e *Environment) getHiddenPassthru() (env *Environment) {
 	return env
 }
 
-func (e *Environment) getMirror() [][]string {
+func (e *Environment) GetMirror() [][]string {
 	a := [][]string{}
 	for _, key := range mirroredEnv {
 		value, ok := e.Map[key]
@@ -124,9 +138,9 @@ func (e *Environment) getMirror() [][]string {
 	return a
 }
 
-// getInclHidden gets an individual record either from this environment or the
+// GetInclHidden gets an individual record either from this environment or the
 // hidden environment.
-func (e *Environment) getInclHidden(key string) string {
+func (e *Environment) GetInclHidden(key string) string {
 	if e.Map != nil {
 		if val, ok := e.Map[key]; ok {
 			return val

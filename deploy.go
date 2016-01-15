@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/wercker/sentcli/util"
 )
 
 // Deploy is our basic wrapper for Deploy operations
@@ -51,7 +53,7 @@ func (c *Config) ToDeploy(options *PipelineOptions, pipelineConfig *RawPipelineC
 }
 
 // InitEnv sets up the internal state of the environment for the build
-func (d *Deploy) InitEnv(hostEnv *Environment) {
+func (d *Deploy) InitEnv(hostEnv *util.Environment) {
 	env := d.Env()
 
 	a := [][]string{
@@ -71,9 +73,9 @@ func (d *Deploy) InitEnv(hostEnv *Environment) {
 
 	env.Update(d.CommonEnv())
 	env.Update(a)
-	env.Update(hostEnv.getMirror())
-	env.Update(hostEnv.getPassthru().Ordered())
-	env.Hidden.Update(hostEnv.getHiddenPassthru().Ordered())
+	env.Update(hostEnv.GetMirror())
+	env.Update(hostEnv.GetPassthru().Ordered())
+	env.Hidden.Update(hostEnv.GetHiddenPassthru().Ordered())
 }
 
 // DockerRepo returns the name where we might store this in docker

@@ -406,7 +406,7 @@ func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) 
 
 	baseStep := &BaseStep{
 		displayName: displayName,
-		env:         &Environment{},
+		env:         &util.Environment{},
 		id:          name,
 		name:        name,
 		options:     options,
@@ -788,7 +788,7 @@ func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*Docke
 
 	baseStep := &BaseStep{
 		displayName: displayName,
-		env:         &Environment{},
+		env:         &util.Environment{},
 		id:          name,
 		name:        name,
 		options:     options,
@@ -807,7 +807,7 @@ func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*Docke
 // The IStep Interface
 
 // InitEnv parses our data into our config
-func (s *DockerPushStep) InitEnv(env *Environment) {
+func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	if username, ok := s.data["username"]; ok {
 		s.username = env.Interpolate(username)
 	}

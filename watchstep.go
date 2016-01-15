@@ -45,7 +45,7 @@ func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep,
 
 	baseStep := &BaseStep{
 		displayName: displayName,
-		env:         NewEnvironment(),
+		env:         util.NewEnvironment(),
 		id:          name,
 		name:        name,
 		options:     options,
@@ -62,7 +62,7 @@ func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep,
 }
 
 // InitEnv parses our data into our config
-func (s *WatchStep) InitEnv(env *Environment) {
+func (s *WatchStep) InitEnv(env *util.Environment) {
 	if code, ok := s.data["code"]; ok {
 		s.Code = code
 	}
