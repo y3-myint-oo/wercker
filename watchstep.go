@@ -257,7 +257,7 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		return -1, err
 	}
 
-	debounce := NewDebouncer(2 * time.Second)
+	debounce := util.NewDebouncer(2 * time.Second)
 	done := make(chan struct{})
 	go func() {
 		for {
