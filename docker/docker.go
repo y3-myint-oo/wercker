@@ -1,4 +1,18 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package dockerlocal
 
 import (
 	"archive/tar"
@@ -21,6 +35,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
@@ -254,14 +269,6 @@ func (c *DockerClient) ExecOne(containerID string, cmd []string, output io.Write
 	return nil
 }
 
-// CheckAccessOptions is just args for CheckAccess
-type CheckAccessOptions struct {
-	Auth       docker.AuthConfiguration
-	Access     string
-	Repository string
-	Registry   string
-}
-
 // normalizeRepo only really applies to the repository name used in the registry
 // the full name is still used within the other calls to docker stuff
 func normalizeRepo(name string) string {
@@ -318,7 +325,7 @@ func normalizeRegistry(address string) string {
 // CheckAccess checks whether a user can read or write an image
 // TODO(termie): this really uses the docker registry code rather than the
 //               client so, maybe this is the wrong place
-func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
+func (c *DockerClient) CheckAccess(opts core.CheckAccessOptions) (bool, error) {
 	logger := util.RootLogger().WithField("Logger", "Docker")
 	logger.Debug("Checking access for ", opts.Repository)
 
@@ -404,7 +411,7 @@ func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) 
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
-	baseStep := &BaseStep{
+	baseStep := &core.BaseStep{
 		displayName: displayName,
 		env:         &util.Environment{},
 		id:          name,
@@ -651,7 +658,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		ServerAddress: s.authServer,
 	}
 
-	checkOpts := CheckAccessOptions{
+	checkOpts := core.CheckAccessOptions{
 		Auth:       auth,
 		Access:     "write",
 		Repository: s.repository,
@@ -751,7 +758,7 @@ func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*Artifact, 
 
 // DockerPushStep needs to implemenet IStep
 type DockerPushStep struct {
-	*BaseStep
+	*core.BaseStep
 	data       map[string]string
 	username   string
 	password   string
@@ -786,7 +793,7 @@ func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*Docke
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
-	baseStep := &BaseStep{
+	baseStep := &core.BaseStep{
 		displayName: displayName,
 		env:         &util.Environment{},
 		id:          name,
@@ -977,7 +984,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	}
 
 	if !s.options.DockerLocal {
-		checkOpts := CheckAccessOptions{
+		checkOpts := core.CheckAccessOptions{
 			Auth:       auth,
 			Access:     "write",
 			Repository: s.repository,

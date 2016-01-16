@@ -1,4 +1,4 @@
-package main
+package sentcli
 
 import (
 	"archive/tar"
@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/wercker/sentcli/docker"
 	"github.com/wercker/sentcli/util"
 )
 
@@ -144,13 +145,13 @@ type FileCollector interface {
 
 // DockerFileCollector impl of FileCollector
 type DockerFileCollector struct {
-	client      *DockerClient
+	client      *dockerlocal.DockerClient
 	containerID string
 	logger      *util.LogEntry
 }
 
 // NewDockerFileCollector constructor
-func NewDockerFileCollector(client *DockerClient, containerID string) FileCollector {
+func NewDockerFileCollector(client *dockerlocal.DockerClient, containerID string) FileCollector {
 	return &DockerFileCollector{
 		client:      client,
 		containerID: containerID,

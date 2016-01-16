@@ -1,4 +1,4 @@
-package main
+package sentcli
 
 import "github.com/codegangsta/cli"
 

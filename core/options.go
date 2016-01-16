@@ -1,4 +1,18 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package core
 
 import (
 	"bytes"
@@ -11,10 +25,8 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/pborman/uuid"
@@ -107,104 +119,6 @@ func NewAWSOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalOption
 		S3Bucket:           s3Bucket,
 		S3PartSize:         100 * 1024 * 1024, // 100 MB
 	}, nil
-}
-
-// DockerOptions for our docker client
-type DockerOptions struct {
-	*GlobalOptions
-	DockerHost      string
-	DockerTLSVerify string
-	DockerCertPath  string
-	DockerDNS       []string
-	DockerLocal     bool
-}
-
-func guessAndUpdateDockerOptions(opts *DockerOptions, e *util.Environment) {
-	if opts.DockerHost != "" {
-		return
-	}
-
-	logger := util.RootLogger().WithField("Logger", "docker")
-	f := &util.Formatter{opts.GlobalOptions.ShowColors}
-
-	// Check the unix socket, default on linux
-	// This will fail instantly so don't bother with the goroutine
-	if runtime.GOOS == "linux" {
-		unixSocket := "unix:///var/run/docker.sock"
-		logger.Println(f.Info("No Docker host specified, checking", unixSocket))
-		client, err := NewDockerClient(&DockerOptions{
-			DockerHost: unixSocket,
-		})
-		if err == nil {
-			_, err = client.Version()
-			if err == nil {
-				opts.DockerHost = unixSocket
-				return
-			}
-		}
-	}
-
-	// Check the boot2docker port with default cert paths and such
-	b2dCertPath := filepath.Join(e.Get("HOME"), ".boot2docker/certs/boot2docker-vm")
-	b2dHost := "tcp://192.168.59.103:2376"
-
-	logger.Printf(f.Info("No Docker host specified, checking for boot2docker", b2dHost))
-	client, err := NewDockerClient(&DockerOptions{
-		DockerHost:      b2dHost,
-		DockerCertPath:  b2dCertPath,
-		DockerTLSVerify: "1",
-	})
-	if err == nil {
-		// This can take a long time if it isn't up, so toss it in a
-		// goroutine so we can time it out
-		result := make(chan bool)
-		go func() {
-			_, err = client.Version()
-			if err == nil {
-				result <- true
-			} else {
-				result <- false
-			}
-		}()
-		select {
-		case success := <-result:
-			if success {
-				opts.DockerHost = b2dHost
-				opts.DockerCertPath = b2dCertPath
-				opts.DockerTLSVerify = "1"
-				return
-			}
-		case <-time.After(1 * time.Second):
-		}
-	}
-
-	// Pick a default localhost port and hope for the best :/
-	opts.DockerHost = "tcp://127.0.0.1:2375"
-	logger.Println(f.Info("No Docker host found, falling back to default", opts.DockerHost))
-}
-
-// NewDockerOptions constructor
-func NewDockerOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalOptions) (*DockerOptions, error) {
-	dockerHost := c.String("docker-host")
-	dockerTLSVerify := c.String("docker-tls-verify")
-	dockerCertPath := c.String("docker-cert-path")
-	dockerDNS := c.StringSlice("docker-dns")
-	dockerLocal := c.Bool("docker-local")
-
-	speculativeOptions := &DockerOptions{
-		GlobalOptions:   globalOpts,
-		DockerHost:      dockerHost,
-		DockerTLSVerify: dockerTLSVerify,
-		DockerCertPath:  dockerCertPath,
-		DockerDNS:       dockerDNS,
-		DockerLocal:     dockerLocal,
-	}
-
-	// We're going to try out a few settings and set DockerHost if
-	// one of them works, it they don't we'll get a nice error when
-	// requireDockerEndpoint triggers later on
-	guessAndUpdateDockerOptions(speculativeOptions, e)
-	return speculativeOptions, nil
 }
 
 // GitOptions for the users, mostly
@@ -392,7 +306,7 @@ func NewReporterOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalO
 type PipelineOptions struct {
 	*GlobalOptions
 	*AWSOptions
-	*DockerOptions
+	// *DockerOptions
 	*GitOptions
 	*KeenOptions
 	*ReporterOptions
@@ -558,10 +472,10 @@ func NewPipelineOptions(c *cli.Context, e *util.Environment) (*PipelineOptions, 
 		return nil, err
 	}
 
-	dockerOpts, err := NewDockerOptions(c, e, globalOpts)
-	if err != nil {
-		return nil, err
-	}
+	// dockerOpts, err := NewDockerOptions(c, e, globalOpts)
+	// if err != nil {
+	//   return nil, err
+	// }
 
 	awsOpts, err := NewAWSOptions(c, e, globalOpts)
 	if err != nil {
@@ -642,9 +556,9 @@ func NewPipelineOptions(c *cli.Context, e *util.Environment) (*PipelineOptions, 
 	werckerYml := c.String("wercker-yml")
 
 	return &PipelineOptions{
-		GlobalOptions:   globalOpts,
-		AWSOptions:      awsOpts,
-		DockerOptions:   dockerOpts,
+		GlobalOptions: globalOpts,
+		AWSOptions:    awsOpts,
+		// DockerOptions:   dockerOpts,
 		GitOptions:      gitOpts,
 		KeenOptions:     keenOpts,
 		ReporterOptions: reporterOpts,
@@ -882,7 +796,7 @@ func NewLogoutOptions(c *cli.Context, e *util.Environment) (*LogoutOptions, erro
 // PullOptions for the pull command
 type PullOptions struct {
 	*GlobalOptions
-	*DockerOptions
+	// *DockerOptions
 
 	Repository string
 	Branch     string
@@ -901,10 +815,10 @@ func NewPullOptions(c *cli.Context, e *util.Environment) (*PullOptions, error) {
 		return nil, err
 	}
 
-	dockerOpts, err := NewDockerOptions(c, e, globalOpts)
-	if err != nil {
-		return nil, err
-	}
+	// dockerOpts, err := NewDockerOptions(c, e, globalOpts)
+	// if err != nil {
+	//   return nil, err
+	// }
 
 	if len(c.Args()) != 1 {
 		return nil, errors.New("Pull requires the application ID or the build ID as the only argument")
@@ -918,7 +832,7 @@ func NewPullOptions(c *cli.Context, e *util.Environment) (*PullOptions, error) {
 
 	return &PullOptions{
 		GlobalOptions: globalOpts,
-		DockerOptions: dockerOpts,
+		// DockerOptions: dockerOpts,
 
 		Repository: repository,
 		Branch:     c.String("branch"),

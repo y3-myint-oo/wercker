@@ -1,4 +1,18 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package core
 
 import (
 	"bytes"
@@ -7,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/pborman/uuid"
 	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
@@ -50,70 +63,6 @@ func (s *Sender) Read(p []byte) (int, error) {
 // Transport interface for talking to containervisors
 type Transport interface {
 	Attach(context.Context, io.Reader, io.Writer, io.Writer) (context.Context, error)
-}
-
-// DockerTransport for docker containers
-type DockerTransport struct {
-	options     *PipelineOptions
-	client      *DockerClient
-	containerID string
-	logger      *util.LogEntry
-}
-
-// NewDockerTransport constructor
-func NewDockerTransport(options *PipelineOptions, containerID string) (Transport, error) {
-	client, err := NewDockerClient(options.DockerOptions)
-	if err != nil {
-		return nil, err
-	}
-	logger := util.RootLogger().WithField("Logger", "DockerTransport")
-	return &DockerTransport{options: options, client: client, containerID: containerID, logger: logger}, nil
-}
-
-// Attach the given reader and writers to the transport, return a context
-// that will be closed when the transport dies
-func (t *DockerTransport) Attach(sessionCtx context.Context, stdin io.Reader, stdout, stderr io.Writer) (context.Context, error) {
-	t.logger.Debugln("Attaching to container: ", t.containerID)
-	started := make(chan struct{})
-	transportCtx, cancel := context.WithCancel(sessionCtx)
-
-	// exit := make(chan int)
-	// t.exit = exit
-
-	opts := docker.AttachToContainerOptions{
-		Container:    t.containerID,
-		Stdin:        true,
-		Stdout:       true,
-		Stderr:       true,
-		Stream:       true,
-		Logs:         false,
-		Success:      started,
-		InputStream:  stdin,
-		ErrorStream:  stdout,
-		OutputStream: stderr,
-		RawTerminal:  false,
-	}
-
-	go func() {
-		defer cancel()
-		err := t.client.AttachToContainer(opts)
-		if err != nil {
-			t.logger.Panicln(err)
-		}
-	}()
-
-	// Wait for attach
-	<-started
-	go func() {
-		defer cancel()
-		status, err := t.client.WaitContainer(t.containerID)
-		if err != nil {
-			t.logger.Errorln("Error waiting", err)
-		}
-		t.logger.Debugln("Container finished with status code:", status, t.containerID)
-	}()
-	started <- struct{}{}
-	return transportCtx, nil
 }
 
 // Session is our way to interact with the docker container
@@ -166,7 +115,7 @@ func (s *Session) ShowLogs() {
 
 // Send an array of commands.
 func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ...string) error {
-	e, err := EmitterFromContext(sessionCtx)
+	e, err := itterFromContext(sessionCtx)
 	if err != nil {
 		return err
 	}
@@ -273,7 +222,7 @@ func smartSplitLines(line, sentinel string) []string {
 // Ways for a command to be successful:
 //  [x] We received the sentinel echo with exit code 0
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
-	e, err := EmitterFromContext(sessionCtx)
+	e, err := itterFromContext(sessionCtx)
 	if err != nil {
 		return -1, []string{}, err
 	}

@@ -1,4 +1,4 @@
-package main
+package sentcli
 
 import (
 	"archive/tar"

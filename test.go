@@ -1,4 +1,4 @@
-package main
+package sentcli
 
 import (
 	"os"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/wercker/sentcli/docker"
 	"github.com/wercker/sentcli/util"
 )
 
@@ -17,7 +18,7 @@ var (
 
 // DockerOrSkip checks for a docker container and skips the test
 // if one is not available
-func DockerOrSkip(t *testing.T) *DockerClient {
+func DockerOrSkip(t *testing.T) *dockerlocal.DockerClient {
 	if os.Getenv("SKIP_DOCKER_TEST") == "true" {
 		t.Skip("$SKIP_DOCKER_TEST=true, skipping test")
 		return nil
@@ -48,10 +49,10 @@ func minimalDockerOptions() *DockerOptions {
 
 type containerRemover struct {
 	*docker.Container
-	client *DockerClient
+	client *dockerlocal.DockerClient
 }
 
-func tempBusybox(client *DockerClient) (*containerRemover, error) {
+func tempBusybox(client *dockerlocal.DockerClient) (*containerRemover, error) {
 	_, err := client.InspectImage("alpine")
 	if err != nil {
 		options := docker.PullImageOptions{

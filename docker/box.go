@@ -1,4 +1,18 @@
-package main
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package dockerlocal
 
 import (
 	"fmt"
@@ -10,20 +24,24 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 
 	"golang.org/x/net/context"
 )
 
+// TODO(termie): remove references to docker
+
 // Box is our wrapper for Box operations
-type Box struct {
+type DockerBox struct {
 	Name            string
 	ShortName       string
+	client          Containerer
 	networkDisabled bool
 	services        []ServiceBox
-	options         *PipelineOptions
+	options         *core.PipelineOptions
 	container       *docker.Container
-	config          *BoxConfig
+	config          *core.BoxConfig
 	cmd             string
 	repository      string
 	tag             string
@@ -33,18 +51,13 @@ type Box struct {
 	image           *docker.Image
 }
 
-// BoxOptions are box options, duh
-type BoxOptions struct {
-	NetworkDisabled bool
-}
-
 // ToBox will convert a BoxConfig into a Box
-func (b *BoxConfig) ToBox(options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
-	return NewBox(b, options, boxOptions)
+func (b *core.BoxConfig) ToBox(options *core.PipelineOptions, boxOptions *core.BoxOptions, containerer Containerer) (*Box, error) {
+	return NewBox(b, options, boxOptions, containerer)
 }
 
 // NewBox from a name and other references
-func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*Box, error) {
+func NewBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, boxOptions *core.BoxOptions, containerer Containerer) (*Box, error) {
 	name := boxConfig.ID
 
 	if strings.Contains(name, "@") {
@@ -89,6 +102,7 @@ func NewBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptio
 	return &Box{
 		Name:            name,
 		ShortName:       shortName,
+		client:          containerer,
 		config:          boxConfig,
 		options:         options,
 		repository:      repository,
@@ -264,11 +278,8 @@ func exposedPortMaps(dockerHost string, published []string) ([]ExposedPortMap, e
 
 //RecoverInteractive restarts the box with a terminal attached
 func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step Step) error {
-	client, err := NewDockerClient(b.options.DockerOptions)
-	if err != nil {
-		return nil
-	}
-
+	// TODO(termie): maybe move the container manipulation outside of here?
+	client := b.client
 	container, err := b.Restart()
 	if err != nil {
 		b.logger.Panicln("box restart failed")
@@ -297,10 +308,8 @@ func (b *Box) Run(ctx context.Context, env *util.Environment) (*docker.Container
 	}
 	b.logger.Debugln("Starting base box:", b.Name)
 
-	client, err := NewDockerClient(b.options.DockerOptions)
-	if err != nil {
-		return nil, err
-	}
+	// TODO(termie): maybe move the container manipulation outside of here?
+	client := b.client
 
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
@@ -372,10 +381,8 @@ func (b *Box) Clean() error {
 		}
 	}
 
-	client, err := NewDockerClient(b.options.DockerOptions)
-	if err != nil {
-		return err
-	}
+	// TODO(termie): maybe move the container manipulation outside of here?
+	client := b.client
 
 	for _, container := range containers {
 		opts := docker.RemoveContainerOptions{
@@ -405,11 +412,9 @@ func (b *Box) Clean() error {
 
 // Restart stops and starts the box
 func (b *Box) Restart() (*docker.Container, error) {
-	client, err := NewDockerClient(b.options.DockerOptions)
-	if err != nil {
-		return nil, err
-	}
-	err = client.RestartContainer(b.container.ID, 1)
+	// TODO(termie): maybe move the container manipulation outside of here?
+	client := b.client
+	err := client.RestartContainer(b.container.ID, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -423,10 +428,8 @@ func (b *Box) AddService(service ServiceBox) {
 
 // Stop the box and all its services
 func (b *Box) Stop() {
-	client, err := NewDockerClient(b.options.DockerOptions)
-	if err != nil {
-		return
-	}
+	// TODO(termie): maybe move the container manipulation outside of here?
+	client := b.client
 	for _, service := range b.services {
 		b.logger.Debugln("Stopping service", service.GetID())
 		err := client.StopContainer(service.GetID(), 1)
@@ -455,10 +458,8 @@ func (b *Box) Stop() {
 
 // Fetch an image (or update the local)
 func (b *Box) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
-	client, err := NewDockerClient(b.options.DockerOptions)
-	if err != nil {
-		return nil, err
-	}
+	// TODO(termie): maybe move the container manipulation outside of here?
+	client := b.client
 
 	e, err := EmitterFromContext(ctx)
 	if err != nil {
@@ -536,10 +537,8 @@ func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
 		"Tag":  tag,
 	}).Debugln("Commit container:", name, tag)
 
-	client, err := NewDockerClient(b.options.DockerOptions)
-	if err != nil {
-		return nil, err
-	}
+	// TODO(termie): maybe move the container manipulation outside of here?
+	client := b.client
 
 	commitOptions := docker.CommitContainerOptions{
 		Container:  b.container.ID,
@@ -574,10 +573,8 @@ func (b *Box) ExportImage(options *ExportImageOptions) error {
 		OutputStream: options.OutputStream,
 	}
 
-	client, err := NewDockerClient(b.options.DockerOptions)
-	if err != nil {
-		return err
-	}
+	// TODO(termie): maybe move the container manipulation outside of here?
+	client := b.client
 
 	return client.ExportImage(exportImageOptions)
 }
