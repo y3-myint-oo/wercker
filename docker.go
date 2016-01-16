@@ -869,14 +869,14 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	}
 
 	if stopsignal, ok := s.data["stopsignal"]; ok {
-		s.stopsignal = env.Interpolate(stopsignal)
+		s.stopSignal = env.Interpolate(stopsignal)
 	}
 
 	if labels, ok := s.data["labels"]; ok {
 		parsedLabels, err := shlex.Split(labels)
 		if err == nil {
 			labelMap := make(map[string]string)
-			for _, labelPair := range parts {
+			for _, labelPair := range parsedLabels {
 				pair := strings.Split(labelPair, "=")
 				labelMap[pair[0]] = pair[1]
 			}
