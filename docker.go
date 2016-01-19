@@ -861,10 +861,15 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 		}
 	}
 
-	if env, ok := s.data["env"]; ok {
-		parsedEnv, err := shlex.Split(env)
+	if envi, ok := s.data["env"]; ok {
+		parsedEnv, err := shlex.Split(envi)
+
 		if err == nil {
-			s.env = parsedEnv
+			interpolatedEnv := make([]string, len(parsedEnv))
+			for i, envVar := range parsedEnv {
+				interpolatedEnv[i] = env.Interpolate(envVar)
+			}
+			s.env = interpolatedEnv
 		}
 	}
 
@@ -878,7 +883,7 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 			labelMap := make(map[string]string)
 			for _, labelPair := range parsedLabels {
 				pair := strings.Split(labelPair, "=")
-				labelMap[pair[0]] = pair[1]
+				labelMap[env.Interpolate(pair[0])] = env.Interpolate(pair[1])
 			}
 			s.labels = labelMap
 		}
