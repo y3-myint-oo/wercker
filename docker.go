@@ -244,7 +244,6 @@ type CheckAccessOptions struct {
 	Auth       docker.AuthConfiguration
 	Access     string
 	Repository string
-	Tag        string
 	Registry   string
 }
 
@@ -549,7 +548,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		return -1, err
 	}
 	defer repositoriesFile.Close()
-	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{"%s":"%s"}}`, s.repository, s.tag, layerID)))
+	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{"%v":"%s"}}`, s.repository, s.tags, layerID)))
 	if err != nil {
 		return -1, err
 	}
@@ -628,7 +627,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	s.logger.WithFields(LogFields{
 		"Registry":   s.registry,
 		"Repository": s.repository,
-		"Tag":        s.tag,
+		"Tags":       s.tags,
 		"Message":    s.message,
 	}).Debug("Scratch push to registry")
 
@@ -644,7 +643,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		Auth:       auth,
 		Access:     "write",
 		Repository: s.repository,
-		Tag:        s.tag,
 		Registry:   s.registry,
 	}
 
@@ -677,20 +675,22 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	go EmitStatus(e, r, s.options)
 	defer w.Close()
 
-	pushOpts := docker.PushImageOptions{
-		Name:          s.repository,
-		Tag:           s.tag,
-		Registry:      s.registry,
-		OutputStream:  w,
-		RawJSONStream: true,
-	}
+	for _, tag := range s.tags {
+		pushOpts := docker.PushImageOptions{
+			Name:          s.repository,
+			Tag:           tag,
+			Registry:      s.registry,
+			OutputStream:  w,
+			RawJSONStream: true,
+		}
 
-	s.logger.Println("Push container:", s.repository, s.registry)
-	err = client.PushImage(pushOpts, auth)
+		s.logger.Println("Push container:", s.repository, s.registry)
+		err = client.PushImage(pushOpts, auth)
 
-	if err != nil {
-		s.logger.Errorln("Failed to push:", err)
-		return 1, err
+		if err != nil {
+			s.logger.Errorln("Failed to push:", err)
+			return 1, err
+		}
 	}
 
 	return 0, nil
@@ -752,7 +752,7 @@ type DockerPushStep struct {
 	repository string
 	author     string
 	message    string
-	tag        string
+	tags       []string
 	registry   string
 	ports      string
 	volumes    string
@@ -815,8 +815,13 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 		s.repository = env.Interpolate(repository)
 	}
 
-	if tag, ok := s.data["tag"]; ok {
-		s.tag = env.Interpolate(tag)
+	if tags, ok := s.data["tags"]; ok {
+		splitTags := strings.Split(tags, " ")
+		interpolatedTags := make([]string, len(splitTags))
+		for i, tag := range splitTags {
+			interpolatedTags[i] = env.Interpolate(tag)
+		}
+		s.tags = interpolatedTags
 	}
 
 	if author, ok := s.data["author"]; ok {
@@ -916,7 +921,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	s.logger.WithFields(LogFields{
 		"Registry":   s.registry,
 		"Repository": s.repository,
-		"Tag":        s.tag,
+		"Tags":       s.tags,
 		"Message":    s.message,
 	}).Debug("Push to registry")
 
@@ -937,7 +942,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 			Auth:       auth,
 			Access:     "write",
 			Repository: s.repository,
-			Tag:        s.tag,
 			Registry:   s.registry,
 		}
 
@@ -989,7 +993,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	commitOpts := docker.CommitContainerOptions{
 		Container:  containerID,
 		Repository: s.repository,
-		Tag:        s.tag,
 		Author:     s.author,
 		Message:    s.message,
 		Run:        &config,
@@ -1008,21 +1011,22 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		// emitStatusses in a different go routine
 		go EmitStatus(e, r, s.options)
 		defer w.Close()
+		for _, tag := range s.tags {
+			pushOpts := docker.PushImageOptions{
+				Name:          s.repository,
+				Tag:           tag,
+				Registry:      s.registry,
+				OutputStream:  w,
+				RawJSONStream: true,
+			}
 
-		pushOpts := docker.PushImageOptions{
-			Name:          s.repository,
-			Tag:           s.tag,
-			Registry:      s.registry,
-			OutputStream:  w,
-			RawJSONStream: true,
-		}
+			s.logger.Println("Push container:", s.repository, s.registry)
+			err = client.PushImage(pushOpts, auth)
 
-		s.logger.Println("Push container:", s.repository, s.registry)
-		err = client.PushImage(pushOpts, auth)
-
-		if err != nil {
-			s.logger.Errorln("Failed to push:", err)
-			return 1, err
+			if err != nil {
+				s.logger.Errorln("Failed to push:", err)
+				return 1, err
+			}
 		}
 	}
 	return 0, nil
