@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/codegangsta/cli"
-	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
 
@@ -99,7 +98,7 @@ func guessAndUpdateDockerOptions(opts *DockerOptions, e *util.Environment) {
 }
 
 // NewDockerOptions constructor
-func NewDockerOptions(c *cli.Context, e *util.Environment, globalOpts *core.GlobalOptions) (*DockerOptions, error) {
+func NewDockerOptions(c *cli.Context, e *util.Environment) (*DockerOptions, error) {
 	dockerHost := c.String("docker-host")
 	dockerTLSVerify := c.String("docker-tls-verify")
 	dockerCertPath := c.String("docker-cert-path")
@@ -107,7 +106,6 @@ func NewDockerOptions(c *cli.Context, e *util.Environment, globalOpts *core.Glob
 	dockerLocal := c.Bool("docker-local")
 
 	speculativeOptions := &DockerOptions{
-		GlobalOptions:   globalOpts,
 		DockerHost:      dockerHost,
 		DockerTLSVerify: dockerTLSVerify,
 		DockerCertPath:  dockerCertPath,

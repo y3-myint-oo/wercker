@@ -100,17 +100,42 @@ type Step interface {
 	ReportPath(...string) string
 }
 
+// BaseStepOptions are exported fields so that we can make a BaseStep from
+// other packages, see: https://gist.github.com/termie/8b66a2b4206e8e042766
+type BaseStepOptions struct {
+	DisplayName string
+	Env         *util.Environment
+	ID          string
+	Name        string
+	Owner       string
+	SafeID      string
+	Version     string
+	Cwd         string
+}
+
 // BaseStep type for extending
 type BaseStep struct {
 	displayName string
 	env         *util.Environment
 	id          string
 	name        string
-	options     *PipelineOptions
 	owner       string
 	safeID      string
 	version     string
 	cwd         string
+}
+
+func NewBaseStep(args BaseStepOptions) *BaseStep {
+	return &BaseStep{
+		displayName: args.DisplayName,
+		env:         args.Env,
+		id:          args.ID,
+		name:        args.Name,
+		owner:       args.Owner,
+		safeID:      args.SafeID,
+		version:     args.Version,
+		cwd:         args.Cwd,
+	}
 }
 
 // DisplayName getter
@@ -160,6 +185,7 @@ type ExternalStep struct {
 	data     map[string]string
 	stepDesc *StepDesc
 	logger   *util.LogEntry
+	options  *PipelineOptions
 }
 
 // NewStep sets up the basic parts of a Step.
@@ -231,15 +257,15 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*ExternalStep, e
 			env:         util.NewEnvironment(),
 			id:          identifier,
 			name:        name,
-			options:     options,
 			owner:       owner,
 			safeID:      stepSafeID,
 			version:     version,
 			cwd:         stepConfig.Cwd,
 		},
-		data:   data,
-		url:    url,
-		logger: logger,
+		options: options,
+		data:    data,
+		url:     url,
+		logger:  logger,
 	}, nil
 }
 

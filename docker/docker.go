@@ -420,19 +420,19 @@ func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.Pipelin
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
-	baseStep := &core.BaseStep{
-		displayName: displayName,
-		env:         &util.Environment{},
-		id:          name,
-		name:        name,
-		options:     options,
-		owner:       "wercker",
-		safeID:      stepSafeID,
-		version:     Version(),
-	}
+	baseStep := core.NewBaseStep(core.BaseStepOptions{
+		DisplayName: displayName,
+		Env:         &util.Environment{},
+		ID:          name,
+		Name:        name,
+		Owner:       "wercker",
+		SafeID:      stepSafeID,
+		Version:     util.Version(),
+	})
 
 	dockerPushStep := &DockerPushStep{
 		BaseStep: baseStep,
+		options:  options,
 		data:     stepConfig.Data,
 		logger:   util.RootLogger().WithField("Logger", "DockerScratchPushStep"),
 	}
@@ -447,7 +447,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 
 	// This is clearly only relevant to docker so we're going to dig into the
 	// transport internals a little bit to get the container ID
-	dt := sess.transport.(*DockerTransport)
+	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
 	// _, err := s.CollectArtifact(containerID)
 	// if err != nil {
@@ -650,7 +650,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	// Okay, we have the tarball, we now need to do the whole load and push part.
 	// For the moment this is copy-pasta from DockerPushStep
 	// TODO(termie): could probably re-use the tansport's client
-	client, err := NewDockerClient(s.options.DockerOptions)
+	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
 	}
@@ -771,31 +771,33 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 // DockerPushStep needs to implemenet IStep
 type DockerPushStep struct {
 	*core.BaseStep
-	data       map[string]string
-	username   string
-	password   string
-	email      string
-	env        []string
-	stopSignal string
-	labels     map[string]string
-	user       string
-	authServer string
-	repository string
-	author     string
-	message    string
-	tags       []string
-	registry   string
-	ports      map[docker.Port]struct{}
-	volumes    map[string]struct{}
-	cmd        []string
-	entrypoint []string
-	logger     *util.LogEntry
-	forceTags  bool
-	workingDir string
+	options       *core.PipelineOptions
+	dockerOptions *DockerOptions
+	data          map[string]string
+	username      string
+	password      string
+	email         string
+	env           []string
+	stopSignal    string
+	labels        map[string]string
+	user          string
+	authServer    string
+	repository    string
+	author        string
+	message       string
+	tags          []string
+	registry      string
+	ports         map[docker.Port]struct{}
+	volumes       map[string]struct{}
+	cmd           []string
+	entrypoint    []string
+	forceTags     bool
+	logger        *util.LogEntry
+	workingDir    string
 }
 
 // NewDockerPushStep is a special step for doing docker pushes
-func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOptions) (*DockerPushStep, error) {
+func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerPushStep, error) {
 	name := "docker-push"
 	displayName := "docker push"
 	if stepConfig.Name != "" {
@@ -805,21 +807,22 @@ func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOption
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
-	baseStep := &core.BaseStep{
-		displayName: displayName,
-		env:         &util.Environment{},
-		id:          name,
-		name:        name,
-		options:     options,
-		owner:       "wercker",
-		safeID:      stepSafeID,
-		version:     Version(),
-	}
+	baseStep := core.NewBaseStep(core.BaseStepOptions{
+		DisplayName: displayName,
+		Env:         &util.Environment{},
+		ID:          name,
+		Name:        name,
+		Owner:       "wercker",
+		SafeID:      stepSafeID,
+		Version:     util.Version(),
+	})
 
 	return &DockerPushStep{
-		BaseStep: baseStep,
-		data:     stepConfig.Data,
-		logger:   util.RootLogger().WithField("Logger", "DockerPushStep"),
+		BaseStep:      baseStep,
+		data:          stepConfig.Data,
+		logger:        util.RootLogger().WithField("Logger", "DockerPushStep"),
+		options:       options,
+		dockerOptions: dockerOptions,
 	}, nil
 }
 
@@ -967,7 +970,7 @@ func (s *DockerPushStep) Fetch() (string, error) {
 // registry
 func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
 	// TODO(termie): could probably re-use the tansport's client
-	client, err := NewDockerClient(s.options.DockerOptions)
+	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
 	}
@@ -985,7 +988,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 
 	// This is clearly only relevant to docker so we're going to dig into the
 	// transport internals a little bit to get the container ID
-	dt := sess.transport.(*DockerTransport)
+	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
 
 	auth := docker.AuthConfiguration{
@@ -995,7 +998,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		ServerAddress: s.authServer,
 	}
 
-	if !s.options.DockerLocal {
+	if !s.dockerOptions.DockerLocal {
 		checkOpts := CheckAccessOptions{
 			Auth:       auth,
 			Access:     "write",
@@ -1048,7 +1051,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	}
 	s.logger.WithField("Image", i).Debug("Commit completed")
 
-	if !s.options.DockerLocal {
+	if !s.dockerOptions.DockerLocal {
 		// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 		r, w := io.Pipe()
 

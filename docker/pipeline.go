@@ -36,7 +36,7 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 	// TODO(termie): do different things based on "dev", "build", or "deploy"
 	//               commands
 	pipelineName := "build"
-	pipelineConfig, ok := config.PipelineMap[pipelineName]
+	pipelineConfig, ok := config.PipelinesMap[pipelineName]
 	if !ok {
 		return nil, fmt.Errorf("No pipeline named %s", pipelineName)
 	}
