@@ -548,10 +548,18 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		return -1, err
 	}
 	defer repositoriesFile.Close()
-	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{"%v":"%s"}}`, s.repository, s.tags, layerID)))
+
+	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":\n`, s.repository)))
 	if err != nil {
 		return -1, err
 	}
+	for _, tag := range s.tags {
+		_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":"%s"}\n`, tag, layerID)))
+		if err != nil {
+			return -1, err
+		}
+	}
+	_, err = repositoriesFile.Write([]byte{'}'})
 	err = repositoriesFile.Sync()
 	if err != nil {
 		return -1, err
@@ -1020,15 +1028,15 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 				RawJSONStream: true,
 			}
 
-			s.logger.Println("Push container:", s.repository, s.registry)
 			err = client.PushImage(pushOpts, auth)
-
+			s.logger.Println(tag)
 			if err != nil {
 				s.logger.Errorln("Failed to push:", err)
 				return 1, err
 			}
 		}
 	}
+	s.logger.Println("Push container:", s.repository, s.registry, s.tags)
 	return 0, nil
 }
 
