@@ -1,4 +1,18 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package api
 
 import (
 	"encoding/json"
@@ -22,6 +36,11 @@ func init() {
 	addURITemplate("GetStepVersion", "/api/v2/steps{/owner,name,version}")
 }
 
+type APIOptions struct {
+	BaseURL   string
+	AuthToken string
+}
+
 // addURITemplate adds rawTemplate to routes using name as the key. Should only
 // be used from init().
 func addURITemplate(name, rawTemplate string) {
@@ -36,12 +55,12 @@ func addURITemplate(name, rawTemplate string) {
 type APIClient struct {
 	baseURL string
 	client  *http.Client
-	options *GlobalOptions
+	options *APIOptions
 	logger  *util.LogEntry
 }
 
 // NewAPIClient returns our dumb client
-func NewAPIClient(options *GlobalOptions) *APIClient {
+func NewAPIClient(options *APIOptions) *APIClient {
 	logger := util.RootLogger().WithFields(util.LogFields{
 		"Logger": "API",
 	})
@@ -261,12 +280,12 @@ func (c *APIClient) addAuthToken(req *http.Request) {
 // AddRequestHeaders add a few default headers to req. Currently added: User-
 // Agent, X-Wercker-Version, X-Wercker-Git.
 func AddRequestHeaders(req *http.Request) {
-	userAgent := fmt.Sprintf("sentcli %s", FullVersion())
+	userAgent := fmt.Sprintf("sentcli %s", util.FullVersion())
 
 	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("X-Wercker-Version", Version())
-	if GitCommit != "" {
-		req.Header.Set("X-Wercker-Git", GitCommit)
+	req.Header.Set("X-Wercker-Version", util.Version())
+	if util.GitCommit != "" {
+		req.Header.Set("X-Wercker-Git", util.GitCommit)
 	}
 }
 

@@ -20,12 +20,12 @@ import (
 	"time"
 
 	"github.com/codegangsta/cli"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
 
 // DockerOptions for our docker client
 type DockerOptions struct {
-	*GlobalOptions
 	DockerHost      string
 	DockerTLSVerify string
 	DockerCertPath  string
@@ -39,7 +39,8 @@ func guessAndUpdateDockerOptions(opts *DockerOptions, e *util.Environment) {
 	}
 
 	logger := util.RootLogger().WithField("Logger", "docker")
-	f := &util.Formatter{opts.GlobalOptions.ShowColors}
+	// f := &util.Formatter{opts.GlobalOptions.ShowColors}
+	f := &util.Formatter{false}
 
 	// Check the unix socket, default on linux
 	// This will fail instantly so don't bother with the goroutine
@@ -98,7 +99,7 @@ func guessAndUpdateDockerOptions(opts *DockerOptions, e *util.Environment) {
 }
 
 // NewDockerOptions constructor
-func NewDockerOptions(c *cli.Context, e *util.Environment, globalOpts *GlobalOptions) (*DockerOptions, error) {
+func NewDockerOptions(c *cli.Context, e *util.Environment, globalOpts *core.GlobalOptions) (*DockerOptions, error) {
 	dockerHost := c.String("docker-host")
 	dockerTLSVerify := c.String("docker-tls-verify")
 	dockerCertPath := c.String("docker-cert-path")

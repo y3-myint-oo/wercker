@@ -19,11 +19,12 @@ import (
 	"io"
 
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
 
 // EmitStatus emits the json message on r
-func EmitStatus(e *NormalizedEmitter, r io.Reader, options *PipelineOptions) {
+func EmitStatus(e *core.NormalizedEmitter, r io.Reader, options *core.PipelineOptions) {
 	s := NewJSONMessageProcessor()
 	dec := json.NewDecoder(r)
 	for {

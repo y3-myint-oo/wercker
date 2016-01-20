@@ -40,6 +40,15 @@ import (
 	"golang.org/x/net/context"
 )
 
+// CheckAccessOptions is just args for CheckAccess
+type CheckAccessOptions struct {
+	Auth       docker.AuthConfiguration
+	Access     string
+	Repository string
+	Tag        string
+	Registry   string
+}
+
 func requireDockerEndpoint(options *DockerOptions) error {
 	client, err := NewDockerClient(options)
 	if err != nil {
@@ -325,7 +334,7 @@ func normalizeRegistry(address string) string {
 // CheckAccess checks whether a user can read or write an image
 // TODO(termie): this really uses the docker registry code rather than the
 //               client so, maybe this is the wrong place
-func (c *DockerClient) CheckAccess(opts core.CheckAccessOptions) (bool, error) {
+func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
 	logger := util.RootLogger().WithField("Logger", "Docker")
 	logger.Debug("Checking access for ", opts.Repository)
 
@@ -401,7 +410,7 @@ type DockerImageJSONContainerConfig struct {
 }
 
 // NewDockerScratchPushStep constructorama
-func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) (*DockerScratchPushStep, error) {
+func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.PipelineOptions) (*DockerScratchPushStep, error) {
 	name := "docker-scratch-push"
 	displayName := "docker scratch'n'push"
 	if stepConfig.Name != "" {
@@ -432,15 +441,18 @@ func NewDockerScratchPushStep(stepConfig *StepConfig, options *PipelineOptions) 
 }
 
 // Execute the scratch-n-push
-func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int, error) {
+func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
+	// TODO(termie): TEMPORARY REMOVAL
+	return -1, fmt.Errorf("FIX ME")
+
 	// This is clearly only relevant to docker so we're going to dig into the
 	// transport internals a little bit to get the container ID
 	dt := sess.transport.(*DockerTransport)
 	containerID := dt.containerID
-	_, err := s.CollectArtifact(containerID)
-	if err != nil {
-		return -1, err
-	}
+	// _, err := s.CollectArtifact(containerID)
+	// if err != nil {
+	//   return -1, err
+	// }
 
 	// At this point we've written the layer to disk, we're going to add up the
 	// sizes of all the files to add to our json format, and sha256 the data
@@ -658,7 +670,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		ServerAddress: s.authServer,
 	}
 
-	checkOpts := core.CheckAccessOptions{
+	checkOpts := CheckAccessOptions{
 		Auth:       auth,
 		Access:     "write",
 		Repository: s.repository,
@@ -685,7 +697,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
-	e, err := EmitterFromContext(ctx)
+	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return -1, err
 	}
@@ -715,46 +727,46 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	return 0, nil
 }
 
-// CollectArtifact is copied from the build, we use this to get the layer
-// tarball that we'll include in the image tarball
-func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*Artifact, error) {
-	artificer := NewArtificer(s.options)
+// // CollectArtifact is copied from the build, we use this to get the layer
+// // tarball that we'll include in the image tarball
+// func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*Artifact, error) {
+//   artificer := NewArtificer(s.options)
 
-	// Ensure we have the host directory
+//   // Ensure we have the host directory
 
-	artifact := &Artifact{
-		ContainerID:   containerID,
-		GuestPath:     s.options.GuestPath("output"),
-		HostPath:      s.options.HostPath("layer.tar"),
-		ApplicationID: s.options.ApplicationID,
-		BuildID:       s.options.PipelineID,
-		Bucket:        s.options.S3Bucket,
-	}
+//   artifact := &Artifact{
+//     ContainerID:   containerID,
+//     GuestPath:     s.options.GuestPath("output"),
+//     HostPath:      s.options.HostPath("layer.tar"),
+//     ApplicationID: s.options.ApplicationID,
+//     BuildID:       s.options.PipelineID,
+//     Bucket:        s.options.S3Bucket,
+//   }
 
-	sourceArtifact := &Artifact{
-		ContainerID:   containerID,
-		GuestPath:     s.options.SourcePath(),
-		HostPath:      s.options.HostPath("layer.tar"),
-		ApplicationID: s.options.ApplicationID,
-		BuildID:       s.options.PipelineID,
-		Bucket:        s.options.S3Bucket,
-	}
+//   sourceArtifact := &Artifact{
+//     ContainerID:   containerID,
+//     GuestPath:     s.options.SourcePath(),
+//     HostPath:      s.options.HostPath("layer.tar"),
+//     ApplicationID: s.options.ApplicationID,
+//     BuildID:       s.options.PipelineID,
+//     Bucket:        s.options.S3Bucket,
+//   }
 
-	// Get the output dir, if it is empty grab the source dir.
-	fullArtifact, err := artificer.Collect(artifact)
-	if err != nil {
-		if err == ErrEmptyTarball {
-			fullArtifact, err = artificer.Collect(sourceArtifact)
-			if err != nil {
-				return nil, err
-			}
-			return fullArtifact, nil
-		}
-		return nil, err
-	}
+//   // Get the output dir, if it is empty grab the source dir.
+//   fullArtifact, err := artificer.Collect(artifact)
+//   if err != nil {
+//     if err == ErrEmptyTarball {
+//       fullArtifact, err = artificer.Collect(sourceArtifact)
+//       if err != nil {
+//         return nil, err
+//       }
+//       return fullArtifact, nil
+//     }
+//     return nil, err
+//   }
 
-	return fullArtifact, nil
-}
+//   return fullArtifact, nil
+// }
 
 // DockerPushStep needs to implemenet IStep
 type DockerPushStep struct {
@@ -783,7 +795,7 @@ type DockerPushStep struct {
 }
 
 // NewDockerPushStep is a special step for doing docker pushes
-func NewDockerPushStep(stepConfig *StepConfig, options *PipelineOptions) (*DockerPushStep, error) {
+func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOptions) (*DockerPushStep, error) {
 	name := "docker-push"
 	displayName := "docker push"
 	if stepConfig.Name != "" {
@@ -953,13 +965,13 @@ func (s *DockerPushStep) Fetch() (string, error) {
 
 // Execute commits the current container and pushes it to the configured
 // registry
-func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error) {
+func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
 	// TODO(termie): could probably re-use the tansport's client
 	client, err := NewDockerClient(s.options.DockerOptions)
 	if err != nil {
 		return 1, err
 	}
-	e, err := EmitterFromContext(ctx)
+	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return 1, err
 	}
@@ -984,7 +996,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	}
 
 	if !s.options.DockerLocal {
-		checkOpts := core.CheckAccessOptions{
+		checkOpts := CheckAccessOptions{
 			Auth:       auth,
 			Access:     "write",
 			Repository: s.repository,
@@ -1073,15 +1085,15 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	return 0, nil
 }
 
-// CollectFile NOP
-func (s *DockerPushStep) CollectFile(a, b, c string, dst io.Writer) error {
-	return nil
-}
+// // CollectFile NOP
+// func (s *DockerPushStep) CollectFile(a, b, c string, dst io.Writer) error {
+//   return nil
+// }
 
-// CollectArtifact NOP
-func (s *DockerPushStep) CollectArtifact(string) (*Artifact, error) {
-	return nil, nil
-}
+// // CollectArtifact NOP
+// func (s *DockerPushStep) CollectArtifact(string) (*Artifact, error) {
+//   return nil, nil
+// }
 
 // ReportPath NOP
 func (s *DockerPushStep) ReportPath(...string) string {

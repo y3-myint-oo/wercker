@@ -25,25 +25,26 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
 // InternalServiceBox wraps a box as a service
 type InternalServiceBox struct {
-	*Box
+	*DockerBox
 	logger *util.LogEntry
 }
 
 // ExternalServiceBox wraps a box as a service
 type ExternalServiceBox struct {
 	*InternalServiceBox
-	externalConfig *BoxConfig
-	options        *PipelineOptions
+	externalConfig *core.BoxConfig
+	options        *core.PipelineOptions
 }
 
 // NewExternalServiceBox gives us an ExternalServiceBox from config
-func NewExternalServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*ExternalServiceBox, error) {
+func NewExternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions) (*ExternalServiceBox, error) {
 	logger := util.RootLogger().WithField("Logger", "ExternalService")
 	return &ExternalServiceBox{
 		InternalServiceBox: &InternalServiceBox{logger: logger},
@@ -56,7 +57,7 @@ func (s *ExternalServiceBox) configURL() (*url.URL, error) {
 	return url.Parse(s.externalConfig.URL)
 }
 
-func (s *ExternalServiceBox) getOptions(env *util.Environment) (*PipelineOptions, error) {
+func (s *ExternalServiceBox) getOptions(env *util.Environment) (*core.PipelineOptions, error) {
 	c, err := s.configURL()
 	if err != nil {
 		return nil, err
@@ -135,16 +136,15 @@ func (s *ExternalServiceBox) Fetch(ctx context.Context, env *util.Environment) (
 	return s.image, nil
 }
 
-// ToServiceBox turns a box into a ServiceBox
-func (b *BoxConfig) ToServiceBox(options *PipelineOptions, boxOptions *BoxOptions) (ServiceBox, error) {
-	if b.IsExternal() {
-		return NewExternalServiceBox(b, options, boxOptions)
+func NewServiceBox(config *core.BoxConfig, options *core.PipelineOptions) (core.ServiceBox, error) {
+	if config.IsExternal() {
+		return NewExternalServiceBox(config, options)
 	}
-	return NewServiceBox(b, options, boxOptions)
+	return NewServiceBox(config, options)
 }
 
 // NewServiceBox from a name and other references
-func NewServiceBox(boxConfig *BoxConfig, options *PipelineOptions, boxOptions *BoxOptions) (*InternalServiceBox, error) {
+func NewInternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions) (*InternalServiceBox, error) {
 	box, err := NewBox(boxConfig, options, boxOptions)
 	logger := util.RootLogger().WithField("Logger", "Service")
 	return &InternalServiceBox{Box: box, logger: logger}, err

@@ -115,7 +115,7 @@ func (s *Session) ShowLogs() {
 
 // Send an array of commands.
 func (s *Session) Send(sessionCtx context.Context, forceHidden bool, commands ...string) error {
-	e, err := itterFromContext(sessionCtx)
+	e, err := EmitterFromContext(sessionCtx)
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func smartSplitLines(line, sentinel string) []string {
 // Ways for a command to be successful:
 //  [x] We received the sentinel echo with exit code 0
 func (s *Session) SendChecked(sessionCtx context.Context, commands ...string) (int, []string, error) {
-	e, err := itterFromContext(sessionCtx)
+	e, err := EmitterFromContext(sessionCtx)
 	if err != nil {
 		return -1, []string{}, err
 	}

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/wercker/sentcli/util"
 
@@ -57,8 +56,8 @@ type Pipeline interface {
 	// Methods
 	CommonEnv() [][]string     // base
 	InitEnv(*util.Environment) // impl
-	CollectArtifact(string) (*Artifact, error)
-	CollectCache(string) error
+	// CollectArtifact(string) (*Artifact, error)
+	// CollectCache(string) error
 	SetupGuest(context.Context, *Session) error
 	ExportEnvironment(context.Context, *Session) error
 	SyncEnvironment(context.Context, *Session) error
@@ -110,57 +109,6 @@ type BasePipeline struct {
 	steps      []Step
 	afterSteps []Step
 	logger     *util.LogEntry
-}
-
-// NewBasePipeline initialize our pipeline from our configs
-func NewBasePipeline(options *PipelineOptions, pipelineConfig *RawPipelineConfig, boxConfig *RawBoxConfig, servicesConfig []*RawBoxConfig, stepsConfig RawStepsConfig, afterStepsConfig RawStepsConfig) (*BasePipeline, error) {
-
-	box, err := boxConfig.ToBox(options, &BoxOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	var services []ServiceBox
-	for _, sbox := range servicesConfig {
-		service, err := sbox.ToServiceBox(options, &BoxOptions{})
-		if err != nil {
-			return nil, err
-		}
-		services = append(services, service)
-	}
-
-	initStep, err := NewWerckerInitStep(options)
-	if err != nil {
-		return nil, err
-	}
-
-	steps := []Step{initStep}
-	realSteps, err := stepsConfig.ToSteps(options)
-	if err != nil {
-		return nil, err
-	}
-	steps = append(steps, realSteps...)
-
-	var afterSteps []Step
-	if afterStepsConfig != nil {
-		afterSteps = []Step{initStep}
-		realAfterSteps, err := afterStepsConfig.ToSteps(options)
-		if err != nil {
-			return nil, err
-		}
-		afterSteps = append(afterSteps, realAfterSteps...)
-	}
-
-	logger := util.RootLogger().WithField("Logger", "Pipeline")
-	return &BasePipeline{
-		options:    options,
-		env:        util.NewEnvironment(),
-		box:        box,
-		services:   services,
-		steps:      steps,
-		afterSteps: afterSteps,
-		logger:     logger,
-	}, nil
 }
 
 // Box is a getter for the box
@@ -324,29 +272,29 @@ func (p *BasePipeline) SyncEnvironment(sessionCtx context.Context, sess *Session
 }
 
 // CollectCache extracts the cache from the container to the cachedir
-func (p *BasePipeline) CollectCache(containerID string) error {
-	client, err := NewDockerClient(p.options.DockerOptions)
-	if err != nil {
-		return err
-	}
-	dfc := NewDockerFileCollector(client, containerID)
+// func (p *BasePipeline) CollectCache(containerID string) error {
+//   client, err := NewDockerClient(p.options.DockerOptions)
+//   if err != nil {
+//     return err
+//   }
+//   dfc := NewDockerFileCollector(client, containerID)
 
-	archive, errs := dfc.Collect(p.options.GuestPath("cache"))
+//   archive, errs := dfc.Collect(p.options.GuestPath("cache"))
 
-	select {
-	case err = <-errs:
-	// TODO(termie): I hate this, but docker command either fails right away
-	//               or we don't care about it, needs to be replaced by some
-	//               sort of cancellable context
-	case <-time.After(1 * time.Second):
-		err = <-archive.Multi("cache", p.options.CachePath(), 1024*1024*1000)
-	}
+//   select {
+//   case err = <-errs:
+//   // TODO(termie): I hate this, but docker command either fails right away
+//   //               or we don't care about it, needs to be replaced by some
+//   //               sort of cancellable context
+//   case <-time.After(1 * time.Second):
+//     err = <-archive.Multi("cache", p.options.CachePath(), 1024*1024*1000)
+//   }
 
-	if err != nil {
-		if err == ErrEmptyTarball {
-			return nil
-		}
-		return err
-	}
-	return nil
-}
+//   if err != nil {
+//     if err == ErrEmptyTarball {
+//       return nil
+//     }
+//     return err
+//   }
+//   return nil
+// }

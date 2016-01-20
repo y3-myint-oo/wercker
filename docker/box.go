@@ -36,10 +36,11 @@ import (
 type DockerBox struct {
 	Name            string
 	ShortName       string
-	client          Containerer
 	networkDisabled bool
-	services        []ServiceBox
+	client          *DockerClient
+	services        []core.ServiceBox
 	options         *core.PipelineOptions
+	dockerOptions   *DockerOptions
 	container       *docker.Container
 	config          *core.BoxConfig
 	cmd             string
@@ -51,13 +52,8 @@ type DockerBox struct {
 	image           *docker.Image
 }
 
-// ToBox will convert a BoxConfig into a Box
-func (b *core.BoxConfig) ToBox(options *core.PipelineOptions, boxOptions *core.BoxOptions, containerer Containerer) (*Box, error) {
-	return NewBox(b, options, boxOptions, containerer)
-}
-
 // NewBox from a name and other references
-func NewBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, boxOptions *core.BoxOptions, containerer Containerer) (*Box, error) {
+func NewBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerBox, error) {
 	name := boxConfig.ID
 
 	if strings.Contains(name, "@") {
@@ -82,9 +78,6 @@ func NewBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, boxOptions
 	}
 
 	networkDisabled := false
-	if boxOptions != nil {
-		networkDisabled = boxOptions.NetworkDisabled
-	}
 
 	cmd := boxConfig.Cmd
 	if cmd == "" {
@@ -99,10 +92,15 @@ func NewBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, boxOptions
 		"ShortName": shortName,
 	})
 
-	return &Box{
+	client, err := NewDockerClient(dockerOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DockerBox{
 		Name:            name,
 		ShortName:       shortName,
-		client:          containerer,
+		client:          client,
 		config:          boxConfig,
 		options:         options,
 		repository:      repository,
@@ -114,7 +112,7 @@ func NewBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, boxOptions
 	}, nil
 }
 
-func (b *Box) links() []string {
+func (b *DockerBox) links() []string {
 	serviceLinks := []string{}
 
 	for _, service := range b.services {
@@ -125,24 +123,24 @@ func (b *Box) links() []string {
 }
 
 // Link gives us the parameter to Docker to link to this box
-func (b *Box) Link() string {
+func (b *DockerBox) Link() string {
 	return fmt.Sprintf("%s:%s", b.container.Name, b.ShortName)
 }
 
 // GetName gets the box name
-func (b *Box) GetName() string {
+func (b *DockerBox) GetName() string {
 	return b.Name
 }
 
 // GetID gets the container ID or empty string if we don't have a container
-func (b *Box) GetID() string {
+func (b *DockerBox) GetID() string {
 	if b.container != nil {
 		return b.container.ID
 	}
 	return ""
 }
 
-func (b *Box) binds() ([]string, error) {
+func (b *DockerBox) binds() ([]string, error) {
 	binds := []string{}
 	// Make our list of binds for the Docker attach
 	// NOTE(termie): we don't appear to need the "volumes" stuff, leaving
@@ -169,7 +167,7 @@ func (b *Box) binds() ([]string, error) {
 }
 
 // RunServices runs the services associated with this box
-func (b *Box) RunServices(ctx context.Context, env *util.Environment) error {
+func (b *DockerBox) RunServices(ctx context.Context, env *util.Environment) error {
 	links := []string{}
 
 	for _, service := range b.services {
@@ -277,7 +275,7 @@ func exposedPortMaps(dockerHost string, published []string) ([]ExposedPortMap, e
 }
 
 //RecoverInteractive restarts the box with a terminal attached
-func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step Step) error {
+func (b *DockerBox) RecoverInteractive(cwd string, pipeline core.Pipeline, step core.Step) error {
 	// TODO(termie): maybe move the container manipulation outside of here?
 	client := b.client
 	container, err := b.Restart()
@@ -296,12 +294,12 @@ func (b *Box) RecoverInteractive(cwd string, pipeline Pipeline, step Step) error
 	return client.AttachInteractive(container.ID, cmd, env)
 }
 
-func (b *Box) getContainerName() string {
+func (b *DockerBox) getContainerName() string {
 	return "wercker-pipeline-" + b.options.PipelineID
 }
 
 // Run creates the container and runs it.
-func (b *Box) Run(ctx context.Context, env *util.Environment) (*docker.Container, error) {
+func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Container, error) {
 	err := b.RunServices(ctx, env)
 	if err != nil {
 		return nil, err
@@ -342,7 +340,7 @@ func (b *Box) Run(ctx context.Context, env *util.Environment) (*docker.Container
 				AttachStderr:    true,
 				ExposedPorts:    exposedPorts(b.options.PublishPorts),
 				NetworkDisabled: b.networkDisabled,
-				DNS:             b.options.DockerDNS,
+				DNS:             b.dockerOptions.DockerDNS,
 				Entrypoint:      entrypoint,
 				// Volumes: volumes,
 			},
@@ -362,14 +360,14 @@ func (b *Box) Run(ctx context.Context, env *util.Environment) (*docker.Container
 		Binds:        binds,
 		Links:        b.links(),
 		PortBindings: portBindings(b.options.PublishPorts),
-		DNS:          b.options.DockerDNS,
+		DNS:          b.dockerOptions.DockerDNS,
 	})
 	b.container = container
 	return container, nil
 }
 
 // Clean up the containers
-func (b *Box) Clean() error {
+func (b *DockerBox) Clean() error {
 	containers := []string{}
 	if b.container != nil {
 		containers = append(containers, b.container.ID)
@@ -411,7 +409,7 @@ func (b *Box) Clean() error {
 }
 
 // Restart stops and starts the box
-func (b *Box) Restart() (*docker.Container, error) {
+func (b *DockerBox) Restart() (*docker.Container, error) {
 	// TODO(termie): maybe move the container manipulation outside of here?
 	client := b.client
 	err := client.RestartContainer(b.container.ID, 1)
@@ -422,12 +420,12 @@ func (b *Box) Restart() (*docker.Container, error) {
 }
 
 // AddService needed by this Box
-func (b *Box) AddService(service ServiceBox) {
+func (b *DockerBox) AddService(service core.ServiceBox) {
 	b.services = append(b.services, service)
 }
 
 // Stop the box and all its services
-func (b *Box) Stop() {
+func (b *DockerBox) Stop() {
 	// TODO(termie): maybe move the container manipulation outside of here?
 	client := b.client
 	for _, service := range b.services {
@@ -457,17 +455,17 @@ func (b *Box) Stop() {
 }
 
 // Fetch an image (or update the local)
-func (b *Box) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
+func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
 	// TODO(termie): maybe move the container manipulation outside of here?
 	client := b.client
 
-	e, err := EmitterFromContext(ctx)
+	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Shortcut to speed up local dev
-	if b.options.DockerLocal {
+	if b.dockerOptions.DockerLocal {
 		image, err := client.InspectImage(env.Interpolate(b.Name))
 		if err != nil {
 			return nil, err
@@ -531,7 +529,7 @@ func (b *Box) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, 
 }
 
 // Commit the current running Docker container to an Docker image.
-func (b *Box) Commit(name, tag, message string) (*docker.Image, error) {
+func (b *DockerBox) Commit(name, tag, message string) (*docker.Image, error) {
 	b.logger.WithFields(util.LogFields{
 		"Name": name,
 		"Tag":  tag,
@@ -565,7 +563,7 @@ type ExportImageOptions struct {
 
 // ExportImage will export the image to a temporary file and return the path to
 // the file.
-func (b *Box) ExportImage(options *ExportImageOptions) error {
+func (b *DockerBox) ExportImage(options *ExportImageOptions) error {
 	b.logger.WithField("ExportName", options.Name).Info("Storing image")
 
 	exportImageOptions := docker.ExportImageOptions{

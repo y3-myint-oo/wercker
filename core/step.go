@@ -17,7 +17,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,9 +24,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
+	"github.com/wercker/sentcli/api"
 	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
@@ -95,8 +94,8 @@ type Step interface {
 
 	InitEnv(*util.Environment)
 	Execute(context.Context, *Session) (int, error)
-	CollectFile(string, string, string, io.Writer) error
-	CollectArtifact(string) (*Artifact, error)
+	// CollectFile(string, string, string, io.Writer) error
+	// CollectArtifact(string) (*Artifact, error)
 	// TODO(termie): don't think this needs to be universal
 	ReportPath(...string) string
 }
@@ -163,53 +162,6 @@ type ExternalStep struct {
 	logger   *util.LogEntry
 }
 
-// ToSteps builds a list of steps from RawStepsConfig
-func (s RawStepsConfig) ToSteps(options *PipelineOptions) ([]Step, error) {
-	steps := []Step{}
-	for _, stepConfig := range s {
-		step, err := stepConfig.ToStep(options)
-		if err != nil {
-			return nil, err
-		}
-		if step != nil {
-			// we can return a nil step if it's internal and EnableDevSteps is
-			// false
-			steps = append(steps, step)
-		}
-	}
-	return steps, nil
-}
-
-// ToStep converts a StepConfig into a Step.
-func (s *StepConfig) ToStep(options *PipelineOptions) (Step, error) {
-
-	// NOTE(termie) Special case steps are special
-	if s.ID == "internal/docker-push" {
-		return NewDockerPushStep(s, options)
-	}
-	if s.ID == "internal/docker-scratch-push" {
-		return NewDockerScratchPushStep(s, options)
-	}
-	if s.ID == "internal/store-container" {
-		return NewStoreContainerStep(s, options)
-	}
-	if strings.HasPrefix(s.ID, "internal/") {
-		if !options.EnableDevSteps {
-			util.RootLogger().Warnln("Ignoring dev step:", s.ID)
-			return nil, nil
-		}
-	}
-	if options.EnableDevSteps {
-		if s.ID == "internal/watch" {
-			return NewWatchStep(s, options)
-		}
-		if s.ID == "internal/shell" {
-			return NewShellStep(s, options)
-		}
-	}
-	return NewStep(s, options)
-}
-
 // NewStep sets up the basic parts of a Step.
 // Step names can come in a couple forms (x means currently supported):
 //   x setup-go-environment (fetches from api)
@@ -259,7 +211,7 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*ExternalStep, e
 	// Script steps need unique IDs
 	if name == "script" {
 		stepID = uuid.NewRandom().String()
-		version = Version()
+		version = util.Version()
 	}
 
 	// If there is a name in data, make it our displayName and delete it
@@ -363,10 +315,16 @@ func (s *ExternalStep) Fetch() (string, error) {
 		// If we don't have a url already
 		if s.url == "" {
 			// Grab the info about the step from the api
-			client := NewAPIClient(s.options.GlobalOptions)
+
+			// TODO(termie): probably don't need these in global options?
+			apiOptions := api.APIOptions{
+				BaseURL:   s.options.GlobalOptions.BaseURL,
+				AuthToken: s.options.GlobalOptions.AuthToken,
+			}
+			client := api.NewAPIClient(&apiOptions)
 			stepInfo, err := client.GetStepVersion(s.Owner(), s.Name(), s.Version())
 			if err != nil {
-				if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == 404 {
+				if apiErr, ok := err.(*api.APIError); ok && apiErr.StatusCode == 404 {
 					return "", fmt.Errorf("The step \"%s\" was not found", s.ID())
 				}
 				return "", err
@@ -471,61 +429,61 @@ func (s *ExternalStep) Execute(sessionCtx context.Context, sess *Session) (int, 
 }
 
 // CollectFile gets an individual file from the container
-func (s *ExternalStep) CollectFile(containerID, path, name string, dst io.Writer) error {
-	client, err := NewDockerClient(s.options.DockerOptions)
-	if err != nil {
-		return err
-	}
+// func (s *ExternalStep) CollectFile(containerID, path, name string, dst io.Writer) error {
+//   client, err := NewDockerClient(s.options.DockerOptions)
+//   if err != nil {
+//     return err
+//   }
 
-	pipeReader, pipeWriter := io.Pipe()
-	opts := docker.CopyFromContainerOptions{
-		OutputStream: pipeWriter,
-		Container:    containerID,
-		Resource:     filepath.Join(path, name),
-	}
+//   pipeReader, pipeWriter := io.Pipe()
+//   opts := docker.CopyFromContainerOptions{
+//     OutputStream: pipeWriter,
+//     Container:    containerID,
+//     Resource:     filepath.Join(path, name),
+//   }
 
-	errs := make(chan error)
-	go func() {
-		defer close(errs)
-		errs <- util.UntarOne(name, dst, pipeReader)
-	}()
+//   errs := make(chan error)
+//   go func() {
+//     defer close(errs)
+//     errs <- util.UntarOne(name, dst, pipeReader)
+//   }()
 
-	if err = client.CopyFromContainer(opts); err != nil {
-		s.logger.Debug("Probably expected error:", err)
-		return ErrEmptyTarball
-	}
+//   if err = client.CopyFromContainer(opts); err != nil {
+//     s.logger.Debug("Probably expected error:", err)
+//     return ErrEmptyTarball
+//   }
 
-	return <-errs
-}
+//   return <-errs
+// }
 
-// CollectArtifact copies the artifacts associated with the Step.
-func (s *ExternalStep) CollectArtifact(containerID string) (*Artifact, error) {
-	artificer := NewArtificer(s.options)
+// // CollectArtifact copies the artifacts associated with the Step.
+// func (s *ExternalStep) CollectArtifact(containerID string) (*Artifact, error) {
+//   artificer := NewArtificer(s.options)
 
-	// Ensure we have the host directory
+//   // Ensure we have the host directory
 
-	artifact := &Artifact{
-		ContainerID:   containerID,
-		GuestPath:     s.ReportPath("artifacts"),
-		HostPath:      s.options.HostPath("artifacts", s.safeID, "artifacts.tar"),
-		ApplicationID: s.options.ApplicationID,
-		BuildID:       s.options.BuildID,
-		DeployID:      s.options.DeployID,
-		BuildStepID:   s.safeID,
-		Bucket:        s.options.S3Bucket,
-		ContentType:   "application/x-tar",
-	}
+//   artifact := &Artifact{
+//     ContainerID:   containerID,
+//     GuestPath:     s.ReportPath("artifacts"),
+//     HostPath:      s.options.HostPath("artifacts", s.safeID, "artifacts.tar"),
+//     ApplicationID: s.options.ApplicationID,
+//     BuildID:       s.options.BuildID,
+//     DeployID:      s.options.DeployID,
+//     BuildStepID:   s.safeID,
+//     Bucket:        s.options.S3Bucket,
+//     ContentType:   "application/x-tar",
+//   }
 
-	fullArtifact, err := artificer.Collect(artifact)
-	if err != nil {
-		if err == ErrEmptyTarball {
-			return nil, nil
-		}
-		return nil, err
-	}
+//   fullArtifact, err := artificer.Collect(artifact)
+//   if err != nil {
+//     if err == ErrEmptyTarball {
+//       return nil, nil
+//     }
+//     return nil, err
+//   }
 
-	return fullArtifact, nil
-}
+//   return fullArtifact, nil
+// }
 
 // InitEnv sets up the internal environment for the Step.
 func (s *ExternalStep) InitEnv(env *util.Environment) {

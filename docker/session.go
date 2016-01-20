@@ -18,13 +18,14 @@ import (
 	"io"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
 // DockerTransport for docker containers
 type DockerTransport struct {
-	options     *PipelineOptions
+	options     *core.PipelineOptions
 	client      *DockerClient
 	containerID string
 	logger      *util.LogEntry
