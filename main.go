@@ -104,7 +104,7 @@ var (
 				cliLogger.Fatal(err)
 			}
 		},
-		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
+		Flags: flagsFor(DeployPipelineFlags, WerckerInternalFlags),
 	}
 
 	detectCommand = cli.Command{
