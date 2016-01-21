@@ -162,11 +162,14 @@ func (p *Runner) EnsureCode() (string, error) {
 
 		var gitIgnoreRules *ignore.GitIgnore
 		var err error
-		gitIgnorePath := filepath.Join(p.options.ProjectPath, ".gitignore")
-		if hasGitIgnore, _ := exists(gitIgnorePath); hasGitIgnore {
-			gitIgnoreRules, err = ignore.CompileIgnoreFile(gitIgnorePath)
-			if err != nil {
-				return projectDir, err
+
+		if p.options.EnableGitIgnore {
+			gitIgnorePath := filepath.Join(p.options.ProjectPath, ".gitignore")
+			if hasGitIgnore, _ := exists(gitIgnorePath); hasGitIgnore {
+				gitIgnoreRules, err = ignore.CompileIgnoreFile(gitIgnorePath)
+				if err != nil {
+					return projectDir, err
+				}
 			}
 		}
 		// Make sure we don't accidentally recurse or copy extra files

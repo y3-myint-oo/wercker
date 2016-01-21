@@ -110,6 +110,7 @@ var (
 		This enables:
 		- internal/watch
 		`},
+		cli.BoolTFlag{Name: "enable-gitignore", Usage: "Parse gitignore file to ignore files in your build"},
 	}
 
 	// These flags are advanced build settings
@@ -122,6 +123,19 @@ var (
 		This enables:
 		- internal/watch
 		`},
+		cli.BoolTFlag{Name: "enable-gitignore", Usage: "Parse gitignore file to ignore files in your build"},
+	}
+
+	// Flags for advanced deploy settings
+	internalDeployFlags = []cli.Flag{
+		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish."},
+		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
+		cli.BoolFlag{Name: "enable-dev-steps", Hidden: true, Usage: `
+		Enable internal dev steps.
+		This enables:
+		- internal/watch
+		`},
+		cli.BoolFlag{Name: "enable-gitignore", Usage: "Parse gitignore file to ignore files in your build"},
 	}
 
 	// AWS bits
@@ -179,6 +193,18 @@ var (
 		werckerFlags,
 		dockerFlags,
 		internalBuildFlags,
+		gitFlags,
+		registryFlags,
+		artifactFlags,
+		awsFlags,
+		configFlags,
+	}
+
+	DeployPipelineFlags = [][]cli.Flag{
+		localPathFlags,
+		werckerFlags,
+		dockerFlags,
+		internalDeployFlags,
 		gitFlags,
 		registryFlags,
 		artifactFlags,
