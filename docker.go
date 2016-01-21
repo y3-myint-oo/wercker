@@ -553,6 +553,11 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	if err != nil {
 		return -1, err
 	}
+
+	if len(s.tags) == 0 {
+		s.tags = []string{"latest"}
+	}
+
 	for _, tag := range s.tags {
 		_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":"%s"}\n`, tag, layerID)))
 		if err != nil {
@@ -692,15 +697,15 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 			RawJSONStream: true,
 		}
 
-		s.logger.Println("Push container:", s.repository, s.registry)
-		err = client.PushImage(pushOpts, auth)
+		s.logger.Println("Pushing image for tag ", tag)
 
+		err = client.PushImage(pushOpts, auth)
 		if err != nil {
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
 		}
 	}
-
+	s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
 	return 0, nil
 }
 
@@ -823,8 +828,8 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 		s.repository = env.Interpolate(repository)
 	}
 
-	if tags, ok := s.data["tags"]; ok {
-		splitTags := strings.Split(tags, " ")
+	if tags, ok := s.data["tag"]; ok {
+		splitTags := strings.Split(tags, ",")
 		interpolatedTags := make([]string, len(splitTags))
 		for i, tag := range splitTags {
 			interpolatedTags[i] = env.Interpolate(tag)
@@ -1019,6 +1024,11 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		// emitStatusses in a different go routine
 		go EmitStatus(e, r, s.options)
 		defer w.Close()
+
+		if len(s.tags) == 0 {
+			s.tags = []string{"latest"}
+		}
+
 		for _, tag := range s.tags {
 			pushOpts := docker.PushImageOptions{
 				Name:          s.repository,
@@ -1028,15 +1038,16 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 				RawJSONStream: true,
 			}
 
+			s.logger.Println("Pushing image for tag ", tag)
+
 			err = client.PushImage(pushOpts, auth)
-			s.logger.Println(tag)
 			if err != nil {
 				s.logger.Errorln("Failed to push:", err)
 				return 1, err
 			}
 		}
 	}
-	s.logger.Println("Push container:", s.repository, s.registry, s.tags)
+	s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
 	return 0, nil
 }
 
