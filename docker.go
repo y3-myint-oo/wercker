@@ -548,8 +548,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		return -1, err
 	}
 	defer repositoriesFile.Close()
-
-	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":\n`, s.repository)))
+	_, err = repositoriesFile.Write([]byte(fmt.Sprintf("{\"%s\":{", s.repository)))
 	if err != nil {
 		return -1, err
 	}
@@ -558,18 +557,24 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		s.tags = []string{"latest"}
 	}
 
-	for _, tag := range s.tags {
-		_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":"%s"}\n`, tag, layerID)))
+	for i, tag := range s.tags {
+		_, err = repositoriesFile.Write([]byte(fmt.Sprintf("\"%s\":\"%s\"", tag, layerID)))
 		if err != nil {
 			return -1, err
 		}
+		if i != len(s.tags)-1 {
+			_, err = repositoriesFile.Write([]byte{','})
+			if err != nil {
+				return -1, err
+			}
+		}
 	}
-	_, err = repositoriesFile.Write([]byte{'}'})
+
+	_, err = repositoriesFile.Write([]byte{'}', '}'})
 	err = repositoriesFile.Sync()
 	if err != nil {
 		return -1, err
 	}
-
 	// layer.tar has an extra folder in it so we have to strip it :/
 	tempLayerFile, err := os.Open(s.options.HostPath("layer.tar"))
 	if err != nil {
@@ -829,7 +834,7 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	}
 
 	if tags, ok := s.data["tag"]; ok {
-		splitTags := strings.Split(tags, ",")
+		splitTags := strings.Split(tags, " ")
 		interpolatedTags := make([]string, len(splitTags))
 		for i, tag := range splitTags {
 			interpolatedTags[i] = env.Interpolate(tag)
