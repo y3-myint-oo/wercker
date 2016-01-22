@@ -1,0 +1,9 @@
+build:
+  box:
+    id: busybox
+    cmd: /bin/sh
+  steps:
+    - script:
+        name: test directmount
+        code: |
+            echo "world" > testfile
