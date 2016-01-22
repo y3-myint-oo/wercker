@@ -548,7 +548,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		return -1, err
 	}
 	defer repositoriesFile.Close()
-	_, err = repositoriesFile.Write([]byte(fmt.Sprintf("{\"%s\":{", s.repository)))
+	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{`, s.repository)))
 	if err != nil {
 		return -1, err
 	}
@@ -558,7 +558,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	}
 
 	for i, tag := range s.tags {
-		_, err = repositoriesFile.Write([]byte(fmt.Sprintf("\"%s\":\"%s\"", tag, layerID)))
+		_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`"%s":"%s"`, tag, layerID)))
 		if err != nil {
 			return -1, err
 		}
