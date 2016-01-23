@@ -23,13 +23,10 @@ import (
 
 // DockerPipeline is our docker PipelineConfigurer and Pipeline impl
 type DockerPipeline struct {
-	box        core.Box
-	services   []core.ServiceBox
-	steps      []core.Step
-	afterSteps []core.Step
+	*core.BasePipeline
 }
 
-func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerPipeline, error) {
+func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerPipeline, error) {
 	// decide which configs to use for each thing
 	// TODO(termie): this code is not specific to docker and should be made
 	//               into something shared
@@ -42,9 +39,9 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 	}
 
 	// Select this pipeline's config or the global config
-	boxConfig := pipelineConfig.Box
+	boxConfig := pipelineConfig.Box.BoxConfig
 	if boxConfig == nil {
-		boxConfig := config.Box
+		boxConfig := config.Box.BoxConfig
 	}
 
 	// Select this pipeline's service or the global config
@@ -61,9 +58,9 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 		return nil, err
 	}
 
-	var services []ServiceBox
+	var services []core.ServiceBox
 	for _, serviceConfig := range servicesConfig {
-		service, err := NewServiceBox(serviceConfig, options, dockerOptions)
+		service, err := NewServiceBox(serviceConfig.BoxConfig, options, dockerOptions, builder)
 		if err != nil {
 			return nil, err
 		}
@@ -75,9 +72,9 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 		return nil, err
 	}
 
-	steps := []Step{initStep}
+	steps := []core.Step{initStep}
 	for _, stepConfig := range stepsConfig {
-		step, err := NewStep(stepConfig, options, dockerOptions)
+		step, err := NewStep(stepConfig.StepConfig, options, dockerOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -88,9 +85,9 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 		}
 	}
 
-	var afterSteps []Step
+	var afterSteps []core.Step
 	for _, stepConfig := range afterStepsConfig {
-		step, err := NewStep(stepConfig, options, dockerOptions)
+		step, err := NewStep(stepConfig.StepConfig, options, dockerOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -101,18 +98,19 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 		}
 	}
 	// if we found some valid after steps, prepend init
-	if len(afterSteps) {
-		afterSteps = append([]Step{initStep}, afterSteps...)
+	if len(afterSteps) > 0 {
+		afterSteps = append([]core.Step{initStep}, afterSteps...)
 	}
 
 	logger := util.RootLogger().WithField("Logger", "Pipeline")
-	return &core.BasePipeline{
-		options:    options,
-		env:        util.NewEnvironment(),
-		box:        box,
-		services:   services,
-		steps:      steps,
-		afterSteps: afterSteps,
-		logger:     logger,
-	}, nil
+	base := core.NewBasePipeline(core.BasePipelineOptions{
+		Options:    options,
+		Env:        util.NewEnvironment(),
+		Box:        box,
+		Services:   services,
+		Steps:      steps,
+		AfterSteps: afterSteps,
+		Logger:     logger,
+	})
+	return &DockerPipeline{base}, nil
 }

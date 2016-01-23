@@ -48,7 +48,7 @@ func IsBuildID(input string) bool {
 type Pipeline interface {
 	// Getters
 	Env() *util.Environment // base
-	Box() *Box              // base
+	Box() Box               // base
 	Services() []ServiceBox //base
 	Steps() []Step          // base
 	AfterSteps() []Step     // base
@@ -99,20 +99,45 @@ func (pr *PipelineResult) ExportEnvironment(sessionCtx context.Context, sess *Se
 	return nil
 }
 
+type BasePipelineOptions struct {
+	Options    *PipelineOptions
+	Config     *PipelineConfig
+	Env        *util.Environment
+	Box        Box
+	Services   []ServiceBox
+	Steps      []Step
+	AfterSteps []Step
+	Logger     *util.LogEntry
+}
+
 // BasePipeline is the base class for Build and Deploy
 type BasePipeline struct {
 	options    *PipelineOptions
 	config     *PipelineConfig
 	env        *util.Environment
-	box        *Box
+	box        Box
 	services   []ServiceBox
 	steps      []Step
 	afterSteps []Step
 	logger     *util.LogEntry
 }
 
+func NewBasePipeline(args BasePipelineOptions) *BasePipeline {
+	return &BasePipeline{
+		options:    args.Options,
+		config:     args.Config,
+		env:        args.Env,
+		box:        args.Box,
+		services:   args.Services,
+		steps:      args.Steps,
+		afterSteps: args.AfterSteps,
+		logger:     args.Logger,
+	}
+
+}
+
 // Box is a getter for the box
-func (p *BasePipeline) Box() *Box {
+func (p *BasePipeline) Box() Box {
 	return p.box
 }
 

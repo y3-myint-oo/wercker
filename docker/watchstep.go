@@ -1,4 +1,18 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package dockerlocal
 
 import (
 	"bufio"
@@ -13,6 +27,7 @@ import (
 	"gopkg.in/fsnotify.v1"
 
 	"github.com/pborman/uuid"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
@@ -25,15 +40,17 @@ import (
 
 // WatchStep needs to implemenet IStep
 type WatchStep struct {
-	*BaseStep
-	Code   string
-	reload bool
-	data   map[string]string
-	logger *util.LogEntry
+	*core.BaseStep
+	Code          string
+	reload        bool
+	data          map[string]string
+	logger        *util.LogEntry
+	options       *core.PipelineOptions
+	dockerOptions *DockerOptions
 }
 
 // NewWatchStep is a special step for doing docker pushes
-func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep, error) {
+func NewWatchStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*WatchStep, error) {
 	name := "watch"
 	displayName := "watch"
 	if stepConfig.Name != "" {
@@ -43,21 +60,22 @@ func NewWatchStep(stepConfig *StepConfig, options *PipelineOptions) (*WatchStep,
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
-	baseStep := &BaseStep{
-		displayName: displayName,
-		env:         util.NewEnvironment(),
-		id:          name,
-		name:        name,
-		options:     options,
-		owner:       "wercker",
-		safeID:      stepSafeID,
-		version:     Version(),
-	}
+	baseStep := core.NewBaseStep(core.BaseStepOptions{
+		DisplayName: displayName,
+		Env:         util.NewEnvironment(),
+		ID:          name,
+		Name:        name,
+		Owner:       "wercker",
+		SafeID:      stepSafeID,
+		Version:     util.Version(),
+	})
 
 	return &WatchStep{
-		BaseStep: baseStep,
-		data:     stepConfig.Data,
-		logger:   util.RootLogger().WithField("Logger", "WatchStep"),
+		BaseStep:      baseStep,
+		options:       options,
+		dockerOptions: dockerOptions,
+		data:          stepConfig.Data,
+		logger:        util.RootLogger().WithField("Logger", "WatchStep"),
 	}, nil
 }
 
@@ -162,7 +180,7 @@ func (s *WatchStep) watch(root string) (*fsnotify.Watcher, error) {
 // killProcesses sends a signal to all the processes on the machine except
 // for PID 1, somewhat naive but seems to work
 func (s *WatchStep) killProcesses(containerID string, signal string) error {
-	client, err := NewDockerClient(s.options.DockerOptions)
+	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
 		return err
 	}
@@ -175,8 +193,8 @@ func (s *WatchStep) killProcesses(containerID string, signal string) error {
 }
 
 // Execute runs a command and optionally reloads it
-func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
-	e, err := EmitterFromContext(ctx)
+func (s *WatchStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
+	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return -1, err
 	}
@@ -187,7 +205,7 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 		for {
 			select {
 			case line := <-sess.recv:
-				e.Emit(Logs, &LogsArgs{
+				e.Emit(core.Logs, &core.LogsArgs{
 					Hidden: sess.logsHidden,
 					Logs:   line,
 				})
@@ -201,7 +219,7 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 
 	// cheating to get containerID
 	// TODO(termie): we should deal with this eventually
-	dt := sess.transport.(*DockerTransport)
+	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
 
 	// Set up a signal handler to end our step.
@@ -241,7 +259,7 @@ func (s *WatchStep) Execute(ctx context.Context, sess *Session) (int, error) {
 			s.logger.Errorln(err)
 			return
 		}
-		open, err := exposedPortMaps(s.options.DockerHost, s.options.PublishPorts)
+		open, err := exposedPortMaps(s.dockerOptions.DockerHost, s.options.PublishPorts)
 		if err != nil {
 			s.logger.Warnf(f.Info("There was a problem parsing your docker host."), err)
 			return

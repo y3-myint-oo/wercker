@@ -410,7 +410,7 @@ type DockerImageJSONContainerConfig struct {
 }
 
 // NewDockerScratchPushStep constructorama
-func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.PipelineOptions) (*DockerScratchPushStep, error) {
+func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerScratchPushStep, error) {
 	name := "docker-scratch-push"
 	displayName := "docker scratch'n'push"
 	if stepConfig.Name != "" {
@@ -431,10 +431,11 @@ func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.Pipelin
 	})
 
 	dockerPushStep := &DockerPushStep{
-		BaseStep: baseStep,
-		options:  options,
-		data:     stepConfig.Data,
-		logger:   util.RootLogger().WithField("Logger", "DockerScratchPushStep"),
+		BaseStep:      baseStep,
+		options:       options,
+		dockerOptions: dockerOptions,
+		data:          stepConfig.Data,
+		logger:        util.RootLogger().WithField("Logger", "DockerScratchPushStep"),
 	}
 
 	return &DockerScratchPushStep{DockerPushStep: dockerPushStep}, nil

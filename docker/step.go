@@ -1,3 +1,8 @@
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 //
@@ -16,29 +21,29 @@ import (
 	"github.com/wercker/sentcli/util"
 )
 
-func NewStep(config *StepConfig, options *PipelineOptions) (Step, error) {
+func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (core.Step, error) {
 	// NOTE(termie) Special case steps are special
-	if s.ID == "internal/docker-push" {
-		return NewDockerPushStep(config, options)
+	if config.ID == "internal/docker-push" {
+		return NewDockerPushStep(config, options, dockerOptions)
 	}
-	if s.ID == "internal/docker-scratch-push" {
-		return NewDockerScratchPushStep(config, options)
+	if config.ID == "internal/docker-scratch-push" {
+		return NewDockerScratchPushStep(config, options, dockerOptions)
 	}
-	if s.ID == "internal/store-container" {
-		return NewStoreContainerStep(config, options)
+	if config.ID == "internal/store-container" {
+		return NewStoreContainerStep(config, options, dockerOptions)
 	}
-	if strings.HasPrefix(s.ID, "internal/") {
+	if strings.HasPrefix(config.ID, "internal/") {
 		if !options.EnableDevSteps {
 			util.RootLogger().Warnln("Ignoring dev step:", config.ID)
 			return nil, nil
 		}
 	}
 	if options.EnableDevSteps {
-		if s.ID == "internal/watch" {
-			return NewWatchStep(config, options)
+		if config.ID == "internal/watch" {
+			return NewWatchStep(config, options, dockerOptions)
 		}
-		if s.ID == "internal/shell" {
-			return NewShellStep(config, options)
+		if config.ID == "internal/shell" {
+			return NewShellStep(config, options, dockerOptions)
 		}
 	}
 	return core.NewStep(config, options)
