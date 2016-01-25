@@ -147,12 +147,3 @@ deploy:
         bucket-url: $INSTALLSH_BUCKET_URL
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY
-
-push:
-    steps:
-        - internal/docker-scratch-push:
-            username: $DOCKER_USERNAME
-            password: $DOCKER_PASSWORD
-            tag: tag, latest, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, BBBBBBBBBBBBB
-            repository: quay.io/wercker/rawsentcli
-            registry: https://quay.io
