@@ -161,6 +161,7 @@ func (s *UtilSuite) TestSplitFunc() {
 		{"hello world", []string{"hello", "world"}},
 		{"hello,              world", []string{"hello", "world"}},
 		{"hello,world", []string{"hello", "world"}},
+		{"hello                     world", []string{"hello", "world"}},
 	}
 
 	for _, test := range testCases {
