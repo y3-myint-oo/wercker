@@ -151,3 +151,20 @@ func (s *UtilSuite) TestGenerateDockerID() {
 	// The ID needs to be 256 bits
 	s.Equal(256, len(b)*8)
 }
+
+func (s *UtilSuite) TestSplitFunc() {
+	testCases := []struct {
+		input  string
+		output []string
+	}{
+		{"hello, world", []string{"hello", "world"}},
+		{"hello world", []string{"hello", "world"}},
+		{"hello,              world", []string{"hello", "world"}},
+		{"hello,world", []string{"hello", "world"}},
+	}
+
+	for _, test := range testCases {
+		actual := SplitSpaceOrComma(test.input)
+		s.Equal(test.output, actual)
+	}
+}

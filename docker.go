@@ -457,7 +457,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	}
 
 	if s.ports != "" {
-		parts := strings.Split(s.ports, ",")
+		parts := SplitSpaceOrComma(s.ports)
 		portmap := make(map[docker.Port]struct{})
 		for _, port := range parts {
 			port = strings.TrimSpace(port)
@@ -470,7 +470,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	}
 
 	if s.volumes != "" {
-		parts := strings.Split(s.volumes, ",")
+		parts := SplitSpaceOrComma(s.volumes)
 		volumemap := make(map[string]struct{})
 		for _, volume := range parts {
 			volume = strings.TrimSpace(volume)
@@ -834,7 +834,7 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	}
 
 	if tags, ok := s.data["tag"]; ok {
-		splitTags := strings.Split(tags, " ")
+		splitTags := SplitSpaceOrComma(tags)
 		interpolatedTags := make([]string, len(splitTags))
 		for i, tag := range splitTags {
 			interpolatedTags[i] = env.Interpolate(tag)
@@ -986,7 +986,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		Labels:     s.labels,
 	}
 	if s.ports != "" {
-		parts := strings.Split(s.ports, ",")
+		parts := SplitSpaceOrComma(s.ports)
 		portmap := make(map[docker.Port]struct{})
 		for _, port := range parts {
 			port = strings.TrimSpace(port)
@@ -999,7 +999,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	}
 
 	if s.volumes != "" {
-		parts := strings.Split(s.volumes, ",")
+		parts := SplitSpaceOrComma(s.volumes)
 		volumemap := make(map[string]struct{})
 		for _, volume := range parts {
 			volume = strings.TrimSpace(volume)

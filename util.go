@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 const homePrefix = "~/"
@@ -326,6 +327,12 @@ func queryString(opts interface{}) map[string]interface{} {
 		}
 	}
 	return items
+}
+
+func SplitSpaceOrComma(str string) []string {
+	return strings.FieldsFunc(str, func(c rune) bool {
+		return unicode.IsSpace(c) || c == ','
+	})
 }
 
 var buildRegex = regexp.MustCompile("^[0-9a-fA-F]{24}$")
