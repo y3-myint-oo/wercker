@@ -19,6 +19,7 @@ basicTest() {
 }
 
 basicTest "gitignore" build gitignore
+basicTest "source-path" build source-path
 
 testDirectMount() {
   echo -n "testing direct-mount..."
