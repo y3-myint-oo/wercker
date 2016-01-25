@@ -166,5 +166,6 @@ func (s *UtilSuite) TestSplitFunc() {
 	for _, test := range testCases {
 		actual := SplitSpaceOrComma(test.input)
 		s.Equal(test.output, actual)
+		s.Equal(len(test.output), 2)
 	}
 }

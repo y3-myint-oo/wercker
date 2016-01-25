@@ -450,33 +450,12 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	}
 
 	config := docker.Config{
-		Cmd:        s.cmd,
-		Entrypoint: s.entrypoint,
-		Hostname:   containerID[:16],
-		WorkingDir: s.workingDir,
-	}
-
-	if s.ports != "" {
-		parts := SplitSpaceOrComma(s.ports)
-		portmap := make(map[docker.Port]struct{})
-		for _, port := range parts {
-			port = strings.TrimSpace(port)
-			if !strings.Contains(port, "/") {
-				port = port + "/tcp"
-			}
-			portmap[docker.Port(port)] = struct{}{}
-		}
-		config.ExposedPorts = portmap
-	}
-
-	if s.volumes != "" {
-		parts := SplitSpaceOrComma(s.volumes)
-		volumemap := make(map[string]struct{})
-		for _, volume := range parts {
-			volume = strings.TrimSpace(volume)
-			volumemap[volume] = struct{}{}
-		}
-		config.Volumes = volumemap
+		Cmd:          s.cmd,
+		Entrypoint:   s.entrypoint,
+		Hostname:     containerID[:16],
+		WorkingDir:   s.workingDir,
+		ExposedPorts: s.ports,
+		Volumes:      s.volumes,
 	}
 
 	layerID, err := GenerateDockerID()
@@ -772,8 +751,8 @@ type DockerPushStep struct {
 	message    string
 	tags       []string
 	registry   string
-	ports      string
-	volumes    string
+	ports      map[docker.Port]struct{}
+	volumes    map[string]struct{}
 	cmd        []string
 	entrypoint []string
 	logger     *LogEntry
@@ -851,11 +830,28 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	}
 
 	if ports, ok := s.data["ports"]; ok {
-		s.ports = env.Interpolate(ports)
+		iPorts := env.Interpolate(ports)
+		parts := SplitSpaceOrComma(iPorts)
+		portmap := make(map[docker.Port]struct{})
+		for _, port := range parts {
+			port = strings.TrimSpace(port)
+			if !strings.Contains(port, "/") {
+				port = port + "/tcp"
+			}
+			portmap[docker.Port(port)] = struct{}{}
+		}
+		s.ports = portmap
 	}
 
 	if volumes, ok := s.data["volumes"]; ok {
-		s.volumes = env.Interpolate(volumes)
+		iVolumes := env.Interpolate(volumes)
+		parts := SplitSpaceOrComma(iVolumes)
+		volumemap := make(map[string]struct{})
+		for _, volume := range parts {
+			volume = strings.TrimSpace(volume)
+			volumemap[volume] = struct{}{}
+		}
+		s.volumes = volumemap
 	}
 
 	if workingDir, ok := s.data["working-dir"]; ok {
@@ -977,35 +973,15 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	s.logger.Debugln("Init env:", s.data)
 
 	config := docker.Config{
-		Cmd:        s.cmd,
-		Entrypoint: s.entrypoint,
-		WorkingDir: s.workingDir,
-		User:       s.user,
-		Env:        s.env,
-		StopSignal: s.stopSignal,
-		Labels:     s.labels,
-	}
-	if s.ports != "" {
-		parts := SplitSpaceOrComma(s.ports)
-		portmap := make(map[docker.Port]struct{})
-		for _, port := range parts {
-			port = strings.TrimSpace(port)
-			if !strings.Contains(port, "/") {
-				port = port + "/tcp"
-			}
-			portmap[docker.Port(port)] = struct{}{}
-		}
-		config.ExposedPorts = portmap
-	}
-
-	if s.volumes != "" {
-		parts := SplitSpaceOrComma(s.volumes)
-		volumemap := make(map[string]struct{})
-		for _, volume := range parts {
-			volume = strings.TrimSpace(volume)
-			volumemap[volume] = struct{}{}
-		}
-		config.Volumes = volumemap
+		Cmd:          s.cmd,
+		Entrypoint:   s.entrypoint,
+		WorkingDir:   s.workingDir,
+		User:         s.user,
+		Env:          s.env,
+		StopSignal:   s.stopSignal,
+		Labels:       s.labels,
+		ExposedPorts: s.ports,
+		Volumes:      s.volumes,
 	}
 
 	commitOpts := docker.CommitContainerOptions{
