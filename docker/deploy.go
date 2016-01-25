@@ -1,59 +1,43 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package dockerlocal
 
 import (
 	"fmt"
 
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
 
-// Deploy is our basic wrapper for Deploy operations
-type Deploy struct {
-	*BasePipeline
-	options *PipelineOptions
+// DockerDeploy is our basic wrapper for DockerDeploy operations
+type DockerDeploy struct {
+	*DockerPipeline
 }
 
 // ToDeploy grabs the build section from the config and configures all the
 // instances necessary for the build
-func (c *Config) ToDeploy(options *PipelineOptions, pipelineConfig *RawPipelineConfig) (*Deploy, error) {
-	// Either the pipeline's box or the global
-	boxConfig := pipelineConfig.Box
-	if boxConfig == nil {
-		boxConfig = c.Box
-	}
-	if boxConfig == nil {
-		return nil, fmt.Errorf("No box definition in either pipeline or global config")
-	}
-
-	// Either the pipeline's services or the global
-	servicesConfig := pipelineConfig.Services
-	if servicesConfig == nil {
-		servicesConfig = c.Services
-	}
-
-	stepsConfig := pipelineConfig.Steps
-	if options.DeployTarget != "" {
-		sectionSteps, ok := pipelineConfig.StepsMap[options.DeployTarget]
-		if ok {
-			stepsConfig = sectionSteps
-		}
-	}
-	if stepsConfig == nil {
-		return nil, fmt.Errorf("No steps defined in the pipeline")
-	}
-
-	afterStepsConfig := pipelineConfig.AfterSteps
-
-	// NewBasePipeline will init all the rest
-	basePipeline, err := NewBasePipeline(options, pipelineConfig, boxConfig, servicesConfig, stepsConfig, afterStepsConfig)
+func NewDockerDeploy(config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerDeploy, error) {
+	base, err := NewDockerPipeline(config, options, dockerOptions, builder)
 	if err != nil {
 		return nil, err
 	}
-
-	return &Deploy{basePipeline, options}, nil
+	return &DockerDeploy{base}, nil
 }
 
 // InitEnv sets up the internal state of the environment for the build
-func (d *Deploy) InitEnv(hostEnv *util.Environment) {
+func (d *DockerDeploy) InitEnv(hostEnv *util.Environment) {
 	env := d.Env()
 
 	a := [][]string{
@@ -79,7 +63,7 @@ func (d *Deploy) InitEnv(hostEnv *util.Environment) {
 }
 
 // DockerRepo returns the name where we might store this in docker
-func (d *Deploy) DockerRepo() string {
+func (d *DockerDeploy) DockerRepo() string {
 	if d.options.Repository != "" {
 		return d.options.Repository
 	}
@@ -87,7 +71,7 @@ func (d *Deploy) DockerRepo() string {
 }
 
 // DockerTag returns the tag where we might store this in docker
-func (d *Deploy) DockerTag() string {
+func (d *DockerDeploy) DockerTag() string {
 	tag := d.options.Tag
 	if tag == "" {
 		tag = fmt.Sprintf("deploy-%s", d.options.DeployID)
@@ -96,7 +80,7 @@ func (d *Deploy) DockerTag() string {
 }
 
 // DockerMessage returns the message to store this with in docker
-func (d *Deploy) DockerMessage() string {
+func (d *DockerDeploy) DockerMessage() string {
 	message := d.options.Message
 	if message == "" {
 		message = fmt.Sprintf("Build %s", d.options.DeployID)
@@ -107,10 +91,10 @@ func (d *Deploy) DockerMessage() string {
 // CollectArtifact copies the artifacts associated with the Deploy.
 // Unlike a Build, this will only collect the output directory if we made
 // a new one.
-func (d *Deploy) CollectArtifact(containerID string) (*Artifact, error) {
-	artificer := NewArtificer(d.options)
+func (d *DockerDeploy) CollectArtifact(containerID string) (*core.Artifact, error) {
+	artificer := NewArtificer(d.options, d.dockerOptions)
 
-	artifact := &Artifact{
+	artifact := &core.Artifact{
 		ContainerID:   containerID,
 		GuestPath:     d.options.GuestPath("output"),
 		HostPath:      d.options.HostPath("build.tar"),

@@ -24,6 +24,8 @@ import (
 // DockerPipeline is our docker PipelineConfigurer and Pipeline impl
 type DockerPipeline struct {
 	*core.BasePipeline
+	options       *core.PipelineOptions
+	dockerOptions *DockerOptions
 }
 
 func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerPipeline, error) {
@@ -112,5 +114,5 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 		AfterSteps: afterSteps,
 		Logger:     logger,
 	})
-	return &DockerPipeline{base}, nil
+	return &DockerPipeline{BasePipeline: base, options: options, dockerOptions: dockerOptions}, nil
 }
