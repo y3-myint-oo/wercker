@@ -91,6 +91,10 @@ func (s *Session) Transport() interface{} {
 	return s.transport
 }
 
+func (s *Session) Recv() chan string {
+	return s.recv
+}
+
 // Attach us to our container and set up read and write queues.
 // Returns a context object for the transport so we can propagate cancels
 // on errors and closed connections.

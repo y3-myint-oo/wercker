@@ -41,13 +41,13 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 	// Select this pipeline's config or the global config
 	boxConfig := pipelineConfig.Box.BoxConfig
 	if boxConfig == nil {
-		boxConfig := config.Box.BoxConfig
+		boxConfig = config.Box.BoxConfig
 	}
 
 	// Select this pipeline's service or the global config
 	servicesConfig := pipelineConfig.Services
 	if servicesConfig == nil {
-		servicesConfig := config.Services
+		servicesConfig = config.Services
 	}
 
 	stepsConfig := pipelineConfig.Steps

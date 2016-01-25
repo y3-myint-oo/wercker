@@ -198,16 +198,19 @@ func (s *WatchStep) Execute(ctx context.Context, sess *core.Session) (int, error
 	if err != nil {
 		return -1, err
 	}
+
+	// TODO(termie): PACKAGING make this a feature of session and remove
+	//               the calls into its struct
 	// Start watching our stdout
 	stopListening := make(chan struct{})
 	defer func() { stopListening <- struct{}{} }()
 	go func() {
 		for {
 			select {
-			case line := <-sess.recv:
+			case line := <-sess.Recv():
 				e.Emit(core.Logs, &core.LogsArgs{
-					Hidden: sess.logsHidden,
-					Logs:   line,
+					// Hidden: sess.logsHidden,
+					Logs: line,
 				})
 			// We need to make sure we stop eating the stdout from the container
 			// promiscuously when we finish out step
@@ -320,7 +323,7 @@ func (s *WatchStep) CollectFile(a, b, c string, dst io.Writer) error {
 }
 
 // CollectArtifact NOP
-func (s *WatchStep) CollectArtifact(string) (*Artifact, error) {
+func (s *WatchStep) CollectArtifact(string) (*core.Artifact, error) {
 	return nil, nil
 }
 
