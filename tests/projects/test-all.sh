@@ -20,6 +20,7 @@ basicTest() {
 
 basicTest "gitignore" build gitignore
 basicTest "source-path" build source-path
+basicTest "test local services" build local-service/service-consumer
 
 testDirectMount() {
   echo -n "testing direct-mount..."
