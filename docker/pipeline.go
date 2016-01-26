@@ -42,10 +42,11 @@ func NewDockerPipeline(name string, config *core.Config, options *core.PipelineO
 	}
 
 	// Select this pipeline's config or the global config
-	boxConfig := pipelineConfig.Box.BoxConfig
-	if boxConfig == nil {
-		boxConfig = config.Box.BoxConfig
+	rawBoxConfig := pipelineConfig.Box
+	if rawBoxConfig == nil {
+		rawBoxConfig = config.Box
 	}
+	boxConfig := rawBoxConfig.BoxConfig
 
 	// Select this pipeline's service or the global config
 	servicesConfig := pipelineConfig.Services

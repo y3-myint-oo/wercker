@@ -103,6 +103,7 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 		client:          client,
 		config:          boxConfig,
 		options:         options,
+		dockerOptions:   dockerOptions,
 		repository:      repository,
 		tag:             tag,
 		networkDisabled: networkDisabled,
