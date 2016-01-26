@@ -12,7 +12,7 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-package core
+package tests
 
 import (
 	"io/ioutil"
@@ -24,8 +24,24 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/cmd"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
+
+var (
+	globalFlags   = cmd.FlagsFor(cmd.GlobalFlagSet)
+	pipelineFlags = cmd.FlagsFor(cmd.PipelineFlagSet, cmd.WerckerInternalFlagSet)
+	emptyFlags    = []cli.Flag{}
+)
+
+func emptyEnv() *util.Environment {
+	return util.NewEnvironment()
+}
+
+func emptyPipelineOptions() *core.PipelineOptions {
+	return &core.PipelineOptions{GlobalOptions: &core.GlobalOptions{}}
+}
 
 func run(s suite.TestingSuite, gFlags []cli.Flag, cFlags []cli.Flag, action func(c *cli.Context), args []string) {
 	util.RootLogger().SetLevel("debug")
@@ -75,7 +91,7 @@ func TestOptionsSuite(t *testing.T) {
 func (s *OptionsSuite) TestGlobalOptions() {
 	args := defaultArgs()
 	test := func(c *cli.Context) {
-		opts, err := NewGlobalOptions(c, emptyEnv())
+		opts, err := core.NewGlobalOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal(true, opts.Debug)
 		s.Equal("http://example.com/base-url", opts.BaseURL)
@@ -104,7 +120,7 @@ func (s *OptionsSuite) TestGuessAuthToken() {
 	}
 
 	test := func(c *cli.Context) {
-		opts, err := NewGlobalOptions(c, emptyEnv())
+		opts, err := core.NewGlobalOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal(token, opts.AuthToken)
 	}
@@ -125,7 +141,7 @@ func (s *OptionsSuite) TestEmptyPipelineOptionsEmptyDir() {
 	// Target the path
 	args := defaultArgs(tmpDir)
 	test := func(c *cli.Context) {
-		opts, err := NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal(basename, opts.ApplicationID)
 		s.Equal(basename, opts.ApplicationName)
@@ -139,7 +155,7 @@ func (s *OptionsSuite) TestEmptyPipelineOptionsEmptyDir() {
 		s.Equal("", opts.GitDomain)
 		s.Equal(username, opts.GitOwner)
 		s.Equal("", opts.GitRepository)
-		dumpOptions(opts)
+		cmd.DumpOptions(opts)
 	}
 	run(s, globalFlags, pipelineFlags, test, args)
 }
@@ -147,7 +163,7 @@ func (s *OptionsSuite) TestEmptyPipelineOptionsEmptyDir() {
 func (s *OptionsSuite) TestEmptyBuildOptions() {
 	args := defaultArgs()
 	test := func(c *cli.Context) {
-		opts, err := NewBuildOptions(c, emptyEnv())
+		opts, err := core.NewBuildOptions(c, emptyEnv())
 		s.Nil(err)
 		s.NotEqual("", opts.BuildID)
 		s.Equal(opts.BuildID, opts.PipelineID)
@@ -159,7 +175,7 @@ func (s *OptionsSuite) TestEmptyBuildOptions() {
 func (s *OptionsSuite) TestBuildOptions() {
 	args := defaultArgs("--build-id", "fake-build-id")
 	test := func(c *cli.Context) {
-		opts, err := NewBuildOptions(c, emptyEnv())
+		opts, err := core.NewBuildOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal("fake-build-id", opts.PipelineID)
 		s.Equal("fake-build-id", opts.BuildID)
@@ -171,7 +187,7 @@ func (s *OptionsSuite) TestBuildOptions() {
 func (s *OptionsSuite) TestEmptyDeployOptions() {
 	args := defaultArgs()
 	test := func(c *cli.Context) {
-		opts, err := NewDeployOptions(c, emptyEnv())
+		opts, err := core.NewDeployOptions(c, emptyEnv())
 		s.Nil(err)
 		s.NotEqual("", opts.DeployID)
 		s.Equal(opts.DeployID, opts.PipelineID)
@@ -183,7 +199,7 @@ func (s *OptionsSuite) TestEmptyDeployOptions() {
 func (s *OptionsSuite) TestDeployOptions() {
 	args := defaultArgs("--deploy-id", "fake-deploy-id")
 	test := func(c *cli.Context) {
-		opts, err := NewDeployOptions(c, emptyEnv())
+		opts, err := core.NewDeployOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal("fake-deploy-id", opts.PipelineID)
 		s.Equal("fake-deploy-id", opts.DeployID)
@@ -200,8 +216,8 @@ func (s *OptionsSuite) TestKeenOptions() {
 	)
 	test := func(c *cli.Context) {
 		e := emptyEnv()
-		gOpts, err := NewGlobalOptions(c, e)
-		opts, err := NewKeenOptions(c, e, gOpts)
+		gOpts, err := core.NewGlobalOptions(c, e)
+		opts, err := core.NewKeenOptions(c, e, gOpts)
 		s.Nil(err)
 		s.Equal(true, opts.ShouldKeenMetrics)
 		s.Equal("test-key", opts.KeenProjectWriteKey)
@@ -213,8 +229,8 @@ func (s *OptionsSuite) TestKeenOptions() {
 func (s *OptionsSuite) TestKeenMissingOptions() {
 	test := func(c *cli.Context) {
 		e := emptyEnv()
-		gOpts, err := NewGlobalOptions(c, e)
-		_, err = NewKeenOptions(c, e, gOpts)
+		gOpts, err := core.NewGlobalOptions(c, e)
+		_, err = core.NewKeenOptions(c, e, gOpts)
 		s.NotNil(err)
 	}
 
@@ -228,8 +244,8 @@ func (s *OptionsSuite) TestKeenMissingOptions() {
 		"--keen-project-id", "test-id",
 	)
 
-	run(s, globalFlags, keenFlags, test, missingID)
-	run(s, globalFlags, keenFlags, test, missingKey)
+	run(s, globalFlags, cmd.KeenFlags, test, missingID)
+	run(s, globalFlags, cmd.KeenFlags, test, missingKey)
 }
 
 func (s *OptionsSuite) TestReporterOptions() {
@@ -240,8 +256,8 @@ func (s *OptionsSuite) TestReporterOptions() {
 	)
 	test := func(c *cli.Context) {
 		e := emptyEnv()
-		gOpts, err := NewGlobalOptions(c, e)
-		opts, err := NewReporterOptions(c, e, gOpts)
+		gOpts, err := core.NewGlobalOptions(c, e)
+		opts, err := core.NewReporterOptions(c, e, gOpts)
 		s.Nil(err)
 		s.Equal(true, opts.ShouldReport)
 		s.Equal("http://example.com/wercker-host", opts.ReporterHost)
@@ -253,8 +269,8 @@ func (s *OptionsSuite) TestReporterOptions() {
 func (s *OptionsSuite) TestReporterMissingOptions() {
 	test := func(c *cli.Context) {
 		e := emptyEnv()
-		gOpts, err := NewGlobalOptions(c, e)
-		_, err = NewReporterOptions(c, e, gOpts)
+		gOpts, err := core.NewGlobalOptions(c, e)
+		_, err = core.NewReporterOptions(c, e, gOpts)
 		s.NotNil(err)
 	}
 
@@ -268,14 +284,14 @@ func (s *OptionsSuite) TestReporterMissingOptions() {
 		"--wercker-host", "http://example.com/wercker-host",
 	)
 
-	run(s, globalFlags, reporterFlags, test, missingHost)
-	run(s, globalFlags, reporterFlags, test, missingKey)
+	run(s, globalFlags, cmd.ReporterFlags, test, missingHost)
+	run(s, globalFlags, cmd.ReporterFlags, test, missingKey)
 }
 
 func (s *OptionsSuite) TestTagEscaping() {
 	args := defaultArgs("--tag", "feature/foo")
 	test := func(c *cli.Context) {
-		opts, err := NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal("feature_foo", opts.Tag)
 	}
@@ -290,7 +306,7 @@ func (s *OptionsSuite) TestWorkingDir() {
 	args := defaultArgs("--working-dir", tempDir)
 
 	test := func(c *cli.Context) {
-		opts, err := NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal(tempDir, opts.WorkingDir)
 	}
@@ -304,7 +320,7 @@ func (s *OptionsSuite) TestWorkingDirCWD() {
 	s.Nil(err)
 
 	test := func(c *cli.Context) {
-		opts, err := NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal(cwd, opts.WorkingDir)
 	}
@@ -321,7 +337,7 @@ func (s *OptionsSuite) TestWorkingDirGetsSet() {
 	args := defaultArgs("--build-dir", filepath.Join(tempDir, "_build"))
 
 	test := func(c *cli.Context) {
-		opts, err := NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(c, emptyEnv())
 		s.Nil(err)
 		s.Equal(tempDir, opts.WorkingDir)
 	}

@@ -1,30 +1,36 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package dockerlocal
 
 import (
 	"os"
 	"testing"
 
-	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/wercker/sentcli/docker"
 	"github.com/wercker/sentcli/util"
-)
-
-var (
-	globalFlags   = flagsFor(GlobalFlags)
-	pipelineFlags = flagsFor(PipelineFlags, WerckerInternalFlags)
-	emptyFlags    = []cli.Flag{}
 )
 
 // DockerOrSkip checks for a docker container and skips the test
 // if one is not available
-func DockerOrSkip(t *testing.T) *dockerlocal.DockerClient {
+func DockerOrSkip(t *testing.T) *DockerClient {
 	if os.Getenv("SKIP_DOCKER_TEST") == "true" {
 		t.Skip("$SKIP_DOCKER_TEST=true, skipping test")
 		return nil
 	}
 
-	client, err := NewDockerClient(minimalDockerOptions())
+	client, err := NewDockerClient(MinimalDockerOptions())
 	err = client.Ping()
 	if err != nil {
 		t.Skip("Docker not available, skipping test")
@@ -33,26 +39,18 @@ func DockerOrSkip(t *testing.T) *dockerlocal.DockerClient {
 	return client
 }
 
-func emptyEnv() *util.Environment {
-	return util.NewEnvironment()
-}
-
-func emptyPipelineOptions() *PipelineOptions {
-	return &PipelineOptions{GlobalOptions: &GlobalOptions{}}
-}
-
-func minimalDockerOptions() *DockerOptions {
-	opts := &DockerOptions{GlobalOptions: &GlobalOptions{}}
+func MinimalDockerOptions() *DockerOptions {
+	opts := &DockerOptions{}
 	guessAndUpdateDockerOptions(opts, util.NewEnvironment(os.Environ()...))
 	return opts
 }
 
-type containerRemover struct {
+type ContainerRemover struct {
 	*docker.Container
-	client *dockerlocal.DockerClient
+	client *DockerClient
 }
 
-func tempBusybox(client *dockerlocal.DockerClient) (*containerRemover, error) {
+func TempBusybox(client *DockerClient) (*ContainerRemover, error) {
 	_, err := client.InspectImage("alpine")
 	if err != nil {
 		options := docker.PullImageOptions{
@@ -85,15 +83,15 @@ func tempBusybox(client *dockerlocal.DockerClient) (*containerRemover, error) {
 		return nil, err
 	}
 
-	return &containerRemover{Container: container, client: client}, nil
+	return &ContainerRemover{Container: container, client: client}, nil
 }
 
-func (cc *containerRemover) Remove() {
-	if cc == nil {
+func (c *ContainerRemover) Remove() {
+	if c == nil {
 		return
 	}
-	cc.client.RemoveContainer(docker.RemoveContainerOptions{
-		ID:            cc.Container.ID,
+	c.client.RemoveContainer(docker.RemoveContainerOptions{
+		ID:            c.Container.ID,
 		RemoveVolumes: true,
 	})
 }

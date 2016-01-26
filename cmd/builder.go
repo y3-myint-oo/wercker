@@ -67,7 +67,7 @@ func (b *DockerBuilder) getOptions(env *util.Environment, config *core.BoxConfig
 		return set
 	}
 
-	set := flagSet("runservice", flagsFor(PipelineFlags, WerckerInternalFlags))
+	set := flagSet("runservice", FlagsFor(PipelineFlagSet, WerckerInternalFlagSet))
 	args := []string{
 		servicePath,
 	}

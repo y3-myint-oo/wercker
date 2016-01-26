@@ -69,7 +69,7 @@ var (
 				cliLogger.Fatal(err)
 			}
 		},
-		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
+		Flags: FlagsFor(PipelineFlagSet, WerckerInternalFlagSet),
 	}
 
 	devCommand = cli.Command{
@@ -95,7 +95,7 @@ var (
 				cliLogger.Fatal(err)
 			}
 		},
-		Flags: flagsFor(DevPipelineFlags, WerckerInternalFlags),
+		Flags: FlagsFor(DevPipelineFlagSet, WerckerInternalFlagSet),
 	}
 
 	checkConfigCommand = cli.Command{
@@ -122,7 +122,7 @@ var (
 				os.Exit(1)
 			}
 		},
-		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
+		Flags: FlagsFor(PipelineFlagSet, WerckerInternalFlagSet),
 	}
 
 	deployCommand = cli.Command{
@@ -149,7 +149,7 @@ var (
 				cliLogger.Fatal(err)
 			}
 		},
-		Flags: flagsFor(DeployPipelineFlags, WerckerInternalFlags),
+		Flags: FlagsFor(DeployPipelineFlagSet, WerckerInternalFlagSet),
 	}
 
 	detectCommand = cli.Command{
@@ -194,7 +194,7 @@ var (
 				cliLogger.Fatal(err)
 			}
 		},
-		Flags: flagsFor(PipelineFlags, WerckerInternalFlags),
+		Flags: FlagsFor(PipelineFlagSet, WerckerInternalFlagSet),
 	}
 
 	loginCommand = cli.Command{
@@ -237,7 +237,7 @@ var (
 		ShortName:   "p",
 		Usage:       "pull <build id>",
 		Description: "download a Docker repository, and load it into Docker",
-		Flags:       flagsFor(DockerFlags, pullFlags),
+		Flags:       FlagsFor(DockerFlagSet, PullFlagSet),
 		Action: func(c *cli.Context) {
 
 			env := util.NewEnvironment(os.Environ()...)
@@ -319,7 +319,7 @@ func GetApp() *cli.App {
 	app.Usage = "build and deploy from the command line"
 	app.Email = "pleasemailus@wercker.com"
 	app.Version = util.FullVersion()
-	app.Flags = flagsFor(GlobalFlags)
+	app.Flags = FlagsFor(GlobalFlagSet)
 	app.Commands = []cli.Command{
 		buildCommand,
 		devCommand,
@@ -543,7 +543,7 @@ func cmdPull(c *cli.Context, options *core.PullOptions, dockerOptions *dockerloc
 	logger := util.RootLogger().WithField("Logger", "Main")
 
 	if options.Debug {
-		dumpOptions(options)
+		DumpOptions(options)
 	}
 
 	client := api.NewAPIClient(&api.APIOptions{
@@ -795,8 +795,8 @@ func getYml(detected string, options *core.DetectOptions) {
 
 }
 
-// dumpOptions prints out a sorted list of options
-func dumpOptions(options interface{}, indent ...string) {
+// DumpOptions prints out a sorted list of options
+func DumpOptions(options interface{}, indent ...string) {
 	indent = append(indent, "  ")
 	s := reflect.ValueOf(options).Elem()
 	typeOfT := s.Type()
@@ -819,7 +819,7 @@ func dumpOptions(options interface{}, indent ...string) {
 				continue
 			}
 			logger.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
-			dumpOptions(f.Interface(), indent...)
+			DumpOptions(f.Interface(), indent...)
 		} else {
 			logger.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
 		}
@@ -858,7 +858,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	defer buildFinisher.Finish(buildFinishedArgs)
 
 	// Debug information
-	dumpOptions(options)
+	DumpOptions(options)
 
 	// Do some sanity checks before starting
 	err = dockerlocal.RequireDockerEndpoint(dockerOptions)

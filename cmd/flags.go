@@ -19,18 +19,19 @@ import "github.com/codegangsta/cli"
 // Flags for setting these options from the CLI
 var (
 	// These flags tell us where to go for operations
-	endpointFlags = []cli.Flag{
+	EndpointFlags = []cli.Flag{
 		// deprecated
 		cli.StringFlag{Name: "wercker-endpoint", Value: "", Usage: "Deprecated.", Hidden: true},
 		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com", Usage: "Base url for the wercker app.", Hidden: true},
 	}
 
 	// These flags let us auth to wercker services
-	authFlags = []cli.Flag{
+	AuthFlags = []cli.Flag{
 		cli.StringFlag{Name: "auth-token", Usage: "Authentication token to use."},
 		cli.StringFlag{Name: "auth-token-store", Value: "~/.wercker/token", Usage: "Where to store the token after a login.", Hidden: true},
 	}
-	dockerFlags = []cli.Flag{
+
+	DockerFlags = []cli.Flag{
 		cli.StringFlag{Name: "docker-host", Value: "", Usage: "Docker api endpoint.", EnvVar: "DOCKER_HOST"},
 		cli.StringFlag{Name: "docker-tls-verify", Value: "0", Usage: "Docker api tls verify.", EnvVar: "DOCKER_TLS_VERIFY"},
 		cli.StringFlag{Name: "docker-cert-path", Value: "", Usage: "Docker api cert path.", EnvVar: "DOCKER_CERT_PATH"},
@@ -39,7 +40,7 @@ var (
 	}
 
 	// These flags control where we store local files
-	localPathFlags = []cli.Flag{
+	LocalPathFlags = []cli.Flag{
 		cli.StringFlag{Name: "working-dir", Value: "", Usage: "Path where we store working files."},
 
 		// following -dir flags are DEPRECATED, here for BC
@@ -51,14 +52,14 @@ var (
 	}
 
 	// These flags control paths on the guest and probably shouldn't change
-	internalPathFlags = []cli.Flag{
+	InternalPathFlags = []cli.Flag{
 		cli.StringFlag{Name: "mnt-root", Value: "/mnt", Usage: "Directory on the guest where volumes are mounted.", Hidden: true},
 		cli.StringFlag{Name: "guest-root", Value: "/pipeline", Usage: "Directory on the guest where work is done.", Hidden: true},
 		cli.StringFlag{Name: "report-root", Value: "/report", Usage: "Directory on the guest where reports will be written.", Hidden: true},
 	}
 
 	// These flags are usually pulled from the env
-	werckerFlags = []cli.Flag{
+	WerckerFlags = []cli.Flag{
 		cli.StringFlag{Name: "build-id", Value: "", EnvVar: "WERCKER_BUILD_ID", Hidden: true,
 			Usage: "The build id."},
 		cli.StringFlag{Name: "deploy-id", Value: "", EnvVar: "WERCKER_DEPLOY_ID", Hidden: true,
@@ -77,7 +78,7 @@ var (
 			Usage: "Alternate pipeline name to execute."},
 	}
 
-	gitFlags = []cli.Flag{
+	GitFlags = []cli.Flag{
 		cli.StringFlag{Name: "git-domain", Value: "", Usage: "Git domain.", EnvVar: "WERCKER_GIT_DOMAIN", Hidden: true},
 		cli.StringFlag{Name: "git-owner", Value: "", Usage: "Git owner.", EnvVar: "WERCKER_GIT_OWNER", Hidden: true},
 		cli.StringFlag{Name: "git-repository", Value: "", Usage: "Git repository.", EnvVar: "WERCKER_GIT_REPOSITORY", Hidden: true},
@@ -86,14 +87,14 @@ var (
 	}
 
 	// These flags affect our registry interactions
-	registryFlags = []cli.Flag{
+	RegistryFlags = []cli.Flag{
 		cli.StringFlag{Name: "commit", Value: "", Usage: "Commit the build result locally."},
 		cli.StringFlag{Name: "tag", Value: "", Usage: "Tag for this build.", EnvVar: "WERCKER_GIT_BRANCH"},
 		cli.StringFlag{Name: "message", Value: "", Usage: "Message for this build."},
 	}
 
 	// These flags affect our artifact interactions
-	artifactFlags = []cli.Flag{
+	ArtifactFlags = []cli.Flag{
 		cli.BoolFlag{Name: "artifacts", Usage: "Store artifacts."},
 		cli.BoolFlag{Name: "no-remove", Usage: "Don't remove the containers."},
 		cli.BoolFlag{Name: "store-local", Usage: "Store artifacts and containers locally."},
@@ -106,7 +107,7 @@ var (
 	}
 
 	// These flags affect our local execution environment
-	devFlags = []cli.Flag{
+	DevFlags = []cli.Flag{
 		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "Specify additional environment variables in a file."},
 		cli.BoolFlag{Name: "verbose", Usage: "Print more information."},
 		cli.BoolFlag{Name: "no-colors", Usage: "Wercker output will not use colors (does not apply to step output)."},
@@ -115,7 +116,7 @@ var (
 	}
 
 	// These flags are advanced dev settings
-	internalDevFlags = []cli.Flag{
+	InternalDevFlags = []cli.Flag{
 		cli.BoolTFlag{Name: "direct-mount", Usage: "Mount our binds read-write to the pipeline path."},
 		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish."},
 		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
@@ -128,7 +129,7 @@ var (
 	}
 
 	// These flags are advanced build settings
-	internalBuildFlags = []cli.Flag{
+	InternalBuildFlags = []cli.Flag{
 		cli.BoolFlag{Name: "direct-mount", Usage: "Mount our binds read-write to the pipeline path."},
 		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish."},
 		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
@@ -141,7 +142,7 @@ var (
 	}
 
 	// Flags for advanced deploy settings
-	internalDeployFlags = []cli.Flag{
+	InternalDeployFlags = []cli.Flag{
 		cli.StringSliceFlag{Name: "publish", Value: &cli.StringSlice{}, Usage: "Publish a port from the main container, same format as docker --publish."},
 		cli.BoolFlag{Name: "attach-on-error", Usage: "Attach shell to container if a step fails.", Hidden: true},
 		cli.BoolFlag{Name: "enable-dev-steps", Hidden: true, Usage: `
@@ -153,7 +154,7 @@ var (
 	}
 
 	// AWS bits
-	awsFlags = []cli.Flag{
+	AWSFlags = []cli.Flag{
 		cli.StringFlag{Name: "aws-secret-key", Value: "", Usage: "Secret access key. Used for artifact storage."},
 		cli.StringFlag{Name: "aws-access-key", Value: "", Usage: "Access key id. Used for artifact storage."},
 		cli.StringFlag{Name: "s3-bucket", Value: "wercker-development", Usage: "Bucket for artifact storage."},
@@ -161,28 +162,28 @@ var (
 	}
 
 	// keen.io bits
-	keenFlags = []cli.Flag{
+	KeenFlags = []cli.Flag{
 		cli.BoolFlag{Name: "keen-metrics", Usage: "Report metrics to keen.io.", Hidden: true},
 		cli.StringFlag{Name: "keen-project-write-key", Value: "", Usage: "Keen write key.", Hidden: true},
 		cli.StringFlag{Name: "keen-project-id", Value: "", Usage: "Keen project id.", Hidden: true},
 	}
 
 	// Wercker Reporter settings
-	reporterFlags = []cli.Flag{
+	ReporterFlags = []cli.Flag{
 		cli.BoolFlag{Name: "report", Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token).", Hidden: true},
 		cli.StringFlag{Name: "wercker-host", Usage: "Wercker host to use for wercker reporter.", Hidden: true},
 		cli.StringFlag{Name: "wercker-token", Usage: "Wercker token to use for wercker reporter.", Hidden: true},
 	}
 
 	// These options might be overwritten by the wercker.yml
-	configFlags = []cli.Flag{
+	ConfigFlags = []cli.Flag{
 		cli.StringFlag{Name: "source-dir", Value: "", Usage: "Source path relative to checkout root."},
 		cli.Float64Flag{Name: "no-response-timeout", Value: 5, Usage: "Timeout if no script output is received in this many minutes."},
 		cli.Float64Flag{Name: "command-timeout", Value: 25, Usage: "Timeout if command does not complete in this many minutes."},
 		cli.StringFlag{Name: "wercker-yml", Value: "", Usage: "Specify a specific yaml file."},
 	}
 
-	pullFlags = [][]cli.Flag{
+	PullFlagSet = [][]cli.Flag{
 		[]cli.Flag{
 			cli.StringFlag{Name: "branch", Value: "", Usage: "Filter on this branch."},
 			cli.StringFlag{Name: "result", Value: "", Usage: "Filter on this result (passed or failed)."},
@@ -192,60 +193,60 @@ var (
 		},
 	}
 
-	GlobalFlags = [][]cli.Flag{
-		devFlags,
-		endpointFlags,
-		authFlags,
+	GlobalFlagSet = [][]cli.Flag{
+		DevFlags,
+		EndpointFlags,
+		AuthFlags,
 	}
 
-	DockerFlags = [][]cli.Flag{
-		dockerFlags,
+	DockerFlagSet = [][]cli.Flag{
+		DockerFlags,
 	}
 
-	PipelineFlags = [][]cli.Flag{
-		localPathFlags,
-		werckerFlags,
-		dockerFlags,
-		internalBuildFlags,
-		gitFlags,
-		registryFlags,
-		artifactFlags,
-		awsFlags,
-		configFlags,
+	PipelineFlagSet = [][]cli.Flag{
+		LocalPathFlags,
+		WerckerFlags,
+		DockerFlags,
+		InternalBuildFlags,
+		GitFlags,
+		RegistryFlags,
+		ArtifactFlags,
+		AWSFlags,
+		ConfigFlags,
 	}
 
-	DeployPipelineFlags = [][]cli.Flag{
-		localPathFlags,
-		werckerFlags,
-		dockerFlags,
-		internalDeployFlags,
-		gitFlags,
-		registryFlags,
-		artifactFlags,
-		awsFlags,
-		configFlags,
+	DeployPipelineFlagSet = [][]cli.Flag{
+		LocalPathFlags,
+		WerckerFlags,
+		DockerFlags,
+		InternalDeployFlags,
+		GitFlags,
+		RegistryFlags,
+		ArtifactFlags,
+		AWSFlags,
+		ConfigFlags,
 	}
 
-	DevPipelineFlags = [][]cli.Flag{
-		localPathFlags,
-		werckerFlags,
-		dockerFlags,
-		internalDevFlags,
-		gitFlags,
-		registryFlags,
-		artifactFlags,
-		awsFlags,
-		configFlags,
+	DevPipelineFlagSet = [][]cli.Flag{
+		LocalPathFlags,
+		WerckerFlags,
+		DockerFlags,
+		InternalDevFlags,
+		GitFlags,
+		RegistryFlags,
+		ArtifactFlags,
+		AWSFlags,
+		ConfigFlags,
 	}
 
-	WerckerInternalFlags = [][]cli.Flag{
-		internalPathFlags,
-		keenFlags,
-		reporterFlags,
+	WerckerInternalFlagSet = [][]cli.Flag{
+		InternalPathFlags,
+		KeenFlags,
+		ReporterFlags,
 	}
 )
 
-func flagsFor(flagSets ...[][]cli.Flag) []cli.Flag {
+func FlagsFor(flagSets ...[][]cli.Flag) []cli.Flag {
 	all := []cli.Flag{}
 	for _, flagSet := range flagSets {
 		for _, x := range flagSet {
