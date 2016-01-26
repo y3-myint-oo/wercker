@@ -6,11 +6,11 @@ build:
   steps:
     - script:
         code: |
-            if [ ! -e test.go ]
-                then echo "test.go should exist"
+            if [ ! -e test.go ]; then
+                echo "test.go should exist"
                 exit 1
             fi
-            if [ -e silly-thing-not-in-src ]
-                then echo "silly-thing-not-in-src shouldn't be here"
+            if [ -e silly-thing-not-in-src ]; then
+                echo "silly-thing-not-in-src shouldn't be here"
                 exit 1
             fi
