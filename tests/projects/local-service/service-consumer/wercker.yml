@@ -11,8 +11,8 @@ build:
         - script:
             code: |
                 wget -q echotest:8000
-                res=`cat index.html`
-                if [ $res != "hello from another service" ]; then
+                res=$(cat index.html)
+                if [ "$res" != "hello from another service" ]; then
                     echo "test failed for local service"
                     exit 1
                 fi
