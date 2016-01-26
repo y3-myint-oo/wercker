@@ -1,4 +1,18 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package event
 
 import (
 	"errors"
@@ -6,11 +20,12 @@ import (
 	"time"
 
 	"github.com/inconshreveable/go-keen"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
 
 // NewMetricsHandler will create a new NewMetricsHandler.
-func NewMetricsHandler(opts *PipelineOptions) (*MetricsEventHandler, error) {
+func NewMetricsHandler(opts *core.PipelineOptions) (*MetricsEventHandler, error) {
 	if "" == opts.KeenProjectWriteKey {
 		return nil, errors.New("No KeenProjectWriteKey specified")
 	}
@@ -24,7 +39,7 @@ func NewMetricsHandler(opts *PipelineOptions) (*MetricsEventHandler, error) {
 		ProjectID: opts.KeenProjectID,
 	}
 
-	versions := GetVersions()
+	versions := util.GetVersions()
 
 	return &MetricsEventHandler{
 		keen:      keenInstance,
@@ -38,7 +53,7 @@ type MetricsEventHandler struct {
 	keen                *keen.Client
 	startStep           map[string]time.Time
 	startBuild          time.Time
-	versions            *Versions
+	versions            *util.Versions
 	numBuildSteps       int
 	numBuildAfterSteps  int
 	numDeploySteps      int
@@ -46,13 +61,13 @@ type MetricsEventHandler struct {
 }
 
 // ListenTo will add eventhandlers to e.
-func (h *MetricsEventHandler) ListenTo(e *NormalizedEmitter) {
-	e.AddListener(BuildStepStarted, h.BuildStepStarted)
-	e.AddListener(BuildStepFinished, h.BuildStepFinished)
-	e.AddListener(BuildStepsAdded, h.BuildStepsAdded)
+func (h *MetricsEventHandler) ListenTo(e *core.NormalizedEmitter) {
+	e.AddListener(core.BuildStepStarted, h.BuildStepStarted)
+	e.AddListener(core.BuildStepFinished, h.BuildStepFinished)
+	e.AddListener(core.BuildStepsAdded, h.BuildStepsAdded)
 
-	e.AddListener(BuildStarted, h.BuildStarted)
-	e.AddListener(BuildFinished, h.BuildFinished)
+	e.AddListener(core.BuildStarted, h.BuildStarted)
+	e.AddListener(core.BuildFinished, h.BuildFinished)
 }
 
 func newMetricsKeenPayload(now time.Time) *metricsKeenPayload {
@@ -60,7 +75,7 @@ func newMetricsKeenPayload(now time.Time) *metricsKeenPayload {
 }
 
 // BuildStarted responds to the BuildStarted event.
-func (h *MetricsEventHandler) BuildStarted(args *BuildStartedArgs) {
+func (h *MetricsEventHandler) BuildStarted(args *core.BuildStartedArgs) {
 	now := time.Now()
 
 	h.startBuild = now
@@ -75,7 +90,7 @@ func (h *MetricsEventHandler) BuildStarted(args *BuildStartedArgs) {
 }
 
 // BuildFinished responds to the BuildFinished event.
-func (h *MetricsEventHandler) BuildFinished(args *BuildFinishedArgs) {
+func (h *MetricsEventHandler) BuildFinished(args *core.BuildFinishedArgs) {
 	now := time.Now()
 
 	elapsed := now.Sub(h.startBuild)
@@ -97,7 +112,7 @@ func (h *MetricsEventHandler) BuildFinished(args *BuildFinishedArgs) {
 }
 
 // BuildStepStarted responds to the BuildStepStarted event.
-func (h *MetricsEventHandler) BuildStepStarted(args *BuildStepStartedArgs) {
+func (h *MetricsEventHandler) BuildStepStarted(args *core.BuildStepStartedArgs) {
 	now := time.Now()
 
 	h.startStep[args.Step.SafeID()] = now
@@ -117,7 +132,7 @@ func (h *MetricsEventHandler) BuildStepStarted(args *BuildStepStartedArgs) {
 }
 
 // BuildStepFinished responds to the BuildStepFinished event.
-func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
+func (h *MetricsEventHandler) BuildStepFinished(args *core.BuildStepFinishedArgs) {
 	now := time.Now()
 
 	var duration int64
@@ -146,7 +161,7 @@ func (h *MetricsEventHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 }
 
 // BuildStepsAdded handles the BuildStepsAdded event.
-func (h *MetricsEventHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
+func (h *MetricsEventHandler) BuildStepsAdded(args *core.BuildStepsAddedArgs) {
 	if args.Options.BuildID != "" {
 		h.numBuildSteps = len(args.Steps)
 		h.numBuildAfterSteps = len(args.AfterSteps)
@@ -158,8 +173,8 @@ func (h *MetricsEventHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
 
 type sendPayloadArgs struct {
 	p         *MetricsPayload
-	options   *PipelineOptions
-	box       *Box
+	options   *core.PipelineOptions
+	box       core.Box
 	now       time.Time
 	eventName string
 }
@@ -206,7 +221,7 @@ type metricsApplicationPayload struct {
 	OwnerName string `json:"ownerName"`
 }
 
-func newMetricStepPayload(step Step) *metricStepPayload {
+func newMetricStepPayload(step core.Step) *metricStepPayload {
 	return &metricStepPayload{
 		Owner:      step.Owner(),
 		Name:       step.Name(),
@@ -231,8 +246,8 @@ type MetricsPayload struct {
 	Timestamp    int64               `json:"timestamp"`
 	Event        string              `json:"event"`
 	Stack        int                 `json:"stack,omitempty"`
-	SentCli      *Versions           `json:"sentcli,omitempty"`
-	Grappler     *Versions           `json:"grappler,omitempty"`
+	SentCli      *util.Versions      `json:"sentcli,omitempty"`
+	Grappler     *util.Versions      `json:"grappler,omitempty"`
 	PipelineName string              `json:"pipelineName,omitempty"`
 
 	BuildID  string `json:"buildId,omitempty"`
@@ -261,7 +276,7 @@ type MetricsPayload struct {
 	MetricsApplicationPayload *metricsApplicationPayload `json:"application,omitempty"`
 }
 
-func getPipelineName(options *PipelineOptions) string {
+func getPipelineName(options *core.PipelineOptions) string {
 	if options.BuildID != "" {
 		return "build"
 	}
@@ -274,7 +289,7 @@ func getPipelineName(options *PipelineOptions) string {
 	return ""
 }
 
-func getCollection(options *PipelineOptions) string {
+func getCollection(options *core.PipelineOptions) string {
 	if options.BuildID != "" {
 		return "build-events"
 	}
@@ -287,14 +302,14 @@ func getCollection(options *PipelineOptions) string {
 	return ""
 }
 
-func getBoxDetails(box *Box) (boxName string, boxTag string) {
+func getBoxDetails(box core.Box) (boxName string, boxTag string) {
 	if box == nil {
 		return
 	}
 
-	return box.Name, box.tag
+	return box.GetName(), box.GetTag()
 }
 
-func formatUniqueStepName(step Step) string {
+func formatUniqueStepName(step core.Step) string {
 	return fmt.Sprintf("%s/%s@%s", step.Owner(), step.Name(), step.Version())
 }

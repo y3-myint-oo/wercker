@@ -1,9 +1,24 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package event
 
 import (
 	"fmt"
 
 	"github.com/wercker/reporter"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
 
@@ -24,7 +39,7 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 	return h, nil
 }
 
-func mapBuildSteps(counter *util.Counter, phase string, steps ...Step) []*reporter.NewStep {
+func mapBuildSteps(counter *util.Counter, phase string, steps ...core.Step) []*reporter.NewStep {
 	buffer := make([]*reporter.NewStep, len(steps))
 	for i, s := range steps {
 		buffer[i] = &reporter.NewStep{
@@ -45,7 +60,7 @@ type ReportHandler struct {
 }
 
 // BuildStepStarted will handle the BuildStepStarted event.
-func (h *ReportHandler) BuildStepStarted(args *BuildStepStartedArgs) {
+func (h *ReportHandler) BuildStepStarted(args *core.BuildStepStartedArgs) {
 	opts := &reporter.PipelineStepStartedArgs{
 		BuildID:  args.Options.BuildID,
 		DeployID: args.Options.DeployID,
@@ -71,7 +86,7 @@ func (h *ReportHandler) flushLogs(pipelineID, stepName string, order int) error 
 }
 
 // BuildStepFinished will handle the BuildStepFinished event.
-func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
+func (h *ReportHandler) BuildStepFinished(args *core.BuildStepFinishedArgs) {
 	h.flushLogs(args.Options.PipelineID, args.Step.Name(), args.Order)
 
 	opts := &reporter.PipelineStepFinishedArgs{
@@ -91,7 +106,7 @@ func (h *ReportHandler) BuildStepFinished(args *BuildStepFinishedArgs) {
 }
 
 // BuildStepsAdded will handle the BuildStepsAdded event.
-func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
+func (h *ReportHandler) BuildStepsAdded(args *core.BuildStepsAddedArgs) {
 	stepCounter := &util.Counter{Current: 3}
 	steps := mapBuildSteps(stepCounter, "mainSteps", args.Steps...)
 
@@ -114,7 +129,7 @@ func (h *ReportHandler) BuildStepsAdded(args *BuildStepsAddedArgs) {
 
 // getStepOutputWriter will check h.writers for a writer for the step, otherwise
 // it will create a new one.
-func (h *ReportHandler) getStepOutputWriter(args *LogsArgs) (*reporter.LogWriter, error) {
+func (h *ReportHandler) getStepOutputWriter(args *core.LogsArgs) (*reporter.LogWriter, error) {
 	key := h.generateKey(args.Options.PipelineID, args.Step.Name(), args.Order)
 
 	opts := &reporter.PipelineStepReporterArgs{
@@ -138,7 +153,7 @@ func (h *ReportHandler) getStepOutputWriter(args *LogsArgs) (*reporter.LogWriter
 }
 
 // Logs will handle the Logs event.
-func (h *ReportHandler) Logs(args *LogsArgs) {
+func (h *ReportHandler) Logs(args *core.LogsArgs) {
 	if args.Hidden {
 		return
 	}
@@ -155,7 +170,7 @@ func (h *ReportHandler) Logs(args *LogsArgs) {
 }
 
 // BuildFinished will handle the BuildFinished event.
-func (h *ReportHandler) BuildFinished(args *BuildFinishedArgs) {
+func (h *ReportHandler) BuildFinished(args *core.BuildFinishedArgs) {
 	opts := &reporter.PipelineFinishedArgs{
 		BuildID:  args.Options.BuildID,
 		DeployID: args.Options.DeployID,
@@ -166,7 +181,7 @@ func (h *ReportHandler) BuildFinished(args *BuildFinishedArgs) {
 
 // FullPipelineFinished closes current writers, making sure they have flushed
 // their logs.
-func (h *ReportHandler) FullPipelineFinished(args *FullPipelineFinishedArgs) {
+func (h *ReportHandler) FullPipelineFinished(args *core.FullPipelineFinishedArgs) {
 	h.Close()
 }
 
@@ -180,11 +195,11 @@ func (h *ReportHandler) Close() error {
 }
 
 // ListenTo will add eventhandlers to e.
-func (h *ReportHandler) ListenTo(e *NormalizedEmitter) {
-	e.AddListener(BuildFinished, h.BuildFinished)
-	e.AddListener(BuildStepsAdded, h.BuildStepsAdded)
-	e.AddListener(BuildStepStarted, h.BuildStepStarted)
-	e.AddListener(BuildStepFinished, h.BuildStepFinished)
-	e.AddListener(FullPipelineFinished, h.FullPipelineFinished)
-	e.AddListener(Logs, h.Logs)
+func (h *ReportHandler) ListenTo(e *core.NormalizedEmitter) {
+	e.AddListener(core.BuildFinished, h.BuildFinished)
+	e.AddListener(core.BuildStepsAdded, h.BuildStepsAdded)
+	e.AddListener(core.BuildStepStarted, h.BuildStepStarted)
+	e.AddListener(core.BuildStepFinished, h.BuildStepFinished)
+	e.AddListener(core.FullPipelineFinished, h.FullPipelineFinished)
+	e.AddListener(core.Logs, h.Logs)
 }

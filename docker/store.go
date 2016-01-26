@@ -36,7 +36,7 @@ type StoreContainerStep struct {
 	dockerOptions *DockerOptions
 	data          map[string]string
 	logger        *util.LogEntry
-	// artifact *Artifact
+	artifact      *core.Artifact
 }
 
 // NewStoreContainerStep constructor
@@ -176,29 +176,28 @@ func (s *StoreContainerStep) Execute(ctx context.Context, sess *core.Session) (i
 	key := core.GenerateBaseKey(s.options)
 	key = fmt.Sprintf("%s/%s", key, "docker.tar.sz")
 
-	// TODO(termie): PACKAGING add artifact back in
-	// s.artifact = &Artifact{
-	//   HostPath:    file.Name(),
-	//   Key:         key,
-	//   Bucket:      s.options.S3Bucket,
-	//   ContentType: "application/x-snappy-framed",
-	//   Meta: map[string]*string{
-	//     "Sha256": &calculatedHash,
-	//   },
-	// }
+	s.artifact = &core.Artifact{
+		HostPath:    file.Name(),
+		Key:         key,
+		Bucket:      s.options.S3Bucket,
+		ContentType: "application/x-snappy-framed",
+		Meta: map[string]*string{
+			"Sha256": &calculatedHash,
+		},
+	}
 
 	return 0, nil
 }
 
-// // CollectFile NOP
-// func (s *StoreContainerStep) CollectFile(a, b, c string, dst io.Writer) error {
-//   return nil
-// }
+// CollectFile NOP
+func (s *StoreContainerStep) CollectFile(a, b, c string, dst io.Writer) error {
+	return nil
+}
 
-// // CollectArtifact return an artifact pointing at the exported thing we made
-// func (s *StoreContainerStep) CollectArtifact(string) (*Artifact, error) {
-//   return s.artifact, nil
-// }
+// CollectArtifact return an artifact pointing at the exported thing we made
+func (s *StoreContainerStep) CollectArtifact(string) (*core.Artifact, error) {
+	return s.artifact, nil
+}
 
 // ReportPath NOP
 func (s *StoreContainerStep) ReportPath(...string) string {

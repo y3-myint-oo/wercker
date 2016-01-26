@@ -52,8 +52,8 @@ type DockerBox struct {
 	image           *docker.Image
 }
 
-// NewBox from a name and other references
-func NewBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerBox, error) {
+// NewDockerBox from a name and other references
+func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerBox, error) {
 	name := boxConfig.ID
 
 	if strings.Contains(name, "@") {
@@ -130,6 +130,10 @@ func (b *DockerBox) Link() string {
 // GetName gets the box name
 func (b *DockerBox) GetName() string {
 	return b.Name
+}
+
+func (b *DockerBox) GetTag() string {
+	return b.tag
 }
 
 // GetID gets the container ID or empty string if we don't have a container

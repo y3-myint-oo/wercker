@@ -32,6 +32,16 @@ type Builder interface {
 	Build(context.Context, *util.Environment, *core.BoxConfig) (*docker.Image, error)
 }
 
+type nilBuilder struct{}
+
+func (b *nilBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*docker.Image, error) {
+	return nil, nil
+}
+
+func NewNilBuilder() *nilBuilder {
+	return &nilBuilder{}
+}
+
 // InternalServiceBox wraps a box as a service
 type InternalServiceBox struct {
 	*DockerBox
@@ -71,7 +81,7 @@ func NewServiceBox(config *core.BoxConfig, options *core.PipelineOptions, docker
 
 // NewServiceBox from a name and other references
 func NewInternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*InternalServiceBox, error) {
-	box, err := NewBox(boxConfig, options, dockerOptions)
+	box, err := NewDockerBox(boxConfig, options, dockerOptions)
 	logger := util.RootLogger().WithField("Logger", "Service")
 	return &InternalServiceBox{DockerBox: box, logger: logger}, err
 }

@@ -30,7 +30,7 @@ import (
 
 type DockerBuilder struct {
 	options       *core.PipelineOptions
-	docekrOptions *dockerlocal.DockerOptions
+	dockerOptions *dockerlocal.DockerOptions
 }
 
 func NewDockerBuilder(options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) *DockerBuilder {
@@ -75,14 +75,14 @@ func (b *DockerBuilder) getOptions(env *util.Environment, config *core.BoxConfig
 		return nil, err
 	}
 	ctx := cli.NewContext(nil, set, set)
-	newOptions, err := NewBuildOptions(ctx, env)
+	newOptions, err := core.NewBuildOptions(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 
-	newOptions.GlobalOptions = s.options.GlobalOptions
+	newOptions.GlobalOptions = b.options.GlobalOptions
 	newOptions.ShouldCommit = true
-	newOptions.PublishPorts = s.options.PublishPorts
+	newOptions.PublishPorts = b.options.PublishPorts
 	// TODO(termie): PACKAGING these moved
 	// newOptions.DockerLocal = true
 	// newOptions.DockerOptions = s.dockerOptions
@@ -91,14 +91,14 @@ func (b *DockerBuilder) getOptions(env *util.Environment, config *core.BoxConfig
 }
 
 // Build the
-func (s *DockerBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*docker.Image, error) {
-	newOptions, err := b.getOptions(env)
+func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*docker.Image, error) {
+	newOptions, err := b.getOptions(env, config)
 
 	if err != nil {
 		return nil, err
 	}
 
-	shared, err := cmdBuild(ctx, newOptions)
+	shared, err := cmdBuild(ctx, newOptions, b.dockerOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -106,17 +106,19 @@ func (s *DockerBuilder) Build(ctx context.Context, env *util.Environment, config
 	bc.ID = fmt.Sprintf("%s:%s", shared.pipeline.DockerRepo(),
 		shared.pipeline.DockerTag())
 
-	box, err := NewBox(bc, b.options, b.dockerOptions)
+	box, err := dockerlocal.NewDockerBox(bc, b.options, b.dockerOptions)
 	if err != nil {
 		return nil, err
 	}
-	// mh: don't like this...
-	s.DockerBox = box
-	// will this work for normal services, too?
-	s.ShortName = config.ID
 
-	client, err := NewDockerClient(b.dockerOptions)
-	image, err = client.InspectImage(b.Name)
+	// TODO(termie): PACKAGING dunno if i need these?
+	// // mh: don't like this...
+	// b.DockerBox = box
+	// // will this work for normal services, too?
+	// b.ShortName = config.ID
+
+	client, err := dockerlocal.NewDockerClient(b.dockerOptions)
+	image, err := client.InspectImage(box.Name)
 	if err != nil {
 		return nil, err
 	}

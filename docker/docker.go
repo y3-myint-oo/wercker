@@ -49,7 +49,7 @@ type CheckAccessOptions struct {
 	Registry   string
 }
 
-func requireDockerEndpoint(options *DockerOptions) error {
+func RequireDockerEndpoint(options *DockerOptions) error {
 	client, err := NewDockerClient(options)
 	if err != nil {
 		if err == docker.ErrInvalidEndpoint {
@@ -728,46 +728,46 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	return 0, nil
 }
 
-// // CollectArtifact is copied from the build, we use this to get the layer
-// // tarball that we'll include in the image tarball
-// func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*Artifact, error) {
-//   artificer := NewArtificer(s.options)
+// CollectArtifact is copied from the build, we use this to get the layer
+// tarball that we'll include in the image tarball
+func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*core.Artifact, error) {
+	artificer := NewArtificer(s.options, s.dockerOptions)
 
-//   // Ensure we have the host directory
+	// Ensure we have the host directory
 
-//   artifact := &Artifact{
-//     ContainerID:   containerID,
-//     GuestPath:     s.options.GuestPath("output"),
-//     HostPath:      s.options.HostPath("layer.tar"),
-//     ApplicationID: s.options.ApplicationID,
-//     BuildID:       s.options.PipelineID,
-//     Bucket:        s.options.S3Bucket,
-//   }
+	artifact := &core.Artifact{
+		ContainerID:   containerID,
+		GuestPath:     s.options.GuestPath("output"),
+		HostPath:      s.options.HostPath("layer.tar"),
+		ApplicationID: s.options.ApplicationID,
+		BuildID:       s.options.PipelineID,
+		Bucket:        s.options.S3Bucket,
+	}
 
-//   sourceArtifact := &Artifact{
-//     ContainerID:   containerID,
-//     GuestPath:     s.options.SourcePath(),
-//     HostPath:      s.options.HostPath("layer.tar"),
-//     ApplicationID: s.options.ApplicationID,
-//     BuildID:       s.options.PipelineID,
-//     Bucket:        s.options.S3Bucket,
-//   }
+	sourceArtifact := &core.Artifact{
+		ContainerID:   containerID,
+		GuestPath:     s.options.SourcePath(),
+		HostPath:      s.options.HostPath("layer.tar"),
+		ApplicationID: s.options.ApplicationID,
+		BuildID:       s.options.PipelineID,
+		Bucket:        s.options.S3Bucket,
+	}
 
-//   // Get the output dir, if it is empty grab the source dir.
-//   fullArtifact, err := artificer.Collect(artifact)
-//   if err != nil {
-//     if err == ErrEmptyTarball {
-//       fullArtifact, err = artificer.Collect(sourceArtifact)
-//       if err != nil {
-//         return nil, err
-//       }
-//       return fullArtifact, nil
-//     }
-//     return nil, err
-//   }
+	// Get the output dir, if it is empty grab the source dir.
+	fullArtifact, err := artificer.Collect(artifact)
+	if err != nil {
+		if err == util.ErrEmptyTarball {
+			fullArtifact, err = artificer.Collect(sourceArtifact)
+			if err != nil {
+				return nil, err
+			}
+			return fullArtifact, nil
+		}
+		return nil, err
+	}
 
-//   return fullArtifact, nil
-// }
+	return fullArtifact, nil
+}
 
 // DockerPushStep needs to implemenet IStep
 type DockerPushStep struct {
@@ -1089,15 +1089,15 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	return 0, nil
 }
 
-// // CollectFile NOP
-// func (s *DockerPushStep) CollectFile(a, b, c string, dst io.Writer) error {
-//   return nil
-// }
+// CollectFile NOP
+func (s *DockerPushStep) CollectFile(a, b, c string, dst io.Writer) error {
+	return nil
+}
 
-// // CollectArtifact NOP
-// func (s *DockerPushStep) CollectArtifact(string) (*Artifact, error) {
-//   return nil, nil
-// }
+// CollectArtifact NOP
+func (s *DockerPushStep) CollectArtifact(string) (*core.Artifact, error) {
+	return nil, nil
+}
 
 // ReportPath NOP
 func (s *DockerPushStep) ReportPath(...string) string {

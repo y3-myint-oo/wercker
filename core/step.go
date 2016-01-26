@@ -17,6 +17,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -94,8 +95,8 @@ type Step interface {
 
 	InitEnv(*util.Environment)
 	Execute(context.Context, *Session) (int, error)
-	// CollectFile(string, string, string, io.Writer) error
-	// CollectArtifact(string) (*Artifact, error)
+	CollectFile(string, string, string, io.Writer) error
+	CollectArtifact(string) (*Artifact, error)
 	// TODO(termie): don't think this needs to be universal
 	ReportPath(...string) string
 }
@@ -454,62 +455,15 @@ func (s *ExternalStep) Execute(sessionCtx context.Context, sess *Session) (int, 
 	return 0, nil
 }
 
-// CollectFile gets an individual file from the container
-// func (s *ExternalStep) CollectFile(containerID, path, name string, dst io.Writer) error {
-//   client, err := NewDockerClient(s.options.DockerOptions)
-//   if err != nil {
-//     return err
-//   }
+// CollectFile noop
+func (s *ExternalStep) CollectFile(containerID, path, name string, dst io.Writer) error {
+	return util.ErrEmptyTarball
+}
 
-//   pipeReader, pipeWriter := io.Pipe()
-//   opts := docker.CopyFromContainerOptions{
-//     OutputStream: pipeWriter,
-//     Container:    containerID,
-//     Resource:     filepath.Join(path, name),
-//   }
-
-//   errs := make(chan error)
-//   go func() {
-//     defer close(errs)
-//     errs <- util.UntarOne(name, dst, pipeReader)
-//   }()
-
-//   if err = client.CopyFromContainer(opts); err != nil {
-//     s.logger.Debug("Probably expected error:", err)
-//     return ErrEmptyTarball
-//   }
-
-//   return <-errs
-// }
-
-// // CollectArtifact copies the artifacts associated with the Step.
-// func (s *ExternalStep) CollectArtifact(containerID string) (*Artifact, error) {
-//   artificer := NewArtificer(s.options)
-
-//   // Ensure we have the host directory
-
-//   artifact := &Artifact{
-//     ContainerID:   containerID,
-//     GuestPath:     s.ReportPath("artifacts"),
-//     HostPath:      s.options.HostPath("artifacts", s.safeID, "artifacts.tar"),
-//     ApplicationID: s.options.ApplicationID,
-//     BuildID:       s.options.BuildID,
-//     DeployID:      s.options.DeployID,
-//     BuildStepID:   s.safeID,
-//     Bucket:        s.options.S3Bucket,
-//     ContentType:   "application/x-tar",
-//   }
-
-//   fullArtifact, err := artificer.Collect(artifact)
-//   if err != nil {
-//     if err == ErrEmptyTarball {
-//       return nil, nil
-//     }
-//     return nil, err
-//   }
-
-//   return fullArtifact, nil
-// }
+// CollectArtifact noop
+func (s *ExternalStep) CollectArtifact(containerID string) (*Artifact, error) {
+	return nil, nil
+}
 
 // InitEnv sets up the internal environment for the Step.
 func (s *ExternalStep) InitEnv(env *util.Environment) {

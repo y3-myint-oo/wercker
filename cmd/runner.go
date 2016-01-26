@@ -1,4 +1,18 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package cmd
 
 import (
 	"bytes"
@@ -10,65 +24,72 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
 	"github.com/wercker/go-gitignore"
+	"github.com/wercker/sentcli/core"
+	"github.com/wercker/sentcli/docker"
+	"github.com/wercker/sentcli/event"
 	"github.com/wercker/sentcli/util"
 	"golang.org/x/net/context"
 )
 
 // pipelineGetter is a function that will fetch the appropriate pipeline
-// object from the rawConfig.
-type pipelineGetter func(*Config, *PipelineOptions) (Pipeline, error)
+// object from the Config.
+type pipelineGetter func(*core.Config, *core.PipelineOptions, *dockerlocal.DockerOptions) (core.Pipeline, error)
 
 // GetDevPipelineFactory makes dev pipelines out of arbitrarily
 // named config sections
-func GetDevPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipeline, error) {
-	return func(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-		pipeline, ok := rawConfig.PipelinesMap[name]
+func GetDevPipelineFactory(name string) func(*core.Config, *core.PipelineOptions, *dockerlocal.DockerOptions) (core.Pipeline, error) {
+	return func(config *core.Config, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) (core.Pipeline, error) {
+		builder := NewDockerBuilder(options, dockerOptions)
+		_, ok := config.PipelinesMap[name]
 		if !ok {
 			return nil, fmt.Errorf("No pipeline named %s", name)
 		}
-		return rawConfig.ToPipeline(options, pipeline)
+		return dockerlocal.NewDockerBuild(name, config, options, dockerOptions, builder)
 	}
 }
 
 // GetBuildPipelineFactory makes build pipelines out of arbitrarily
 // named config sections
-func GetBuildPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipeline, error) {
-	return func(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-		pipeline, ok := rawConfig.PipelinesMap[name]
+func GetBuildPipelineFactory(name string) func(*core.Config, *core.PipelineOptions, *dockerlocal.DockerOptions) (core.Pipeline, error) {
+	return func(config *core.Config, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) (core.Pipeline, error) {
+		builder := NewDockerBuilder(options, dockerOptions)
+		_, ok := config.PipelinesMap[name]
 		if !ok {
 			return nil, fmt.Errorf("No pipeline named %s", name)
 		}
-		return rawConfig.ToPipeline(options, pipeline)
+		return dockerlocal.NewDockerBuild(name, config, options, dockerOptions, builder)
 	}
 }
 
 // GetDeployPipelineFactory makes deploy pipelines out of arbitrarily
 // named config sections
-func GetDeployPipelineFactory(name string) func(*Config, *PipelineOptions) (Pipeline, error) {
-	return func(rawConfig *Config, options *PipelineOptions) (Pipeline, error) {
-		pipeline, ok := rawConfig.PipelinesMap[name]
+func GetDeployPipelineFactory(name string) func(*core.Config, *core.PipelineOptions, *dockerlocal.DockerOptions) (core.Pipeline, error) {
+	return func(config *core.Config, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) (core.Pipeline, error) {
+		builder := NewDockerBuilder(options, dockerOptions)
+		_, ok := config.PipelinesMap[name]
 		if !ok {
 			return nil, fmt.Errorf("No pipeline named %s", name)
 		}
-		return rawConfig.ToDeploy(options, pipeline)
+		return dockerlocal.NewDockerDeploy(name, config, options, dockerOptions, builder)
 	}
 }
 
 // Runner is the base type for running the pipelines.
 type Runner struct {
-	options       *PipelineOptions
-	literalLogger *LiteralLogHandler
-	metrics       *MetricsEventHandler
-	reporter      *ReportHandler
+	options       *core.PipelineOptions
+	dockerOptions *dockerlocal.DockerOptions
+	literalLogger *event.LiteralLogHandler
+	metrics       *event.MetricsEventHandler
+	reporter      *event.ReportHandler
 	getPipeline   pipelineGetter
 	logger        *util.LogEntry
-	emitter       *NormalizedEmitter
+	emitter       *core.NormalizedEmitter
 	formatter     *util.Formatter
 }
 
 // NewRunner from global options
-func NewRunner(ctx context.Context, options *PipelineOptions, getPipeline pipelineGetter) (*Runner, error) {
-	e, err := EmitterFromContext(ctx)
+func NewRunner(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions, getPipeline pipelineGetter) (*Runner, error) {
+	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -80,36 +101,37 @@ func NewRunner(ctx context.Context, options *PipelineOptions, getPipeline pipeli
 	// h.ListenTo(e)
 
 	if options.Debug {
-		dh := NewDebugHandler()
+		dh := core.NewDebugHandler()
 		dh.ListenTo(e)
 	}
 
-	l, err := NewLiteralLogHandler(options)
+	l, err := event.NewLiteralLogHandler(options)
 	if err != nil {
-		logger.WithField("Error", err).Panic("Unable to LiteralLogHandler")
+		logger.WithField("Error", err).Panic("Unable to event.LiteralLogHandler")
 	}
 	l.ListenTo(e)
 
-	var mh *MetricsEventHandler
+	var mh *event.MetricsEventHandler
 	if options.ShouldKeenMetrics {
-		mh, err = NewMetricsHandler(options)
+		mh, err = event.NewMetricsHandler(options)
 		if err != nil {
 			logger.WithField("Error", err).Panic("Unable to MetricsHandler")
 		}
 		mh.ListenTo(e)
 	}
 
-	var r *ReportHandler
+	var r *event.ReportHandler
 	if options.ShouldReport {
-		r, err := NewReportHandler(options.ReporterHost, options.ReporterKey)
+		r, err := event.NewReportHandler(options.ReporterHost, options.ReporterKey)
 		if err != nil {
-			logger.WithField("Error", err).Panic("Unable to ReportHandler")
+			logger.WithField("Error", err).Panic("Unable to event.ReportHandler")
 		}
 		r.ListenTo(e)
 	}
 
 	return &Runner{
 		options:       options,
+		dockerOptions: dockerOptions,
 		literalLogger: l,
 		metrics:       mh,
 		reporter:      r,
@@ -201,7 +223,7 @@ func (p *Runner) EnsureCode() (string, error) {
 }
 
 // GetConfig parses and returns the wercker.yml file.
-func (p *Runner) GetConfig() (*Config, string, error) {
+func (p *Runner) GetConfig() (*core.Config, string, error) {
 	// Return a []byte of the yaml we find or create.
 	var werckerYaml []byte
 	var err error
@@ -211,14 +233,14 @@ func (p *Runner) GetConfig() (*Config, string, error) {
 			return nil, "", err
 		}
 	} else {
-		werckerYaml, err = ReadWerckerYaml([]string{p.ProjectDir()}, false)
+		werckerYaml, err = core.ReadWerckerYaml([]string{p.ProjectDir()}, false)
 		if err != nil {
 			return nil, "", err
 		}
 	}
 
 	// Parse that bad boy.
-	rawConfig, err := ConfigFromYaml(werckerYaml)
+	rawConfig, err := core.ConfigFromYaml(werckerYaml)
 	if err != nil {
 		return nil, "", err
 	}
@@ -247,7 +269,7 @@ func (p *Runner) GetConfig() (*Config, string, error) {
 }
 
 // AddServices fetches and links the services to the base box.
-func (p *Runner) AddServices(ctx context.Context, pipeline Pipeline, box *Box) error {
+func (p *Runner) AddServices(ctx context.Context, pipeline core.Pipeline, box core.Box) error {
 	f := p.formatter
 	timer := util.NewTimer()
 	for _, service := range pipeline.Services() {
@@ -322,12 +344,12 @@ func (p *Runner) CopySource() error {
 }
 
 // GetSession attaches to the container and returns a session.
-func (p *Runner) GetSession(runnerContext context.Context, containerID string) (context.Context, *Session, error) {
-	dockerTransport, err := NewDockerTransport(p.options, containerID)
+func (p *Runner) GetSession(runnerContext context.Context, containerID string) (context.Context, *core.Session, error) {
+	dockerTransport, err := dockerlocal.NewDockerTransport(p.options, p.dockerOptions, containerID)
 	if err != nil {
 		return nil, nil, err
 	}
-	sess := NewSession(p.options, dockerTransport)
+	sess := core.NewSession(p.options, dockerTransport)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -340,24 +362,24 @@ func (p *Runner) GetSession(runnerContext context.Context, containerID string) (
 }
 
 // GetPipeline returns a pipeline based on the "build" config section
-func (p *Runner) GetPipeline(rawConfig *Config) (Pipeline, error) {
-	return p.getPipeline(rawConfig, p.options)
+func (p *Runner) GetPipeline(rawConfig *core.Config) (core.Pipeline, error) {
+	return p.getPipeline(rawConfig, p.options, p.dockerOptions)
 }
 
 // RunnerShared holds on to the information we got from setting up our
 // environment.
 type RunnerShared struct {
-	box         *Box
-	pipeline    Pipeline
-	sess        *Session
-	config      *Config
+	box         core.Box
+	pipeline    core.Pipeline
+	sess        *core.Session
+	config      *core.Config
 	sessionCtx  context.Context
 	containerID string
 }
 
 // StartStep emits BuildStepStarted and returns a Finisher for the end event.
-func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *util.Finisher {
-	p.emitter.Emit(BuildStepStarted, &BuildStepStartedArgs{
+func (p *Runner) StartStep(ctx *RunnerShared, step core.Step, order int) *util.Finisher {
+	p.emitter.Emit(core.BuildStepStarted, &core.BuildStepStartedArgs{
 		Box:   ctx.box,
 		Step:  step,
 		Order: order,
@@ -368,7 +390,7 @@ func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *util.Finish
 		if r.Artifact != nil {
 			artifactURL = r.Artifact.URL()
 		}
-		p.emitter.Emit(BuildStepFinished, &BuildStepFinishedArgs{
+		p.emitter.Emit(core.BuildStepFinished, &core.BuildStepFinishedArgs{
 			Box:                 ctx.box,
 			Successful:          r.Success,
 			Message:             r.Message,
@@ -380,28 +402,28 @@ func (p *Runner) StartStep(ctx *RunnerShared, step Step, order int) *util.Finish
 }
 
 // StartBuild emits a BuildStarted and returns for a Finisher for the end.
-func (p *Runner) StartBuild(options *PipelineOptions) *util.Finisher {
-	p.emitter.Emit(BuildStarted, &BuildStartedArgs{Options: options})
+func (p *Runner) StartBuild(options *core.PipelineOptions) *util.Finisher {
+	p.emitter.Emit(core.BuildStarted, &core.BuildStartedArgs{Options: options})
 	return util.NewFinisher(func(result interface{}) {
-		r, ok := result.(*BuildFinishedArgs)
+		r, ok := result.(*core.BuildFinishedArgs)
 		if !ok {
 			return
 		}
 		r.Options = options
-		p.emitter.Emit(BuildFinished, r)
+		p.emitter.Emit(core.BuildFinished, r)
 	})
 }
 
 // StartFullPipeline emits a FullPipelineFinished when the Finisher is called.
-func (p *Runner) StartFullPipeline(options *PipelineOptions) *util.Finisher {
+func (p *Runner) StartFullPipeline(options *core.PipelineOptions) *util.Finisher {
 	return util.NewFinisher(func(result interface{}) {
-		r, ok := result.(*FullPipelineFinishedArgs)
+		r, ok := result.(*core.FullPipelineFinishedArgs)
 		if !ok {
 			return
 		}
 
 		r.Options = options
-		p.emitter.Emit(FullPipelineFinished, r)
+		p.emitter.Emit(core.FullPipelineFinished, r)
 	})
 }
 
@@ -420,19 +442,19 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		ExitCode: 1,
 	}
 
-	setupEnvironmentStep := &ExternalStep{
-		BaseStep: &BaseStep{
-			name:    "setup environment",
-			owner:   "wercker",
-			version: Version(),
-		},
+	setupEnvironmentStep := &core.ExternalStep{
+		BaseStep: core.NewBaseStep(core.BaseStepOptions{
+			Name:    "setup environment",
+			Owner:   "wercker",
+			Version: util.Version(),
+		}),
 	}
 	finisher := p.StartStep(shared, setupEnvironmentStep, 2)
 	defer finisher.Finish(sr)
 
 	if p.options.Verbose {
-		p.emitter.Emit(Logs, &LogsArgs{
-			Logs: fmt.Sprintf("Running wercker version: %s\n", FullVersion()),
+		p.emitter.Emit(core.Logs, &core.LogsArgs{
+			Logs: fmt.Sprintf("Running wercker version: %s\n", util.FullVersion()),
 		})
 	}
 
@@ -457,7 +479,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	shared.pipeline = pipeline
 
 	if p.options.Verbose {
-		p.emitter.Emit(Logs, &LogsArgs{
+		p.emitter.Emit(core.Logs, &core.LogsArgs{
 			Logs: fmt.Sprintf("Using config:\n%s\n", stringConfig),
 		})
 	}
@@ -473,7 +495,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// TODO(termie): dump some logs about the image
 	shared.box = box
 	if p.options.Verbose {
-		p.logger.Printf(f.Success(fmt.Sprintf("Fetched %s", box.Name), timer.String()))
+		p.logger.Printf(f.Success(fmt.Sprintf("Fetched %s", box.GetName()), timer.String()))
 	}
 
 	// Fetch the services and add them to the box
@@ -591,7 +613,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 // StepResult holds the info we need to report on steps
 type StepResult struct {
 	Success             bool
-	Artifact            *Artifact
+	Artifact            *core.Artifact
 	PackageURL          string
 	Message             string
 	ExitCode            int
@@ -599,7 +621,7 @@ type StepResult struct {
 }
 
 // RunStep runs a step and tosses error if it fails
-func (p *Runner) RunStep(shared *RunnerShared, step Step, order int) (*StepResult, error) {
+func (p *Runner) RunStep(shared *RunnerShared, step core.Step, order int) (*StepResult, error) {
 	finisher := p.StartStep(shared, step, order)
 	sr := &StepResult{
 		Success:  false,
@@ -642,7 +664,7 @@ func (p *Runner) RunStep(shared *RunnerShared, step Step, order int) (*StepResul
 	var message bytes.Buffer
 	messageErr := step.CollectFile(shared.containerID, step.ReportPath(), "message.txt", &message)
 	if messageErr != nil {
-		if messageErr != ErrEmptyTarball {
+		if messageErr != util.ErrEmptyTarball {
 			return sr, messageErr
 		}
 	}
@@ -664,7 +686,7 @@ func (p *Runner) RunStep(shared *RunnerShared, step Step, order int) (*StepResul
 		}
 
 		if artifact != nil {
-			artificer := NewArtificer(p.options)
+			artificer := dockerlocal.NewArtificer(p.options, p.dockerOptions)
 			err = artificer.Upload(artifact)
 			if err != nil {
 				return sr, err

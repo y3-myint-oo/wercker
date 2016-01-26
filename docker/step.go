@@ -15,8 +15,11 @@
 package dockerlocal
 
 import (
+	"io"
+	"path/filepath"
 	"strings"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
@@ -46,5 +49,89 @@ func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptio
 			return NewShellStep(config, options, dockerOptions)
 		}
 	}
-	return core.NewStep(config, options)
+	return NewDockerStep(config, options, dockerOptions)
+}
+
+// DockerStep is an external step that knows how to fetch artifacts
+type DockerStep struct {
+	*core.ExternalStep
+	options       *core.PipelineOptions
+	dockerOptions *DockerOptions
+	logger        *util.LogEntry
+}
+
+// NewDockerStep ctor
+func NewDockerStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerStep, error) {
+	base, err := core.NewStep(config, options)
+	if err != nil {
+		return nil, err
+	}
+	logger := util.RootLogger().WithFields(util.LogFields{
+		"Logger": "DockerStep",
+		"SafeID": base.SafeID(),
+	})
+
+	return &DockerStep{
+		ExternalStep:  base,
+		options:       options,
+		dockerOptions: dockerOptions,
+		logger:        logger,
+	}, nil
+}
+
+// CollectFile gets an individual file from the container
+func (s *DockerStep) CollectFile(containerID, path, name string, dst io.Writer) error {
+	client, err := NewDockerClient(s.dockerOptions)
+	if err != nil {
+		return err
+	}
+
+	pipeReader, pipeWriter := io.Pipe()
+	opts := docker.CopyFromContainerOptions{
+		OutputStream: pipeWriter,
+		Container:    containerID,
+		Resource:     filepath.Join(path, name),
+	}
+
+	errs := make(chan error)
+	go func() {
+		defer close(errs)
+		errs <- util.UntarOne(name, dst, pipeReader)
+	}()
+
+	if err = client.CopyFromContainer(opts); err != nil {
+		s.logger.Debug("Probably expected error:", err)
+		return util.ErrEmptyTarball
+	}
+
+	return <-errs
+}
+
+// CollectArtifact copies the artifacts associated with the Step.
+func (s *DockerStep) CollectArtifact(containerID string) (*core.Artifact, error) {
+	artificer := NewArtificer(s.options, s.dockerOptions)
+
+	// Ensure we have the host directory
+
+	artifact := &core.Artifact{
+		ContainerID:   containerID,
+		GuestPath:     s.ReportPath("artifacts"),
+		HostPath:      s.options.HostPath("artifacts", s.SafeID(), "artifacts.tar"),
+		ApplicationID: s.options.ApplicationID,
+		BuildID:       s.options.BuildID,
+		DeployID:      s.options.DeployID,
+		BuildStepID:   s.SafeID(),
+		Bucket:        s.options.S3Bucket,
+		ContentType:   "application/x-tar",
+	}
+
+	fullArtifact, err := artificer.Collect(artifact)
+	if err != nil {
+		if err == util.ErrEmptyTarball {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return fullArtifact, nil
 }

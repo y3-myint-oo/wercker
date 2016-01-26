@@ -1,4 +1,18 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package cmd
 
 import (
 	"bufio"
@@ -18,8 +32,8 @@ import (
 
 // Updater data structure for versions
 type Updater struct {
-	CurrentVersion *Versions
-	ServerVersion  *Versions
+	CurrentVersion *util.Versions
+	ServerVersion  *util.Versions
 	channel        string
 	l              *util.LogEntry
 }
@@ -31,7 +45,7 @@ func NewUpdater(channel string) (*Updater, error) {
 		return nil, err
 	}
 	return &Updater{
-		CurrentVersion: GetVersions(),
+		CurrentVersion: util.GetVersions(),
 		ServerVersion:  serverVersion,
 		channel:        channel,
 		l:              util.RootLogger().WithField("Logger", "Updater"),
@@ -89,12 +103,12 @@ func (u *Updater) Update() error {
 	return os.Rename(temp.Name(), werckerPath)
 }
 
-func getServerVersion(channel string) (*Versions, error) {
+func getServerVersion(channel string) (*util.Versions, error) {
 	logger := util.RootLogger().WithField("Logger", "getServerVersion")
 
 	url := fmt.Sprintf("https://s3.amazonaws.com/downloads.wercker.com/cli/%s/version.json", channel)
 
-	nv := &Versions{}
+	nv := &util.Versions{}
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", url, nil)

@@ -1,13 +1,28 @@
-package sentcli
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package event
 
 import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/wercker/reporter"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
 
 // NewLiteralLogHandler will create a new LiteralLogHandler.
-func NewLiteralLogHandler(options *PipelineOptions) (*LiteralLogHandler, error) {
+func NewLiteralLogHandler(options *core.PipelineOptions) (*LiteralLogHandler, error) {
 	var logger *util.Logger
 
 	if options.Debug {
@@ -24,11 +39,11 @@ func NewLiteralLogHandler(options *PipelineOptions) (*LiteralLogHandler, error) 
 // A LiteralLogHandler logs all events using Logrus.
 type LiteralLogHandler struct {
 	l       *util.Logger
-	options *PipelineOptions
+	options *core.PipelineOptions
 }
 
 // Logs will handle the Logs event.
-func (h *LiteralLogHandler) Logs(args *LogsArgs) {
+func (h *LiteralLogHandler) Logs(args *core.LogsArgs) {
 	if args.Stream == "" {
 		args.Stream = "stdout"
 	}
@@ -47,7 +62,7 @@ func (h *LiteralLogHandler) Logs(args *LogsArgs) {
 	}
 }
 
-func (h *LiteralLogHandler) shouldPrintLog(args *LogsArgs) bool {
+func (h *LiteralLogHandler) shouldPrintLog(args *core.LogsArgs) bool {
 	if args.Hidden {
 		return false
 	}
@@ -61,6 +76,6 @@ func (h *LiteralLogHandler) shouldPrintLog(args *LogsArgs) bool {
 }
 
 // ListenTo will add eventhandlers to e.
-func (h *LiteralLogHandler) ListenTo(e *NormalizedEmitter) {
-	e.AddListener(Logs, h.Logs)
+func (h *LiteralLogHandler) ListenTo(e *core.NormalizedEmitter) {
+	e.AddListener(core.Logs, h.Logs)
 }

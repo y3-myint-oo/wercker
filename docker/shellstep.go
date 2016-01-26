@@ -16,6 +16,7 @@ package dockerlocal
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
@@ -111,15 +112,15 @@ func (s *ShellStep) Execute(ctx context.Context, sess *core.Session) (int, error
 	return 0, nil
 }
 
-// // CollectFile NOP
-// func (s *ShellStep) CollectFile(a, b, c string, dst io.Writer) error {
-//   return nil
-// }
+// CollectFile NOP
+func (s *ShellStep) CollectFile(a, b, c string, dst io.Writer) error {
+	return nil
+}
 
-// // CollectArtifact NOP
-// func (s *ShellStep) CollectArtifact(string) (*Artifact, error) {
-//   return nil, nil
-// }
+// CollectArtifact NOP
+func (s *ShellStep) CollectArtifact(string) (*core.Artifact, error) {
+	return nil, nil
+}
 
 // ReportPath getter
 func (s *ShellStep) ReportPath(...string) string {

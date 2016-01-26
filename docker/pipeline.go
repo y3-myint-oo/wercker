@@ -16,6 +16,7 @@ package dockerlocal
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
@@ -28,7 +29,7 @@ type DockerPipeline struct {
 	dockerOptions *DockerOptions
 }
 
-func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerPipeline, error) {
+func NewDockerPipeline(name string, config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerPipeline, error) {
 	// decide which configs to use for each thing
 	// TODO(termie): this code is not specific to docker and should be made
 	//               into something shared
@@ -55,7 +56,7 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 	stepsConfig := pipelineConfig.Steps
 	afterStepsConfig := pipelineConfig.AfterSteps
 
-	box, err := NewBox(boxConfig, options, dockerOptions)
+	box, err := NewDockerBox(boxConfig, options, dockerOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -115,4 +116,32 @@ func NewDockerPipeline(config *core.Config, options *core.PipelineOptions, docke
 		Logger:     logger,
 	})
 	return &DockerPipeline{BasePipeline: base, options: options, dockerOptions: dockerOptions}, nil
+}
+
+// CollectCache extracts the cache from the container to the cachedir
+func (p *DockerPipeline) CollectCache(containerID string) error {
+	client, err := NewDockerClient(p.dockerOptions)
+	if err != nil {
+		return err
+	}
+	dfc := NewDockerFileCollector(client, containerID)
+
+	archive, errs := dfc.Collect(p.options.GuestPath("cache"))
+
+	select {
+	case err = <-errs:
+	// TODO(termie): I hate this, but docker command either fails right away
+	//               or we don't care about it, needs to be replaced by some
+	//               sort of cancellable context
+	case <-time.After(1 * time.Second):
+		err = <-archive.Multi("cache", p.options.CachePath(), 1024*1024*1000)
+	}
+
+	if err != nil {
+		if err == util.ErrEmptyTarball {
+			return nil
+		}
+		return err
+	}
+	return nil
 }

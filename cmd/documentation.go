@@ -24,6 +24,7 @@ import (
 	"text/template"
 
 	"github.com/codegangsta/cli"
+	"github.com/wercker/sentcli/core"
 )
 
 const docPath = "Documentation/command"
@@ -229,7 +230,7 @@ func createDoc(name string) (*os.File, error) {
 }
 
 // GenerateDocumentation generates docs for each command
-func GenerateDocumentation(options *GlobalOptions, app *cli.App) error {
+func GenerateDocumentation(options *core.GlobalOptions, app *cli.App) error {
 
 	write := func(name string, templ string, data interface{}) error {
 		var w = app.Writer

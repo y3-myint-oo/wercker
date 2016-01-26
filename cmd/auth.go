@@ -12,7 +12,7 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-package api
+package cmd
 
 import (
 	"bytes"
@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/pkg/term"
+	"github.com/wercker/sentcli/api"
 	"github.com/wercker/sentcli/util"
 )
 
@@ -107,7 +108,7 @@ func getAccessToken(username, password, url string) (string, error) {
 
 	req.SetBasicAuth(creds.Username, creds.Password)
 	req.Header.Set("Content-Type", "application/json")
-	AddRequestHeaders(req)
+	api.AddRequestHeaders(req)
 
 	client := &http.Client{}
 

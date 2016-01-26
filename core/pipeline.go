@@ -56,8 +56,8 @@ type Pipeline interface {
 	// Methods
 	CommonEnv() [][]string     // base
 	InitEnv(*util.Environment) // impl
-	// CollectArtifact(string) (*Artifact, error)
-	// CollectCache(string) error
+	CollectArtifact(string) (*Artifact, error)
+	CollectCache(string) error
 	SetupGuest(context.Context, *Session) error
 	ExportEnvironment(context.Context, *Session) error
 	SyncEnvironment(context.Context, *Session) error
@@ -295,31 +295,3 @@ func (p *BasePipeline) SyncEnvironment(sessionCtx context.Context, sess *Session
 
 	return nil
 }
-
-// CollectCache extracts the cache from the container to the cachedir
-// func (p *BasePipeline) CollectCache(containerID string) error {
-//   client, err := NewDockerClient(p.options.DockerOptions)
-//   if err != nil {
-//     return err
-//   }
-//   dfc := NewDockerFileCollector(client, containerID)
-
-//   archive, errs := dfc.Collect(p.options.GuestPath("cache"))
-
-//   select {
-//   case err = <-errs:
-//   // TODO(termie): I hate this, but docker command either fails right away
-//   //               or we don't care about it, needs to be replaced by some
-//   //               sort of cancellable context
-//   case <-time.After(1 * time.Second):
-//     err = <-archive.Multi("cache", p.options.CachePath(), 1024*1024*1000)
-//   }
-
-//   if err != nil {
-//     if err == ErrEmptyTarball {
-//       return nil
-//     }
-//     return err
-//   }
-//   return nil
-// }

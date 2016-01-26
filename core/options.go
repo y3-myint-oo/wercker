@@ -24,8 +24,6 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
-	"reflect"
-	"sort"
 	"strings"
 
 	"github.com/codegangsta/cli"
@@ -656,37 +654,6 @@ func (o *PipelineOptions) ProjectDownloadPath() string {
 // StepPath returns the path where downloaded steps live
 func (o *PipelineOptions) StepPath() string {
 	return path.Join(o.WorkingDir, "_steps")
-}
-
-// dumpOptions prints out a sorted list of options
-func dumpOptions(options interface{}, indent ...string) {
-	indent = append(indent, "  ")
-	s := reflect.ValueOf(options).Elem()
-	typeOfT := s.Type()
-	names := []string{}
-	for i := 0; i < s.NumField(); i++ {
-		// f := s.Field(i)
-		fieldName := typeOfT.Field(i).Name
-		if fieldName != "HostEnv" {
-			names = append(names, fieldName)
-		}
-	}
-	sort.Strings(names)
-	logger := util.RootLogger().WithField("Logger", "Options")
-
-	for _, name := range names {
-		r := reflect.ValueOf(options)
-		f := reflect.Indirect(r).FieldByName(name)
-		if strings.HasSuffix(name, "Options") {
-			if len(indent) > 1 && name == "GlobalOptions" {
-				continue
-			}
-			logger.Debugln(fmt.Sprintf("%s%s %s", strings.Join(indent, ""), name, f.Type()))
-			dumpOptions(f.Interface(), indent...)
-		} else {
-			logger.Debugln(fmt.Sprintf("%s%s %s = %v", strings.Join(indent, ""), name, f.Type(), f.Interface()))
-		}
-	}
 }
 
 // Options per Command
