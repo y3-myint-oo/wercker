@@ -1016,6 +1016,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 			Registry:      s.registry,
 			OutputStream:  w,
 			RawJSONStream: true,
+			Tag:           s.tags[:1][0], //pop first tag off for push
 		}
 
 		err = client.PushImage(pushOpts, auth)
@@ -1023,6 +1024,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
 		}
+		s.tags = s.tags[1:]
 
 		for _, tag := range s.tags {
 			tagOpts := docker.TagImageOptions{
