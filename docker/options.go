@@ -19,7 +19,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/wercker/sentcli/util"
 )
 
@@ -98,12 +97,12 @@ func guessAndUpdateDockerOptions(opts *DockerOptions, e *util.Environment) {
 }
 
 // NewDockerOptions constructor
-func NewDockerOptions(c *cli.Context, e *util.Environment) (*DockerOptions, error) {
-	dockerHost := c.String("docker-host")
-	dockerTLSVerify := c.String("docker-tls-verify")
-	dockerCertPath := c.String("docker-cert-path")
-	dockerDNS := c.StringSlice("docker-dns")
-	dockerLocal := c.Bool("docker-local")
+func NewDockerOptions(c util.Settings, e *util.Environment) (*DockerOptions, error) {
+	dockerHost, _ := c.String("docker-host")
+	dockerTLSVerify, _ := c.String("docker-tls-verify")
+	dockerCertPath, _ := c.String("docker-cert-path")
+	dockerDNS, _ := c.StringSlice("docker-dns")
+	dockerLocal, _ := c.Bool("docker-local")
 
 	speculativeOptions := &DockerOptions{
 		DockerHost:      dockerHost,

@@ -54,12 +54,15 @@ var (
 			_ = godotenv.Load(envfile)
 
 			env := util.NewEnvironment(os.Environ()...)
+
+			settings := util.NewCLISettings(c)
+
 			opts, err := core.NewBuildOptions(c, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(c, env)
+			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -79,13 +82,14 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
+			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
 			opts, err := core.NewDevOptions(c, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(c, env)
+			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -106,13 +110,14 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
+			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
 			opts, err := core.NewCheckConfigOptions(c, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(c, env)
+			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -133,13 +138,14 @@ var (
 			envfile := c.GlobalString("environment")
 			_ = godotenv.Load(envfile)
 
+			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
 			opts, err := core.NewDeployOptions(c, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(c, env)
+			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -178,13 +184,14 @@ var (
 			// envfile := c.GlobalString("environment")
 			// _ = godotenv.Load(envfile)
 
+			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
 			opts, err := core.NewInspectOptions(c, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(c, env)
+			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -240,13 +247,14 @@ var (
 		Flags:       FlagsFor(DockerFlagSet, PullFlagSet),
 		Action: func(c *cli.Context) {
 
+			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
 			opts, err := core.NewPullOptions(c, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(c, env)
+			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
