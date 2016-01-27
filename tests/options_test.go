@@ -91,7 +91,7 @@ func TestOptionsSuite(t *testing.T) {
 func (s *OptionsSuite) TestGlobalOptions() {
 	args := defaultArgs()
 	test := func(c *cli.Context) {
-		opts, err := core.NewGlobalOptions(c, emptyEnv())
+		opts, err := core.NewGlobalOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal(true, opts.Debug)
 		s.Equal("http://example.com/base-url", opts.BaseURL)
@@ -120,7 +120,7 @@ func (s *OptionsSuite) TestGuessAuthToken() {
 	}
 
 	test := func(c *cli.Context) {
-		opts, err := core.NewGlobalOptions(c, emptyEnv())
+		opts, err := core.NewGlobalOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal(token, opts.AuthToken)
 	}
@@ -141,7 +141,7 @@ func (s *OptionsSuite) TestEmptyPipelineOptionsEmptyDir() {
 	// Target the path
 	args := defaultArgs(tmpDir)
 	test := func(c *cli.Context) {
-		opts, err := core.NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal(basename, opts.ApplicationID)
 		s.Equal(basename, opts.ApplicationName)
@@ -163,7 +163,7 @@ func (s *OptionsSuite) TestEmptyPipelineOptionsEmptyDir() {
 func (s *OptionsSuite) TestEmptyBuildOptions() {
 	args := defaultArgs()
 	test := func(c *cli.Context) {
-		opts, err := core.NewBuildOptions(c, emptyEnv())
+		opts, err := core.NewBuildOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.NotEqual("", opts.BuildID)
 		s.Equal(opts.BuildID, opts.PipelineID)
@@ -175,7 +175,7 @@ func (s *OptionsSuite) TestEmptyBuildOptions() {
 func (s *OptionsSuite) TestBuildOptions() {
 	args := defaultArgs("--build-id", "fake-build-id")
 	test := func(c *cli.Context) {
-		opts, err := core.NewBuildOptions(c, emptyEnv())
+		opts, err := core.NewBuildOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal("fake-build-id", opts.PipelineID)
 		s.Equal("fake-build-id", opts.BuildID)
@@ -187,7 +187,7 @@ func (s *OptionsSuite) TestBuildOptions() {
 func (s *OptionsSuite) TestEmptyDeployOptions() {
 	args := defaultArgs()
 	test := func(c *cli.Context) {
-		opts, err := core.NewDeployOptions(c, emptyEnv())
+		opts, err := core.NewDeployOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.NotEqual("", opts.DeployID)
 		s.Equal(opts.DeployID, opts.PipelineID)
@@ -199,7 +199,7 @@ func (s *OptionsSuite) TestEmptyDeployOptions() {
 func (s *OptionsSuite) TestDeployOptions() {
 	args := defaultArgs("--deploy-id", "fake-deploy-id")
 	test := func(c *cli.Context) {
-		opts, err := core.NewDeployOptions(c, emptyEnv())
+		opts, err := core.NewDeployOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal("fake-deploy-id", opts.PipelineID)
 		s.Equal("fake-deploy-id", opts.DeployID)
@@ -216,8 +216,8 @@ func (s *OptionsSuite) TestKeenOptions() {
 	)
 	test := func(c *cli.Context) {
 		e := emptyEnv()
-		gOpts, err := core.NewGlobalOptions(c, e)
-		opts, err := core.NewKeenOptions(c, e, gOpts)
+		gOpts, err := core.NewGlobalOptions(util.NewCLISettings(c), e)
+		opts, err := core.NewKeenOptions(util.NewCLISettings(c), e, gOpts)
 		s.Nil(err)
 		s.Equal(true, opts.ShouldKeenMetrics)
 		s.Equal("test-key", opts.KeenProjectWriteKey)
@@ -229,8 +229,8 @@ func (s *OptionsSuite) TestKeenOptions() {
 func (s *OptionsSuite) TestKeenMissingOptions() {
 	test := func(c *cli.Context) {
 		e := emptyEnv()
-		gOpts, err := core.NewGlobalOptions(c, e)
-		_, err = core.NewKeenOptions(c, e, gOpts)
+		gOpts, err := core.NewGlobalOptions(util.NewCLISettings(c), e)
+		_, err = core.NewKeenOptions(util.NewCLISettings(c), e, gOpts)
 		s.NotNil(err)
 	}
 
@@ -256,8 +256,8 @@ func (s *OptionsSuite) TestReporterOptions() {
 	)
 	test := func(c *cli.Context) {
 		e := emptyEnv()
-		gOpts, err := core.NewGlobalOptions(c, e)
-		opts, err := core.NewReporterOptions(c, e, gOpts)
+		gOpts, err := core.NewGlobalOptions(util.NewCLISettings(c), e)
+		opts, err := core.NewReporterOptions(util.NewCLISettings(c), e, gOpts)
 		s.Nil(err)
 		s.Equal(true, opts.ShouldReport)
 		s.Equal("http://example.com/wercker-host", opts.ReporterHost)
@@ -269,8 +269,8 @@ func (s *OptionsSuite) TestReporterOptions() {
 func (s *OptionsSuite) TestReporterMissingOptions() {
 	test := func(c *cli.Context) {
 		e := emptyEnv()
-		gOpts, err := core.NewGlobalOptions(c, e)
-		_, err = core.NewReporterOptions(c, e, gOpts)
+		gOpts, err := core.NewGlobalOptions(util.NewCLISettings(c), e)
+		_, err = core.NewReporterOptions(util.NewCLISettings(c), e, gOpts)
 		s.NotNil(err)
 	}
 
@@ -291,7 +291,7 @@ func (s *OptionsSuite) TestReporterMissingOptions() {
 func (s *OptionsSuite) TestTagEscaping() {
 	args := defaultArgs("--tag", "feature/foo")
 	test := func(c *cli.Context) {
-		opts, err := core.NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal("feature_foo", opts.Tag)
 	}
@@ -306,7 +306,7 @@ func (s *OptionsSuite) TestWorkingDir() {
 	args := defaultArgs("--working-dir", tempDir)
 
 	test := func(c *cli.Context) {
-		opts, err := core.NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal(tempDir, opts.WorkingDir)
 	}
@@ -320,7 +320,7 @@ func (s *OptionsSuite) TestWorkingDirCWD() {
 	s.Nil(err)
 
 	test := func(c *cli.Context) {
-		opts, err := core.NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal(cwd, opts.WorkingDir)
 	}
@@ -337,7 +337,7 @@ func (s *OptionsSuite) TestWorkingDirGetsSet() {
 	args := defaultArgs("--build-dir", filepath.Join(tempDir, "_build"))
 
 	test := func(c *cli.Context) {
-		opts, err := core.NewPipelineOptions(c, emptyEnv())
+		opts, err := core.NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		s.Equal(tempDir, opts.WorkingDir)
 	}

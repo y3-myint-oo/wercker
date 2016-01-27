@@ -36,7 +36,7 @@ func TestArtifactSuite(t *testing.T) {
 func (s *ArtifactSuite) TestDockerFileCollectorSingle() {
 	client := DockerOrSkip(s.T())
 
-	container, err := tempBusybox(client)
+	container, err := TempBusybox(client)
 	s.Nil(err)
 	defer container.Remove()
 
@@ -59,7 +59,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorSingle() {
 func (s *ArtifactSuite) TestDockerFileCollectorSingleNotFound() {
 	client := DockerOrSkip(s.T())
 
-	container, err := tempBusybox(client)
+	container, err := TempBusybox(client)
 	s.Nil(err)
 	defer container.Remove()
 
@@ -72,7 +72,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorSingleNotFound() {
 	case <-archive.SingleBytes("file", &b):
 		s.T().FailNow()
 	case err := <-errs:
-		s.Equal(err, ErrEmptyTarball)
+		s.Equal(err, util.ErrEmptyTarball)
 	}
 
 	// Or from archive
@@ -80,7 +80,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorSingleNotFound() {
 	var b2 bytes.Buffer
 	select {
 	case err := <-archive.SingleBytes("notfound", &b2):
-		s.Equal(err, ErrEmptyTarball)
+		s.Equal(err, util.ErrEmptyTarball)
 	case <-errs:
 		s.T().FailNow()
 	}
@@ -89,7 +89,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorSingleNotFound() {
 func (s *ArtifactSuite) TestDockerFileCollectorMulti() {
 	client := DockerOrSkip(s.T())
 
-	container, err := tempBusybox(client)
+	container, err := TempBusybox(client)
 	s.Nil(err)
 	defer container.Remove()
 
@@ -112,7 +112,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorMulti() {
 func (s *ArtifactSuite) TestDockerFileCollectorMultiEmptyTarball() {
 	client := DockerOrSkip(s.T())
 
-	container, err := tempBusybox(client)
+	container, err := TempBusybox(client)
 	s.Nil(err)
 	defer container.Remove()
 
@@ -126,7 +126,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorMultiEmptyTarball() {
 
 	select {
 	case err := <-archive.Multi("tmp", tmp, 1024*1024*1000):
-		s.Equal(err, ErrEmptyTarball)
+		s.Equal(err, util.ErrEmptyTarball)
 	case <-errs:
 		s.FailNow()
 	}
@@ -135,7 +135,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorMultiEmptyTarball() {
 func (s *ArtifactSuite) TestDockerFileCollectorMultiNotFound() {
 	client := DockerOrSkip(s.T())
 
-	container, err := tempBusybox(client)
+	container, err := TempBusybox(client)
 	s.Nil(err)
 	defer container.Remove()
 
@@ -151,6 +151,6 @@ func (s *ArtifactSuite) TestDockerFileCollectorMultiNotFound() {
 	case <-archive.Multi("default", tmp, 1024*1024*1000):
 		s.FailNow()
 	case err := <-errs:
-		s.Equal(err, ErrEmptyTarball)
+		s.Equal(err, util.ErrEmptyTarball)
 	}
 }

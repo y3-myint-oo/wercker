@@ -39,7 +39,7 @@ func defaultPipelineOptions(s *util.TestSuite, more ...string) *PipelineOptions 
 	var options *PipelineOptions
 
 	action := func(c *cli.Context) {
-		opts, err := NewPipelineOptions(c, emptyEnv())
+		opts, err := NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
 		options = opts
 	}

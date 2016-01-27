@@ -19,10 +19,11 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
 
-func boxByID(s string) (*Box, error) {
+func boxByID(s string) (core.Box, error) {
 	return NewBox(&BoxConfig{ID: s}, emptyPipelineOptions(), &BoxOptions{})
 }
 
@@ -41,11 +42,11 @@ func (s *BoxSuite) TestName() {
 
 	noTag, err := boxByID("wercker/base")
 	s.Nil(err)
-	s.Equal("wercker/base:latest", noTag.Name)
+	s.Equal("wercker/base:latest", noTag.GetName())
 
 	withTag, err := boxByID("wercker/base:foo")
 	s.Nil(err)
-	s.Equal("wercker/base:foo", withTag.Name)
+	s.Equal("wercker/base:foo", withTag.GetName())
 }
 
 func (s *BoxSuite) TestPortBindings() {
