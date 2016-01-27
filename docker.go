@@ -984,6 +984,10 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		Volumes:      s.volumes,
 	}
 
+	if len(s.tags) == 0 {
+		s.tags = []string{"latest"}
+	}
+
 	commitOpts := docker.CommitContainerOptions{
 		Container:  containerID,
 		Repository: s.repository,
@@ -991,6 +995,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		Message:    s.message,
 		Run:        &config,
 	}
+
 	s.logger.Debugln("Commit container:", containerID)
 	i, err := client.CommitContainer(commitOpts)
 	if err != nil {
@@ -1006,22 +1011,26 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		go EmitStatus(e, r, s.options)
 		defer w.Close()
 
-		if len(s.tags) == 0 {
-			s.tags = []string{"latest"}
+		pushOpts := docker.PushImageOptions{
+			Name:          s.repository,
+			Registry:      s.registry,
+			OutputStream:  w,
+			RawJSONStream: true,
+		}
+
+		err = client.PushImage(pushOpts, auth)
+		if err != nil {
+			s.logger.Errorln("Failed to push:", err)
+			return 1, err
 		}
 
 		for _, tag := range s.tags {
-			pushOpts := docker.PushImageOptions{
-				Name:          s.repository,
-				Tag:           tag,
-				Registry:      s.registry,
-				OutputStream:  w,
-				RawJSONStream: true,
+			tagOpts := docker.TagImageOptions{
+				Repo: s.repository,
+				Tag:  tag,
 			}
-
+			err = client.TagImage(s.repository, tagOpts)
 			s.logger.Println("Pushing image for tag ", tag)
-
-			err = client.PushImage(pushOpts, auth)
 			if err != nil {
 				s.logger.Errorln("Failed to push:", err)
 				return 1, err
