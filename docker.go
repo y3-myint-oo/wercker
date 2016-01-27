@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -756,6 +757,7 @@ type DockerPushStep struct {
 	cmd        []string
 	entrypoint []string
 	logger     *LogEntry
+	forceTags  bool
 	workingDir string
 }
 
@@ -911,6 +913,13 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	if user, ok := s.data["user"]; ok {
 		s.user = env.Interpolate(user)
 	}
+
+	if forceTags, ok := s.data["force-tags"]; ok {
+		ft, err := strconv.ParseBool(forceTags)
+		if err == nil {
+			s.forceTags = ft
+		}
+	}
 }
 
 // Fetch NOP
@@ -994,7 +1003,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		Author:     s.author,
 		Message:    s.message,
 		Run:        &config,
-		Tag:        s.tags[:1][0],
+		Tag:        s.options.PipelineID,
 	}
 
 	s.logger.Debugln("Commit container:", containerID)
@@ -1011,33 +1020,30 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		// emitStatusses in a different go routine
 		go EmitStatus(e, r, s.options)
 		defer w.Close()
-
+		for _, tag := range s.tags {
+			tagOpts := docker.TagImageOptions{
+				Repo:  s.repository,
+				Tag:   tag,
+				Force: s.forceTags,
+			}
+			err = client.TagImage(i.ID, tagOpts)
+			s.logger.Println("Pushing image for tag ", tag)
+			if err != nil {
+				s.logger.Errorln("Failed to push:", err)
+				return 1, err
+			}
+		}
 		pushOpts := docker.PushImageOptions{
 			Name:          s.repository,
 			Registry:      s.registry,
 			OutputStream:  w,
 			RawJSONStream: true,
-			Tag:           s.tags[:1][0], //pop first tag off for push
 		}
 
 		err = client.PushImage(pushOpts, auth)
 		if err != nil {
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
-		}
-		s.tags = s.tags[1:]
-
-		for _, tag := range s.tags {
-			tagOpts := docker.TagImageOptions{
-				Repo: s.repository,
-				Tag:  tag,
-			}
-			err = client.TagImage(s.repository, tagOpts)
-			s.logger.Println("Pushing image for tag ", tag)
-			if err != nil {
-				s.logger.Errorln("Failed to push:", err)
-				return 1, err
-			}
 		}
 	}
 	s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
