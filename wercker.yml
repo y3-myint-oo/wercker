@@ -44,7 +44,11 @@ build:
         name: go vet
         code: |
             go get golang.org/x/tools/cmd/vet
-            go vet *.go
+            # Once we move to go 1.6 we can probably change this to go vet github.com/wercker/wercker
+            for p in $(find -type d -not -path './vendor*' -not -path './.git*' -not -path './tests*' -not -path './Documentation*'); do
+              echo "go vet for $p"
+              go vet $(find "$p" -maxdepth 1 -name '*.go')
+            done
 
     - golint:
         exclude: vendor
