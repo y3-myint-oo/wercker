@@ -994,6 +994,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		Author:     s.author,
 		Message:    s.message,
 		Run:        &config,
+		Tag:        s.tags[:1][0],
 	}
 
 	s.logger.Debugln("Commit container:", containerID)
