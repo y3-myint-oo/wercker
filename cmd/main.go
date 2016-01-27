@@ -56,8 +56,7 @@ var (
 			env := util.NewEnvironment(os.Environ()...)
 
 			settings := util.NewCLISettings(c)
-
-			opts, err := core.NewBuildOptions(c, env)
+			opts, err := core.NewBuildOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -84,7 +83,7 @@ var (
 
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
-			opts, err := core.NewDevOptions(c, env)
+			opts, err := core.NewDevOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -112,7 +111,7 @@ var (
 
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
-			opts, err := core.NewCheckConfigOptions(c, env)
+			opts, err := core.NewCheckConfigOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -140,7 +139,7 @@ var (
 
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
-			opts, err := core.NewDeployOptions(c, env)
+			opts, err := core.NewDeployOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -164,7 +163,9 @@ var (
 		Usage:     "detect the type of project",
 		Flags:     []cli.Flag{},
 		Action: func(c *cli.Context) {
-			opts, err := core.NewDetectOptions(c, util.NewEnvironment(os.Environ()...))
+			settings := util.NewCLISettings(c)
+			env := util.NewEnvironment(os.Environ()...)
+			opts, err := core.NewDetectOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -186,7 +187,7 @@ var (
 
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
-			opts, err := core.NewInspectOptions(c, env)
+			opts, err := core.NewInspectOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -210,7 +211,9 @@ var (
 		Usage:     "log into wercker",
 		Flags:     []cli.Flag{},
 		Action: func(c *cli.Context) {
-			opts, err := core.NewLoginOptions(c, util.NewEnvironment(os.Environ()...))
+			settings := util.NewCLISettings(c)
+			env := util.NewEnvironment(os.Environ()...)
+			opts, err := core.NewLoginOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -227,7 +230,10 @@ var (
 		Usage: "logout from wercker",
 		Flags: []cli.Flag{},
 		Action: func(c *cli.Context) {
-			opts, err := core.NewLogoutOptions(c, util.NewEnvironment(os.Environ()...))
+
+			settings := util.NewCLISettings(c)
+			env := util.NewEnvironment(os.Environ()...)
+			opts, err := core.NewLogoutOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -246,10 +252,14 @@ var (
 		Description: "download a Docker repository, and load it into Docker",
 		Flags:       FlagsFor(DockerFlagSet, PullFlagSet),
 		Action: func(c *cli.Context) {
+			if len(c.Args()) != 1 {
+				cliLogger.Errorln("Pull requires the application ID or the build ID as the only argument")
+				os.Exit(1)
+			}
 
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
-			opts, err := core.NewPullOptions(c, env)
+			opts, err := core.NewPullOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -285,7 +295,9 @@ var (
 			},
 		},
 		Action: func(c *cli.Context) {
-			opts, err := core.NewVersionOptions(c, util.NewEnvironment(os.Environ()...))
+			settings := util.NewCLISettings(c)
+			env := util.NewEnvironment(os.Environ()...)
+			opts, err := core.NewVersionOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -302,7 +314,9 @@ var (
 			Name:  "doc",
 			Usage: "Generate usage documentation",
 			Action: func(c *cli.Context) {
-				opts, err := core.NewGlobalOptions(c, util.NewEnvironment(os.Environ()...))
+				settings := util.NewCLISettings(c)
+				env := util.NewEnvironment(os.Environ()...)
+				opts, err := core.NewGlobalOptions(settings, env)
 				if err != nil {
 					cliLogger.Errorln("Invalid options\n", err)
 					os.Exit(1)

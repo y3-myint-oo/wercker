@@ -75,7 +75,8 @@ func (b *DockerBuilder) getOptions(env *util.Environment, config *core.BoxConfig
 		return nil, err
 	}
 	ctx := cli.NewContext(nil, set, set)
-	newOptions, err := core.NewBuildOptions(ctx, env)
+	settings := util.NewCLISettings(ctx)
+	newOptions, err := core.NewBuildOptions(settings, env)
 	if err != nil {
 		return nil, err
 	}
