@@ -32,9 +32,7 @@ import:
   - package: github.com/chuckpreslar/emission
     ref:     586ef24
     vcs:     git
-  - package: github.com/wercker/reporter
-    repo:    git@github.com:wercker/reporter
-    vcs:     git
+  - package: github.com/wercker/reporter-client
   - package: github.com/inconshreveable/go-keen
     ref:     3b8ced9
     vcs:     git

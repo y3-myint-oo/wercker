@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/wercker/reporter"
+	"github.com/wercker/reporter-client"
 )
 
 // Logger is a wrapper for logrus so that we don't have to keep referring

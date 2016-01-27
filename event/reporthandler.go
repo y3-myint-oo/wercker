@@ -17,7 +17,7 @@ package event
 import (
 	"fmt"
 
-	"github.com/wercker/reporter"
+	"github.com/wercker/reporter-client"
 	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )

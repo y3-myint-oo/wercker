@@ -1,5 +1,5 @@
-hash: f08667c8171a3f86e8e421e6cf54fd8aae11f2974b1d64750fdba6413afc740d
-updated: 2016-01-27T12:38:08.444951482+01:00
+hash: 6590d6ac8d8d4182b1cbff91272c23ecc491b315869968ee0fba5a90718a6f4c
+updated: 2016-01-27T14:25:07.267351999+01:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: ""
@@ -497,10 +497,8 @@ imports:
   version: 604eaf189ee867d8c147fafc28def2394e878d25
 - name: github.com/wercker/journalhook
   version: 1572873fdb03095c0f4d726eb9435f0b564a7e9c
-- name: github.com/wercker/reporter
-  version: 97ac0e9e88f0eb3bcb5ed39ce51e0b050a939457
-  repo: git@github.com:wercker/reporter
-  vcs: git
+- name: github.com/wercker/reporter-client
+  version: 760b79b83f788a357ea83825bb89aa8319c05f85
 - name: github.com/xiang90/probing
   version: 6a0cc1ae81b4cc11db5e491e030e4b98fba79c19
 - name: github.com/xordataexchange/crypt

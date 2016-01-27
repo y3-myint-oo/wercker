@@ -16,7 +16,7 @@ package event
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/wercker/reporter"
+	"github.com/wercker/reporter-client"
 	"github.com/wercker/sentcli/core"
 	"github.com/wercker/sentcli/util"
 )
