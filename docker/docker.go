@@ -432,9 +432,9 @@ func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.Pipelin
 
 	dockerPushStep := &DockerPushStep{
 		BaseStep:      baseStep,
-		options:       options,
-		dockerOptions: dockerOptions,
 		data:          stepConfig.Data,
+		dockerOptions: dockerOptions,
+		options:       options,
 		logger:        util.RootLogger().WithField("Logger", "DockerScratchPushStep"),
 	}
 
@@ -643,11 +643,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	}
 	imageFile.Close()
 
-	// --exhale--
-
-	// Okay, we have the tarball, we now need to do the whole load and push part.
-	// For the moment this is copy-pasta from DockerPushStep
-	// TODO(termie): could probably re-use the tansport's client
 	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
@@ -692,37 +687,8 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	if err != nil {
 		return -1, err
 	}
-
-	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
-	r, w := io.Pipe()
 	e, err := core.EmitterFromContext(ctx)
-	if err != nil {
-		return -1, err
-	}
-
-	// emitStatusses in a different go routine
-	go EmitStatus(e, r, s.options)
-	defer w.Close()
-
-	for _, tag := range s.tags {
-		pushOpts := docker.PushImageOptions{
-			Name:          s.repository,
-			Tag:           tag,
-			Registry:      s.registry,
-			OutputStream:  w,
-			RawJSONStream: true,
-		}
-
-		s.logger.Println("Pushing image for tag ", tag)
-
-		err = client.PushImage(pushOpts, auth)
-		if err != nil {
-			s.logger.Errorln("Failed to push:", err)
-			return 1, err
-		}
-	}
-	s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
-	return 0, nil
+	return s.tagAndPush(layerID, e, client, auth)
 }
 
 // CollectArtifact is copied from the build, we use this to get the layer
@@ -1049,6 +1015,10 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	}
 	s.logger.WithField("Image", i).Debug("Commit completed")
 
+	return s.tagAndPush(i.ID, e, client, auth)
+}
+
+func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, client *DockerClient, auth docker.AuthConfiguration) (int, error) {
 	if !s.dockerOptions.DockerLocal {
 		// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 		r, w := io.Pipe()
@@ -1062,7 +1032,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 				Tag:   tag,
 				Force: s.forceTags,
 			}
-			err = client.TagImage(i.ID, tagOpts)
+			err := client.TagImage(imageID, tagOpts)
 			s.logger.Println("Pushing image for tag ", tag)
 			if err != nil {
 				s.logger.Errorln("Failed to push:", err)
@@ -1076,7 +1046,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 			RawJSONStream: true,
 		}
 
-		err = client.PushImage(pushOpts, auth)
+		err := client.PushImage(pushOpts, auth)
 		if err != nil {
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
