@@ -1,26 +1,60 @@
-# wercker
-==============================
+# wercker - your new favorite dev tool
 
-`wercker` is a CLI designed to increase developer velocity by enabling users to run their tests and build projects locally by leveraging the power of Docker containers.
+This is the project for `wercker`, the command-line tool that powers the
+all the build and deploy jobs for [wercker.com](http://wercker.com), it
+runs on your local machine with the help of Docker.
 
-Note: The `master` branch may be in a broken or unstable state during development. Therefore, it is recommended that you download `wercker` through [the CLI section](http://wercker.com/cli/)
-on our website, if you're not contributing to the code base.
+Wercker is designed to increase developer velocity by enabling users to run
+and automate their tests and builds, leveraging Docker containers to
+provide development environments for multi-service architectures.
+
+Note: While the Wercker team has extensive experience with open source, this
+project has been internal for some time and may have some rough edges. We'll
+be actively prettying up the codebase and the project, but we wanted to
+release it to you as early as possible.
+
+The master branch may be in a broken or unstable state during development.
+It is recommended that you download `wercker` through
+[the CLI section](http://wercker.com/cli/) on our website, if you're not
+contributing to the code base.
 
 ## Building wercker
 
-`wercker` is built using Go version 1.5 or greater. If you don't have it already, you can get it from the [official download page](https://golang.org/dl/). Once you go installed, set up your go environment by [using this guide](https://golang.org/doc/code.html#Organization)
+`wercker` is built using Go version 1.5 or greater. If you don't have it
+already, you can get it from the
+[official download page](https://golang.org/dl/). Once you go installed, set
+up your go environment by
+[using this guide](https://golang.org/doc/code.html#Organization)
 
-Next, you'll need `glide` to install `wercker`'s dependencies. You can do this by running `go get github.com/Masterminds/glide`
+Next, you'll need `glide` to install the golang dependencies. You can do this
+by running:
+```
+  go get github.com/Masterminds/glide
+```
 
-Set `GO15VENDOREXPERIMENT=1` in your shell (see [Go 1.5 Vendor Experiment](https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo/edit))
+In Go 1.5 you'll need the vendor experiment enabled, so make sure to export
+`GO15VENDOREXPERIMENT=1` in your shell (see [Go 1.5 Vendor Experiment](https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo/edit))
 
-Run `go get github.com/wercker/wercker` in order to fetch repository.
+In your git checkout ($GOPATH/src/github.com/wercker/wercker), run:
+```
+   glide install --quick
+```
 
-Next, run `glide install --quick`. This command should download the appropiate dependencies wercker needs.
+This command should download the appropiate dependencies.
 
-Once all that is setup, you should be able to run `go build` and get a working executable called `wercker`.
+Once all that is setup, you should be able to run `go build` and get a working
+executable named `wercker`.
 
-Note: this is the bare minimum to build and contribute to the code base. It is also reccomended you install docker locally in order to be able to run `wercker` properly. You can follow [this guide](https://docs.docker.com/engine/installation/) to install it on your machine.
+Once you've got a working Docker environment, running
+```
+  ./wercker build
+```
+
+should go through the entire build and testing process.
+
+Note: this is the bare minimum to build and contribute to the code base. If you
+do not have a local Docker environment you will not be able to run and test
+`wercker` properly. You can follow [this guide](https://docs.docker.com/engine/installation/) to install Docker on your machine.
 
 ## Reporting Bugs
 
