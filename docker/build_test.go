@@ -12,15 +12,24 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-package main
+package dockerlocal
 
 import (
-	"os"
+	"testing"
 
-	"github.com/wercker/sentcli/cmd"
+	"github.com/wercker/sentcli/util"
 )
 
-func main() {
-	app := cmd.GetApp()
-	app.Run(os.Args)
+func TestBuildEnvironment(t *testing.T) {
+	env := util.NewEnvironment("X_FOO=bar", "BAZ=fizz")
+	passthru := env.GetPassthru().Ordered()
+	if len(passthru) != 1 {
+		t.Fatal("Expected only one variable in passthru")
+	}
+	if passthru[0][0] != "FOO" {
+		t.Fatal("Expected to find key 'FOO'")
+	}
+	if passthru[0][1] != "bar" {
+		t.Fatal("Expected to find value 'bar'")
+	}
 }

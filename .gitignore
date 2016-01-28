@@ -1,8 +1,7 @@
 _builds
 _projects
 _steps
-_vendor
 _cache
-sentcli
 vendor
+sentcli
 .DS_STORE

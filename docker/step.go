@@ -1,0 +1,137 @@
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package dockerlocal
+
+import (
+	"io"
+	"path/filepath"
+	"strings"
+
+	"github.com/fsouza/go-dockerclient"
+	"github.com/wercker/sentcli/core"
+	"github.com/wercker/sentcli/util"
+)
+
+func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (core.Step, error) {
+	// NOTE(termie) Special case steps are special
+	if config.ID == "internal/docker-push" {
+		return NewDockerPushStep(config, options, dockerOptions)
+	}
+	if config.ID == "internal/docker-scratch-push" {
+		return NewDockerScratchPushStep(config, options, dockerOptions)
+	}
+	if config.ID == "internal/store-container" {
+		return NewStoreContainerStep(config, options, dockerOptions)
+	}
+	if strings.HasPrefix(config.ID, "internal/") {
+		if !options.EnableDevSteps {
+			util.RootLogger().Warnln("Ignoring dev step:", config.ID)
+			return nil, nil
+		}
+	}
+	if options.EnableDevSteps {
+		if config.ID == "internal/watch" {
+			return NewWatchStep(config, options, dockerOptions)
+		}
+		if config.ID == "internal/shell" {
+			return NewShellStep(config, options, dockerOptions)
+		}
+	}
+	return NewDockerStep(config, options, dockerOptions)
+}
+
+// DockerStep is an external step that knows how to fetch artifacts
+type DockerStep struct {
+	*core.ExternalStep
+	options       *core.PipelineOptions
+	dockerOptions *DockerOptions
+	logger        *util.LogEntry
+}
+
+// NewDockerStep ctor
+func NewDockerStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerStep, error) {
+	base, err := core.NewStep(config, options)
+	if err != nil {
+		return nil, err
+	}
+	logger := util.RootLogger().WithFields(util.LogFields{
+		"Logger": "DockerStep",
+		"SafeID": base.SafeID(),
+	})
+
+	return &DockerStep{
+		ExternalStep:  base,
+		options:       options,
+		dockerOptions: dockerOptions,
+		logger:        logger,
+	}, nil
+}
+
+// CollectFile gets an individual file from the container
+func (s *DockerStep) CollectFile(containerID, path, name string, dst io.Writer) error {
+	client, err := NewDockerClient(s.dockerOptions)
+	if err != nil {
+		return err
+	}
+
+	pipeReader, pipeWriter := io.Pipe()
+	opts := docker.CopyFromContainerOptions{
+		OutputStream: pipeWriter,
+		Container:    containerID,
+		Resource:     filepath.Join(path, name),
+	}
+
+	errs := make(chan error)
+	go func() {
+		defer close(errs)
+		errs <- util.UntarOne(name, dst, pipeReader)
+	}()
+
+	if err = client.CopyFromContainer(opts); err != nil {
+		s.logger.Debug("Probably expected error:", err)
+		return util.ErrEmptyTarball
+	}
+
+	return <-errs
+}
+
+// CollectArtifact copies the artifacts associated with the Step.
+func (s *DockerStep) CollectArtifact(containerID string) (*core.Artifact, error) {
+	artificer := NewArtificer(s.options, s.dockerOptions)
+
+	// Ensure we have the host directory
+
+	artifact := &core.Artifact{
+		ContainerID:   containerID,
+		GuestPath:     s.ReportPath("artifacts"),
+		HostPath:      s.options.HostPath("artifacts", s.SafeID(), "artifacts.tar"),
+		ApplicationID: s.options.ApplicationID,
+		BuildID:       s.options.BuildID,
+		DeployID:      s.options.DeployID,
+		BuildStepID:   s.SafeID(),
+		Bucket:        s.options.S3Bucket,
+		ContentType:   "application/x-tar",
+	}
+
+	fullArtifact, err := artificer.Collect(artifact)
+	if err != nil {
+		if err == util.ErrEmptyTarball {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return fullArtifact, nil
+}

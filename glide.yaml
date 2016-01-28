@@ -6,7 +6,7 @@ import:
     ref:     844911c
     vcs:     git
   - package: github.com/codegangsta/cli
-    repo:    git@github.com:wercker/codegangsta-cli
+    repo:    https://github.com/wercker/codegangsta-cli
     ref:     863dc328534d8e22f36386bce3da48dc572a8ddf
     vcs:     git
   - package: github.com/docker/docker/pkg/term
@@ -26,15 +26,13 @@ import:
     ref:     bcacb06
     vcs:     git
   - package: gopkg.in/yaml.v2
-    repo:    git@github.com:wercker/yaml
+    repo:    https://github.com/wercker/yaml
     ref:     fix_bool
     vcs:     git
   - package: github.com/chuckpreslar/emission
     ref:     586ef24
     vcs:     git
-  - package: github.com/wercker/reporter
-    repo:    git@github.com:wercker/reporter
-    vcs:     git
+  - package: github.com/wercker/reporter-client
   - package: github.com/inconshreveable/go-keen
     ref:     3b8ced9
     vcs:     git
@@ -51,7 +49,7 @@ import:
   - package: github.com/CenturyLinkLabs/docker-reg-client
     ref:     0bb0ba20bf1a05629226c2da0fdf7a37b9f661ba
     vcs:     git
-  - package: github.com/flynn/go-shlex
+  - package: github.com/google/shlex
   - package: gopkg.in/fsnotify.v1
   - package: github.com/cheggaaa/pb
   - package: github.com/aws/aws-sdk-go

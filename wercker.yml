@@ -19,10 +19,6 @@ build:
     - install-packages:
         packages: openssh-client pkg-config libsystemd-journal-dev
 
-    - add-ssh-key:
-        keyname: REPORTER_KEY
-        host: github.com
-
     - add-to-known_hosts:
         hostname: github.com
         fingerprint: "16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48"
@@ -30,13 +26,13 @@ build:
     - setup-go-workspace:
         package-dir: github.com/wercker/sentcli
 
-    # - glide-install
     - script:
         name: glide install
         code: |
           export GO15VENDOREXPERIMENT=1
-          curl -LO https://github.com/Masterminds/glide/releases/download/0.8.3/glide-0.8.3-linux-amd64.tar.gz
-          tar -xvzf glide-0.8.3-linux-amd64.tar.gz
+          export GLIDE_VERSION=0.8.3
+          curl -LO https://github.com/Masterminds/glide/releases/download/${GLIDE_VERSION}/glide-${GLIDE_VERSION}-linux-amd64.tar.gz
+          tar -xvzf glide-${GLIDE_VERSION}-linux-amd64.tar.gz
           cp linux-amd64/glide ./
           ./glide install --quick
 
@@ -44,10 +40,14 @@ build:
         name: go vet
         code: |
             go get golang.org/x/tools/cmd/vet
-            go vet *.go
+            # Once we move to go 1.6 we can probably change this to go vet github.com/wercker/wercker
+            for p in $(find -type d -not -path './vendor*' -not -path './.git*' -not -path './tests*' -not -path './Documentation*'); do
+              echo "go vet for $p"
+              go vet $(find "$p" -maxdepth 1 -name '*.go')
+            done
 
-    - golint:
-        exclude: vendor
+    # - golint:
+    #     exclude: vendor
 
     - script:
         name: go test
@@ -65,15 +65,13 @@ build:
               -ldflags="-X main.GitCommit $WERCKER_GIT_COMMIT -X main.PatchVersion $(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X main.Compiled $(date +%s)" \
               -os="linux darwin" \
               -arch="amd64 386" \
-              -output "$WERCKER_OUTPUT_DIR/pkg/{{.OS}}_{{.Arch}}/sentcli"
+              -output "$WERCKER_OUTPUT_DIR/latest/{{.OS}}_{{.Arch}}/sentcli"
 
     - script:
         name: prepare
         code: |
             echo $WERCKER_GIT_COMMIT > $WERCKER_OUTPUT_DIR/HEAD
-            mv $WERCKER_OUTPUT_DIR/pkg $WERCKER_OUTPUT_DIR/latest
             cp -r $WERCKER_OUTPUT_DIR/latest $WERCKER_OUTPUT_DIR/$WERCKER_GIT_COMMIT
-            cp -r install_script $WERCKER_OUTPUT_DIR/install_script
 
 deploy:
   box: ubuntu:12.04
@@ -138,12 +136,5 @@ deploy:
         source-dir: "./latest"
         delete-removed: false
         bucket-url: $DOWNLOADS_BUCKET_URL/versions/$WERCKER_VERSION/
-        key-id: $AWS_ACCESS_KEY_ID
-        key-secret: $AWS_SECRET_ACCESS_KEY
-
-  installsh:
-    - s3sync:
-        source-dir: "install_script/"
-        bucket-url: $INSTALLSH_BUCKET_URL
         key-id: $AWS_ACCESS_KEY_ID
         key-secret: $AWS_SECRET_ACCESS_KEY

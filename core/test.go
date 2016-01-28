@@ -12,15 +12,20 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-package main
+package core
 
-import (
-	"os"
+import "github.com/wercker/sentcli/util"
 
-	"github.com/wercker/sentcli/cmd"
-)
+// var (
+//   globalFlags   = flagsFor(GlobalFlags)
+//   pipelineFlags = flagsFor(PipelineFlags, WerckerInternalFlags)
+//   emptyFlags    = []cli.Flag{}
+// )
 
-func main() {
-	app := cmd.GetApp()
-	app.Run(os.Args)
+func EmptyEnv() *util.Environment {
+	return util.NewEnvironment()
+}
+
+func EmptyPipelineOptions() *PipelineOptions {
+	return &PipelineOptions{GlobalOptions: &GlobalOptions{}}
 }

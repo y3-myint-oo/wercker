@@ -1,0 +1,72 @@
+//   Copyright 2016 Wercker Holding BV
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+package dockerlocal
+
+import (
+	"encoding/hex"
+	"testing"
+
+	"github.com/stretchr/testify/suite"
+	"github.com/wercker/sentcli/util"
+)
+
+type DockerSuite struct {
+	*util.TestSuite
+}
+
+func TestDockerSuite(t *testing.T) {
+	suiteTester := &DockerSuite{&util.TestSuite{}}
+	suite.Run(t, suiteTester)
+}
+
+func (s *DockerSuite) TestNormalizeRegistry() {
+	quay := "https://quay.io/v1/"
+	dock := "https://registry.hub.docker.com/v1/"
+	s.Equal(quay, normalizeRegistry("https://quay.io"))
+	s.Equal(quay, normalizeRegistry("https://quay.io/v1"))
+	s.Equal(quay, normalizeRegistry("http://quay.io/v1"))
+	s.Equal(quay, normalizeRegistry("https://quay.io/v1/"))
+	s.Equal(quay, normalizeRegistry("quay.io"))
+
+	s.Equal(dock, normalizeRegistry(""))
+	s.Equal(dock, normalizeRegistry("https://registry.hub.docker.com"))
+	s.Equal(dock, normalizeRegistry("http://registry.hub.docker.com"))
+	s.Equal(dock, normalizeRegistry("registry.hub.docker.com"))
+}
+
+func (s *DockerSuite) TestNormalizeRepo() {
+	s.Equal("gox-mirror", normalizeRepo("example.com/gox-mirror"))
+	s.Equal("termie/gox-mirror", normalizeRepo("quay.io/termie/gox-mirror"))
+	s.Equal("termie/gox-mirror", normalizeRepo("termie/gox-mirror"))
+	s.Equal("mongo", normalizeRepo("mongo"))
+}
+
+func (s *DockerSuite) TestPing() {
+	client := DockerOrSkip(s.T())
+	err := client.Ping()
+	s.Nil(err)
+}
+
+func (s *DockerSuite) TestGenerateDockerID() {
+	id, err := GenerateDockerID()
+	s.Require().NoError(err, "Unable to generate Docker ID")
+
+	// The ID needs to be a valid hex value
+	b, err := hex.DecodeString(id)
+	s.Require().NoError(err, "Generated Docker ID was not a hex value")
+
+	// The ID needs to be 256 bits
+	s.Equal(256, len(b)*8)
+}

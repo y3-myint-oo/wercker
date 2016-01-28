@@ -12,15 +12,28 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-package main
+package core
 
 import (
-	"os"
-
-	"github.com/wercker/sentcli/cmd"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/wercker/sentcli/util"
+	"golang.org/x/net/context"
 )
 
-func main() {
-	app := cmd.GetApp()
-	app.Run(os.Args)
+// BoxOptions are box options, duh
+type BoxOptions struct {
+	NetworkDisabled bool
+}
+
+type Box interface {
+	GetName() string
+	GetTag() string
+	Clean() error
+	Stop()
+	Commit(string, string, string) (*docker.Image, error)
+	Restart() (*docker.Container, error)
+	AddService(ServiceBox)
+	Fetch(context.Context, *util.Environment) (*docker.Image, error)
+	Run(context.Context, *util.Environment) (*docker.Container, error)
+	RecoverInteractive(string, Pipeline, Step) error
 }
