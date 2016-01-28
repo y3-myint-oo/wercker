@@ -852,7 +852,7 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	}
 
 	if tags, ok := s.data["tag"]; ok {
-		splitTags := SplitSpaceOrComma(tags)
+		splitTags := util.SplitSpaceOrComma(tags)
 		interpolatedTags := make([]string, len(splitTags))
 		for i, tag := range splitTags {
 			interpolatedTags[i] = env.Interpolate(tag)
@@ -870,7 +870,7 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 
 	if ports, ok := s.data["ports"]; ok {
 		iPorts := env.Interpolate(ports)
-		parts := SplitSpaceOrComma(iPorts)
+		parts := util.SplitSpaceOrComma(iPorts)
 		portmap := make(map[docker.Port]struct{})
 		for _, port := range parts {
 			port = strings.TrimSpace(port)
@@ -884,7 +884,7 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 
 	if volumes, ok := s.data["volumes"]; ok {
 		iVolumes := env.Interpolate(volumes)
-		parts := SplitSpaceOrComma(iVolumes)
+		parts := util.SplitSpaceOrComma(iVolumes)
 		volumemap := make(map[string]struct{})
 		for _, volume := range parts {
 			volume = strings.TrimSpace(volume)
