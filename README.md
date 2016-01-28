@@ -1,6 +1,6 @@
 # wercker - your new favorite dev tool
 
-This is the project for `wercker`, the command-line tool that powers the
+This is the project for `wercker`, the command-line tool that powers
 all the build and deploy jobs for [wercker.com](http://wercker.com), it
 runs on your local machine with the help of Docker.
 
