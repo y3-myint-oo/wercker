@@ -54,10 +54,10 @@ func (s *TestSuite) WorkingDir() string {
 	return s.workingDir
 }
 
-func (s *TestSuite) Error(err error) {
-	s.T().Error(err)
-	s.FailNow()
-}
+// func (s *TestSuite) Error(err error) {
+//   s.T().Error(err)
+//   // s.FailNow()
+// }
 
 // FailNow just proxies to testing.T.FailNow
 func (s *TestSuite) FailNow() {
