@@ -22,10 +22,10 @@ import "github.com/wercker/sentcli/util"
 //   emptyFlags    = []cli.Flag{}
 // )
 
-func emptyEnv() *util.Environment {
+func EmptyEnv() *util.Environment {
 	return util.NewEnvironment()
 }
 
-func emptyPipelineOptions() *PipelineOptions {
+func EmptyPipelineOptions() *PipelineOptions {
 	return &PipelineOptions{GlobalOptions: &GlobalOptions{}}
 }

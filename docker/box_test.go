@@ -24,7 +24,17 @@ import (
 )
 
 func boxByID(s string) (core.Box, error) {
-	return NewBox(&BoxConfig{ID: s}, emptyPipelineOptions(), &BoxOptions{})
+	settings := util.NewCheapSettings(nil)
+	env := util.NewEnvironment()
+	dockerOptions, err := NewDockerOptions(settings, env)
+	if err != nil {
+		return nil, err
+	}
+	return NewDockerBox(
+		&core.BoxConfig{ID: s},
+		core.EmptyPipelineOptions(),
+		dockerOptions,
+	)
 }
 
 type BoxSuite struct {

@@ -20,40 +20,26 @@ import (
 	"os"
 	"testing"
 
-	"github.com/codegangsta/cli"
 	"github.com/stretchr/testify/suite"
 	"github.com/wercker/sentcli/util"
 )
 
-func defaultPipelineOptions(s *util.TestSuite, more ...string) *PipelineOptions {
-	args := []string{
-		"wercker",
-		"--debug",
-		"test",
-		"--working-dir",
-		s.WorkingDir(),
+func DefaultTestPipelineOptions(s *util.TestSuite, more map[string]interface{}) *PipelineOptions {
+	overrides := map[string]interface{}{
+		"debug": true,
+		// "target":      "test",
+		"working-dir": s.WorkingDir(),
 	}
-	args = append(args, more...)
-	os.Clearenv()
-
-	var options *PipelineOptions
-
-	action := func(c *cli.Context) {
-		opts, err := NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
-		s.Nil(err)
-		options = opts
+	for k, v := range more {
+		overrides[k] = v
 	}
 
-	app := cli.NewApp()
-	app.Flags = globalFlags
-	app.Commands = []cli.Command{
-		{
-			Name:   "test",
-			Action: action,
-			Flags:  pipelineFlags,
-		},
+	settings := util.NewCheapSettings(overrides)
+
+	options, err := NewPipelineOptions(settings, util.NewEnvironment())
+	if err != nil {
+		s.Error(err)
 	}
-	app.Run(args)
 	return options
 }
 
@@ -67,7 +53,7 @@ func TestStepSuite(t *testing.T) {
 }
 
 func (s *StepSuite) TestFetchApi() {
-	options := defaultPipelineOptions(s.TestSuite)
+	options := DefaultTestPipelineOptions(s.TestSuite, nil)
 
 	cfg := &StepConfig{
 		ID:   "create-file",
@@ -81,7 +67,7 @@ func (s *StepSuite) TestFetchApi() {
 }
 
 func (s *StepSuite) TestFetchTar() {
-	options := defaultPipelineOptions(s.TestSuite)
+	options := DefaultTestPipelineOptions(s.TestSuite, nil)
 
 	werckerInit := `wercker-init "https://github.com/wercker/wercker-init/archive/v1.0.0.tar.gz"`
 	cfg := &StepConfig{ID: werckerInit, Data: make(map[string]string)}
@@ -93,7 +79,7 @@ func (s *StepSuite) TestFetchTar() {
 }
 
 func (s *StepSuite) TestFetchFileNoDev() {
-	options := defaultPipelineOptions(s.TestSuite)
+	options := DefaultTestPipelineOptions(s.TestSuite, nil)
 
 	tmpdir, err := ioutil.TempDir("", "sentcli")
 	s.Nil(err)
@@ -109,7 +95,9 @@ func (s *StepSuite) TestFetchFileNoDev() {
 }
 
 func (s *StepSuite) TestFetchFileDev() {
-	options := defaultPipelineOptions(s.TestSuite, "--enable-dev-steps")
+	options := DefaultTestPipelineOptions(s.TestSuite, map[string]interface{}{
+		"enable-dev-steps": true,
+	})
 
 	tmpdir, err := ioutil.TempDir("", "sentcli")
 	s.Nil(err)

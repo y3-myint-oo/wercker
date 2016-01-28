@@ -32,7 +32,7 @@ func TestConfigSuite(t *testing.T) {
 }
 
 func (s *ConfigSuite) TestConfigBoxStrings() {
-	b, err := ioutil.ReadFile("./tests/box_strings.yml")
+	b, err := ioutil.ReadFile("../tests/box_strings.yml")
 	s.Nil(err)
 	config, err := ConfigFromYaml(b)
 	s.Require().Nil(err)
@@ -41,7 +41,7 @@ func (s *ConfigSuite) TestConfigBoxStrings() {
 }
 
 func (s *ConfigSuite) TestConfigBoxStructs() {
-	b, err := ioutil.ReadFile("./tests/box_structs.yml")
+	b, err := ioutil.ReadFile("../tests/box_structs.yml")
 	s.Nil(err)
 	config, err := ConfigFromYaml(b)
 	s.Require().Nil(err)

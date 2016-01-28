@@ -14,7 +14,10 @@
 
 package cmd
 
-import "github.com/codegangsta/cli"
+import (
+	"github.com/codegangsta/cli"
+	"github.com/wercker/sentcli/core"
+)
 
 // Flags for setting these options from the CLI
 var (
@@ -22,7 +25,7 @@ var (
 	EndpointFlags = []cli.Flag{
 		// deprecated
 		cli.StringFlag{Name: "wercker-endpoint", Value: "", Usage: "Deprecated.", Hidden: true},
-		cli.StringFlag{Name: "base-url", Value: "https://app.wercker.com", Usage: "Base url for the wercker app.", Hidden: true},
+		cli.StringFlag{Name: "base-url", Value: core.DEFAULT_BASE_URL, Usage: "Base url for the wercker app.", Hidden: true},
 	}
 
 	// These flags let us auth to wercker services

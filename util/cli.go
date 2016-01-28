@@ -122,6 +122,10 @@ type CheapSettings struct {
 	data map[string]interface{}
 }
 
+func NewCheapSettings(data map[string]interface{}) *CheapSettings {
+	return &CheapSettings{data}
+}
+
 func (s *CheapSettings) Int(name string, def ...interface{}) (rv int, ok bool) {
 	return lookup(name, s.data, def...).Int()
 }
