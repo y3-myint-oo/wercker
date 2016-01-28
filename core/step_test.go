@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 func DefaultTestPipelineOptions(s *util.TestSuite, more map[string]interface{}) *PipelineOptions {
@@ -81,7 +81,7 @@ func (s *StepSuite) TestFetchTar() {
 func (s *StepSuite) TestFetchFileNoDev() {
 	options := DefaultTestPipelineOptions(s.TestSuite, nil)
 
-	tmpdir, err := ioutil.TempDir("", "sentcli")
+	tmpdir, err := ioutil.TempDir("", "wercker")
 	s.Nil(err)
 	defer os.RemoveAll(tmpdir)
 
@@ -99,7 +99,7 @@ func (s *StepSuite) TestFetchFileDev() {
 		"enable-dev-steps": true,
 	})
 
-	tmpdir, err := ioutil.TempDir("", "sentcli")
+	tmpdir, err := ioutil.TempDir("", "wercker")
 	s.Nil(err)
 	defer os.RemoveAll(tmpdir)
 

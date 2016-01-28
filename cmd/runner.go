@@ -24,10 +24,10 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
 	"github.com/wercker/go-gitignore"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/docker"
-	"github.com/wercker/sentcli/event"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/docker"
+	"github.com/wercker/wercker/event"
+	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
 

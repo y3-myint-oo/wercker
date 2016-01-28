@@ -50,7 +50,7 @@ the build running, and then link it to the main box (Front).
 ### Concerns
 
 This will likely require making sure that there aren't any globals being passed
-around in sentcli. At quick glance there don't appear to be many, but at least
+around in wercker. At quick glance there don't appear to be many, but at least
 logging needs to be considered.
 
 Second, the internal/watch step drops you into a terminal-like output, after

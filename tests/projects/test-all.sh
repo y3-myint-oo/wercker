@@ -1,13 +1,13 @@
 #!/bin/bash
 
-sentcli=../../sentcli
+wercker=../../sentcli
 workingDir=./.tests
 
 basicTest() {
   testName=$1
   shift
   printf "testing %s... " "$testName"
-  $sentcli $@ --working-dir $workingDir > "${workingDir}/${testName}.log"
+  $wercker $@ --working-dir $workingDir > "${workingDir}/${testName}.log"
   if [ $? -ne 0 ]; then
     printf "failed\n"
     cat "${workingDir}/${testName}.log"
@@ -29,7 +29,7 @@ testDirectMount() {
   > $testFile
   echo "hello" > $testFile
   logFile="${workingDir}/direct-mount.log"
-  $sentcli build $testDir --direct-mount --working-dir $workingDir > $logFile
+  $wercker build $testDir --direct-mount --working-dir $workingDir > $logFile
   contents=`cat ${testFile}`
   if [ $contents == 'world' ]
       then echo "passed"

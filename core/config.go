@@ -23,7 +23,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 // RawBoxConfig is the unwrapper for BoxConfig

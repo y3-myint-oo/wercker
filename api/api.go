@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/jtacoma/uritemplates"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 // routes is a map containing all UriTemplates indexed by name.
@@ -280,7 +280,7 @@ func (c *APIClient) addAuthToken(req *http.Request) {
 // AddRequestHeaders add a few default headers to req. Currently added: User-
 // Agent, X-Wercker-Version, X-Wercker-Git.
 func AddRequestHeaders(req *http.Request) {
-	userAgent := fmt.Sprintf("sentcli %s", util.FullVersion())
+	userAgent := fmt.Sprintf("wercker %s", util.FullVersion())
 
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("X-Wercker-Version", util.Version())

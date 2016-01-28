@@ -17,7 +17,7 @@ package main
 import (
 	"os"
 
-	"github.com/wercker/sentcli/cmd"
+	"github.com/wercker/wercker/cmd"
 )
 
 func main() {

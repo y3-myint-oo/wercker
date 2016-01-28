@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/cheggaaa/pb"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 // Updater data structure for versions

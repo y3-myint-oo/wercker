@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 type DockerSuite struct {

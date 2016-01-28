@@ -27,8 +27,8 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
-	"github.com/wercker/sentcli/api"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/api"
+	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
 

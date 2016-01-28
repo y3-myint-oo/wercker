@@ -14,7 +14,7 @@
 
 // This is an interface and a helper to make it easier to construct our options
 // objects for testing without literally parsing the flags we define in
-// the sentcli/cmd package. Mostly it is a re-implementation of the codegangsta
+// the wercker/cmd package. Mostly it is a re-implementation of the codegangsta
 // cli.Context interface that we actually use.
 // I'm sure there is a better way to do this but damn if I'm not tired of typing
 // out boilerplate for settings types and defaults.

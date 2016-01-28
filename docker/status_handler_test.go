@@ -19,7 +19,7 @@ import (
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/stretchr/testify/suite"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 type StatusHandlerSuite struct {

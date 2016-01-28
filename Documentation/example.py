@@ -508,7 +508,7 @@ def cli_build(args):
 
 
 def get_cli():
-  parser = argparse.ArgumentParser(description="sentcli")
+  parser = argparse.ArgumentParser(description="wercker")
   subparsers = parser.add_subparsers()
   parser_build = subparsers.add_parser('build')
   parser_build.set_defaults(func=cli_build)

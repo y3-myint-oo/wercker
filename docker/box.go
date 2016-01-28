@@ -24,8 +24,8 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 
 	"golang.org/x/net/context"
 )

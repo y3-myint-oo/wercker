@@ -4,14 +4,14 @@ function integration_tests() {
   local keenProjectWriteKey="**REMOVED**"
   local keenProjectId="**REMOVED**"
 
-  # ./sentcli \
+  # ./wercker \
   #   build tests/projects/fail \
   #   --keen-metrics \
   #   --keen-project-write-key $keenProjectWriteKey \
   #   --keen-project-id $keenProjectId \
   #   && return 1
 
-  ./sentcli \
+  ./wercker \
     build tests/projects/pass \
     --keen-metrics \
     --keen-project-write-key $keenProjectWriteKey \
@@ -24,7 +24,7 @@ function integration_tests() {
 if [ -z "$1" ]; then
   ./buildme.sh && integration_tests
 else
-  ./buildme.sh && ./sentcli $@
+  ./buildme.sh && ./wercker $@
 fi
 
 passfail=$?
@@ -41,4 +41,4 @@ esac
 
 exit $passfail
 
-# ./sentcli run "while true; do date; sleep 1; done"
+# ./wercker run "while true; do date; sleep 1; done"

@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/fsouza/go-dockerclient"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 // DockerOrSkip checks for a docker container and skips the test

@@ -24,9 +24,9 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
-	"github.com/wercker/sentcli/cmd"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/cmd"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 )
 
 var (

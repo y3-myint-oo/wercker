@@ -19,7 +19,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 // DockerOptions for our docker client

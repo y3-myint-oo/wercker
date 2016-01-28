@@ -17,8 +17,8 @@ package dockerlocal
 import (
 	"fmt"
 
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 )
 
 // DockerDeploy is our basic wrapper for DockerDeploy operations

@@ -3,5 +3,5 @@ _projects
 _steps
 _cache
 vendor
-sentcli
+wercker
 .DS_STORE

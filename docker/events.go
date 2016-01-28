@@ -19,8 +19,8 @@ import (
 	"io"
 
 	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 )
 
 // EmitStatus emits the json message on r

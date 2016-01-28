@@ -19,8 +19,8 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/stretchr/testify/suite"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 )
 
 func boxByID(s string) (core.Box, error) {

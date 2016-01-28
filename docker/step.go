@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 )
 
 func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (core.Step, error) {

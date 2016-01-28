@@ -14,7 +14,7 @@
 
 package core
 
-import "github.com/wercker/sentcli/util"
+import "github.com/wercker/wercker/util"
 
 // var (
 //   globalFlags   = flagsFor(GlobalFlags)

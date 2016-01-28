@@ -19,7 +19,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 // NewLocalStore creates a new LocalStore.

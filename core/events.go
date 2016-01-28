@@ -21,29 +21,29 @@ import (
 	"strings"
 
 	"github.com/chuckpreslar/emission"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
 
 const (
-	// Logs is the event when sentcli generate logs
+	// Logs is the event when wercker generate logs
 	Logs = "Logs"
 
-	// BuildStarted is the event when sentcli has started a build.
+	// BuildStarted is the event when wercker has started a build.
 	BuildStarted = "BuildStarted"
 
 	// BuildFinished occures when a pipeline finishes the main phase. It is
 	// possible that after-steps are run after this event.
 	BuildFinished = "BuildFinished"
 
-	// BuildStepsAdded is the event when sentcli has parsed the wercker.yml and
+	// BuildStepsAdded is the event when wercker has parsed the wercker.yml and
 	// has valdiated that the steps exist.
 	BuildStepsAdded = "BuildStepsAdded"
 
-	// BuildStepStarted is the event when sentcli has started a new buildstep.
+	// BuildStepStarted is the event when wercker has started a new buildstep.
 	BuildStepStarted = "BuildStepStarted"
 
-	// BuildStepFinished is the event when sentcli has finished a buildstep.
+	// BuildStepFinished is the event when wercker has finished a buildstep.
 	BuildStepFinished = "BuildStepFinished"
 
 	// FullPipelineFinished occurs when a pipeline finishes all it's steps,

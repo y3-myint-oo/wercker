@@ -49,7 +49,7 @@ func (s *TestSuite) TearDownTest() {
 // WorkingDir makes a new temp dir to run tests in
 func (s *TestSuite) WorkingDir() string {
 	if s.workingDir == "" {
-		s.workingDir, _ = ioutil.TempDir("", "sentcli-")
+		s.workingDir, _ = ioutil.TempDir("", "wercker-")
 	}
 	return s.workingDir
 }

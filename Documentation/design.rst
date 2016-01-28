@@ -140,9 +140,9 @@ The beginnings of a Job are:
    - Information about Services that have been linked to the Container.
    - Information about the source code repository.
    - Information about each Step as they are executed.
- - The Image to be used, downloaded if necessary by `sentcli`.
+ - The Image to be used, downloaded if necessary by `wercker`.
  - The source code fetched by `codefetcher`.
- - The step code, downloaded by `sentcli`.
+ - The step code, downloaded by `wercker`.
  - Read-only Volumes attached to the Container containing source and steps.
 
 The results of a Job are:
@@ -164,7 +164,7 @@ so forth, with the keys needed to access those resources.
 Jobs (CoreOS)
 -------------
 
-Each Job is an individual execution of `sentcli` with all of the information
+Each Job is an individual execution of `wercker` with all of the information
 needed by it passed into the environment via the systemd file.
 
 TODO(termie): Add a template for the systemd job file.
@@ -181,7 +181,7 @@ Diagram
   |     BUILD_ID=foo  \                                |
   |     BUILD_DIR=/tmp/build/$BUILD_ID  \              |
   |     codefetcher github.com/owner/project  \        |
-  +     && sentcli build owner/project                 +
+  +     && wercker build owner/project                 +
 
 
                                                          +------------------+
@@ -190,7 +190,7 @@ Diagram
                                      source +----------> | wercker.yml      |
                                                          +------------------+
 
-         (sentcli fetches step) +-----------+
+         (wercker fetches step) +-----------+
                                             |
                                             |
                                             |            +------------------+
@@ -270,7 +270,7 @@ Build Flow
 
   - Execute bootstrap:
     - Create temporary directory for build
-    - Download codefetcher, sentcli
+    - Download codefetcher, wercker
     - Fetch code through codefetcher (get code -> wercker-api)
   - Check for wercker.yml
     - If not there, possibly generate a default

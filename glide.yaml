@@ -1,4 +1,4 @@
-package: github.com/wercker/sentcli
+package: github.com/wercker/wercker
 import:
   - package: github.com/pborman/uuid
   - package: github.com/wercker/go-gitignore

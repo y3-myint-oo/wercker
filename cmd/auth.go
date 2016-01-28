@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	"github.com/docker/docker/pkg/term"
-	"github.com/wercker/sentcli/api"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/api"
+	"github.com/wercker/wercker/util"
 )
 
 // Credentials holds credentials and auth scope to authenticate with api

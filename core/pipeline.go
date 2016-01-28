@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 
 	"golang.org/x/net/context"
 )

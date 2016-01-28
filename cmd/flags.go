@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"github.com/codegangsta/cli"
-	"github.com/wercker/sentcli/core"
+	"github.com/wercker/wercker/core"
 )
 
 // Flags for setting these options from the CLI

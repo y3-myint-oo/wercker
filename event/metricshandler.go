@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/inconshreveable/go-keen"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 )
 
 // NewMetricsHandler will create a new NewMetricsHandler.
@@ -246,7 +246,7 @@ type MetricsPayload struct {
 	Timestamp    int64               `json:"timestamp"`
 	Event        string              `json:"event"`
 	Stack        int                 `json:"stack,omitempty"`
-	SentCli      *util.Versions      `json:"sentcli,omitempty"`
+	SentCli      *util.Versions      `json:"wercker,omitempty"`
 	Grappler     *util.Versions      `json:"grappler,omitempty"`
 	PipelineName string              `json:"pipelineName,omitempty"`
 

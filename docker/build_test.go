@@ -17,7 +17,7 @@ package dockerlocal
 import (
 	"testing"
 
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 )
 
 func TestBuildEnvironment(t *testing.T) {

@@ -35,10 +35,10 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/mreiferson/go-snappystream"
 	"github.com/wercker/journalhook"
-	"github.com/wercker/sentcli/api"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/docker"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/api"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/docker"
+	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 )
@@ -462,7 +462,7 @@ func cmdCheckConfig(options *core.PipelineOptions, dockerOptions *dockerlocal.Do
 	return nil
 }
 
-// detectProject inspects the the current directory that sentcli is running in
+// detectProject inspects the the current directory that wercker is running in
 // and detects the project's programming language
 func cmdDetect(options *core.DetectOptions) error {
 	soft := NewSoftExit(options.GlobalOptions)

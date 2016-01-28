@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/pborman/uuid"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
 

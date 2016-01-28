@@ -18,8 +18,8 @@ import (
 	"fmt"
 
 	"github.com/wercker/reporter-client"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 )
 
 // NewReportHandler will create a new ReportHandler.

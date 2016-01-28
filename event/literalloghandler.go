@@ -17,8 +17,8 @@ package event
 import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/wercker/reporter-client"
-	"github.com/wercker/sentcli/core"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
 )
 
 // NewLiteralLogHandler will create a new LiteralLogHandler.

@@ -16,7 +16,7 @@ package core
 
 import (
 	"github.com/fsouza/go-dockerclient"
-	"github.com/wercker/sentcli/util"
+	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
 
