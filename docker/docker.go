@@ -443,9 +443,6 @@ func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.Pipelin
 
 // Execute the scratch-n-push
 func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
-	// TODO(termie): TEMPORARY REMOVAL
-	return -1, fmt.Errorf("FIX ME")
-
 	// This is clearly only relevant to docker so we're going to dig into the
 	// transport internals a little bit to get the container ID
 	dt := sess.Transport().(*DockerTransport)
