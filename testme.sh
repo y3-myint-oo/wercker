@@ -1,8 +1,8 @@
 #!/bin/bash
 
 function integration_tests() {
-  local keenProjectWriteKey="***REMOVED***"
-  local keenProjectId="***REMOVED***"
+  local keenProjectWriteKey="**REMOVED**"
+  local keenProjectId="**REMOVED**"
 
   # ./sentcli \
   #   build tests/projects/fail \
