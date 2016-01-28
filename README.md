@@ -3,7 +3,7 @@
 
 `wercker` is a CLI designed to increase developer velocity by enabling users to run their tests and build projects locally by leveraging the power of Docker containers.
 
-Note: The `master` branch may be in a broken or unstable state during development. Therefore, it is recommended that you download `wercker` through [the downloads section](http://wercker.com/cli/)
+Note: The `master` branch may be in a broken or unstable state during development. Therefore, it is recommended that you download `wercker` through [the CLI section](http://wercker.com/cli/)
 on our website, if you're not contributing to the code base.
 
 ## Building wercker
