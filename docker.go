@@ -16,8 +16,8 @@ import (
 	"github.com/CenturyLinkLabs/docker-reg-client/registry"
 	dockersignal "github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/term"
-	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/google/shlex"
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
 )
@@ -919,6 +919,8 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 		if err == nil {
 			s.forceTags = ft
 		}
+	} else {
+		s.forceTags = true
 	}
 }
 
