@@ -483,7 +483,6 @@ func (b *Box) Fetch(ctx context.Context, env *Environment) (*docker.Image, error
 		Auth:       auth,
 		Access:     "read",
 		Repository: env.Interpolate(b.repository),
-		Tag:        env.Interpolate(b.tag),
 		Registry:   env.Interpolate(b.config.Registry),
 	}
 

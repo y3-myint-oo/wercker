@@ -9,14 +9,15 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/CenturyLinkLabs/docker-reg-client/registry"
 	dockersignal "github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/term"
-	"github.com/flynn/go-shlex"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/google/shlex"
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
 )
@@ -244,7 +245,6 @@ type CheckAccessOptions struct {
 	Auth       docker.AuthConfiguration
 	Access     string
 	Repository string
-	Tag        string
 	Registry   string
 }
 
@@ -451,33 +451,12 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	}
 
 	config := docker.Config{
-		Cmd:        s.cmd,
-		Entrypoint: s.entrypoint,
-		Hostname:   containerID[:16],
-		WorkingDir: s.workingDir,
-	}
-
-	if s.ports != "" {
-		parts := strings.Split(s.ports, ",")
-		portmap := make(map[docker.Port]struct{})
-		for _, port := range parts {
-			port = strings.TrimSpace(port)
-			if !strings.Contains(port, "/") {
-				port = port + "/tcp"
-			}
-			portmap[docker.Port(port)] = struct{}{}
-		}
-		config.ExposedPorts = portmap
-	}
-
-	if s.volumes != "" {
-		parts := strings.Split(s.volumes, ",")
-		volumemap := make(map[string]struct{})
-		for _, volume := range parts {
-			volume = strings.TrimSpace(volume)
-			volumemap[volume] = struct{}{}
-		}
-		config.Volumes = volumemap
+		Cmd:          s.cmd,
+		Entrypoint:   s.entrypoint,
+		Hostname:     containerID[:16],
+		WorkingDir:   s.workingDir,
+		ExposedPorts: s.ports,
+		Volumes:      s.volumes,
 	}
 
 	layerID, err := GenerateDockerID()
@@ -549,15 +528,33 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		return -1, err
 	}
 	defer repositoriesFile.Close()
-	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{"%s":"%s"}}`, s.repository, s.tag, layerID)))
-	if err != nil {
-		return -1, err
-	}
-	err = repositoriesFile.Sync()
+	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{`, s.repository)))
 	if err != nil {
 		return -1, err
 	}
 
+	if len(s.tags) == 0 {
+		s.tags = []string{"latest"}
+	}
+
+	for i, tag := range s.tags {
+		_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`"%s":"%s"`, tag, layerID)))
+		if err != nil {
+			return -1, err
+		}
+		if i != len(s.tags)-1 {
+			_, err = repositoriesFile.Write([]byte{','})
+			if err != nil {
+				return -1, err
+			}
+		}
+	}
+
+	_, err = repositoriesFile.Write([]byte{'}', '}'})
+	err = repositoriesFile.Sync()
+	if err != nil {
+		return -1, err
+	}
 	// layer.tar has an extra folder in it so we have to strip it :/
 	tempLayerFile, err := os.Open(s.options.HostPath("layer.tar"))
 	if err != nil {
@@ -628,7 +625,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	s.logger.WithFields(LogFields{
 		"Registry":   s.registry,
 		"Repository": s.repository,
-		"Tag":        s.tag,
+		"Tags":       s.tags,
 		"Message":    s.message,
 	}).Debug("Scratch push to registry")
 
@@ -644,7 +641,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 		Auth:       auth,
 		Access:     "write",
 		Repository: s.repository,
-		Tag:        s.tag,
 		Registry:   s.registry,
 	}
 
@@ -677,22 +673,24 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *Session) (int
 	go EmitStatus(e, r, s.options)
 	defer w.Close()
 
-	pushOpts := docker.PushImageOptions{
-		Name:          s.repository,
-		Tag:           s.tag,
-		Registry:      s.registry,
-		OutputStream:  w,
-		RawJSONStream: true,
+	for _, tag := range s.tags {
+		pushOpts := docker.PushImageOptions{
+			Name:          s.repository,
+			Tag:           tag,
+			Registry:      s.registry,
+			OutputStream:  w,
+			RawJSONStream: true,
+		}
+
+		s.logger.Println("Pushing image for tag ", tag)
+
+		err = client.PushImage(pushOpts, auth)
+		if err != nil {
+			s.logger.Errorln("Failed to push:", err)
+			return 1, err
+		}
 	}
-
-	s.logger.Println("Push container:", s.repository, s.registry)
-	err = client.PushImage(pushOpts, auth)
-
-	if err != nil {
-		s.logger.Errorln("Failed to push:", err)
-		return 1, err
-	}
-
+	s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
 	return 0, nil
 }
 
@@ -752,13 +750,14 @@ type DockerPushStep struct {
 	repository string
 	author     string
 	message    string
-	tag        string
+	tags       []string
 	registry   string
-	ports      string
-	volumes    string
+	ports      map[docker.Port]struct{}
+	volumes    map[string]struct{}
 	cmd        []string
 	entrypoint []string
 	logger     *LogEntry
+	forceTags  bool
 	workingDir string
 }
 
@@ -815,8 +814,13 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 		s.repository = env.Interpolate(repository)
 	}
 
-	if tag, ok := s.data["tag"]; ok {
-		s.tag = env.Interpolate(tag)
+	if tags, ok := s.data["tag"]; ok {
+		splitTags := SplitSpaceOrComma(tags)
+		interpolatedTags := make([]string, len(splitTags))
+		for i, tag := range splitTags {
+			interpolatedTags[i] = env.Interpolate(tag)
+		}
+		s.tags = interpolatedTags
 	}
 
 	if author, ok := s.data["author"]; ok {
@@ -828,11 +832,28 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	}
 
 	if ports, ok := s.data["ports"]; ok {
-		s.ports = env.Interpolate(ports)
+		iPorts := env.Interpolate(ports)
+		parts := SplitSpaceOrComma(iPorts)
+		portmap := make(map[docker.Port]struct{})
+		for _, port := range parts {
+			port = strings.TrimSpace(port)
+			if !strings.Contains(port, "/") {
+				port = port + "/tcp"
+			}
+			portmap[docker.Port(port)] = struct{}{}
+		}
+		s.ports = portmap
 	}
 
 	if volumes, ok := s.data["volumes"]; ok {
-		s.volumes = env.Interpolate(volumes)
+		iVolumes := env.Interpolate(volumes)
+		parts := SplitSpaceOrComma(iVolumes)
+		volumemap := make(map[string]struct{})
+		for _, volume := range parts {
+			volume = strings.TrimSpace(volume)
+			volumemap[volume] = struct{}{}
+		}
+		s.volumes = volumemap
 	}
 
 	if workingDir, ok := s.data["working-dir"]; ok {
@@ -892,6 +913,15 @@ func (s *DockerPushStep) InitEnv(env *Environment) {
 	if user, ok := s.data["user"]; ok {
 		s.user = env.Interpolate(user)
 	}
+
+	if forceTags, ok := s.data["force-tags"]; ok {
+		ft, err := strconv.ParseBool(forceTags)
+		if err == nil {
+			s.forceTags = ft
+		}
+	} else {
+		s.forceTags = true
+	}
 }
 
 // Fetch NOP
@@ -916,7 +946,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	s.logger.WithFields(LogFields{
 		"Registry":   s.registry,
 		"Repository": s.repository,
-		"Tag":        s.tag,
+		"Tags":       s.tags,
 		"Message":    s.message,
 	}).Debug("Push to registry")
 
@@ -937,7 +967,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 			Auth:       auth,
 			Access:     "write",
 			Repository: s.repository,
-			Tag:        s.tag,
 			Registry:   s.registry,
 		}
 
@@ -955,45 +984,30 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 	s.logger.Debugln("Init env:", s.data)
 
 	config := docker.Config{
-		Cmd:        s.cmd,
-		Entrypoint: s.entrypoint,
-		WorkingDir: s.workingDir,
-		User:       s.user,
-		Env:        s.env,
-		StopSignal: s.stopSignal,
-		Labels:     s.labels,
-	}
-	if s.ports != "" {
-		parts := strings.Split(s.ports, ",")
-		portmap := make(map[docker.Port]struct{})
-		for _, port := range parts {
-			port = strings.TrimSpace(port)
-			if !strings.Contains(port, "/") {
-				port = port + "/tcp"
-			}
-			portmap[docker.Port(port)] = struct{}{}
-		}
-		config.ExposedPorts = portmap
+		Cmd:          s.cmd,
+		Entrypoint:   s.entrypoint,
+		WorkingDir:   s.workingDir,
+		User:         s.user,
+		Env:          s.env,
+		StopSignal:   s.stopSignal,
+		Labels:       s.labels,
+		ExposedPorts: s.ports,
+		Volumes:      s.volumes,
 	}
 
-	if s.volumes != "" {
-		parts := strings.Split(s.volumes, ",")
-		volumemap := make(map[string]struct{})
-		for _, volume := range parts {
-			volume = strings.TrimSpace(volume)
-			volumemap[volume] = struct{}{}
-		}
-		config.Volumes = volumemap
+	if len(s.tags) == 0 {
+		s.tags = []string{"latest"}
 	}
 
 	commitOpts := docker.CommitContainerOptions{
 		Container:  containerID,
 		Repository: s.repository,
-		Tag:        s.tag,
 		Author:     s.author,
 		Message:    s.message,
 		Run:        &config,
+		Tag:        s.options.PipelineID,
 	}
+
 	s.logger.Debugln("Commit container:", containerID)
 	i, err := client.CommitContainer(commitOpts)
 	if err != nil {
@@ -1008,23 +1022,33 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *Session) (int, error
 		// emitStatusses in a different go routine
 		go EmitStatus(e, r, s.options)
 		defer w.Close()
-
+		for _, tag := range s.tags {
+			tagOpts := docker.TagImageOptions{
+				Repo:  s.repository,
+				Tag:   tag,
+				Force: s.forceTags,
+			}
+			err = client.TagImage(i.ID, tagOpts)
+			s.logger.Println("Pushing image for tag ", tag)
+			if err != nil {
+				s.logger.Errorln("Failed to push:", err)
+				return 1, err
+			}
+		}
 		pushOpts := docker.PushImageOptions{
 			Name:          s.repository,
-			Tag:           s.tag,
 			Registry:      s.registry,
 			OutputStream:  w,
 			RawJSONStream: true,
 		}
 
-		s.logger.Println("Push container:", s.repository, s.registry)
 		err = client.PushImage(pushOpts, auth)
-
 		if err != nil {
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
 		}
 	}
+	s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
 	return 0, nil
 }
 
