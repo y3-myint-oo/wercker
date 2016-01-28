@@ -81,7 +81,7 @@ func (s *CLISuite) TestCheapSettingsIntWrongType() {
 
 func (s *CLISuite) TestCLISettingsGlobalInt() {
 	ctx := testContext()
-	settings := &CLISettings{ctx, map[string]interface{}{}}
+	settings := &CLISettings{ctx, &CheapSettings{}}
 	i, ok := settings.GlobalInt("globalexist")
 	s.Equal(1, i)
 	s.Equal(true, ok)
@@ -89,7 +89,7 @@ func (s *CLISuite) TestCLISettingsGlobalInt() {
 
 func (s *CLISuite) TestCLISettingsGlobalIntOverride() {
 	ctx := testContext()
-	settings := &CLISettings{ctx, map[string]interface{}{"globalexist": 2}}
+	settings := &CLISettings{ctx, &CheapSettings{map[string]interface{}{"globalexist": 2}}}
 	i, ok := settings.GlobalInt("globalexist")
 	s.Equal(2, i)
 	s.Equal(true, ok)
@@ -97,16 +97,22 @@ func (s *CLISuite) TestCLISettingsGlobalIntOverride() {
 
 func (s *CLISuite) TestCLISettingsIntNotExists() {
 	ctx := testContext()
-	settings := &CLISettings{ctx, map[string]interface{}{}}
+	settings := &CLISettings{ctx, &CheapSettings{}}
 	i, ok := settings.Int("nonexist")
 	s.Equal(0, i)
 	s.Equal(false, ok)
 }
 
-func (s *CLISuite) TestCLISettingsIntWrongType() {
+func (s *CLISuite) TestCLISettingsIntWrongTypeOverride() {
 	ctx := testContext()
-	settings := &CLISettings{ctx, map[string]interface{}{"globalexist": "foo"}}
+	settings := &CLISettings{ctx, &CheapSettings{map[string]interface{}{"globalexist": "foo"}}}
 	i, ok := settings.Int("globalexist")
-	s.Equal(0, i)
-	s.Equal(false, ok)
+	// in this case since it was the wrong type, it falls back to the cli.Context
+	// since it is considered "not found"
+	// this behavior is sort of... unexpected but also seems like you probably
+	// wouldn't mess it up much, especially since it seems unlikely that
+	// we're really going to be overriding the cli.Context very often (right
+	// now we only add a "target" field)
+	s.Equal(1, i)
+	s.Equal(true, ok)
 }
