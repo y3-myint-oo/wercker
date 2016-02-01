@@ -31,11 +31,9 @@ type DockerPipeline struct {
 
 func NewDockerPipeline(name string, config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerPipeline, error) {
 	// decide which configs to use for each thing
-	// TODO(termie): this code is not specific to docker and should be made
+	// TODO(termie): this code is not all specific to docker and should be made
 	//               into something shared
-	// TODO(termie): do different things based on "dev", "build", or "deploy"
-	//               commands
-	pipelineName := "build"
+	pipelineName := options.Pipeline
 	pipelineConfig, ok := config.PipelinesMap[pipelineName]
 	if !ok {
 		return nil, fmt.Errorf("No pipeline named %s", pipelineName)

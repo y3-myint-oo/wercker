@@ -84,44 +84,41 @@ func (b *DockerBuilder) getOptions(env *util.Environment, config *core.BoxConfig
 	newOptions.GlobalOptions = b.options.GlobalOptions
 	newOptions.ShouldCommit = true
 	newOptions.PublishPorts = b.options.PublishPorts
-	// TODO(termie): PACKAGING these moved
-	// newOptions.DockerLocal = true
-	// newOptions.DockerOptions = s.dockerOptions
 	newOptions.Pipeline = c.Fragment
 	return newOptions, nil
 }
 
-// Build the
-func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*docker.Image, error) {
+// Build the image and commit it so we can use it as a service
+func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*dockerlocal.DockerBox, *docker.Image, error) {
 	newOptions, err := b.getOptions(env, config)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	shared, err := cmdBuild(ctx, newOptions, b.dockerOptions)
+	newDockerOptions := *b.dockerOptions
+	newDockerOptions.DockerLocal = true
+
+	shared, err := cmdBuild(ctx, newOptions, &newDockerOptions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	// TODO(termie): this causes the ID to get overwritten but
+	//               we want the shortname that the user specified as an ID
+	//               so we probably wnat to make a copy or something here
 	bc := config
 	bc.ID = fmt.Sprintf("%s:%s", shared.pipeline.DockerRepo(),
 		shared.pipeline.DockerTag())
 
-	box, err := dockerlocal.NewDockerBox(bc, b.options, b.dockerOptions)
+	box, err := dockerlocal.NewDockerBox(bc, b.options, &newDockerOptions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// TODO(termie): PACKAGING dunno if i need these?
-	// // mh: don't like this...
-	// b.DockerBox = box
-	// // will this work for normal services, too?
-	// b.ShortName = config.ID
-
-	client, err := dockerlocal.NewDockerClient(b.dockerOptions)
+	client, err := dockerlocal.NewDockerClient(&newDockerOptions)
 	image, err := client.InspectImage(box.Name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return image, nil
+	return box, image, nil
 }

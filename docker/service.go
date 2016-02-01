@@ -29,13 +29,13 @@ import (
 // Builder interface to create an image based on a service config
 // kinda needed so we can break a bunch of circular dependencies with cmd
 type Builder interface {
-	Build(context.Context, *util.Environment, *core.BoxConfig) (*docker.Image, error)
+	Build(context.Context, *util.Environment, *core.BoxConfig) (*DockerBox, *docker.Image, error)
 }
 
 type nilBuilder struct{}
 
-func (b *nilBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*docker.Image, error) {
-	return nil, nil
+func (b *nilBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*DockerBox, *docker.Image, error) {
+	return nil, nil, nil
 }
 
 func NewNilBuilder() *nilBuilder {
@@ -58,7 +58,7 @@ type ExternalServiceBox struct {
 // NewExternalServiceBox gives us an ExternalServiceBox from config
 func NewExternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*ExternalServiceBox, error) {
 	logger := util.RootLogger().WithField("Logger", "ExternalService")
-	box := &DockerBox{options: options, dockerOptions: dockerOptions}
+	box := &DockerBox{options: options, dockerOptions: dockerOptions, config: boxConfig}
 	return &ExternalServiceBox{
 		InternalServiceBox: &InternalServiceBox{DockerBox: box, logger: logger},
 		externalConfig:     boxConfig,
@@ -69,7 +69,15 @@ func NewExternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOpti
 // Fetch the image representation of an ExternalServiceBox
 // this means running the ExternalServiceBox and comitting the image
 func (s *ExternalServiceBox) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
-	return s.builder.Build(ctx, env, s.externalConfig)
+	originalShortName := s.externalConfig.ID
+	box, image, err := s.builder.Build(ctx, env, s.externalConfig)
+	if err != nil {
+		return nil, err
+	}
+	box.image = image
+	s.DockerBox = box
+	s.ShortName = originalShortName
+	return image, err
 }
 
 func NewServiceBox(config *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (core.ServiceBox, error) {

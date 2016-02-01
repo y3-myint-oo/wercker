@@ -1,7 +1,9 @@
 #!/bin/bash
 
-wercker=../../sentcli
+wercker=../../wercker
 workingDir=./.tests
+
+mkdir -p $workingDir
 
 basicTest() {
   testName=$1
