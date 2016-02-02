@@ -62,7 +62,7 @@ build:
         name: gox
         code: |
             gox \
-              -ldflags="-X main.GitCommit $WERCKER_GIT_COMMIT -X main.PatchVersion $(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X main.Compiled $(date +%s)" \
+            -ldflags="-X github.com/wercker/wercker/util.GitCommit=$WERCKER_GIT_COMMIT -X github.com/wercker/wercker/util.PatchVersion=$(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X github.com/wercker/wercker/util.Compiled=$(date +%s)" \
               -os="linux darwin" \
               -arch="amd64 386" \
               -output "$WERCKER_OUTPUT_DIR/latest/{{.OS}}_{{.Arch}}/sentcli"
