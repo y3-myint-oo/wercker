@@ -41,9 +41,10 @@ func NewArtificer(options *core.PipelineOptions, dockerOptions *DockerOptions) *
 	s3store := core.NewS3Store(options.AWSOptions)
 
 	return &Artificer{
-		options: options,
-		logger:  logger,
-		store:   s3store,
+		options:       options,
+		dockerOptions: dockerOptions,
+		logger:        logger,
+		store:         s3store,
 	}
 }
 
