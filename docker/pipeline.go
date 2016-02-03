@@ -53,6 +53,13 @@ func NewDockerPipeline(name string, config *core.Config, options *core.PipelineO
 	}
 
 	stepsConfig := pipelineConfig.Steps
+	if options.DeployTarget != "" {
+		sectionSteps, ok := pipelineConfig.StepsMap[options.DeployTarget]
+		if ok {
+			stepsConfig = sectionSteps
+		}
+	}
+
 	afterStepsConfig := pipelineConfig.AfterSteps
 
 	box, err := NewDockerBox(boxConfig, options, dockerOptions)
