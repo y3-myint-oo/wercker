@@ -103,7 +103,7 @@ func NewDockerPipeline(name string, config *core.Config, options *core.PipelineO
 		if step != nil {
 			// we can return a nil step if it's internal and EnableDevSteps is
 			// false
-			steps = append(steps, step)
+			afterSteps = append(afterSteps, step)
 		}
 	}
 	// if we found some valid after steps, prepend init
