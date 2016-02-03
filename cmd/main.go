@@ -1053,6 +1053,8 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 			pr.Success = false
 			logger.WithField("Error", err).Error("Unable to store pipeline output")
 		}
+	} else {
+		stepCounter.Increment()
 	}
 
 	// We're sending our build finished but we're not done yet,
