@@ -1,0 +1,17 @@
+build:
+    box:
+        id: busybox
+        cmd: /bin/sh
+    steps:
+        - script:
+            code: |
+                echo "hey this is $SECRET"
+                echo "hey this is $MULTILINE"
+                echo "hey this is $NOTSECRET"
+                export FOO=$ANOTHERSECRET
+                echo "hey this is $FOO"
+
+                #test to make sure that the data is still preserved
+                if [ "$SECRET" != "this is really secret" ] || [ "$NOTSECRET" != "not as secret" ] || [ "$FOO" != "foo" ]; then
+                    exit 1
+                fi

@@ -243,6 +243,14 @@ func (e *NormalizedEmitter) Emit(event interface{}, args interface{}) {
 		if a.Build == nil {
 			a.Build = e.build
 		}
+		if a.Build != nil {
+			env := a.Build.Env()
+			if env.Hidden.Map != nil {
+				for _, str := range env.Hidden.Map {
+					a.Logs = strings.Replace(a.Logs, str, "HIDDEN", -1)
+				}
+			}
+		}
 		if a.Step == nil {
 			a.Step = e.currentStep
 		}

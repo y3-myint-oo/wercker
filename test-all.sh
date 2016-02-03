@@ -77,6 +77,22 @@ testScratchPush () {
       echo 'failed'
       cat "$logFile"
       docker images
+  fi
+}
+
+testPrintProtected() {
+  echo -n "testing protected..."
+  testDir=$testsDir/print-protected
+  logFile="${workingDir}/print-protected.log"
+  $wercker --environment ${testDir}/ENVIRONMENT build $testDir &> $logFile
+  count=$(grep -c "HIDDEN" $logFile)
+  # we have 3 hidden statements, lets see if we hid them all
+  if [ "$count" -eq 3 ]; then
+      echo "passed"
+      return 0
+  else
+      echo 'failed'
+      cat $logFile
       return 1
   fi
 }
@@ -102,6 +118,7 @@ runTests() {
 
   testDirectMount || return 1
   testScratchPush || return 1
+  testPrintProtected || return 1
 
   # test runs locally but not in wercker build container
   basicTest "shellstep" build --docker-local --enable-dev-steps "$testsDir/shellstep" || return 1
