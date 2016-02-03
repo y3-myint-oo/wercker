@@ -447,10 +447,11 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	// transport internals a little bit to get the container ID
 	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
-	// _, err := s.CollectArtifact(containerID)
-	// if err != nil {
-	//   return -1, err
-	// }
+
+	_, err := s.CollectArtifact(containerID)
+	if err != nil {
+		return -1, err
+	}
 
 	// At this point we've written the layer to disk, we're going to add up the
 	// sizes of all the files to add to our json format, and sha256 the data
@@ -663,21 +664,23 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		ServerAddress: s.authServer,
 	}
 
-	checkOpts := CheckAccessOptions{
-		Auth:       auth,
-		Access:     "write",
-		Repository: s.repository,
-		Registry:   s.registry,
-	}
+	if !s.dockerOptions.DockerLocal {
+		checkOpts := CheckAccessOptions{
+			Auth:       auth,
+			Access:     "write",
+			Repository: s.repository,
+			Registry:   s.registry,
+		}
 
-	check, err := client.CheckAccess(checkOpts)
-	if err != nil {
-		s.logger.Errorln("Error during check access", err)
-		return -1, err
-	}
-	if !check {
-		s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
-		return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
+		check, err := client.CheckAccess(checkOpts)
+		if err != nil {
+			s.logger.Errorln("Error during check access", err)
+			return -1, err
+		}
+		if !check {
+			s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
+			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
+		}
 	}
 
 	// Okay, we can access it, do a docker load to import the image then push it
@@ -1019,38 +1022,36 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 }
 
 func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, client *DockerClient, auth docker.AuthConfiguration) (int, error) {
-	if !s.dockerOptions.DockerLocal {
-		// Create a pipe since we want a io.Reader but Docker expects a io.Writer
-		r, w := io.Pipe()
+	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
+	r, w := io.Pipe()
 
-		// emitStatusses in a different go routine
-		go EmitStatus(e, r, s.options)
-		defer w.Close()
-		for _, tag := range s.tags {
-			tagOpts := docker.TagImageOptions{
-				Repo:  s.repository,
-				Tag:   tag,
-				Force: s.forceTags,
-			}
-			err := client.TagImage(imageID, tagOpts)
-			s.logger.Println("Pushing image for tag ", tag)
-			if err != nil {
-				s.logger.Errorln("Failed to push:", err)
-				return 1, err
-			}
+	// emitStatusses in a different go routine
+	go EmitStatus(e, r, s.options)
+	defer w.Close()
+	for _, tag := range s.tags {
+		tagOpts := docker.TagImageOptions{
+			Repo:  s.repository,
+			Tag:   tag,
+			Force: s.forceTags,
 		}
-		pushOpts := docker.PushImageOptions{
-			Name:          s.repository,
-			Registry:      s.registry,
-			OutputStream:  w,
-			RawJSONStream: true,
-		}
-
-		err := client.PushImage(pushOpts, auth)
+		err := client.TagImage(imageID, tagOpts)
+		s.logger.Println("Pushing image for tag ", tag)
 		if err != nil {
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
 		}
+	}
+	pushOpts := docker.PushImageOptions{
+		Name:          s.repository,
+		Registry:      s.registry,
+		OutputStream:  w,
+		RawJSONStream: true,
+	}
+
+	err := client.PushImage(pushOpts, auth)
+	if err != nil {
+		s.logger.Errorln("Failed to push:", err)
+		return 1, err
 	}
 	s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
 	return 0, nil
