@@ -128,7 +128,6 @@ var (
 		This enables:
 		- internal/watch
 		`},
-		cli.BoolTFlag{Name: "enable-gitignore", Usage: "Parse gitignore file to ignore files in your build"},
 	}
 
 	// These flags are advanced build settings
@@ -141,7 +140,6 @@ var (
 		This enables:
 		- internal/watch
 		`},
-		cli.BoolTFlag{Name: "enable-gitignore", Usage: "Parse gitignore file to ignore files in your build"},
 	}
 
 	// Flags for advanced deploy settings
@@ -153,7 +151,6 @@ var (
 		This enables:
 		- internal/watch
 		`},
-		cli.BoolFlag{Name: "enable-gitignore", Usage: "Parse gitignore file to ignore files in your build"},
 	}
 
 	// AWS bits

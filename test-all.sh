@@ -50,7 +50,6 @@ testDirectMount() {
 
 
 runTests() {
-  basicTest "gitignore" build $testsDir/gitignore || return 1
   basicTest "source-path" build $testsDir/source-path || return 1
   basicTest "test local services" build $testsDir/local-service/service-consumer || return 1
   basicTest "test deploy" deploy $testsDir/deploy-no-targets || return 1
