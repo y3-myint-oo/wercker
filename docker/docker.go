@@ -447,10 +447,11 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	// transport internals a little bit to get the container ID
 	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
-	// _, err := s.CollectArtifact(containerID)
-	// if err != nil {
-	//   return -1, err
-	// }
+
+	_, err := s.CollectArtifact(containerID)
+	if err != nil {
+		return -1, err
+	}
 
 	// At this point we've written the layer to disk, we're going to add up the
 	// sizes of all the files to add to our json format, and sha256 the data
