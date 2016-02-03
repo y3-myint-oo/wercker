@@ -354,7 +354,6 @@ type PipelineOptions struct {
 	ShouldArtifacts   bool
 	ShouldRemove      bool
 	SourceDir         string
-	EnableGitIgnore   bool
 
 	AttachOnError  bool
 	DirectMount    bool
@@ -558,7 +557,6 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	shouldRemove, _ := c.Bool("no-remove")
 	shouldRemove = !shouldRemove
 	sourceDir, _ := c.String("source-dir")
-	enableGitIgnore, _ := c.Bool("enable-gitignore")
 
 	attachOnError, _ := c.Bool("attach-on-error")
 	directMount, _ := c.Bool("direct-mount")
@@ -609,7 +607,6 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		ShouldArtifacts:   shouldArtifacts,
 		ShouldRemove:      shouldRemove,
 		SourceDir:         sourceDir,
-		EnableGitIgnore:   enableGitIgnore,
 
 		AttachOnError:  attachOnError,
 		DirectMount:    directMount,

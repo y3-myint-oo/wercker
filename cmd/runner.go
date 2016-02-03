@@ -23,7 +23,6 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
-	"github.com/wercker/go-gitignore"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/docker"
 	"github.com/wercker/wercker/event"
@@ -183,18 +182,8 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.options.CachePath(),
 		}
 
-		var gitIgnoreRules *ignore.GitIgnore
 		var err error
 
-		if p.options.EnableGitIgnore {
-			gitIgnorePath := filepath.Join(p.options.ProjectPath, ".gitignore")
-			if hasGitIgnore, _ := util.Exists(gitIgnorePath); hasGitIgnore {
-				gitIgnoreRules, err = ignore.CompileIgnoreFile(gitIgnorePath)
-				if err != nil {
-					return projectDir, err
-				}
-			}
-		}
 		// Make sure we don't accidentally recurse or copy extra files
 		ignoreFunc := func(src string, files []os.FileInfo) []string {
 			ignores := []string{}
@@ -205,8 +194,6 @@ func (p *Runner) EnsureCode() (string, error) {
 					panic(err)
 				}
 				if util.ContainsString(ignoreFiles, abspath) {
-					ignores = append(ignores, file.Name())
-				} else if gitIgnoreRules != nil && gitIgnoreRules.MatchesPath(file.Name()) {
 					ignores = append(ignores, file.Name())
 				}
 			}

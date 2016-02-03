@@ -1,7 +1,6 @@
 package: github.com/wercker/wercker
 import:
   - package: github.com/pborman/uuid
-  - package: github.com/wercker/go-gitignore
   - package: github.com/Sirupsen/logrus
     ref:     844911c
     vcs:     git
