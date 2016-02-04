@@ -29,6 +29,21 @@ basicTest() {
   return 0
 }
 
+basicTestFail() {
+  testName=$1
+  shift
+  printf "testing %s... " "$testName"
+  $wercker $@ --working-dir $workingDir > "${workingDir}/${testName}.log"
+  if [ $? -ne 1 ]; then
+    printf "failed\n"
+    cat "${workingDir}/${testName}.log"
+    return 1
+  else
+    printf "passed\n"
+  fi
+  return 0
+}
+
 testDirectMount() {
   echo -n "testing direct-mount..."
   testDir=$testsDir/direct-mount
@@ -54,6 +69,13 @@ runTests() {
   basicTest "test local services" build $testsDir/local-service/service-consumer || return 1
   basicTest "test deploy" deploy $testsDir/deploy-no-targets || return 1
   basicTest "test deploy target" deploy --deploy-target test $testsDir/deploy-targets || return 1
+  basicTest "test after steps" build --pipeline build_true $testsDir/after-steps-fail || return 1
+
+  # this one will fail but we'll grep the log for After-step passed: test
+  basicTestFail "test after steps fail" --no-colors build --pipeline build_fail $testsDir/after-steps-fail || return 1
+  grep -q "After-step passed: test" "${workingDir}/test after steps fail.log" || return 1
+
+
   testDirectMount || return 1
 }
 
