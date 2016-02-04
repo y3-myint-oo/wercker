@@ -10,7 +10,13 @@ build_fail:
         code: false
   after-steps:
     - script:
-        code: echo "lala"
+        name: test
+        code: |
+          if [ "$WERCKER_RESULT" == "passed" ]; then
+            echo "should not have passed"
+            false
+          fi
+
 
 
 build_true:
@@ -19,5 +25,10 @@ build_true:
         code: true
   after-steps:
     - script:
-        code: echo "lala true"
+        name: test
+        code: |
+          if [ "$WERCKER_RESULT" != "passed" ]; then
+            echo "should have passed"
+            false
+          fi
 
