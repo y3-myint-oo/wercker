@@ -18,7 +18,7 @@ basicTest() {
   testName=$1
   shift
   printf "testing %s... " "$testName"
-  $wercker $@ --working-dir $workingDir > "${workingDir}/${testName}.log"
+  $wercker --debug $@ --working-dir $workingDir > "${workingDir}/${testName}.log"
   if [ $? -ne 0 ]; then
     printf "failed\n"
     cat "${workingDir}/${testName}.log"
@@ -84,10 +84,9 @@ testScratchPush () {
 
 runTests() {
   basicTest "source-path" build $testsDir/source-path || return 1
-  basicTest "test local services" build $testsDir/local-service/service-consumer || return 1
+  basicTest "test local services" build  $testsDir/local-service/service-consumer || return 1
   basicTest "test deploy" deploy $testsDir/deploy-no-targets || return 1
   basicTest "test deploy target" deploy --deploy-target test $testsDir/deploy-targets || return 1
-  basicTest "test shellstep" build --enable-dev-steps $testsDir/shellstep
   basicTest "test after steps" build --pipeline build_true $testsDir/after-steps-fail || return 1
 
   # this one will fail but we'll grep the log for After-step passed: test
@@ -100,6 +99,9 @@ runTests() {
 
   testDirectMount || return 1
   testScratchPush || return 1
+
+  # test runs locally but not in wercker build container
+  basicTest "test shellstep" build --enable-dev-steps $testsDir/shellstep || return 1
 }
 
 runTests

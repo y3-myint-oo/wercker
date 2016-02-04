@@ -21,9 +21,8 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/wercker/wercker/util"
+	"gopkg.in/yaml.v2"
 )
 
 // RawBoxConfig is the unwrapper for BoxConfig
@@ -43,6 +42,7 @@ type BoxConfig struct {
 	Registry   string
 	Entrypoint string
 	URL        string
+	Volumes    string
 }
 
 // IsExternal tells us if the box (service) is located on disk
@@ -323,7 +323,6 @@ func ReadWerckerYaml(searchDirs []string, allowDefault bool) ([]byte, error) {
 // ConfigFromYaml reads a []byte as yaml and turn it into a Config object
 func ConfigFromYaml(file []byte) (*Config, error) {
 	var m RawConfig
-
 	err := yaml.Unmarshal(file, &m)
 	// also need to ensure the RawConfig is valid before sending it back
 	if err == nil {

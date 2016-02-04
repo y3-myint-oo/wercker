@@ -147,7 +147,7 @@ func (e *Environment) GetInclHidden(key string) string {
 		}
 	}
 
-	if e.Hidden.Map != nil {
+	if e.Hidden != nil && e.Hidden.Map != nil {
 		if val, ok := e.Hidden.Map[key]; ok {
 			return val
 		}
