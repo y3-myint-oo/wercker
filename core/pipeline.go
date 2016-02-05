@@ -262,7 +262,7 @@ func (p *BasePipeline) SyncEnvironment(sessionCtx context.Context, sess *Session
 
 	// 'env' with --null parameter, which prevents issues from overlapping \n
 	// inside the values.
-	exit, output, err := sess.SendChecked(sessionCtx, "env --null")
+	exit, output, err := sess.SendChecked(sessionCtx, "set +e", "env --null", "set -e")
 	if err != nil {
 		return err
 	}

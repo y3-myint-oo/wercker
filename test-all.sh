@@ -69,6 +69,7 @@ runTests() {
   basicTest "test local services" build $testsDir/local-service/service-consumer || return 1
   basicTest "test deploy" deploy $testsDir/deploy-no-targets || return 1
   basicTest "test deploy target" deploy --deploy-target test $testsDir/deploy-targets || return 1
+  basicTest "test shellstep" build --enable-dev-steps $testsDir/shellstep
   basicTest "test after steps" build --pipeline build_true $testsDir/after-steps-fail || return 1
 
   # this one will fail but we'll grep the log for After-step passed: test
