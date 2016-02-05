@@ -75,6 +75,9 @@ runTests() {
   basicTestFail "test after steps fail" --no-colors build --pipeline build_fail $testsDir/after-steps-fail || return 1
   grep -q "After-step passed: test" "${workingDir}/test after steps fail.log" || return 1
 
+  # make sure we get some human understandable output if the wercker file is wrong
+  basicTestFail "test empty wercker file" build $testsDir/invalid-config || return 1
+  grep -q "Your wercker.yml is empty." "${workingDir}/test empty wercker file.log" || return 1
 
   testDirectMount || return 1
 }
