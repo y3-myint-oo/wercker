@@ -59,10 +59,11 @@ func NewShellStep(stepConfig *core.StepConfig, options *core.PipelineOptions, do
 	})
 
 	return &ShellStep{
-		BaseStep: baseStep,
-		options:  options,
-		data:     stepConfig.Data,
-		logger:   util.RootLogger().WithField("Logger", "ShellStep"),
+		BaseStep:      baseStep,
+		options:       options,
+		dockerOptions: dockerOptions,
+		data:          stepConfig.Data,
+		logger:        util.RootLogger().WithField("Logger", "ShellStep"),
 	}, nil
 }
 
