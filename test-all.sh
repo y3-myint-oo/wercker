@@ -63,6 +63,24 @@ testDirectMount() {
   fi
 }
 
+testScratchPush () {
+  echo -n "testing scratchnPush.."
+  testDir=$testsDir/scratch-n-push
+  logFile="${workingDir}/scratch-n-push.log"
+  grepString="uniqueTagFromTest"
+  docker images | grep $grepString | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
+  $wercker build $testDir --docker-local --working-dir $workingDir > $logFile && docker images | grep -q $grepString
+  if [ $? -eq 0 ]; then
+    echo "passed"
+    return 0
+  else
+      echo 'failed'
+      cat $logFile
+      docker images
+      return 1
+  fi
+}
+
 
 runTests() {
   basicTest "source-path" build $testsDir/source-path || return 1
@@ -78,6 +96,7 @@ runTests() {
 
 
   testDirectMount || return 1
+  testScratchPush || return 1
 }
 
 runTests
