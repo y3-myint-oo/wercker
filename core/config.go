@@ -275,6 +275,15 @@ func (r *RawConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+// IsValid ensures that the underlying Config is populated properly
+func (r *RawConfig) IsValid() error {
+	if r.Config == nil {
+		return fmt.Errorf("Your wercker.yml is empty.")
+	}
+
+	return nil
+}
+
 func findYaml(searchDirs []string) (string, error) {
 	possibleYaml := []string{"ewok.yml", "wercker.yml", ".wercker.yml"}
 
@@ -316,6 +325,10 @@ func ConfigFromYaml(file []byte) (*Config, error) {
 	var m RawConfig
 
 	err := yaml.Unmarshal(file, &m)
+	// also need to ensure the RawConfig is valid before sending it back
+	if err == nil {
+		err = m.IsValid()
+	}
 	if err != nil {
 		errStr := err.Error()
 		err = fmt.Errorf("Error parsing your wercker.yml:\n  %s", errStr)
