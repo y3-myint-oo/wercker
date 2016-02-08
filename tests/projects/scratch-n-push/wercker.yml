@@ -1,0 +1,8 @@
+build:
+  box:
+    id: busybox
+    cmd: /bin/sh
+  steps:
+    - internal/docker-push:
+        tag: uniqueTagFromTest, alsouniqueTagFromTest
+        repository: quay.io/something/somerepo
