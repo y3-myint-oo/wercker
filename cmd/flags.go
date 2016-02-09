@@ -44,7 +44,7 @@ var (
 
 	// These flags control where we store local files
 	LocalPathFlags = []cli.Flag{
-		cli.StringFlag{Name: "working-dir", Value: "", Usage: "Path where we store working files."},
+		cli.StringFlag{Name: "working-dir", Value: "./.wercker", Usage: "Path where we store working files."},
 
 		// following -dir flags are DEPRECATED, here for BC
 		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "Path where created builds live."},

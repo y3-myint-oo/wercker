@@ -533,11 +533,6 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	shouldStoreS3, _ := c.Bool("store-s3")
 
 	workingDir, _ := c.String("working-dir")
-	if workingDir == "" {
-		// support old-style dir flags for bc
-		buildDir, _ := c.String("build-dir")
-		workingDir = filepath.Dir(buildDir)
-	}
 	workingDir, _ = filepath.Abs(workingDir)
 
 	guestRoot, _ := c.String("guest-root")
@@ -547,6 +542,10 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	projectID := guessProjectID(c, e)
 	projectPath := guessProjectPath(c, e)
 	projectURL := guessProjectURL(c, e)
+
+	if projectPath == workingDir {
+		return nil, fmt.Errorf("Project path can't be the same as the working dir")
+	}
 
 	// These timeouts are given in minutes but we store them as milliseconds
 	commandTimeoutFloat, _ := c.Float64("command-timeout")
