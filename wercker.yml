@@ -1,6 +1,5 @@
 box:
   id: tcnksm/gox:1.5.1
-  volumes: $CODE_PATH /var/run/docker.sock
 dev:
   box:
     id: busybox
@@ -142,6 +141,9 @@ deploy:
         key-secret: $AWS_SECRET_ACCESS_KEY
 
 test:
+    box:
+      id: tcnksm/gox:1.5.1
+      volumes: $CODE_PATH /var/run/docker.sock
     steps:
         - install-packages:
             packages: openssh-client pkg-config libsystemd-journal-dev
