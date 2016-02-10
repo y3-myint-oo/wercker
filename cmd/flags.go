@@ -45,13 +45,6 @@ var (
 	// These flags control where we store local files
 	LocalPathFlags = []cli.Flag{
 		cli.StringFlag{Name: "working-dir", Value: "./.wercker", Usage: "Path where we store working files."},
-
-		// following -dir flags are DEPRECATED, here for BC
-		cli.StringFlag{Name: "build-dir", Value: "./_builds", Usage: "Path where created builds live."},
-		cli.StringFlag{Name: "cache-dir", Value: "./_cache", Usage: "Path for storing pipeline cache."},
-		cli.StringFlag{Name: "container-dir", Value: "./_containers", Usage: "Path where exported containers live."},
-		cli.StringFlag{Name: "project-dir", Value: "./_projects", Usage: "Path where downloaded projects live."},
-		cli.StringFlag{Name: "step-dir", Value: "./_steps", Usage: "Path where downloaded steps live."},
 	}
 
 	// These flags control paths on the guest and probably shouldn't change
