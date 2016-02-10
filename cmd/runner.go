@@ -325,11 +325,11 @@ func (p *Runner) CopySource() error {
 	}
 
 	// Link the path to BuildPath("latest") for easy access
-	err = os.RemoveAll(p.options.BuildPath("latest"))
+	err = os.RemoveAll(p.options.WorkingPath("latest"))
 	if err != nil {
 		return err
 	}
-	err = os.Symlink(p.options.HostPath(), p.options.BuildPath("latest"))
+	err = os.Symlink(p.options.HostPath(), p.options.WorkingPath("latest"))
 	if err != nil {
 		return err
 	}
