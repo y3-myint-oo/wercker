@@ -84,7 +84,7 @@ testScratchPush () {
 
 runTests() {
   basicTest "source-path" build $testsDir/source-path || return 1
-  basicTest "test local services" build  $testsDir/local-service/service-consumer || return 1
+  basicTest "test local services" build $testsDir/local-service/service-consumer || return 1
   basicTest "test deploy" deploy $testsDir/deploy-no-targets || return 1
   basicTest "test deploy target" deploy --deploy-target test $testsDir/deploy-targets || return 1
   basicTest "test after steps" build --pipeline build_true $testsDir/after-steps-fail || return 1

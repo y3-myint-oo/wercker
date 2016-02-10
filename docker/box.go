@@ -177,11 +177,11 @@ func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
 			interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
 		}
 		b.volumes = interpolatedVols
+		for _, volume := range b.volumes {
+			binds = append(binds, fmt.Sprintf("%s:%s:rw", volume, volume))
+		}
 	}
 
-	for _, volume := range b.volumes {
-		binds = append(binds, fmt.Sprintf("%s:%s:rw", volume, volume))
-	}
 	return binds, nil
 }
 
