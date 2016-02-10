@@ -50,6 +50,7 @@ type DockerBox struct {
 	logger          *util.LogEntry
 	entrypoint      string
 	image           *docker.Image
+	volumes         []string
 }
 
 // NewDockerBox from a name and other references
@@ -96,7 +97,6 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 	if err != nil {
 		return nil, err
 	}
-
 	return &DockerBox{
 		Name:            name,
 		ShortName:       shortName,
@@ -110,6 +110,7 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 		logger:          logger,
 		cmd:             cmd,
 		entrypoint:      entrypoint,
+		volumes:         []string{},
 	}, nil
 }
 
@@ -145,7 +146,7 @@ func (b *DockerBox) GetID() string {
 	return ""
 }
 
-func (b *DockerBox) binds() ([]string, error) {
+func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
 	binds := []string{}
 	// Make our list of binds for the Docker attach
 	// NOTE(termie): we don't appear to need the "volumes" stuff, leaving
@@ -168,6 +169,19 @@ func (b *DockerBox) binds() ([]string, error) {
 			// volumes[b.options.MntPath(entry.Name())] = struct{}{}
 		}
 	}
+
+	if b.options.EnableVolumes {
+		vols := util.SplitSpaceOrComma(b.config.Volumes)
+		var interpolatedVols []string
+		for _, vol := range vols {
+			interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
+		}
+		b.volumes = interpolatedVols
+		for _, volume := range b.volumes {
+			binds = append(binds, fmt.Sprintf("%s:%s:rw", volume, volume))
+		}
+	}
+
 	return binds, nil
 }
 
@@ -356,7 +370,8 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 
 	b.logger.Debugln("Docker Container:", container.ID)
 
-	binds, err := b.binds()
+	binds, err := b.binds(env)
+
 	if err != nil {
 		return nil, err
 	}
