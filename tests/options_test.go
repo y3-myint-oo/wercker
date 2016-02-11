@@ -322,24 +322,7 @@ func (s *OptionsSuite) TestWorkingDirCWD() {
 	test := func(c *cli.Context) {
 		opts, err := core.NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
 		s.Nil(err)
-		s.Equal(cwd, opts.WorkingDir)
-	}
-
-	run(s, globalFlags, pipelineFlags, test, args)
-}
-
-func (s *OptionsSuite) TestWorkingDirGetsSet() {
-	tempDir, err := ioutil.TempDir("", "wercker-test-")
-	s.Nil(err)
-	defer os.RemoveAll(tempDir)
-
-	// This ignores the _build part, we're only concerned about the working dir
-	args := defaultArgs("--build-dir", filepath.Join(tempDir, "_build"))
-
-	test := func(c *cli.Context) {
-		opts, err := core.NewPipelineOptions(util.NewCLISettings(c), emptyEnv())
-		s.Nil(err)
-		s.Equal(tempDir, opts.WorkingDir)
+		s.Equal(filepath.Join(cwd, ".wercker"), opts.WorkingDir)
 	}
 
 	run(s, globalFlags, pipelineFlags, test, args)

@@ -1,7 +1,4 @@
-_builds
-_projects
-_steps
-_cache
 vendor
 wercker
+.wercker
 .DS_STORE

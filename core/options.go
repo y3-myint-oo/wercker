@@ -533,11 +533,6 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	shouldStoreS3, _ := c.Bool("store-s3")
 
 	workingDir, _ := c.String("working-dir")
-	if workingDir == "" {
-		// support old-style dir flags for bc
-		buildDir, _ := c.String("build-dir")
-		workingDir = filepath.Dir(buildDir)
-	}
 	workingDir, _ = filepath.Abs(workingDir)
 
 	guestRoot, _ := c.String("guest-root")
@@ -547,6 +542,10 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	projectID := guessProjectID(c, e)
 	projectPath := guessProjectPath(c, e)
 	projectURL := guessProjectURL(c, e)
+
+	if projectPath == workingDir {
+		return nil, fmt.Errorf("Project path can't be the same as the working dir")
+	}
 
 	// These timeouts are given in minutes but we store them as milliseconds
 	commandTimeoutFloat, _ := c.Float64("command-timeout")
@@ -629,6 +628,11 @@ func (o *PipelineOptions) HostPath(s ...string) string {
 	return path.Join(o.BuildPath(), o.PipelineID, path.Join(s...))
 }
 
+// WorkingPath returns paths relative to our working dir (usually ".wercker")
+func (o *PipelineOptions) WorkingPath(s ...string) string {
+	return path.Join(o.WorkingDir, path.Join(s...))
+}
+
 // GuestPath returns a path relative to the build root on the guest.
 func (o *PipelineOptions) GuestPath(s ...string) string {
 	return path.Join(o.GuestRoot, path.Join(s...))
@@ -646,27 +650,27 @@ func (o *PipelineOptions) ReportPath(s ...string) string {
 
 // ContainerPath returns the path where exported containers live
 func (o *PipelineOptions) ContainerPath() string {
-	return path.Join(o.WorkingDir, "_containers")
+	return path.Join(o.WorkingDir, "containers")
 }
 
 // BuildPath returns the path where created builds live
 func (o *PipelineOptions) BuildPath(s ...string) string {
-	return path.Join(o.WorkingDir, "_builds", path.Join(s...))
+	return path.Join(o.WorkingDir, "builds", path.Join(s...))
 }
 
 // CachePath returns the path for storing pipeline cache
 func (o *PipelineOptions) CachePath() string {
-	return path.Join(o.WorkingDir, "_cache")
+	return path.Join(o.WorkingDir, "cache")
 }
 
 // ProjectDownloadPath returns the path where downloaded projects live
 func (o *PipelineOptions) ProjectDownloadPath() string {
-	return path.Join(o.WorkingDir, "_projects")
+	return path.Join(o.WorkingDir, "projects")
 }
 
 // StepPath returns the path where downloaded steps live
 func (o *PipelineOptions) StepPath() string {
-	return path.Join(o.WorkingDir, "_steps")
+	return path.Join(o.WorkingDir, "steps")
 }
 
 // Options per Command

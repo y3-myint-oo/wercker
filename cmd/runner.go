@@ -175,11 +175,20 @@ func (p *Runner) EnsureCode() (string, error) {
 		// We were pointed at a path with ProjectPath, copy it to projectDir
 
 		ignoreFiles := []string{
-			p.options.BuildPath(),
-			p.options.ProjectDownloadPath(),
-			p.options.StepPath(),
-			p.options.ContainerPath(),
-			p.options.CachePath(),
+			p.options.WorkingDir,
+		}
+
+		oldbuilds, _ := filepath.Abs("./_builds")
+		oldprojects, _ := filepath.Abs("./_projects")
+		oldsteps, _ := filepath.Abs("./_steps")
+		oldcache, _ := filepath.Abs("./_cache")
+		oldcontainers, _ := filepath.Abs("./_containers")
+		deprecatedPaths := []string{
+			oldbuilds,
+			oldprojects,
+			oldsteps,
+			oldcache,
+			oldcontainers,
 		}
 
 		var err error
@@ -195,6 +204,11 @@ func (p *Runner) EnsureCode() (string, error) {
 				}
 				if util.ContainsString(ignoreFiles, abspath) {
 					ignores = append(ignores, file.Name())
+				}
+
+				// TODO(termie): remove this warning after a while
+				if util.ContainsString(deprecatedPaths, abspath) {
+					p.logger.Warnln(fmt.Sprintf("Not ignoring deprecated runtime path, %s. You probably want to delete it so it doesn't get copied into your container. Runtime files are now stored under '.wercker' by default. This message will go away in a future update.", file.Name()))
 				}
 			}
 			return ignores
@@ -311,11 +325,11 @@ func (p *Runner) CopySource() error {
 	}
 
 	// Link the path to BuildPath("latest") for easy access
-	err = os.RemoveAll(p.options.BuildPath("latest"))
+	err = os.RemoveAll(p.options.WorkingPath("latest"))
 	if err != nil {
 		return err
 	}
-	err = os.Symlink(p.options.HostPath(), p.options.BuildPath("latest"))
+	err = os.Symlink(p.options.HostPath(), p.options.WorkingPath("latest"))
 	if err != nil {
 		return err
 	}
