@@ -213,7 +213,7 @@ func (p *Runner) EnsureCode() (string, error) {
 			}
 			return ignores
 		}
-		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy}
+		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy, Symlinks: true}
 		os.Rename(projectDir, fmt.Sprintf("%s-%s", projectDir, uuid.NewRandom().String()))
 		err = shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
 		if err != nil {
