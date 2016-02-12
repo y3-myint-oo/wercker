@@ -68,6 +68,7 @@ build:
               -arch="amd64 386" \
               -output "$WERCKER_OUTPUT_DIR/latest/{{.OS}}_{{.Arch}}/sentcli"
 
+            cp -r $WERCKER_OUTPUT_DIR/latest/* $WERCKER_REPORT_ARTIFACTS_DIR
     - script:
         name: prepare
         code: |
@@ -189,5 +190,5 @@ run-tests:
         - script:
             code: |
                 unset WERCKER_BUILD_ID
-                cd $CODE_PATH 
+                cd $CODE_PATH
                 ./test-all.sh

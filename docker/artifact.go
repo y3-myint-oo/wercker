@@ -15,11 +15,11 @@
 package dockerlocal
 
 import (
-	"archive/tar"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/wercker/wercker/core"
@@ -38,13 +38,16 @@ type Artificer struct {
 func NewArtificer(options *core.PipelineOptions, dockerOptions *DockerOptions) *Artificer {
 	logger := util.RootLogger().WithField("Logger", "Artificer")
 
-	s3store := core.NewS3Store(options.AWSOptions)
+	var store core.Store
+	if options.ShouldStoreS3 {
+		store = core.NewS3Store(options.AWSOptions)
+	}
 
 	return &Artificer{
 		options:       options,
 		dockerOptions: dockerOptions,
 		logger:        logger,
-		store:         s3store,
+		store:         store,
 	}
 }
 
@@ -57,51 +60,38 @@ func (a *Artificer) Collect(artifact *core.Artifact) (*core.Artifact, error) {
 		return nil, err
 	}
 
-	outputFile, err := os.Create(artifact.HostPath)
+	outputFile, err := os.Create(artifact.HostTarPath)
 	defer outputFile.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	opts := docker.CopyFromContainerOptions{
-		OutputStream: outputFile,
-		Container:    artifact.ContainerID,
-		Resource:     artifact.GuestPath,
-	}
-	if err = client.CopyFromContainer(opts); err != nil {
-		return nil, err
+	dfc := NewDockerFileCollector(client, artifact.ContainerID)
+	archive, errs := dfc.Collect(artifact.GuestPath)
+	archive.Tee(outputFile)
+
+	select {
+	case err = <-errs:
+	// TODO(termie): I hate this, but docker command either fails right away
+	//               or we don't care about it, needs to be replaced by some
+	//               sort of cancellable context
+	case <-time.After(1 * time.Second):
+		err = <-archive.Multi(filepath.Base(artifact.GuestPath), artifact.HostPath, 1024*1024*1000)
 	}
 
-	if _, err = outputFile.Seek(0, 0); err != nil {
-		return nil, err
-	}
-
-	hasFiles := false
-	tarReader := tar.NewReader(outputFile)
-	for {
-		header, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
+	if err != nil {
+		if err == util.ErrEmptyTarball {
 			return nil, err
 		}
-		if !header.FileInfo().IsDir() {
-			hasFiles = true
-			break
-		}
+		return nil, err
 	}
-	if !hasFiles {
-		return nil, util.ErrEmptyTarball
-	}
-
 	return artifact, nil
 }
 
 // Upload an artifact to S3
 func (a *Artificer) Upload(artifact *core.Artifact) error {
 	return a.store.StoreFromFile(&core.StoreFromFileArgs{
-		Path:        artifact.HostPath,
+		Path:        artifact.HostTarPath,
 		Key:         artifact.RemotePath(),
 		ContentType: artifact.ContentType,
 		MaxTries:    3,

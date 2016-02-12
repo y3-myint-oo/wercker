@@ -27,6 +27,7 @@ import (
 type Artifact struct {
 	ContainerID   string
 	GuestPath     string
+	HostTarPath   string
 	HostPath      string
 	ApplicationID string
 	BuildID       string

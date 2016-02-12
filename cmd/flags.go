@@ -93,7 +93,6 @@ var (
 	ArtifactFlags = []cli.Flag{
 		cli.BoolFlag{Name: "artifacts", Usage: "Store artifacts."},
 		cli.BoolFlag{Name: "no-remove", Usage: "Don't remove the containers."},
-		cli.BoolFlag{Name: "store-local", Usage: "Store artifacts and containers locally."},
 		cli.BoolFlag{Name: "store-s3",
 			Usage: `Store artifacts and containers on s3.
 			This requires access to aws credentials, pulled from any of the usual places

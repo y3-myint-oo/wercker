@@ -704,7 +704,8 @@ func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*core.Artif
 	artifact := &core.Artifact{
 		ContainerID:   containerID,
 		GuestPath:     s.options.GuestPath("output"),
-		HostPath:      s.options.HostPath("layer.tar"),
+		HostPath:      s.options.HostPath("layer"),
+		HostTarPath:   s.options.HostPath("layer.tar"),
 		ApplicationID: s.options.ApplicationID,
 		BuildID:       s.options.PipelineID,
 		Bucket:        s.options.S3Bucket,
@@ -713,7 +714,8 @@ func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*core.Artif
 	sourceArtifact := &core.Artifact{
 		ContainerID:   containerID,
 		GuestPath:     s.options.SourcePath(),
-		HostPath:      s.options.HostPath("layer.tar"),
+		HostPath:      s.options.HostPath("layer"),
+		HostTarPath:   s.options.HostPath("layer.tar"),
 		ApplicationID: s.options.ApplicationID,
 		BuildID:       s.options.PipelineID,
 		Bucket:        s.options.S3Bucket,
