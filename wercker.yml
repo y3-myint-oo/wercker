@@ -185,9 +185,12 @@ test:
                 $WERCKER_OUTPUT_DIR/latest/linux_amd64/./wercker b --build-id $WERCKER_BUILD_ID-1 --pipeline run-tests --enable-volumes
 
 run-tests:
+    box:
+      id: tcnksm/gox:1.5.1
+      volumes: $CODE_PATH /var/run/docker.sock
     steps:
         - script:
             code: |
                 unset WERCKER_BUILD_ID
-                cd $CODE_PATH 
+                cd $CODE_PATH
                 ./test-all.sh
