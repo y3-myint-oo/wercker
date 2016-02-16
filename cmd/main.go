@@ -934,7 +934,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	tag := pipeline.DockerTag()
 	message := pipeline.DockerMessage()
 
-	shouldStore := options.ShouldStoreS3 || options.ShouldStoreLocal
+	shouldStore := options.ShouldArtifacts
 
 	// TODO(termie): hack for now, probably can be made into a naive class
 	var storeStep core.Step
@@ -1009,11 +1009,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 			finisher := r.StartStep(shared, storeStep, stepCounter.Increment())
 			defer finisher.Finish(sr)
 
-			originalFailedStepName := pr.FailedStepName
-			originalFailedStepMessage := pr.FailedStepMessage
-
 			pr.FailedStepName = storeStep.Name()
-
 			pr.FailedStepMessage = "Unable to store pipeline output"
 
 			e.Emit(core.Logs, &core.LogsArgs{
@@ -1027,10 +1023,12 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 					return err
 				}
 
-				artificer := dockerlocal.NewArtificer(options, dockerOptions)
-				err = artificer.Upload(artifact)
-				if err != nil {
-					return err
+				if options.ShouldStoreS3 {
+					artificer := dockerlocal.NewArtificer(options, dockerOptions)
+					err = artificer.Upload(artifact)
+					if err != nil {
+						return err
+					}
 				}
 
 				sr.PackageURL = artifact.URL()
@@ -1039,10 +1037,6 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 			e.Emit(core.Logs, &core.LogsArgs{
 				Logs: "Storing artifacts complete\n",
 			})
-
-			// Everything went ok, so reset failed related fields
-			pr.FailedStepName = originalFailedStepName
-			pr.FailedStepMessage = originalFailedStepMessage
 
 			sr.Success = true
 			sr.ExitCode = 0

@@ -116,7 +116,8 @@ func (s *DockerStep) CollectArtifact(containerID string) (*core.Artifact, error)
 	artifact := &core.Artifact{
 		ContainerID:   containerID,
 		GuestPath:     s.ReportPath("artifacts"),
-		HostPath:      s.options.HostPath("artifacts", s.SafeID(), "artifacts.tar"),
+		HostTarPath:   s.options.HostPath(s.SafeID(), "output.tar"),
+		HostPath:      s.options.HostPath(s.SafeID(), "output"),
 		ApplicationID: s.options.ApplicationID,
 		BuildID:       s.options.BuildID,
 		DeployID:      s.options.DeployID,

@@ -90,7 +90,8 @@ func (b *DockerBuild) CollectArtifact(containerID string) (*core.Artifact, error
 	artifact := &core.Artifact{
 		ContainerID:   containerID,
 		GuestPath:     b.options.GuestPath("output"),
-		HostPath:      b.options.HostPath("build.tar"),
+		HostPath:      b.options.HostPath("output"),
+		HostTarPath:   b.options.HostPath("output.tar"),
 		ApplicationID: b.options.ApplicationID,
 		BuildID:       b.options.BuildID,
 		Bucket:        b.options.S3Bucket,
@@ -100,7 +101,8 @@ func (b *DockerBuild) CollectArtifact(containerID string) (*core.Artifact, error
 	sourceArtifact := &core.Artifact{
 		ContainerID:   containerID,
 		GuestPath:     b.options.SourcePath(),
-		HostPath:      b.options.HostPath("build.tar"),
+		HostPath:      b.options.HostPath("output"),
+		HostTarPath:   b.options.HostPath("output.tar"),
 		ApplicationID: b.options.ApplicationID,
 		BuildID:       b.options.BuildID,
 		Bucket:        b.options.S3Bucket,

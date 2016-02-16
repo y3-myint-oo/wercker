@@ -45,6 +45,12 @@ func NewArchive(stream io.Reader) *Archive {
 	return &Archive{stream: stream}
 }
 
+// Tee the tar stream to your own writer
+func (a *Archive) Tee(w io.Writer) {
+	newReader := io.TeeReader(a.stream, w)
+	a.stream = newReader
+}
+
 // Stream is the low-level interface to the archive stream processor
 func (a *Archive) Stream(processors ...ArchiveProcessor) error {
 	tarball := tar.NewReader(a.stream)
