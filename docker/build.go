@@ -16,6 +16,7 @@ package dockerlocal
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
@@ -31,6 +32,12 @@ func NewDockerBuild(name string, config *core.Config, options *core.PipelineOpti
 		return nil, err
 	}
 	return &DockerBuild{base}, nil
+}
+
+// LocalSymlink makes an easy to use symlink to find the latest run
+func (b *DockerBuild) LocalSymlink() {
+	_ = os.RemoveAll(b.options.WorkingPath("latest"))
+	_ = os.Symlink(b.options.HostPath(), b.options.WorkingPath("latest"))
 }
 
 // InitEnv sets up the internal state of the environment for the build

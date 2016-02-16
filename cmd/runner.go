@@ -324,16 +324,6 @@ func (p *Runner) CopySource() error {
 		return err
 	}
 
-	// Link the path to BuildPath("latest") for easy access
-	err = os.RemoveAll(p.options.WorkingPath("latest"))
-	if err != nil {
-		return err
-	}
-	err = os.Symlink(p.options.HostPath(), p.options.WorkingPath("latest"))
-	if err != nil {
-		return err
-	}
-
 	err = os.Symlink(p.ProjectDir(), p.options.HostPath("source"))
 	if err != nil {
 		return err
@@ -520,6 +510,8 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		sr.Message = err.Error()
 		return shared, err
 	}
+
+	pipeline.LocalSymlink()
 
 	p.logger.Debugln("Steps:", len(pipeline.Steps()))
 
