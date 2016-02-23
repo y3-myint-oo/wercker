@@ -1010,7 +1010,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		Author:     s.author,
 		Message:    s.message,
 		Run:        &config,
-		Tag:        s.options.PipelineID,
 	}
 
 	s.logger.Debugln("Commit container:", containerID)
