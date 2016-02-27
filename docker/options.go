@@ -15,8 +15,9 @@
 package dockerlocal
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/wercker/wercker/util"
@@ -42,9 +43,12 @@ func guessAndUpdateDockerOptions(opts *DockerOptions, e *util.Environment) {
 
 	// Check the unix socket, default on linux
 	// This will fail instantly so don't bother with the goroutine
-	if runtime.GOOS == "linux" {
-		unixSocket := "unix:///var/run/docker.sock"
-		logger.Println(f.Info("No Docker host specified, checking", unixSocket))
+
+	unixSocket := "/var/run/docker.sock"
+	logger.Println(f.Info("No Docker host specified, checking", unixSocket))
+
+	if _, err := os.Stat(unixSocket); err == nil {
+		unixSocket = fmt.Sprintf("unix://%s", unixSocket)
 		client, err := NewDockerClient(&DockerOptions{
 			DockerHost: unixSocket,
 		})
