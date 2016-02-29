@@ -69,6 +69,18 @@ build:
               -output "$WERCKER_OUTPUT_DIR/latest/{{.OS}}_{{.Arch}}/sentcli"
 
             cp -r $WERCKER_OUTPUT_DIR/latest/* $WERCKER_REPORT_ARTIFACTS_DIR
+
+    # generate SHA's for all binaries
+    - script:
+        name: generate SHAs
+        code: |
+            cd $WERCKER_OUTPUT_DIR
+            for f in $(find . -type f -name sentcli); do
+            cd $WERCKER_OUTPUT_DIR/$(dirname "$f")
+            sha256sum sentcli > SHA256SUMS
+            done
+            cd $WERCKER_OUTPUT_DIR
+
     - script:
         name: prepare
         code: |
@@ -98,6 +110,7 @@ deploy:
         name: rename
         code: |
             find . -type f -name "sentcli" -exec bash -c 'mv "${0}" ${0/%sentcli/wercker}' {} \;
+            find . -type f -name SHA256SUMS -exec sed -i 's/sentcli/wercker/g' {} +
 
     - s3sync:
         source-dir: "./latest"
@@ -126,6 +139,7 @@ deploy:
         name: rename
         code: |
             find . -type f -name "sentcli" -exec bash -c 'mv "${0}" ${0/%sentcli/wercker}' {} \;
+            find . -type f -name SHA256SUMS -exec sed -i 's/sentcli/wercker/g' {} +
 
     - s3sync:
         source-dir: "./latest"
