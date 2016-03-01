@@ -515,7 +515,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	if err != nil {
 		return -1, err
 	}
-	s.logger.Debugln(jsonOut)
+	s.logger.Debugln(string(jsonOut))
 
 	// Write out the files to disk that we are going to care about
 	err = os.MkdirAll(s.options.HostPath("scratch", layerID), 0755)
@@ -985,7 +985,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
 		}
 	}
-
 	s.logger.Debugln("Init env:", s.data)
 
 	config := docker.Config{
@@ -1010,7 +1009,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		Author:     s.author,
 		Message:    s.message,
 		Run:        &config,
-		Tag:        s.options.PipelineID,
 	}
 
 	s.logger.Debugln("Commit container:", containerID)
@@ -1049,13 +1047,14 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 		OutputStream:  w,
 		RawJSONStream: true,
 	}
-
-	err := client.PushImage(pushOpts, auth)
-	if err != nil {
-		s.logger.Errorln("Failed to push:", err)
-		return 1, err
+	if !s.dockerOptions.DockerLocal {
+		err := client.PushImage(pushOpts, auth)
+		if err != nil {
+			s.logger.Errorln("Failed to push:", err)
+			return 1, err
+		}
+		s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
 	}
-	s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
 	return 0, nil
 }
 
