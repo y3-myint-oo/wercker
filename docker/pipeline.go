@@ -114,6 +114,7 @@ func NewDockerPipeline(name string, config *core.Config, options *core.PipelineO
 	logger := util.RootLogger().WithField("Logger", "Pipeline")
 	base := core.NewBasePipeline(core.BasePipelineOptions{
 		Options:    options,
+		Config:     pipelineConfig.PipelineConfig,
 		Env:        util.NewEnvironment(),
 		Box:        box,
 		Services:   services,

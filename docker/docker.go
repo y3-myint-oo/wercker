@@ -713,7 +713,7 @@ func (s *DockerScratchPushStep) CollectArtifact(containerID string) (*core.Artif
 
 	sourceArtifact := &core.Artifact{
 		ContainerID:   containerID,
-		GuestPath:     s.options.SourcePath(),
+		GuestPath:     s.options.BasePath(),
 		HostPath:      s.options.HostPath("layer"),
 		HostTarPath:   s.options.HostPath("layer.tar"),
 		ApplicationID: s.options.ApplicationID,

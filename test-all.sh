@@ -113,6 +113,11 @@ runTests() {
   basicTest "local deploy using specific build not containing wercker.yml" deploy --docker-local ./last_build || return 1
   cd "$testsDir/local-deploy/specific-yml"
   basicTest "local deploy using specific build containing wercker.yml" deploy --docker-local ./last_build || return 1
+
+  # test checkpointers
+  basicTest "checkpoint, part 1" build --docker-local --enable-dev-steps "$testsDir/checkpoint" || return 1
+  basicTestFail "checkpoint, part 2" build --docker-local --checkpoint foo "$testsDir/checkpoint" || return 1
+  basicTest "checkpoint, part 3" build --docker-local --enable-dev-steps --checkpoint foo "$testsDir/checkpoint" || return 1
 }
 
 runTests

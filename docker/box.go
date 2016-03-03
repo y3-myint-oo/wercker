@@ -70,6 +70,10 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 	if boxConfig.Tag != "" {
 		tag = boxConfig.Tag
 	}
+	// checkpoint support
+	if options.Checkpoint != "" {
+		tag = fmt.Sprintf("w-%s", options.Checkpoint)
+	}
 	name = fmt.Sprintf("%s:%s", repository, tag)
 
 	repoParts := strings.Split(repository, "/")
@@ -132,6 +136,10 @@ func (b *DockerBox) Link() string {
 // GetName gets the box name
 func (b *DockerBox) GetName() string {
 	return b.Name
+}
+
+func (b *DockerBox) Repository() string {
+	return b.repository
 }
 
 func (b *DockerBox) GetTag() string {
@@ -549,7 +557,7 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 }
 
 // Commit the current running Docker container to an Docker image.
-func (b *DockerBox) Commit(name, tag, message string) (*docker.Image, error) {
+func (b *DockerBox) Commit(name, tag, message string, cleanup bool) (*docker.Image, error) {
 	b.logger.WithFields(util.LogFields{
 		"Name": name,
 		"Tag":  tag,
@@ -570,7 +578,9 @@ func (b *DockerBox) Commit(name, tag, message string) (*docker.Image, error) {
 		return nil, err
 	}
 
-	b.images = append(b.images, image)
+	if cleanup {
+		b.images = append(b.images, image)
+	}
 
 	return image, nil
 }
