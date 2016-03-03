@@ -28,9 +28,10 @@ type BoxOptions struct {
 type Box interface {
 	GetName() string
 	GetTag() string
+	Repository() string
 	Clean() error
 	Stop()
-	Commit(string, string, string) (*docker.Image, error)
+	Commit(string, string, string, bool) (*docker.Image, error)
 	Restart() (*docker.Container, error)
 	AddService(ServiceBox)
 	Fetch(context.Context, *util.Environment) (*docker.Image, error)

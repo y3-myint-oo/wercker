@@ -484,6 +484,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		sr.Message = err.Error()
 		return shared, err
 	}
+
 	// TODO(termie): dump some logs about the image
 	shared.box = box
 	if p.options.Verbose {
@@ -692,5 +693,6 @@ func (p *Runner) RunStep(shared *RunnerShared, step core.Step, order int) (*Step
 	if !sr.Success {
 		return sr, fmt.Errorf("Step failed with exit code: %d", sr.ExitCode)
 	}
+
 	return sr, nil
 }

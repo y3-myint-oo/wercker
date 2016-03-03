@@ -40,6 +40,7 @@ var (
 		cli.StringFlag{Name: "docker-cert-path", Value: "", Usage: "Docker api cert path.", EnvVar: "DOCKER_CERT_PATH"},
 		cli.StringSliceFlag{Name: "docker-dns", Value: &cli.StringSlice{0: "8.8.8.8", 1: "8.8.4.4"}, Usage: "Docker DNS server.", EnvVar: "DOCKER_DNS", Hidden: true},
 		cli.BoolFlag{Name: "docker-local", Usage: "Don't interact with remote repositories"},
+		cli.StringFlag{Name: "checkpoint", Value: "", Usage: "Skip to the next step after a recent build checkpoint."},
 	}
 
 	// These flags control where we store local files
