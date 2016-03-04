@@ -44,7 +44,7 @@ var (
 
 	// These flags control where we store local files
 	LocalPathFlags = []cli.Flag{
-		cli.StringFlag{Name: "working-dir", Value: "./.wercker", Usage: "Path where we store working files."},
+		cli.StringFlag{Name: "working-dir", Value: "./.wercker", Usage: "Path where we store working files.", EnvVar: "WERCKER_WORKING_DIR"},
 	}
 
 	// These flags control paths on the guest and probably shouldn't change
@@ -103,7 +103,7 @@ var (
 
 	// These flags affect our local execution environment
 	DevFlags = []cli.Flag{
-		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "Specify additional environment variables in a file."},
+		cli.StringFlag{Name: "environment", Value: "ENVIRONMENT", Usage: "Specify additional environment variables in a file.", EnvVar: "WERCKER_ENVIRONMENT_FILE"},
 		cli.BoolFlag{Name: "verbose", Usage: "Print more information."},
 		cli.BoolFlag{Name: "no-colors", Usage: "Wercker output will not use colors (does not apply to step output)."},
 		cli.BoolFlag{Name: "debug", Usage: "Print additional debug information."},
@@ -174,7 +174,7 @@ var (
 		cli.StringFlag{Name: "source-dir", Value: "", Usage: "Source path relative to checkout root."},
 		cli.Float64Flag{Name: "no-response-timeout", Value: 5, Usage: "Timeout if no script output is received in this many minutes."},
 		cli.Float64Flag{Name: "command-timeout", Value: 25, Usage: "Timeout if command does not complete in this many minutes."},
-		cli.StringFlag{Name: "wercker-yml", Value: "", Usage: "Specify a specific yaml file."},
+		cli.StringFlag{Name: "wercker-yml", Value: "", Usage: "Specify a specific yaml file.", EnvVar: "WERCKER_YML_FILE"},
 	}
 
 	PullFlagSet = [][]cli.Flag{
