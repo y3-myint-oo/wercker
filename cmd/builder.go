@@ -97,7 +97,6 @@ func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config
 	}
 
 	newDockerOptions := *b.dockerOptions
-	newDockerOptions.DockerLocal = true
 
 	shared, err := cmdBuild(ctx, newOptions, &newDockerOptions)
 	if err != nil {
