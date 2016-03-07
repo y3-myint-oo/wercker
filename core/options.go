@@ -711,19 +711,23 @@ func NewDeployOptions(c util.Settings, e *util.Environment) (*PipelineOptions, e
 	if err != nil {
 		return nil, err
 	}
-	// override some defaults
+	// default to last build output if none defined
 	target, _ := c.String("target")
 	if target == "" {
 		found, err := util.Exists("./.wercker/latest/output")
 		if err == nil && found {
 			util.RootLogger().Println("No target specified, using recent build output.")
 			pipelineOpts.ProjectPath, _ = filepath.Abs("./.wercker/latest/output")
-			werckerYml, _ := c.String("wercker-yml")
-			if werckerYml == "" {
-				pipelineOpts.WerckerYml = "./wercker.yml"
-			}
 		}
+	}
 
+	// if the deploy target path does not have a wercker.yml, use the current one
+	werckerYml, _ := c.String("wercker-yml")
+	if werckerYml == "" {
+		found, _ := util.Exists(filepath.Join(pipelineOpts.ProjectPath, "wercker.yml"))
+		if !found {
+			pipelineOpts.WerckerYml = "./wercker.yml"
+		}
 	}
 
 	if pipelineOpts.DeployID == "" {
