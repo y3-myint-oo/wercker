@@ -54,6 +54,12 @@ func (a *Archive) Tee(w io.Writer) {
 // Stream is the low-level interface to the archive stream processor
 func (a *Archive) Stream(processors ...ArchiveProcessor) error {
 	tarball := tar.NewReader(a.stream)
+
+	// If we don't eat the rest of the stream Docker 1.9+ seems to choke
+	defer func() {
+		io.Copy(ioutil.Discard, a.stream)
+	}()
+
 	var tarfile io.Reader
 EntryLoop:
 	for {
