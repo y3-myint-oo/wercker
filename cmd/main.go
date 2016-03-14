@@ -1020,6 +1020,10 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 			// Ignore ErrEmptyTarball errors
 			if err != util.ErrEmptyTarball {
 				if err != nil {
+					sr.Message = err.Error()
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("Storing artifacts failed: %s\n", sr.Message),
+					})
 					return err
 				}
 
@@ -1027,6 +1031,10 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 					artificer := dockerlocal.NewArtificer(options, dockerOptions)
 					err = artificer.Upload(artifact)
 					if err != nil {
+						sr.Message = err.Error()
+						e.Emit(core.Logs, &core.LogsArgs{
+							Logs: fmt.Sprintf("Storing artifacts failed: %s\n", sr.Message),
+						})
 						return err
 					}
 				}
