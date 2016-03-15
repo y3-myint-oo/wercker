@@ -58,7 +58,7 @@ func (art *Artifact) RemotePath() string {
 	if art.BuildStepID != "" {
 		path = fmt.Sprintf("%s/step/%s", path, art.BuildStepID)
 	}
-	path = fmt.Sprintf("%s/%s", path, filepath.Base(art.HostPath))
+	path = fmt.Sprintf("%s/%s", path, filepath.Base(art.HostTarPath))
 	return path
 }
 
