@@ -18,22 +18,28 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/wercker/wercker/util"
 )
 
 // NewS3Store creates a new S3Store
 func NewS3Store(options *AWSOptions) *S3Store {
+
 	logger := util.RootLogger().WithField("Logger", "S3Store")
 	if options == nil {
 		logger.Panic("options cannot be nil")
 	}
 
-	client := s3.New(&aws.Config{Region: &options.AWSRegion})
+	conf := aws.NewConfig()
+	creds := credentials.NewStaticCredentials(options.AWSAccessKeyID, options.AWSSecretAccessKey, "")
+	conf = conf.WithCredentials(creds)
+	conf = conf.WithRegion(options.AWSRegion)
+	sess := session.New(conf)
 
 	return &S3Store{
-		client:  client,
+		session: sess,
 		logger:  logger,
 		options: options,
 	}
@@ -41,7 +47,7 @@ func NewS3Store(options *AWSOptions) *S3Store {
 
 // S3Store stores files in S3
 type S3Store struct {
-	client  *s3.S3
+	session *session.Session
 	logger  *util.LogEntry
 	options *AWSOptions
 }
@@ -68,9 +74,8 @@ func (s *S3Store) StoreFromFile(args *StoreFromFileArgs) error {
 	defer file.Close()
 
 	var outerErr error
-	uploadManager := s3manager.NewUploader(&s3manager.UploadOptions{
-		S3:       s.client,
-		PartSize: s.options.S3PartSize,
+	uploadManager := s3manager.NewUploader(s.session, func(u *s3manager.Uploader) {
+		u.PartSize = s.options.S3PartSize
 	})
 	for try := 1; try <= args.MaxTries; try++ {
 
