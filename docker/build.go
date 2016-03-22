@@ -111,7 +111,7 @@ func (b *DockerBuild) CollectArtifact(containerID string) (*core.Artifact, error
 
 	sourceArtifact := &core.Artifact{
 		ContainerID:   containerID,
-		GuestPath:     b.options.SourcePath(),
+		GuestPath:     b.options.BasePath(),
 		HostPath:      b.options.HostPath("output"),
 		HostTarPath:   b.options.HostPath("output.tar"),
 		ApplicationID: b.options.ApplicationID,

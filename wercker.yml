@@ -16,26 +16,30 @@ dev:
           echo "welcome to your shell"
           echo "stay a while, and listen"
 build:
+  # base-path: /gopath/src/github.com/wercker/wercker
   steps:
     - install-packages:
+        checkpoint: pkgs
         packages: openssh-client pkg-config libsystemd-journal-dev
-
-    - add-to-known_hosts:
-        hostname: github.com
-        fingerprint: "16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48"
 
     - setup-go-workspace:
         package-dir: github.com/wercker/wercker
 
     - script:
+        checkpoint: deps
         name: glide install
         code: |
           export GO15VENDOREXPERIMENT=1
           export GLIDE_VERSION=0.8.3
           curl -LO https://github.com/Masterminds/glide/releases/download/${GLIDE_VERSION}/glide-${GLIDE_VERSION}-linux-amd64.tar.gz
           tar -xvzf glide-${GLIDE_VERSION}-linux-amd64.tar.gz
-          cp linux-amd64/glide ./
-          ./glide install --quick
+          cp linux-amd64/glide /bin/glide
+          glide install --quick
+
+    - script:
+        code: |
+          export GO15VENDOREXPERIMENT=1
+          export GLIDE_VERSION=0.8.3
 
     - script:
         name: go vet
@@ -52,7 +56,7 @@ build:
 
     - script:
         name: go test
-        code: go test $(./glide novendor)
+        code: go test $(glide novendor)
 
     - script:
         name: clear out the build binaries

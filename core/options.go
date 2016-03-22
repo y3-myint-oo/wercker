@@ -341,6 +341,8 @@ type PipelineOptions struct {
 	GuestRoot  string
 	MntRoot    string
 	ReportRoot string
+	// will be set by pipeline when it initializes
+	PipelineBasePath string
 
 	ProjectID   string
 	ProjectURL  string
@@ -358,6 +360,7 @@ type PipelineOptions struct {
 	PublishPorts   []string
 	EnableVolumes  bool
 	WerckerYml     string
+	Checkpoint     string
 }
 
 func guessApplicationID(c util.Settings, e *util.Environment, name string) string {
@@ -554,6 +557,7 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	publishPorts, _ := c.StringSlice("publish")
 	enableVolumes, _ := c.Bool("enable-volumes")
 	werckerYml, _ := c.String("wercker-yml")
+	checkpoint, _ := c.String("checkpoint")
 
 	return &PipelineOptions{
 		GlobalOptions: globalOpts,
@@ -602,12 +606,8 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		PublishPorts:   publishPorts,
 		EnableVolumes:  enableVolumes,
 		WerckerYml:     werckerYml,
+		Checkpoint:     checkpoint,
 	}, nil
-}
-
-// SourcePath returns the path to the source dir
-func (o *PipelineOptions) SourcePath() string {
-	return o.GuestPath("source", o.SourceDir)
 }
 
 // HostPath returns a path relative to the build root on the host.
@@ -623,6 +623,18 @@ func (o *PipelineOptions) WorkingPath(s ...string) string {
 // GuestPath returns a path relative to the build root on the guest.
 func (o *PipelineOptions) GuestPath(s ...string) string {
 	return path.Join(o.GuestRoot, path.Join(s...))
+}
+
+func (o *PipelineOptions) BasePath() string {
+	basePath := o.GuestPath("source")
+	if o.PipelineBasePath != "" {
+		basePath = o.PipelineBasePath
+	}
+	return basePath
+}
+
+func (o *PipelineOptions) SourcePath() string {
+	return path.Join(o.BasePath(), o.SourceDir)
 }
 
 // MntPath returns a path relative to the read-only mount root on the guest.
