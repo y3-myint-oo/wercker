@@ -17,6 +17,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -124,6 +125,7 @@ type BasePipeline struct {
 }
 
 func NewBasePipeline(args BasePipelineOptions) *BasePipeline {
+	args.Options.PipelineBasePath = args.Config.BasePath
 	return &BasePipeline{
 		options:    args.Options,
 		config:     args.Config,
@@ -167,7 +169,7 @@ func (p *BasePipeline) CommonEnv() [][]string {
 	a := [][]string{
 		[]string{"WERCKER", "true"},
 		[]string{"WERCKER_ROOT", p.options.GuestPath("source")},
-		[]string{"WERCKER_SOURCE_DIR", p.options.GuestPath("source", p.options.SourceDir)},
+		[]string{"WERCKER_SOURCE_DIR", p.options.SourcePath()},
 		// TODO(termie): Support cache dir
 		[]string{"WERCKER_CACHE_DIR", p.options.GuestPath("cache")},
 		[]string{"WERCKER_OUTPUT_DIR", p.options.GuestPath("output")},
@@ -197,16 +199,20 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 		cmds = append(cmds,
 			// Make sure our guest path exists
 			fmt.Sprintf(`mkdir -p "%s"`, p.options.GuestPath()),
-			// Make sure the output path exists
-			// Copy the source from the mounted directory to the pipeline dir
-			fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("source"), p.options.GuestPath("source")),
+			// Make sure our base path exists
+			fmt.Sprintf(`rm -rf "%s"`, filepath.Dir(p.options.BasePath())),
+			fmt.Sprintf(`mkdir -p "%s"`, filepath.Dir(p.options.BasePath())),
+			// Copy the source from the mounted directory to the base path
+			fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("source"), p.options.BasePath()),
 			// Copy the cache from the mounted directory to the pipeline dir
 			fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("cache"), p.options.GuestPath("cache")),
 		)
 	}
 
+	// Make sure the output path exists
 	cmds = append(cmds, fmt.Sprintf(`mkdir -p "%s"`, p.options.GuestPath("output")))
 
+	p.logger.Printf(f.Info("Copying source to container"))
 	for _, cmd := range cmds {
 		exit, _, err := sess.SendChecked(sessionCtx, cmd)
 		if err != nil {

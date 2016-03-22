@@ -21,8 +21,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/wercker/wercker/util"
 	"gopkg.in/yaml.v2"
+
+	"github.com/wercker/wercker/util"
 )
 
 // RawBoxConfig is the unwrapper for BoxConfig
@@ -68,10 +69,11 @@ type RawStepConfig struct {
 
 // StepConfig holds our step configs
 type StepConfig struct {
-	ID   string
-	Cwd  string
-	Name string
-	Data map[string]string
+	ID         string
+	Cwd        string
+	Name       string
+	Data       map[string]string
+	Checkpoint string
 }
 
 // ifaceToString takes a value from yaml and makes it a string (currently
@@ -149,6 +151,10 @@ func (r *RawStepConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		r.Name = v
 		delete(stepData, "name")
 	}
+	if v, ok := stepData["checkpoint"]; ok {
+		r.Checkpoint = v
+		delete(stepData, "checkpoint")
+	}
 	r.Data = stepData
 	return nil
 }
@@ -171,6 +177,7 @@ type PipelineConfig struct {
 	AfterSteps RawStepsConfig `yaml:"after-steps"`
 	StepsMap   map[string][]*RawStepConfig
 	Services   []*RawBoxConfig `yaml:"services"`
+	BasePath   string          `yaml:"base-path"`
 }
 
 var pipelineReservedWords = map[string]struct{}{
@@ -178,6 +185,7 @@ var pipelineReservedWords = map[string]struct{}{
 	"services":    struct{}{},
 	"steps":       struct{}{},
 	"after-steps": struct{}{},
+	"base-path":   struct{}{},
 }
 
 // UnmarshalYAML in this case is a little involved due to the myriad shapes our

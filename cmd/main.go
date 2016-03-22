@@ -965,7 +965,21 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	// stepCounter starts at 3, step 1 is "get code", step 2 is "setup
 	// environment".
 	stepCounter := &util.Counter{Current: 3}
+	checkpoint := false
 	for _, step := range pipeline.Steps() {
+		// we always want to run the wercker-init step to provide some functions
+		if !checkpoint && stepCounter.Current > 3 {
+			if options.EnableDevSteps && options.Checkpoint != "" {
+				logger.Printf(f.Info("Skipping step", step.DisplayName()))
+				// start at the one after the checkpoint
+				if step.Checkpoint() == options.Checkpoint {
+					logger.Printf(f.Info("Found checkpoint", options.Checkpoint))
+					checkpoint = true
+				}
+				stepCounter.Increment()
+				continue
+			}
+		}
 		logger.Printf(f.Info("Running step", step.DisplayName()))
 		timer.Reset()
 		sr, err := r.RunStep(shared, step, stepCounter.Increment())
@@ -977,13 +991,18 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 			break
 		}
 
+		if options.EnableDevSteps && step.Checkpoint() != "" {
+			logger.Printf(f.Info("Checkpointing", step.Checkpoint()))
+			box.Commit(box.Repository(), fmt.Sprintf("w-%s", step.Checkpoint()), "checkpoint", false)
+		}
+
 		if options.Verbose {
 			logger.Printf(f.Success("Step passed", step.DisplayName(), timer.String()))
 		}
 	}
 
 	if options.ShouldCommit {
-		_, err = box.Commit(repoName, tag, message)
+		_, err = box.Commit(repoName, tag, message, true)
 		if err != nil {
 			logger.Errorln("Failed to commit:", err.Error())
 		}
@@ -1151,7 +1170,6 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 		if options.Verbose {
 			logger.Printf(f.Success("Exported Cache", timer.String()))
 		}
-
 	}
 
 	if pr.Success {

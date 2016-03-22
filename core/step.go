@@ -89,6 +89,7 @@ type Step interface {
 	SafeID() string
 	Version() string
 	ShouldSyncEnv() bool
+	Checkpoint() string
 
 	// Actual methods
 	Fetch() (string, error)
@@ -112,6 +113,7 @@ type BaseStepOptions struct {
 	SafeID      string
 	Version     string
 	Cwd         string
+	Checkpoint  string
 }
 
 // BaseStep type for extending
@@ -124,6 +126,7 @@ type BaseStep struct {
 	safeID      string
 	version     string
 	cwd         string
+	checkpoint  string
 }
 
 func NewBaseStep(args BaseStepOptions) *BaseStep {
@@ -136,6 +139,7 @@ func NewBaseStep(args BaseStepOptions) *BaseStep {
 		safeID:      args.SafeID,
 		version:     args.Version,
 		cwd:         args.Cwd,
+		checkpoint:  args.Checkpoint,
 	}
 }
 
@@ -177,6 +181,11 @@ func (s *BaseStep) SafeID() string {
 // Version getter
 func (s *BaseStep) Version() string {
 	return s.version
+}
+
+// Version getter
+func (s *BaseStep) Checkpoint() string {
+	return s.checkpoint
 }
 
 // ExternalStep is the holder of the Step methods.
@@ -262,6 +271,7 @@ func NewStep(stepConfig *StepConfig, options *PipelineOptions) (*ExternalStep, e
 			safeID:      stepSafeID,
 			version:     version,
 			cwd:         stepConfig.Cwd,
+			checkpoint:  stepConfig.Checkpoint,
 		},
 		options: options,
 		data:    data,
