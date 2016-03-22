@@ -31,10 +31,11 @@ func NewS3Store(options *AWSOptions) *S3Store {
 	if options == nil {
 		logger.Panic("options cannot be nil")
 	}
-
 	conf := aws.NewConfig()
-	creds := credentials.NewStaticCredentials(options.AWSAccessKeyID, options.AWSSecretAccessKey, "")
-	conf = conf.WithCredentials(creds)
+	if options.AWSAccessKeyID != "" && options.AWSSecretAccessKey != "" {
+		creds := credentials.NewStaticCredentials(options.AWSAccessKeyID, options.AWSSecretAccessKey, "")
+		conf = conf.WithCredentials(creds)
+	}
 	conf = conf.WithRegion(options.AWSRegion)
 	sess := session.New(conf)
 
