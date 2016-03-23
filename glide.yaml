@@ -61,3 +61,4 @@ import:
     ref: d08b1d0cf9e96bf287b33d3a2c55132e185b273b
     vcs: git
   - package: github.com/wercker/docker-check-access
+  - package: github.com/docker/docker/reference
