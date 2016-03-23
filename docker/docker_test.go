@@ -31,23 +31,6 @@ func TestDockerSuite(t *testing.T) {
 	suite.Run(t, suiteTester)
 }
 
-func (s *DockerSuite) TestNormalizeRegistry() {
-	quay := "https://quay.io/v1/"
-	dock := "https://registry.hub.docker.com/v1/"
-	s.Equal(quay, normalizeRegistry("https://quay.io"))
-	s.Equal(quay, normalizeRegistry("https://quay.io/v1"))
-	s.Equal(quay, normalizeRegistry("http://quay.io/v1"))
-	s.Equal(quay, normalizeRegistry("https://quay.io/v1/"))
-	s.Equal(quay, normalizeRegistry("quay.io"))
-
-	s.Equal(dock, normalizeRegistry(""))
-	s.Equal(dock, normalizeRegistry("https://registry.hub.docker.com"))
-	s.Equal(dock, normalizeRegistry("http://registry.hub.docker.com"))
-	s.Equal(dock, normalizeRegistry("registry.hub.docker.com"))
-	s.Equal("https://quay.io/v2/", normalizeRegistry("quay.io/v2/"))
-	s.Equal("https://registry-1.docker.io/v2/", normalizeRegistry("registry-1.docker.io"))
-}
-
 func (s *DockerSuite) TestPing() {
 	client := DockerOrSkip(s.T())
 	err := client.Ping()
