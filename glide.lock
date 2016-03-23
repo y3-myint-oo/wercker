@@ -1,13 +1,15 @@
-hash: fd93031ee2e9eb29e5a969b3f21cdf038835e0c61b3e252f460adaece4d1755f
-updated: 2016-03-22T12:44:10.798269255-07:00
+hash: 6c9b588cdb1334b5d88456e882bf603d55077df88d3f8c620e3bfa55ebaaef95
+updated: 2016-03-25T12:10:25.791510452-07:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 3d9cf88054c098453cde9b835e7643b74cbfd7bd
+  version: af3026711cd873ccb4e87a7142fa8ca0be8f2aef
   subpackages:
   - aws
   - aws/credentials
   - aws/session
   - service/s3/s3manager
+  - service/ecr
+  - service/iam
   - aws/awserr
   - aws/client
   - aws/corehandlers
@@ -18,16 +20,18 @@ imports:
   - service/s3
   - service/s3/s3iface
   - aws/client/metadata
+  - private/protocol/jsonrpc
+  - private/signer/v4
+  - private/protocol
+  - private/protocol/query
+  - private/waiter
   - aws/credentials/ec2rolecreds
   - aws/ec2metadata
-  - private/protocol
   - private/protocol/restxml
-  - private/signer/v4
-  - private/waiter
-  - private/protocol/query
+  - private/protocol/json/jsonutil
   - private/protocol/rest
-  - private/protocol/xml/xmlutil
   - private/protocol/query/queryutil
+  - private/protocol/xml/xmlutil
 - name: github.com/Azure/go-ansiterm
   version: 70b2c90b260171e829f1ebd7c17f600c11858dbe
   subpackages:
@@ -55,16 +59,52 @@ imports:
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
+- name: github.com/docker/distribution
+  version: f4b6fc8d681c42137b7d2bb544b087462bc34d47
+  subpackages:
+  - digest
+  - reference
 - name: github.com/docker/docker
-  version: 53d2e5e9d754ce8fbef733759e9ec450514133e3
+  version: 64456f3c6d1712c939d1aefe0db1510b9c4841d3
   subpackages:
   - pkg/term
   - pkg/signal
   - utils
+  - reference
   - pkg/jsonmessage
   - pkg/system
   - pkg/term/windows
   - pkg/jsonlog
+  - image
+  - image/v1
+  - layer
+  - pkg/version
+  - daemon/graphdriver
+  - pkg/archive
+  - pkg/idtools
+  - pkg/ioutils
+  - pkg/stringid
+  - pkg/chrootarchive
+  - pkg/plugins
+  - pkg/fileutils
+  - pkg/pools
+  - pkg/promise
+  - pkg/longpath
+  - pkg/random
+  - pkg/reexec
+  - pkg/plugins/transport
+- name: github.com/docker/engine-api
+  version: e37a82dfcea64559ca6a581776253c01d83357d9
+  subpackages:
+  - types/container
+  - types/blkiodev
+  - types/strslice
+- name: github.com/docker/go-connections
+  version: f549a9393d05688dff0992ef3efd8bbe6c628aeb
+  subpackages:
+  - nat
+  - sockets
+  - tlsconfig
 - name: github.com/docker/go-units
   version: 5d2041e26a699eaca682e2ea41c8f891e1060444
 - name: github.com/fsouza/go-dockerclient
@@ -101,10 +141,16 @@ imports:
   vcs: git
 - name: github.com/jtacoma/uritemplates
   version: 802b8e24dbf0f556badb3a1401a49f6bfda80ca6
+- name: github.com/Microsoft/go-winio
+  version: 8f9387ea7efabb228a981b9c381142be7667967f
 - name: github.com/mreiferson/go-snappystream
   version: 028eae7ab5c4c9e2d1cb4c4ca1e53259bbe7e504
   subpackages:
   - snappy-go
+- name: github.com/opencontainers/runc
+  version: 344b0ccaa643d00ea29e560c982477d6d4675be8
+  subpackages:
+  - libcontainer/user
 - name: github.com/pborman/uuid
   version: c55201b036063326c5b1b89ccfe45a184973d073
 - name: github.com/pmezard/go-difflib
@@ -125,6 +171,14 @@ imports:
   vcs: git
 - name: github.com/vaughan0/go-ini
   version: a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
+- name: github.com/vbatts/tar-split
+  version: e2a62d6b0d98fd7f1a57646812c74564fda999b4
+  subpackages:
+  - tar/asm
+  - tar/storage
+  - archive/tar
+- name: github.com/wercker/docker-check-access
+  version: b24a239cdb8b7efa65c58e46743b098eede37bce
 - name: github.com/wercker/journalhook
   version: 1572873fdb03095c0f4d726eb9435f0b564a7e9c
 - name: github.com/wercker/reporter-client
@@ -134,8 +188,9 @@ imports:
   version: 4876518f9e71663000c348837735820161a42df7
   subpackages:
   - context
+  - proxy
 - name: golang.org/x/sys
-  version: 9d4e42a20653790449273b3c85e67d6d8bae6e2e
+  version: 320cb01ddbbf0473674c2585f9b6e245721de355
   subpackages:
   - unix
 - name: gopkg.in/fsnotify.v1
