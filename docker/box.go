@@ -24,6 +24,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
+	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 
@@ -501,31 +502,11 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		b.image = image
 		return image, nil
 	}
-
-	// Check for access to this image
-	auth := docker.AuthConfiguration{
-		Username: env.Interpolate(b.config.Username),
-		Password: env.Interpolate(b.config.Password),
+	authenticator := b.config.Auth.ToAuthenticator()
+	check, err := authenticator.CheckAccess(env.Interpolate(b.repository), auth.Pull)
+	if !check || err != nil {
+		return nil, fmt.Errorf("Not allowed to interact with this repository: %s", env.Interpolate(b.repository))
 	}
-
-	checkOpts := CheckAccessOptions{
-		Auth:       auth,
-		Access:     "read",
-		Repository: env.Interpolate(b.repository),
-		Registry:   env.Interpolate(b.config.Registry),
-	}
-
-	check, err := client.CheckAccess(checkOpts)
-	if err != nil {
-		b.logger.Errorln("Error during check access")
-		return nil, err
-	}
-
-	if !check {
-		b.logger.Errorln("Not allowed to interact with this repository:", b.repository)
-		return nil, fmt.Errorf("Not allowed to interact with this repository: %s", b.repository)
-	}
-
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
 	defer w.Close()
@@ -538,11 +519,14 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		// Registry:      "docker.tsuru.io",
 		OutputStream:  w,
 		RawJSONStream: true,
-		Repository:    env.Interpolate(b.repository),
+		Repository:    authenticator.Repository(env.Interpolate(b.repository)),
 		Tag:           env.Interpolate(b.tag),
 	}
-
-	err = client.PullImage(options, auth)
+	authConfig := docker.AuthConfiguration{
+		Username: authenticator.Username(),
+		Password: authenticator.Password(),
+	}
+	err = client.PullImage(options, authConfig)
 	if err != nil {
 		return nil, err
 	}

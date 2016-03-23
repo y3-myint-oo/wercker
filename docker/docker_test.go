@@ -44,13 +44,8 @@ func (s *DockerSuite) TestNormalizeRegistry() {
 	s.Equal(dock, normalizeRegistry("https://registry.hub.docker.com"))
 	s.Equal(dock, normalizeRegistry("http://registry.hub.docker.com"))
 	s.Equal(dock, normalizeRegistry("registry.hub.docker.com"))
-}
-
-func (s *DockerSuite) TestNormalizeRepo() {
-	s.Equal("gox-mirror", normalizeRepo("example.com/gox-mirror"))
-	s.Equal("termie/gox-mirror", normalizeRepo("quay.io/termie/gox-mirror"))
-	s.Equal("termie/gox-mirror", normalizeRepo("termie/gox-mirror"))
-	s.Equal("mongo", normalizeRepo("mongo"))
+	s.Equal("https://quay.io/v2/", normalizeRegistry("quay.io/v2/"))
+	s.Equal("https://registry-1.docker.io/v2/", normalizeRegistry("registry-1.docker.io"))
 }
 
 func (s *DockerSuite) TestPing() {
