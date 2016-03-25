@@ -533,6 +533,9 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		Tag: env.Interpolate(b.tag),
 	}
 	if b.config.Auth != nil {
+
+		options.Repository = authenticator.Repository(env.Interpolate(b.repository))
+	} else {
 		options.Repository = env.Interpolate(b.repository)
 	}
 	var authConfig docker.AuthConfiguration
@@ -550,7 +553,7 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println("this is b.Name %s \n", b.Name)
 	image, err := client.InspectImage(env.Interpolate(b.Name))
 	if err != nil {
 		return nil, err
