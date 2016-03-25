@@ -454,6 +454,11 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 
 	// Grab our config
 	rawConfig, stringConfig, err := p.GetConfig()
+	if stringConfig != "" && p.options.Verbose {
+		p.emitter.Emit(core.Logs, &core.LogsArgs{
+			Logs: fmt.Sprintf("Using config:\n%s\n", stringConfig),
+		})
+	}
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err
@@ -469,12 +474,6 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 	pipeline.InitEnv(p.options.HostEnv)
 	shared.pipeline = pipeline
-
-	if p.options.Verbose {
-		p.emitter.Emit(core.Logs, &core.LogsArgs{
-			Logs: fmt.Sprintf("Using config:\n%s\n", stringConfig),
-		})
-	}
 
 	// Fetch the box
 	timer.Reset()
