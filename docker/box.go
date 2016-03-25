@@ -553,7 +553,6 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("this is b.Name %s \n", b.Name)
 	image, err := client.InspectImage(env.Interpolate(b.Name))
 	if err != nil {
 		return nil, err
