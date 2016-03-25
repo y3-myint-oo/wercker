@@ -494,7 +494,7 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	}
 	var authenticator auth.Authenticator
 	if b.config.Auth != nil {
-		authenticator := b.config.Auth.ToAuthenticator(env)
+		authenticator = b.config.Auth.ToAuthenticator(env)
 		b.repository = authenticator.Repository(b.repository)
 		b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	}
@@ -529,12 +529,22 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		// Registry:      "docker.tsuru.io",
 		OutputStream:  w,
 		RawJSONStream: true,
-		Repository:    authenticator.Repository(env.Interpolate(b.repository)),
-		Tag:           env.Interpolate(b.tag),
+		//Repository:    authenticator.Repository(env.Interpolate(b.repository)),
+		Tag: env.Interpolate(b.tag),
 	}
-	authConfig := docker.AuthConfiguration{
-		Username: authenticator.Username(),
-		Password: authenticator.Password(),
+	if b.config.Auth != nil {
+		options.Repository = env.Interpolate(b.repository)
+	}
+	var authConfig docker.AuthConfiguration
+	if b.config.Auth != nil {
+		authConfig = docker.AuthConfiguration{
+			Username: authenticator.Username(),
+			Password: authenticator.Password(),
+		}
+	}
+	authConfig = docker.AuthConfiguration{
+		Username: env.Interpolate(b.config.Username),
+		Password: env.Interpolate(b.config.Password),
 	}
 	err = client.PullImage(options, authConfig)
 	if err != nil {
