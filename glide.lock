@@ -1,5 +1,5 @@
-hash: 4245507251ba285a3528099dab3563f1bcec405716925dc410d5e632e79b8475
-updated: 2016-03-25T12:11:28.338977834-07:00
+hash: d996f2c166c6fc800cb267b0fb801907f15f3c2045ff7a5a0778026db8043e2e
+updated: 2016-03-25T10:55:01.09374026-07:00
 imports:
 - name: github.com/aws/aws-sdk-go
   version: af3026711cd873ccb4e87a7142fa8ca0be8f2aef
@@ -64,7 +64,7 @@ imports:
   - digest
   - reference
 - name: github.com/docker/docker
-  version: 64456f3c6d1712c939d1aefe0db1510b9c4841d3
+  version: e2221d1f37d1204ccca51722aa21fc11939a41ba
   subpackages:
   - pkg/term
   - pkg/signal

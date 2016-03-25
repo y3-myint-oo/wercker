@@ -875,8 +875,11 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	}
 	if !s.dockerOptions.DockerLocal {
 		check, err := s.authenticator.CheckAccess(s.repository, auth.Push)
-		if !check || err != nil {
-			s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
+		if err != nil {
+			s.logger.Errorln("Error interacting with this repository:", s.repository, err)
+			return -1, fmt.Errorf("Error interacting with this repository: %s %v", s.repository, err)
+		}
+		if !check {
 			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
 		}
 	}
