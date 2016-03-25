@@ -493,6 +493,9 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		return nil, err
 	}
 
+	authenticator := b.config.Auth.ToAuthenticator(env)
+	b.repository = authenticator.Repository(b.repository)
+	b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	// Shortcut to speed up local dev
 	if b.dockerOptions.DockerLocal {
 		image, err := client.InspectImage(env.Interpolate(b.Name))
@@ -502,7 +505,6 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		b.image = image
 		return image, nil
 	}
-	authenticator := b.config.Auth.ToAuthenticator()
 	check, err := authenticator.CheckAccess(env.Interpolate(b.repository), auth.Pull)
 	if !check || err != nil {
 		return nil, fmt.Errorf("Not allowed to interact with this repository: %s", env.Interpolate(b.repository))

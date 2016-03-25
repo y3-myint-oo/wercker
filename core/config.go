@@ -21,10 +21,11 @@ import (
 	"strconv"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/util"
-	"gopkg.in/yaml.v2"
 )
 
 // RawBoxConfig is the unwrapper for BoxConfig
@@ -49,7 +50,7 @@ type BoxConfig struct {
 }
 
 type Authenticatable interface {
-	ToAuthenticator() auth.Authenticator
+	ToAuthenticator(*util.Environment) auth.Authenticator
 }
 
 type DockerAuth struct {
@@ -66,18 +67,18 @@ type AmazonAuth struct {
 	AWSStrictAuth bool   `yaml:"aws-strict-auth"`
 }
 
-func (d DockerAuth) ToAuthenticator() auth.Authenticator {
+func (d DockerAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
 	opts := dockerauth.CheckAccessOptions{
-		Username: d.Username,
-		Password: d.Password,
+		Username: env.Interpolate(d.Username),
+		Password: env.Interpolate(d.Password),
 		Registry: d.Registry,
 	}
 	auth, _ := dockerauth.GetRegistryAuthenticator(opts)
 	return auth
 }
 
-func (a AmazonAuth) ToAuthenticator() auth.Authenticator {
-	return auth.NewAmazonAuth(a.AWSRegistryID, a.AWSAccessKey, a.AWSSecretKey, a.AWSRegion, a.AWSStrictAuth)
+func (a AmazonAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
+	return auth.NewAmazonAuth(env.Interpolate(a.AWSRegistryID), env.Interpolate(a.AWSAccessKey), env.Interpolate(a.AWSSecretKey), env.Interpolate(a.AWSRegion), a.AWSStrictAuth)
 }
 
 // IsExternal tells us if the box (service) is located on disk
