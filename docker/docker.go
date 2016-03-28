@@ -610,8 +610,6 @@ type DockerPushStep struct {
 	options       *core.PipelineOptions
 	dockerOptions *DockerOptions
 	data          map[string]string
-	username      string
-	password      string
 	email         string
 	env           []string
 	stopSignal    string
@@ -630,11 +628,6 @@ type DockerPushStep struct {
 	forceTags     bool
 	logger        *util.LogEntry
 	workingDir    string
-	awsRegistryID string
-	awsAccessKey  string
-	awsSecretKey  string
-	awsRegion     string
-	awsStrictAuth bool
 	authenticator auth.Authenticator
 }
 
@@ -672,13 +665,6 @@ func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOption
 
 // InitEnv parses our data into our config
 func (s *DockerPushStep) InitEnv(env *util.Environment) {
-	if username, ok := s.data["username"]; ok {
-		s.username = env.Interpolate(username)
-	}
-
-	if password, ok := s.data["password"]; ok {
-		s.password = env.Interpolate(password)
-	}
 
 	if email, ok := s.data["email"]; ok {
 		s.email = env.Interpolate(email)
@@ -799,43 +785,43 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		s.forceTags = true
 	}
 
+	//build auther
+	var opts dockerauth.CheckAccessOptions
+	if username, ok := s.data["username"]; ok {
+		opts.Username = env.Interpolate(username)
+	}
+	if password, ok := s.data["password"]; ok {
+		opts.Password = env.Interpolate(password)
+	}
 	if awsAccessKey, ok := s.data["aws-access-key"]; ok {
 		ak := env.Interpolate(awsAccessKey)
-		s.awsAccessKey = ak
+		opts.AwsAccessKey = ak
 	}
 
 	if awsSecretKey, ok := s.data["aws-secret-key"]; ok {
 		secretKey := env.Interpolate(awsSecretKey)
-		s.awsSecretKey = secretKey
+		opts.AwsSecretKey = secretKey
 	}
 
 	if awsRegion, ok := s.data["aws-region"]; ok {
 		region := env.Interpolate(awsRegion)
-		s.awsRegion = region
+		opts.AwsRegion = region
 	}
 
 	if awsAuth, ok := s.data["aws-strict-auth"]; ok {
 		auth, err := strconv.ParseBool(awsAuth)
 		if err == nil {
-			s.awsStrictAuth = auth
+			opts.AwsStrictAuth = auth
 		}
 	}
 
 	if awsRegistryID, ok := s.data["aws-registry-id"]; ok {
 		regID := env.Interpolate(awsRegistryID)
-		s.awsRegistryID = regID
+		opts.AwsRegistryID = regID
 	}
-	var auther auth.Authenticator
-	if s.awsSecretKey != "" {
-		auther = auth.NewAmazonAuth(s.awsRegistryID, s.awsAccessKey, s.awsSecretKey, s.awsRegion, s.awsStrictAuth)
-	} else {
-		opts := dockerauth.CheckAccessOptions{
-			Username: s.username,
-			Password: s.password,
-			Registry: s.registry,
-		}
-		auther, _ = dockerauth.GetRegistryAuthenticator(opts)
-	}
+
+	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
+
 	s.authenticator = auther
 }
 
@@ -942,11 +928,9 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 		RawJSONStream: true,
 	}
 	if !s.dockerOptions.DockerLocal {
-		s.username = s.authenticator.Username()
-		s.password = s.authenticator.Password()
 		auth := docker.AuthConfiguration{
-			Username: s.username,
-			Password: s.password,
+			Username: s.authenticator.Username(),
+			Password: s.authenticator.Password(),
 			Email:    s.email,
 		}
 		err := client.PushImage(pushOpts, auth)
