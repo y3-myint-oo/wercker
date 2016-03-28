@@ -93,6 +93,9 @@ func (r *RawBoxConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	err := unmarshal(&r.BoxConfig.ID)
 
 	if err == nil {
+		//set an empty docker auth
+		dock := &DockerAuth{}
+		r.BoxConfig.Auth = dock
 		return nil
 	}
 	err = unmarshal(&r.BoxConfig)

@@ -492,12 +492,9 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if err != nil {
 		return nil, err
 	}
-	var authenticator auth.Authenticator
-	if b.config.Auth != nil {
-		authenticator = b.config.Auth.ToAuthenticator(env)
-		b.repository = authenticator.Repository(b.repository)
-		b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
-	}
+	authenticator := b.config.Auth.ToAuthenticator(env)
+	b.repository = authenticator.Repository(env.Interpolate(b.repository))
+	b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	// Shortcut to speed up local dev
 	if b.dockerOptions.DockerLocal {
 		image, err := client.InspectImage(env.Interpolate(b.Name))
@@ -508,14 +505,12 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		return image, nil
 	}
 
-	if b.config.Auth != nil {
-		check, err := authenticator.CheckAccess(env.Interpolate(b.repository), auth.Pull)
-		if err != nil {
-			return nil, fmt.Errorf("Error interacting with this repository: %s %v", env.Interpolate(b.repository), err)
-		}
-		if !check {
-			return nil, fmt.Errorf("Not allowed to interact with this repository: %s:", env.Interpolate(b.repository))
-		}
+	check, err := authenticator.CheckAccess(env.Interpolate(b.repository), auth.Pull)
+	if err != nil {
+		return nil, fmt.Errorf("Error interacting with this repository: %s %v", env.Interpolate(b.repository), err)
+	}
+	if !check {
+		return nil, fmt.Errorf("Not allowed to interact with this repository: %s:", env.Interpolate(b.repository))
 	}
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
@@ -529,25 +524,12 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		// Registry:      "docker.tsuru.io",
 		OutputStream:  w,
 		RawJSONStream: true,
-		//Repository:    authenticator.Repository(env.Interpolate(b.repository)),
-		Tag: env.Interpolate(b.tag),
+		Repository:    b.repository,
+		Tag:           env.Interpolate(b.tag),
 	}
-	if b.config.Auth != nil {
-
-		options.Repository = authenticator.Repository(env.Interpolate(b.repository))
-	} else {
-		options.Repository = env.Interpolate(b.repository)
-	}
-	var authConfig docker.AuthConfiguration
-	if b.config.Auth != nil {
-		authConfig = docker.AuthConfiguration{
-			Username: authenticator.Username(),
-			Password: authenticator.Password(),
-		}
-	}
-	authConfig = docker.AuthConfiguration{
-		Username: env.Interpolate(b.config.Username),
-		Password: env.Interpolate(b.config.Password),
+	authConfig := docker.AuthConfiguration{
+		Username: authenticator.Username(),
+		Password: authenticator.Password(),
 	}
 	err = client.PullImage(options, authConfig)
 	if err != nil {
