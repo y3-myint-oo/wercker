@@ -1,8 +1,8 @@
 hash: 4245507251ba285a3528099dab3563f1bcec405716925dc410d5e632e79b8475
-updated: 2016-03-25T12:20:33.585515045-07:00
+updated: 2016-03-28T11:57:22.346250391-07:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: af3026711cd873ccb4e87a7142fa8ca0be8f2aef
+  version: 02af25ef9cfafac6f489fd5cd7f1b1e930506cb8
   subpackages:
   - aws
   - aws/credentials
@@ -37,11 +37,11 @@ imports:
   subpackages:
   - winterm
 - name: github.com/CenturyLinkLabs/docker-reg-client
-  version: 4bc892c78c562916189aaa1a0edd43e194dc60b3
+  version: 0bb0ba20bf1a05629226c2da0fdf7a37b9f661ba
   subpackages:
   - registry
 - name: github.com/cheggaaa/pb
-  version: 29ad9b62f9e0274422d738242b94a5b89440bfa6
+  version: 226d21d43a305fac52b3a104ef83e721b15275e0
 - name: github.com/chuckpreslar/emission
   version: 586ef242e476ff4df75d80fc97e493e81878e194
   vcs: git
@@ -59,12 +59,12 @@ imports:
   subpackages:
   - spew
 - name: github.com/docker/distribution
-  version: f4b6fc8d681c42137b7d2bb544b087462bc34d47
+  version: 72ec74834b2b84441791b4fc16c431c6b0d5a742
   subpackages:
   - digest
   - reference
 - name: github.com/docker/docker
-  version: 64456f3c6d1712c939d1aefe0db1510b9c4841d3
+  version: cf91a1be45fc4f1d4e3338610f921d665d406b04
   subpackages:
   - pkg/term
   - pkg/signal
@@ -147,7 +147,7 @@ imports:
   subpackages:
   - snappy-go
 - name: github.com/opencontainers/runc
-  version: 344b0ccaa643d00ea29e560c982477d6d4675be8
+  version: 851c050340591ac2e4df9a79a2138d1adc3f783f
   subpackages:
   - libcontainer/user
 - name: github.com/pborman/uuid
