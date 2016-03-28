@@ -1,5 +1,5 @@
 hash: 4245507251ba285a3528099dab3563f1bcec405716925dc410d5e632e79b8475
-updated: 2016-03-28T11:57:22.346250391-07:00
+updated: 2016-03-28T12:33:00.906950379-07:00
 imports:
 - name: github.com/aws/aws-sdk-go
   version: 02af25ef9cfafac6f489fd5cd7f1b1e930506cb8
@@ -37,7 +37,7 @@ imports:
   subpackages:
   - winterm
 - name: github.com/CenturyLinkLabs/docker-reg-client
-  version: 0bb0ba20bf1a05629226c2da0fdf7a37b9f661ba
+  version: 4bc892c78c562916189aaa1a0edd43e194dc60b3
   subpackages:
   - registry
 - name: github.com/cheggaaa/pb
