@@ -545,7 +545,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	}
 	s.repository = s.authenticator.Repository(s.repository)
 	s.logger.WithFields(util.LogFields{
-		"Registry":   s.registry,
 		"Repository": s.repository,
 		"Tags":       s.tags,
 		"Message":    s.message,
@@ -620,7 +619,6 @@ type DockerPushStep struct {
 	author        string
 	message       string
 	tags          []string
-	registry      string
 	ports         map[docker.Port]struct{}
 	volumes       map[string]struct{}
 	cmd           []string
@@ -724,12 +722,6 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		s.workingDir = env.Interpolate(workingDir)
 	}
 
-	if registry, ok := s.data["registry"]; ok {
-		s.registry = dockerauth.NormalizeRegistry(env.Interpolate(registry))
-	} else {
-		s.registry = dockerauth.NormalizeRegistry("https://registry.hub.docker.com")
-	}
-
 	if cmd, ok := s.data["cmd"]; ok {
 		parts, err := shlex.Split(cmd)
 		if err == nil {
@@ -820,6 +812,9 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		opts.AwsRegistryID = regID
 	}
 
+	if registry, ok := s.data["registry"]; ok {
+		opts.Registry = dockerauth.NormalizeRegistry(env.Interpolate(registry))
+	}
 	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
 
 	s.authenticator = auther
@@ -845,7 +840,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	}
 
 	s.logger.WithFields(util.LogFields{
-		"Registry":   s.registry,
 		"Repository": s.repository,
 		"Tags":       s.tags,
 		"Message":    s.message,
@@ -938,7 +932,7 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
 		}
-		s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
+		s.logger.Println("Pushed container:", s.repository, s.tags)
 	}
 	return 0, nil
 }

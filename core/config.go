@@ -71,7 +71,7 @@ func (d DockerAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
 	opts := dockerauth.CheckAccessOptions{
 		Username: env.Interpolate(d.Username),
 		Password: env.Interpolate(d.Password),
-		Registry: d.Registry,
+		Registry: env.Interpolate(d.Registry),
 	}
 	auth, _ := dockerauth.GetRegistryAuthenticator(opts)
 	return auth
