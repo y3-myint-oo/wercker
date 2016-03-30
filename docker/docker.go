@@ -778,7 +778,7 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	}
 
 	//build auther
-	var opts dockerauth.CheckAccessOptions
+	opts := dockerauth.CheckAccessOptions{}
 	if username, ok := s.data["username"]; ok {
 		opts.Username = env.Interpolate(username)
 	}
@@ -786,18 +786,15 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		opts.Password = env.Interpolate(password)
 	}
 	if awsAccessKey, ok := s.data["aws-access-key"]; ok {
-		ak := env.Interpolate(awsAccessKey)
-		opts.AwsAccessKey = ak
+		opts.AwsAccessKey = env.Interpolate(awsAccessKey)
 	}
 
 	if awsSecretKey, ok := s.data["aws-secret-key"]; ok {
-		secretKey := env.Interpolate(awsSecretKey)
-		opts.AwsSecretKey = secretKey
+		opts.AwsSecretKey = env.Interpolate(awsSecretKey)
 	}
 
 	if awsRegion, ok := s.data["aws-region"]; ok {
-		region := env.Interpolate(awsRegion)
-		opts.AwsRegion = region
+		opts.AwsRegion = env.Interpolate(awsRegion)
 	}
 
 	if awsAuth, ok := s.data["aws-strict-auth"]; ok {
@@ -808,8 +805,7 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	}
 
 	if awsRegistryID, ok := s.data["aws-registry-id"]; ok {
-		regID := env.Interpolate(awsRegistryID)
-		opts.AwsRegistryID = regID
+		opts.AwsRegistryID = env.Interpolate(awsRegistryID)
 	}
 
 	if registry, ok := s.data["registry"]; ok {
