@@ -21,3 +21,25 @@ pipeline:
     - alternate-string-step
     - script:
         code: also done right
+
+amzn:
+  box:
+    id: node
+    aws-region: "us-east-1"
+    aws-secret-key: "lalala"
+    aws-access-key: "reallysecret"
+    aws-registry-id: 666420666
+
+docker-v2:
+  box:
+    id: node
+    username: "superuser"
+    password: "supersecure"
+    registry : "https://registry-1.docker.io"
+
+
+docker:
+  box:
+    id: node
+    username: "superuser"
+    password: "supersecure"

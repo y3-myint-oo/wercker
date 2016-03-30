@@ -24,6 +24,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
+	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 
@@ -491,7 +492,9 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if err != nil {
 		return nil, err
 	}
-
+	authenticator := b.config.Auth.ToAuthenticator(env)
+	b.repository = authenticator.Repository(env.Interpolate(b.repository))
+	b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	// Shortcut to speed up local dev
 	if b.dockerOptions.DockerLocal {
 		image, err := client.InspectImage(env.Interpolate(b.Name))
@@ -502,30 +505,13 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		return image, nil
 	}
 
-	// Check for access to this image
-	auth := docker.AuthConfiguration{
-		Username: env.Interpolate(b.config.Username),
-		Password: env.Interpolate(b.config.Password),
-	}
-
-	checkOpts := CheckAccessOptions{
-		Auth:       auth,
-		Access:     "read",
-		Repository: env.Interpolate(b.repository),
-		Registry:   env.Interpolate(b.config.Registry),
-	}
-
-	check, err := client.CheckAccess(checkOpts)
+	check, err := authenticator.CheckAccess(env.Interpolate(b.repository), auth.Pull)
 	if err != nil {
-		b.logger.Errorln("Error during check access")
-		return nil, err
+		return nil, fmt.Errorf("Error interacting with this repository: %s %v", env.Interpolate(b.repository), err)
 	}
-
 	if !check {
-		b.logger.Errorln("Not allowed to interact with this repository:", b.repository)
-		return nil, fmt.Errorf("Not allowed to interact with this repository: %s", b.repository)
+		return nil, fmt.Errorf("Not allowed to interact with this repository: %s:", env.Interpolate(b.repository))
 	}
-
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
 	defer w.Close()
@@ -538,15 +524,17 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		// Registry:      "docker.tsuru.io",
 		OutputStream:  w,
 		RawJSONStream: true,
-		Repository:    env.Interpolate(b.repository),
+		Repository:    b.repository,
 		Tag:           env.Interpolate(b.tag),
 	}
-
-	err = client.PullImage(options, auth)
+	authConfig := docker.AuthConfiguration{
+		Username: authenticator.Username(),
+		Password: authenticator.Password(),
+	}
+	err = client.PullImage(options, authConfig)
 	if err != nil {
 		return nil, err
 	}
-
 	image, err := client.InspectImage(env.Interpolate(b.Name))
 	if err != nil {
 		return nil, err

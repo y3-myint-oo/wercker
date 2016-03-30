@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"os/signal"
 	"path"
@@ -29,25 +28,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CenturyLinkLabs/docker-reg-client/registry"
 	dockersignal "github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/term"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
+	"github.com/wercker/docker-check-access"
+	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
-
-// CheckAccessOptions is just args for CheckAccess
-type CheckAccessOptions struct {
-	Auth       docker.AuthConfiguration
-	Access     string
-	Repository string
-	Tag        string
-	Registry   string
-}
 
 func RequireDockerEndpoint(options *DockerOptions) error {
 	client, err := NewDockerClient(options)
@@ -278,110 +269,6 @@ func (c *DockerClient) ExecOne(containerID string, cmd []string, output io.Write
 	return nil
 }
 
-// normalizeRepo only really applies to the repository name used in the registry
-// the full name is still used within the other calls to docker stuff
-func normalizeRepo(name string) string {
-	// NOTE(termie): the local name of the repository is something like
-	//               quay.io/termie/gox-mirror but we ahve to check for
-	//               termie/gox-mirror, so... it's manglin' time
-	parts := strings.Split(name, "/")
-	if len(parts) == 1 {
-		return name
-	}
-
-	for strings.Contains(parts[0], ".") {
-		parts = parts[1:]
-	}
-
-	return strings.Join(parts, "/")
-}
-
-func normalizeRegistry(address string) string {
-	logger := util.RootLogger().WithField("Logger", "Docker")
-	if address == "" {
-		logger.Debugln("No registry address provided, using https://registry.hub.docker.com")
-		return "https://registry.hub.docker.com/v1/"
-	}
-	parsed, err := url.Parse(address)
-	if err != nil {
-		logger.Errorln("Registry address is invalid, this will probably fail:", address)
-		return address
-	}
-	if parsed.Scheme != "https" {
-		logger.Warnln("Registry address is expected to begin with 'https://', forcing it to use https")
-		parsed.Scheme = "https"
-		address = parsed.String()
-	}
-	if strings.HasSuffix(address, "/") {
-		address = address[:len(address)-1]
-	}
-
-	parts := strings.Split(address, "/")
-	possiblyAPIVersionStr := parts[len(parts)-1]
-
-	// we only support v1, so...
-	if possiblyAPIVersionStr == "v2" {
-		logger.Warnln("Registry API v2 not supported, using v1")
-		newParts := append(parts[:len(parts)-1], "v1")
-		address = strings.Join(newParts, "/")
-	} else if possiblyAPIVersionStr != "v1" {
-		newParts := append(parts, "v1")
-		address = strings.Join(newParts, "/")
-	}
-	return address + "/"
-}
-
-// CheckAccess checks whether a user can read or write an image
-// TODO(termie): this really uses the docker registry code rather than the
-//               client so, maybe this is the wrong place
-func (c *DockerClient) CheckAccess(opts CheckAccessOptions) (bool, error) {
-	logger := util.RootLogger().WithField("Logger", "Docker")
-	logger.Debug("Checking access for ", opts.Repository)
-
-	// Do the steps described here: https://gist.github.com/termie/bc0334b086697a162f67
-	name := normalizeRepo(opts.Repository)
-	logger.Debug("Normalized repo ", name)
-
-	auth := registry.BasicAuth{
-		Username: opts.Auth.Username,
-		Password: opts.Auth.Password,
-	}
-	client := registry.NewClient()
-
-	reg := normalizeRegistry(opts.Registry)
-	logger.Debug("Normalized Registry ", reg)
-
-	client.BaseURL, _ = url.Parse(reg)
-
-	if opts.Access == "write" {
-		if _, err := client.Hub.GetWriteToken(name, auth); err != nil {
-			if err.Error() == "Server returned status 401" || err.Error() == "Server returned status 403" {
-				return false, nil
-			}
-			return false, err
-		}
-	} else if opts.Access == "read" {
-		if opts.Auth.Username != "" {
-			if _, err := client.Hub.GetReadTokenWithAuth(name, auth); err != nil {
-				if err.Error() == "Server returned status 401" || err.Error() == "Server returned status 403" {
-					return false, nil
-				}
-				return false, err
-			}
-		} else {
-			if _, err := client.Hub.GetReadToken(name); err != nil {
-				if err.Error() == "Server returned status 401" || err.Error() == "Server returned status 403" {
-					return false, nil
-				}
-				return false, err
-			}
-		}
-	} else {
-		return false, fmt.Errorf("Invalid access type requested: %s", opts.Access)
-	}
-	return true, nil
-}
-
 // DockerScratchPushStep creates a new image based on a scratch tarball and
 // pushes it
 type DockerScratchPushStep struct {
@@ -462,7 +349,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	defer layerFile.Close()
 
 	var layerSize int64
-
 	layerTar := tar.NewReader(layerFile)
 	for {
 		hdr, err := layerTar.Next()
@@ -560,7 +446,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 	defer repositoriesFile.Close()
-	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{`, s.repository)))
+	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{`, s.authenticator.Repository(s.repository))))
 	if err != nil {
 		return -1, err
 	}
@@ -649,40 +535,20 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return 1, err
 	}
 
-	s.logger.WithFields(util.LogFields{
-		"Registry":   s.registry,
-		"Repository": s.repository,
-		"Tags":       s.tags,
-		"Message":    s.message,
-	}).Debug("Scratch push to registry")
-
 	// Check the auth
-	auth := docker.AuthConfiguration{
-		Username:      s.username,
-		Password:      s.password,
-		Email:         s.email,
-		ServerAddress: s.authServer,
-	}
-
 	if !s.dockerOptions.DockerLocal {
-		checkOpts := CheckAccessOptions{
-			Auth:       auth,
-			Access:     "write",
-			Repository: s.repository,
-			Registry:   s.registry,
-		}
-
-		check, err := client.CheckAccess(checkOpts)
-		if err != nil {
-			s.logger.Errorln("Error during check access", err)
-			return -1, err
-		}
-		if !check {
+		check, err := s.authenticator.CheckAccess(s.repository, auth.Push)
+		if !check || err != nil {
 			s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
 			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
 		}
 	}
-
+	s.repository = s.authenticator.Repository(s.repository)
+	s.logger.WithFields(util.LogFields{
+		"Repository": s.repository,
+		"Tags":       s.tags,
+		"Message":    s.message,
+	}).Debug("Scratch push to registry")
 	// Okay, we can access it, do a docker load to import the image then push it
 	loadFile, err := os.Open(s.options.HostPath("scratch.tar"))
 	defer loadFile.Close()
@@ -691,7 +557,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 	e, err := core.EmitterFromContext(ctx)
-	return s.tagAndPush(layerID, e, client, auth)
+	return s.tagAndPush(layerID, e, client)
 }
 
 // CollectArtifact is copied from the build, we use this to get the layer
@@ -743,8 +609,6 @@ type DockerPushStep struct {
 	options       *core.PipelineOptions
 	dockerOptions *DockerOptions
 	data          map[string]string
-	username      string
-	password      string
 	email         string
 	env           []string
 	stopSignal    string
@@ -755,7 +619,6 @@ type DockerPushStep struct {
 	author        string
 	message       string
 	tags          []string
-	registry      string
 	ports         map[docker.Port]struct{}
 	volumes       map[string]struct{}
 	cmd           []string
@@ -763,6 +626,7 @@ type DockerPushStep struct {
 	forceTags     bool
 	logger        *util.LogEntry
 	workingDir    string
+	authenticator auth.Authenticator
 }
 
 // NewDockerPushStep is a special step for doing docker pushes
@@ -799,13 +663,6 @@ func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOption
 
 // InitEnv parses our data into our config
 func (s *DockerPushStep) InitEnv(env *util.Environment) {
-	if username, ok := s.data["username"]; ok {
-		s.username = env.Interpolate(username)
-	}
-
-	if password, ok := s.data["password"]; ok {
-		s.password = env.Interpolate(password)
-	}
 
 	if email, ok := s.data["email"]; ok {
 		s.email = env.Interpolate(email)
@@ -865,14 +722,6 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		s.workingDir = env.Interpolate(workingDir)
 	}
 
-	if registry, ok := s.data["registry"]; ok {
-		// s.registry = env.Interpolate(registry)
-		s.registry = normalizeRegistry(env.Interpolate(registry))
-	} else {
-		// s.registry = "https://registry.hub.docker.com"
-		s.registry = normalizeRegistry("https://registry.hub.docker.com")
-	}
-
 	if cmd, ok := s.data["cmd"]; ok {
 		parts, err := shlex.Split(cmd)
 		if err == nil {
@@ -927,6 +776,44 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	} else {
 		s.forceTags = true
 	}
+
+	//build auther
+	opts := dockerauth.CheckAccessOptions{}
+	if username, ok := s.data["username"]; ok {
+		opts.Username = env.Interpolate(username)
+	}
+	if password, ok := s.data["password"]; ok {
+		opts.Password = env.Interpolate(password)
+	}
+	if awsAccessKey, ok := s.data["aws-access-key"]; ok {
+		opts.AwsAccessKey = env.Interpolate(awsAccessKey)
+	}
+
+	if awsSecretKey, ok := s.data["aws-secret-key"]; ok {
+		opts.AwsSecretKey = env.Interpolate(awsSecretKey)
+	}
+
+	if awsRegion, ok := s.data["aws-region"]; ok {
+		opts.AwsRegion = env.Interpolate(awsRegion)
+	}
+
+	if awsAuth, ok := s.data["aws-strict-auth"]; ok {
+		auth, err := strconv.ParseBool(awsAuth)
+		if err == nil {
+			opts.AwsStrictAuth = auth
+		}
+	}
+
+	if awsRegistryID, ok := s.data["aws-registry-id"]; ok {
+		opts.AwsRegistryID = env.Interpolate(awsRegistryID)
+	}
+
+	if registry, ok := s.data["registry"]; ok {
+		opts.Registry = dockerauth.NormalizeRegistry(env.Interpolate(registry))
+	}
+	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
+
+	s.authenticator = auther
 }
 
 // Fetch NOP
@@ -949,7 +836,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	}
 
 	s.logger.WithFields(util.LogFields{
-		"Registry":   s.registry,
 		"Repository": s.repository,
 		"Tags":       s.tags,
 		"Message":    s.message,
@@ -960,31 +846,20 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
 
-	auth := docker.AuthConfiguration{
-		Username:      s.username,
-		Password:      s.password,
-		Email:         s.email,
-		ServerAddress: s.authServer,
+	if len(s.tags) == 0 {
+		s.tags = []string{"latest"}
 	}
-
 	if !s.dockerOptions.DockerLocal {
-		checkOpts := CheckAccessOptions{
-			Auth:       auth,
-			Access:     "write",
-			Repository: s.repository,
-			Registry:   s.registry,
-		}
-
-		check, err := client.CheckAccess(checkOpts)
+		check, err := s.authenticator.CheckAccess(s.repository, auth.Push)
 		if err != nil {
-			s.logger.Errorln("Error during check access", err)
-			return -1, err
+			s.logger.Errorln("Error interacting with this repository:", s.repository, err)
+			return -1, fmt.Errorf("Error interacting with this repository: %s %v", s.repository, err)
 		}
 		if !check {
-			s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
 			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
 		}
 	}
+	s.repository = s.authenticator.Repository(s.repository)
 	s.logger.Debugln("Init env:", s.data)
 
 	config := docker.Config{
@@ -997,10 +872,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		Labels:       s.labels,
 		ExposedPorts: s.ports,
 		Volumes:      s.volumes,
-	}
-
-	if len(s.tags) == 0 {
-		s.tags = []string{"latest"}
 	}
 
 	commitOpts := docker.CommitContainerOptions{
@@ -1018,11 +889,10 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		return -1, err
 	}
 	s.logger.WithField("Image", i).Debug("Commit completed")
-
-	return s.tagAndPush(i.ID, e, client, auth)
+	return s.tagAndPush(i.ID, e, client)
 }
 
-func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, client *DockerClient, auth docker.AuthConfiguration) (int, error) {
+func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, client *DockerClient) (int, error) {
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
 
@@ -1044,17 +914,21 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 	}
 	pushOpts := docker.PushImageOptions{
 		Name:          s.repository,
-		Registry:      s.registry,
 		OutputStream:  w,
 		RawJSONStream: true,
 	}
 	if !s.dockerOptions.DockerLocal {
+		auth := docker.AuthConfiguration{
+			Username: s.authenticator.Username(),
+			Password: s.authenticator.Password(),
+			Email:    s.email,
+		}
 		err := client.PushImage(pushOpts, auth)
 		if err != nil {
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
 		}
-		s.logger.Println("Pushed container:", s.repository, s.registry, s.tags)
+		s.logger.Println("Pushed container:", s.repository, s.tags)
 	}
 	return 0, nil
 }

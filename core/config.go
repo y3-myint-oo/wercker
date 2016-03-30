@@ -23,6 +23,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/wercker/docker-check-access"
+	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/util"
 )
 
@@ -44,6 +46,39 @@ type BoxConfig struct {
 	Entrypoint string
 	URL        string
 	Volumes    string
+	Auth       Authenticatable
+}
+
+type Authenticatable interface {
+	ToAuthenticator(*util.Environment) auth.Authenticator
+}
+
+type DockerAuth struct {
+	Username string
+	Password string
+	Registry string
+}
+
+type AmazonAuth struct {
+	AWSRegion     string `yaml:"aws-region"`
+	AWSSecretKey  string `yaml:"aws-secret-key"`
+	AWSAccessKey  string `yaml:"aws-access-key"`
+	AWSRegistryID string `yaml:"aws-registry-id"`
+	AWSStrictAuth bool   `yaml:"aws-strict-auth"`
+}
+
+func (d DockerAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
+	opts := dockerauth.CheckAccessOptions{
+		Username: env.Interpolate(d.Username),
+		Password: env.Interpolate(d.Password),
+		Registry: env.Interpolate(d.Registry),
+	}
+	auth, _ := dockerauth.GetRegistryAuthenticator(opts)
+	return auth
+}
+
+func (a AmazonAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
+	return auth.NewAmazonAuth(env.Interpolate(a.AWSRegistryID), env.Interpolate(a.AWSAccessKey), env.Interpolate(a.AWSSecretKey), env.Interpolate(a.AWSRegion), a.AWSStrictAuth)
 }
 
 // IsExternal tells us if the box (service) is located on disk
@@ -56,8 +91,26 @@ func (c *BoxConfig) IsExternal() bool {
 func (r *RawBoxConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	r.BoxConfig = &BoxConfig{}
 	err := unmarshal(&r.BoxConfig.ID)
+
+	if err == nil {
+		//set an empty docker auth
+		dock := &DockerAuth{}
+		r.BoxConfig.Auth = dock
+		return nil
+	}
+	err = unmarshal(&r.BoxConfig)
+
 	if err != nil {
-		err = unmarshal(&r.BoxConfig)
+		return err
+	}
+	amzn := &AmazonAuth{}
+	err = unmarshal(amzn)
+	if amzn.AWSSecretKey != "" {
+		r.BoxConfig.Auth = amzn
+	} else {
+		dock := &DockerAuth{}
+		err = unmarshal(dock)
+		r.BoxConfig.Auth = dock
 	}
 	return err
 }

@@ -16,9 +16,12 @@ package core
 
 import (
 	"io/ioutil"
+	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/util"
 )
 
@@ -38,6 +41,14 @@ func (s *ConfigSuite) TestConfigBoxStrings() {
 	s.Require().Nil(err)
 	s.Equal("strings_box", config.Box.ID)
 	s.Equal("strings_service", config.Services[0].ID)
+	//check to see if both the service and box has an auth
+	assert.NotNil(s.T(), config.Box.Auth)
+	assert.NotNil(s.T(), config.Services[0].Auth)
+
+	_, ok := config.Box.Auth.(*DockerAuth)
+	_, t := config.Services[0].Auth.(*DockerAuth)
+	s.Equal(ok, true)
+	s.Equal(t, true)
 }
 
 func (s *ConfigSuite) TestConfigBoxStructs() {
@@ -47,12 +58,41 @@ func (s *ConfigSuite) TestConfigBoxStructs() {
 	s.Require().Nil(err)
 	s.Equal("structs_box", config.Box.ID)
 	s.Equal("structs_service", config.Services[0].ID)
+	assert.NotNil(s.T(), config.Box.Auth)
+	assert.NotNil(s.T(), config.Services[0].Auth)
 
 	pipeline := config.PipelinesMap["pipeline"]
 	s.Equal(pipeline.Box.ID, "blue")
 	s.Equal(pipeline.Steps[0].ID, "string-step")
 	s.Equal(pipeline.Steps[1].ID, "script")
 	s.Equal(pipeline.Steps[2].ID, "script")
+
+	// test to see if proper authenticatables are set
+	// and if those return the proper authenticators
+	amzn := config.PipelinesMap["amzn"]
+	assert.NotNil(s.T(), amzn.Box.Auth)
+	_, ok := amzn.Box.Auth.(*AmazonAuth)
+	s.Equal(ok, true)
+	env := util.NewEnvironment(os.Environ()...)
+	authenticator := amzn.Box.Auth.ToAuthenticator(env)
+	_, ok = authenticator.(*auth.AmazonAuth)
+	s.Equal(ok, true)
+
+	docker := config.PipelinesMap["docker-v2"]
+	assert.NotNil(s.T(), docker.Box.Auth)
+	_, ok = docker.Box.Auth.(*DockerAuth)
+	s.Equal(ok, true)
+	authenticator = docker.Box.Auth.ToAuthenticator(env)
+	_, ok = authenticator.(*auth.DockerAuth)
+	s.Equal(ok, true)
+
+	dockerV1 := config.PipelinesMap["docker"]
+	assert.NotNil(s.T(), dockerV1.Box.Auth)
+	_, ok = dockerV1.Box.Auth.(*DockerAuth)
+	s.Equal(ok, true)
+	authenticator = dockerV1.Box.Auth.ToAuthenticator(env)
+	_, ok = authenticator.(auth.DockerAuthV1)
+	s.Equal(ok, true)
 }
 
 func (s *ConfigSuite) TestIfaceToString() {

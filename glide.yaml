@@ -48,8 +48,6 @@ import:
   - package: github.com/wercker/journalhook
   - package: github.com/jtacoma/uritemplates
   - package: github.com/CenturyLinkLabs/docker-reg-client
-    ref:     0bb0ba20bf1a05629226c2da0fdf7a37b9f661ba
-    vcs:     git
   - package: github.com/google/shlex
   - package: gopkg.in/fsnotify.v1
   - package: github.com/cheggaaa/pb
@@ -60,3 +58,5 @@ import:
   - package: github.com/coreos/go-systemd
     ref: d08b1d0cf9e96bf287b33d3a2c55132e185b273b
     vcs: git
+  - package: github.com/wercker/docker-check-access
+  - package: github.com/docker/docker/reference

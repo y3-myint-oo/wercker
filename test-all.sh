@@ -125,6 +125,13 @@ runTests() {
   basicTest "checkpoint, part 1" build --docker-local --enable-dev-steps "$testsDir/checkpoint" || return 1
   basicTestFail "checkpoint, part 2" build --docker-local --checkpoint foo "$testsDir/checkpoint" || return 1
   basicTest "checkpoint, part 3" build --docker-local --enable-dev-steps --checkpoint foo "$testsDir/checkpoint" || return 1
+
+  # fetching and pushing
+  if [ -n "$TEST_PUSH" ]; then
+    basicTest "fetch from amazon" build "$testsDir/amzn-test" || return 1
+    basicTest "fetch from docker hub" build "$testsDir/docker-hub-test" || return 1
+    basicTest "fetch from gcr" build "$testsDir/gcr-test" || return 1
+  fi
 }
 
 runTests
