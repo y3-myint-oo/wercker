@@ -183,11 +183,18 @@ func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
 		vols := util.SplitSpaceOrComma(b.config.Volumes)
 		var interpolatedVols []string
 		for _, vol := range vols {
-			interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
+			if strings.Contains(vol, ":") {
+				pair := strings.SplitN(vol, ":", 2)
+				interpolatedVols = append(interpolatedVols, env.Interpolate(pair[0]))
+				interpolatedVols = append(interpolatedVols, env.Interpolate(pair[1]))
+			} else {
+				interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
+				interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
+			}
 		}
 		b.volumes = interpolatedVols
-		for _, volume := range b.volumes {
-			binds = append(binds, fmt.Sprintf("%s:%s:rw", volume, volume))
+		for i := 0; i < len(b.volumes); i += 2 {
+			binds = append(binds, fmt.Sprintf("%s:%s:rw", b.volumes[i], b.volumes[i+1]))
 		}
 	}
 
