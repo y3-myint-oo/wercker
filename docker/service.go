@@ -58,6 +58,7 @@ type ExternalServiceBox struct {
 // NewExternalServiceBox gives us an ExternalServiceBox from config
 func NewExternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*ExternalServiceBox, error) {
 	logger := util.RootLogger().WithField("Logger", "ExternalService")
+	boxConfig.Service = true
 	box := &DockerBox{options: options, dockerOptions: dockerOptions, config: boxConfig}
 	return &ExternalServiceBox{
 		InternalServiceBox: &InternalServiceBox{DockerBox: box, logger: logger},
@@ -89,6 +90,7 @@ func NewServiceBox(config *core.BoxConfig, options *core.PipelineOptions, docker
 
 // NewServiceBox from a name and other references
 func NewInternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*InternalServiceBox, error) {
+	boxConfig.Service = true
 	box, err := NewDockerBox(boxConfig, options, dockerOptions)
 	logger := util.RootLogger().WithField("Logger", "Service")
 	return &InternalServiceBox{DockerBox: box, logger: logger}, err

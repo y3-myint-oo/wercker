@@ -72,7 +72,7 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 		tag = boxConfig.Tag
 	}
 	// checkpoint support
-	if options.Checkpoint != "" {
+	if !boxConfig.Service && options.Checkpoint != "" {
 		tag = fmt.Sprintf("w-%s", options.Checkpoint)
 	}
 	name = fmt.Sprintf("%s:%s", repository, tag)

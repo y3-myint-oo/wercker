@@ -47,6 +47,7 @@ type BoxConfig struct {
 	URL        string
 	Volumes    string
 	Auth       Authenticatable
+	Service    bool // set by services on init
 }
 
 type Authenticatable interface {
