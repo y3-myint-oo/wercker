@@ -286,10 +286,15 @@ type DockerImageJSON struct {
 	Config          docker.Config                  `json:"config"`
 	Container       string                         `json:"container"`
 	ContainerConfig DockerImageJSONContainerConfig `json:"container_config"`
-	ID              string                         `json:"id"`
 	OS              string                         `json:"os"`
 	DockerVersion   string                         `json:"docker_version"`
-	Size            int64                          `json:"Size"`
+	RootFS          RootFSConfig                   `json:"rootfs"`
+}
+
+// RootFSConfig Substructure
+type RootFSConfig struct {
+	Type    string   `json:"type"`
+	DiffIDs []string `json:"diff_ids"`
 }
 
 // DockerImageJSONContainerConfig substructure
@@ -344,34 +349,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 
-	// At this point we've written the layer to disk, we're going to add up the
-	// sizes of all the files to add to our json format, and sha256 the data
-	layerFile, err := os.Open(s.options.HostPath("layer.tar"))
-	if err != nil {
-		return -1, err
-	}
-	defer layerFile.Close()
-
-	var layerSize int64
-	layerTar := tar.NewReader(layerFile)
-	for {
-		hdr, err := layerTar.Next()
-		if err == io.EOF {
-			// finished the tarball
-			break
-		}
-		if err != nil {
-			return -1, err
-		}
-
-		// Skip the base dir
-		if hdr.Name == "./" {
-			continue
-		}
-
-		layerSize += hdr.Size
-	}
-
 	// layer.tar has an extra folder in it so we have to strip it :/
 	tempLayerFile, err := os.Open(s.options.HostPath("layer.tar"))
 	if err != nil {
@@ -424,16 +401,8 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 	diffID := dgst.Digest()
-	layerID := diffID.Hex()
+	fullSHA := diffID.String()
 
-	realLayerFile.Seek(0, 0)
-	hash := sha256.New()
-	_, err = io.Copy(hash, realLayerFile)
-	md := hash.Sum(nil)
-	yo := hex.EncodeToString(md)
-	if yo == layerID {
-		fmt.Println("sha256 encoding and layer encoding are the same what the fuck")
-	}
 	config := docker.Config{
 		Cmd:          s.cmd,
 		Entrypoint:   s.entrypoint,
@@ -451,17 +420,25 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		},
 		DockerVersion: "1.5",
 		Created:       time.Now(),
-		ID:            layerID,
 		OS:            "linux",
-		Size:          layerSize,
 		Config:        config,
+		RootFS: RootFSConfig{
+			Type: "layers",
+			DiffIDs: []string{
+				fullSHA,
+			},
+		},
 	}
-
+	hash := sha256.New()
 	jsonOut, err := json.MarshalIndent(imageJSON, "", "  ")
 	if err != nil {
 		return -1, err
 	}
+	hash.Write(jsonOut)
+	md := hash.Sum(nil)
+	layerID := hex.EncodeToString(md)
 	s.logger.Debugln(string(jsonOut))
+	s.logger.Debugln(layerID)
 
 	// Write out the files to disk that we are going to care about
 	err = os.MkdirAll(s.options.HostPath("scratch", layerID), 0755)
