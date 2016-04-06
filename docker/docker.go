@@ -279,6 +279,18 @@ type DockerScratchPushStep struct {
 	*DockerPushStep
 }
 
+type LieDockerImageJSON struct {
+	Architecture    string                         `json:"architecture"`
+	Created         time.Time                      `json:"created"`
+	Config          docker.Config                  `json:"config"`
+	Container       string                         `json:"container"`
+	ContainerConfig DockerImageJSONContainerConfig `json:"container_config"`
+	ID              string                         `json:"id"`
+	OS              string                         `json:"os"`
+	DockerVersion   string                         `json:"docker_version"`
+	Size            int64                          `json:"Size"`
+}
+
 // DockerImageJSON is a minimal JSON description for a docker layer
 type DockerImageJSON struct {
 	Architecture    string                         `json:"architecture"`
@@ -359,14 +371,11 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	if err != nil {
 		return -1, err
 	}
-	defer os.Remove(s.options.HostPath("layer.tar"))
-	defer tempLayerFile.Close()
 
 	realLayerFile, err := os.OpenFile(s.options.HostPath("real_layer.tar"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return -1, err
 	}
-	defer realLayerFile.Close()
 
 	tr := tar.NewReader(tempLayerFile)
 	tw := tar.NewWriter(realLayerFile)
@@ -408,6 +417,9 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	diffID := dgst.Digest()
 	fullSHA := diffID.String()
 
+	tempLayerFile.Close()
+	realLayerFile.Close()
+
 	config := docker.Config{
 		Cmd:          s.cmd,
 		Entrypoint:   s.entrypoint,
@@ -448,9 +460,8 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	layerID := hex.EncodeToString(md)
 	s.logger.Debugln(string(jsonOut))
 	s.logger.Debugln(layerID)
-
-	// Write out the files to disk that we are going to care about
 	err = os.MkdirAll(s.options.HostPath("scratch", layerID), 0755)
+	os.Rename(realLayerFile.Name(), s.options.HostPath("scratch", layerID, "layer.tar"))
 	if err != nil {
 		return -1, err
 	}
@@ -531,7 +542,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	if err != nil {
 		return -1, err
 	}
-	defer imageFile.Close()
+	imageFile.Close()
 
 	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
@@ -557,9 +568,13 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	if err != nil {
 		return -1, err
 	}
-	e, err := core.EmitterFromContext(ctx)
+	//e, err := core.EmitterFromContext(ctx)
 	err = client.LoadImage(docker.LoadImageOptions{InputStream: loadFile})
-	return s.tagAndPush(layerID, e, client)
+	if err != nil {
+		return 1, err
+	}
+	return -1, err
+	//return s.tagAndPush(layerID, e, client)
 }
 
 // CollectArtifact is copied from the build, we use this to get the layer
