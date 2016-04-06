@@ -439,7 +439,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		},
 	}
 	hash := sha256.New()
-	jsonOut, err := json.MarshalIndent(imageJSON, "", "  ")
+	jsonOut, err := json.Marshal(imageJSON)
 	if err != nil {
 		return -1, err
 	}
