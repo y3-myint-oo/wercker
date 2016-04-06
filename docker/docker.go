@@ -30,8 +30,10 @@ import (
 	"time"
 
 	"github.com/docker/distribution/digest"
+	"github.com/docker/docker/layer"
 	dockersignal "github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/term"
+	"github.com/docker/engine-api/types/container"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
@@ -279,49 +281,6 @@ type DockerScratchPushStep struct {
 	*DockerPushStep
 }
 
-type LieDockerImageJSON struct {
-	Architecture    string                         `json:"architecture"`
-	Created         time.Time                      `json:"created"`
-	Config          docker.Config                  `json:"config"`
-	Container       string                         `json:"container"`
-	ContainerConfig DockerImageJSONContainerConfig `json:"container_config"`
-	ID              string                         `json:"id"`
-	OS              string                         `json:"os"`
-	DockerVersion   string                         `json:"docker_version"`
-	Size            int64                          `json:"Size"`
-}
-
-// DockerImageJSON is a minimal JSON description for a docker layer
-type DockerImageJSON struct {
-	Architecture    string                         `json:"architecture"`
-	Created         time.Time                      `json:"created"`
-	History         []History                      `json:"history"`
-	Config          docker.Config                  `json:"config"`
-	Container       string                         `json:"container"`
-	ContainerConfig DockerImageJSONContainerConfig `json:"container_config"`
-	OS              string                         `json:"os"`
-	DockerVersion   string                         `json:"docker_version"`
-	RootFS          RootFSConfig                   `json:"rootfs"`
-}
-
-// RootFSConfig Substructure
-type RootFSConfig struct {
-	Type    string   `json:"type"`
-	DiffIDs []string `json:"diff_ids"`
-}
-
-type History struct {
-	Created time.Time `json:"created"`
-}
-
-// DockerImageJSONContainerConfig substructure
-type DockerImageJSONContainerConfig struct {
-	Hostname string
-	// Cmd      []string
-	// Memory int
-	// OpenStdin bool
-}
-
 // NewDockerScratchPushStep constructorama
 func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerScratchPushStep, error) {
 	name := "docker-scratch-push"
@@ -430,19 +389,22 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	}
 	// Make the JSON file we need
 	t := time.Now()
-	imageJSON := DockerImageJSON{
+	base := layer.V1Image{
 		Architecture: "amd64",
 		Container:    containerID,
-		ContainerConfig: DockerImageJSONContainerConfig{
+		ContainerConfig: container.Config{
 			Hostname: containerID[:16],
 		},
-		History: []History{History{
-			Created: t,
-		}},
 		DockerVersion: "1.5",
 		Created:       t,
 		OS:            "linux",
 		Config:        config,
+	}
+	imageJSON := layer.Image{
+		V1Image: base,
+		History: []layer.History{layer.History{
+			Created: t,
+		}},
 		RootFS: RootFSConfig{
 			Type: "layers",
 			DiffIDs: []string{
