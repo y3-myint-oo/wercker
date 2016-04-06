@@ -283,6 +283,7 @@ type DockerScratchPushStep struct {
 type DockerImageJSON struct {
 	Architecture    string                         `json:"architecture"`
 	Created         time.Time                      `json:"created"`
+	History         []History                      `json:"history"`
 	Config          docker.Config                  `json:"config"`
 	Container       string                         `json:"container"`
 	ContainerConfig DockerImageJSONContainerConfig `json:"container_config"`
@@ -295,6 +296,10 @@ type DockerImageJSON struct {
 type RootFSConfig struct {
 	Type    string   `json:"type"`
 	DiffIDs []string `json:"diff_ids"`
+}
+
+type History struct {
+	Created time.Time `json:"created"`
 }
 
 // DockerImageJSONContainerConfig substructure
@@ -412,14 +417,18 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		Volumes:      s.volumes,
 	}
 	// Make the JSON file we need
+	t := time.Now()
 	imageJSON := DockerImageJSON{
 		Architecture: "amd64",
 		Container:    containerID,
 		ContainerConfig: DockerImageJSONContainerConfig{
 			Hostname: containerID[:16],
 		},
+		History: []History{History{
+			Created: t,
+		}},
 		DockerVersion: "1.5",
-		Created:       time.Now(),
+		Created:       t,
 		OS:            "linux",
 		Config:        config,
 		RootFS: RootFSConfig{
