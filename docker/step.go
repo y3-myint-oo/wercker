@@ -35,6 +35,9 @@ func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptio
 	if config.ID == "internal/store-container" {
 		return NewStoreContainerStep(config, options, dockerOptions)
 	}
+	if config.ID == "internal/trigger-run" {
+		return core.NewTriggerRunStep(config, options)
+	}
 	if strings.HasPrefix(config.ID, "internal/") {
 		if !options.EnableDevSteps {
 			util.RootLogger().Warnln("Ignoring dev step:", config.ID)
