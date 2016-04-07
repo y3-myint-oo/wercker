@@ -8,6 +8,9 @@ import:
     repo:    https://github.com/wercker/codegangsta-cli
     ref:     863dc328534d8e22f36386bce3da48dc572a8ddf
     vcs:     git
+  - repo:    https://github.com/wercker/werckerclient
+    ref:     runs
+    vcs:     git
   - package: github.com/docker/docker/pkg/term
   - package: github.com/docker/docker/pkg/signal
   - package: github.com/docker/docker/utils
