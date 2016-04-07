@@ -80,6 +80,12 @@ func (s *TriggerRunStep) InitEnv(env *util.Environment) {
 }
 
 func (s *TriggerRunStep) Execute(ctx context.Context, sess *Session) (int, error) {
+
+	e, err := EmitterFromContext(ctx)
+	if err != nil {
+		return -1, err
+	}
+
 	config := &werckerclient.Config{
 		Endpoint: s.options.BaseURL,
 	}
@@ -98,6 +104,10 @@ func (s *TriggerRunStep) Execute(ctx context.Context, sess *Session) (int, error
 	if err != nil {
 		return -1, err
 	}
+
+	e.Emit(Logs, &LogsArgs{
+		Logs: fmt.Sprintf("Started run: %s", newRun.ID),
+	})
 
 	return 0, nil
 }
