@@ -880,8 +880,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, client *DockerClient) (int, error) {
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
-	fmt.Println("here")
-
 	// emitStatusses in a different go routine
 	go EmitStatus(e, r, s.options)
 	defer w.Close()
