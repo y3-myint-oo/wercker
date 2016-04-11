@@ -1,5 +1,5 @@
 hash: de52f78e589bed7e5b8ef239226f82967506665dab7091f97591ae2e5351655e
-updated: 2016-04-11T11:08:15.514995611-07:00
+updated: 2016-04-11T11:46:39.952842479-07:00
 imports:
 - name: github.com/aws/aws-sdk-go
   version: d108057e29329ff93573365a10921b3b908411d7
@@ -147,7 +147,7 @@ imports:
   subpackages:
   - snappy-go
 - name: github.com/opencontainers/runc
-  version: 4998ea19e57ee49bc440da6375fa985963bb93f9
+  version: f54e41f7f0e412c9feb0067097a4539e02a0989a
   subpackages:
   - libcontainer/user
 - name: github.com/pborman/uuid
@@ -184,7 +184,7 @@ imports:
   version: ca90b85c7a2b9b1133d552923b51f27326dae268
   vcs: git
 - name: golang.org/x/net
-  version: e45385e9b226f570b1f086bf287b25d3d4117776
+  version: 589fda73dd0faec3dc59e7d7dab5b069e3fce0f9
   subpackages:
   - context
   - proxy
