@@ -35,6 +35,7 @@ import (
 	dockersignal "github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/term"
 	"github.com/docker/engine-api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
@@ -367,7 +368,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		}
 	}
 	tw.Close()
-
 	realLayerFile.Seek(0, 0)
 	dgst := digest.Canonical.New()
 	_, err = io.Copy(dgst.Hash(), realLayerFile)
@@ -380,13 +380,13 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	realLayerFile.Close()
 
 	config := &container.Config{
-		Cmd:        s.cmd,
-		Entrypoint: s.entrypoint,
-		Hostname:   containerID[:16],
-		WorkingDir: s.workingDir,
-		Volumes:    s.volumes,
+		Cmd:          s.cmd,
+		Entrypoint:   s.entrypoint,
+		Hostname:     containerID[:16],
+		WorkingDir:   s.workingDir,
+		Volumes:      s.volumes,
+		ExposedPorts: s.ports,
 	}
-
 	// Make the JSON file we need
 	t := time.Now()
 	base := image.V1Image{
@@ -412,7 +412,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 			},
 		},
 	}
-
 	jsonOut, err := json.Marshal(imageJSON)
 	if err != nil {
 		return -1, err
@@ -681,13 +680,13 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	if ports, ok := s.data["ports"]; ok {
 		iPorts := env.Interpolate(ports)
 		parts := util.SplitSpaceOrComma(iPorts)
-		portmap := make(map[docker.Port]struct{})
+		portmap := make(map[nat.Port]struct{})
 		for _, port := range parts {
 			port = strings.TrimSpace(port)
 			if !strings.Contains(port, "/") {
 				port = port + "/tcp"
 			}
-			portmap[docker.Port(port)] = struct{}{}
+			portmap[nat.Port(port)] = struct{}{}
 		}
 		s.ports = portmap
 	}

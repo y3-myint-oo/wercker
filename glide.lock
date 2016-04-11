@@ -1,8 +1,8 @@
-hash: bb404e6dc19314c821b6843b1a1601f196f2ff80d08c1a1cb218345a16399517
-updated: 2016-04-08T18:14:23.105041835-07:00
+hash: de52f78e589bed7e5b8ef239226f82967506665dab7091f97591ae2e5351655e
+updated: 2016-04-11T11:08:15.514995611-07:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 49c3892b61af1d4996292a3025f36e4dfa25eaee
+  version: d108057e29329ff93573365a10921b3b908411d7
   subpackages:
   - aws
   - aws/credentials
@@ -64,7 +64,7 @@ imports:
   - digest
   - reference
 - name: github.com/docker/docker
-  version: fd67c8b2031722dd9255996b84bbfb236ce45cfb
+  version: 577adcc1eeb58ab29cfbcd50048576b9c8f64584
   subpackages:
   - pkg/term
   - pkg/signal
@@ -107,7 +107,7 @@ imports:
 - name: github.com/docker/go-units
   version: 5d2041e26a699eaca682e2ea41c8f891e1060444
 - name: github.com/fsouza/go-dockerclient
-  version: bf97c77db7c945cbcdbf09d56c6f87a66f54537b
+  version: 98829062f36e94bc8c31a1c9a8b087b90f9d2d9c
   subpackages:
   - external/github.com/docker/docker/opts
   - external/github.com/docker/docker/pkg/archive
@@ -147,7 +147,7 @@ imports:
   subpackages:
   - snappy-go
 - name: github.com/opencontainers/runc
-  version: 231da982427a1ba744286ccfa012d8e8594b6b76
+  version: 4998ea19e57ee49bc440da6375fa985963bb93f9
   subpackages:
   - libcontainer/user
 - name: github.com/pborman/uuid
@@ -184,12 +184,12 @@ imports:
   version: ca90b85c7a2b9b1133d552923b51f27326dae268
   vcs: git
 - name: golang.org/x/net
-  version: 4876518f9e71663000c348837735820161a42df7
+  version: e45385e9b226f570b1f086bf287b25d3d4117776
   subpackages:
   - context
   - proxy
 - name: golang.org/x/sys
-  version: a80ff226bd294315526e7ae48959d55635143ea7
+  version: 9eef40adf05b951699605195b829612bd7b69952
   subpackages:
   - unix
 - name: gopkg.in/fsnotify.v1
