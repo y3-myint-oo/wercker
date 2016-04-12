@@ -145,3 +145,49 @@ func (fc *DockerFileCollector) Collect(path string) (*util.Archive, chan error) 
 
 	return util.NewArchive(pipeReader), errs
 }
+
+// CollectPipelineArtifact is a shortcut for the collecting either the source or
+// the output dir of a build
+func CollectPipelineArtifact(containerID string, options *core.PipelineOptions, dockerOptions *DockerOptions) (*core.Artifact, error) {
+	artificer := NewArtificer(options, dockerOptions)
+
+	// Ensure we have the host directory
+
+	artifact := &core.Artifact{
+		ContainerID:   containerID,
+		GuestPath:     options.GuestPath("output"),
+		HostPath:      options.HostPath("output"),
+		HostTarPath:   options.HostPath("output.tar"),
+		ApplicationID: options.ApplicationID,
+		RunID:         options.RunID,
+		Bucket:        options.S3Bucket,
+		ContentType:   "application/x-tar",
+	}
+
+	sourceArtifact := &core.Artifact{
+		ContainerID:   containerID,
+		GuestPath:     options.BasePath(),
+		HostPath:      options.HostPath("output"),
+		HostTarPath:   options.HostPath("output.tar"),
+		ApplicationID: options.ApplicationID,
+		RunID:         options.RunID,
+		Bucket:        options.S3Bucket,
+		ContentType:   "application/x-tar",
+	}
+
+	// Get the output dir, if it is empty grab the source dir.
+	fullArtifact, err := artificer.Collect(artifact)
+	if err != nil {
+		if err == util.ErrEmptyTarball {
+			fullArtifact, err = artificer.Collect(sourceArtifact)
+			if err != nil {
+				return nil, err
+			}
+			return fullArtifact, nil
+		}
+		return nil, err
+	}
+
+	return fullArtifact, nil
+
+}

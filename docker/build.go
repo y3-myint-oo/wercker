@@ -94,44 +94,5 @@ func (b *DockerBuild) DockerMessage() string {
 
 // CollectArtifact copies the artifacts associated with the Build.
 func (b *DockerBuild) CollectArtifact(containerID string) (*core.Artifact, error) {
-	artificer := NewArtificer(b.options, b.dockerOptions)
-
-	// Ensure we have the host directory
-
-	artifact := &core.Artifact{
-		ContainerID:   containerID,
-		GuestPath:     b.options.GuestPath("output"),
-		HostPath:      b.options.HostPath("output"),
-		HostTarPath:   b.options.HostPath("output.tar"),
-		ApplicationID: b.options.ApplicationID,
-		RunID:         b.options.RunID,
-		Bucket:        b.options.S3Bucket,
-		ContentType:   "application/x-tar",
-	}
-
-	sourceArtifact := &core.Artifact{
-		ContainerID:   containerID,
-		GuestPath:     b.options.BasePath(),
-		HostPath:      b.options.HostPath("output"),
-		HostTarPath:   b.options.HostPath("output.tar"),
-		ApplicationID: b.options.ApplicationID,
-		RunID:         b.options.RunID,
-		Bucket:        b.options.S3Bucket,
-		ContentType:   "application/x-tar",
-	}
-
-	// Get the output dir, if it is empty grab the source dir.
-	fullArtifact, err := artificer.Collect(artifact)
-	if err != nil {
-		if err == util.ErrEmptyTarball {
-			fullArtifact, err = artificer.Collect(sourceArtifact)
-			if err != nil {
-				return nil, err
-			}
-			return fullArtifact, nil
-		}
-		return nil, err
-	}
-
-	return fullArtifact, nil
+	return CollectPipelineArtifact(containerID, b.options, b.dockerOptions)
 }

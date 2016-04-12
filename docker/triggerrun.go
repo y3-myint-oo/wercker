@@ -12,7 +12,7 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-package core
+package dockerlocal
 
 import (
 	"fmt"
@@ -21,25 +21,27 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/pborman/uuid"
+	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"github.com/wercker/werckerclient"
 	"github.com/wercker/werckerclient/credentials"
 )
 
 type TriggerRunStep struct {
-	*BaseStep
+	*core.BaseStep
 	// ApplicationID string
-	SourceRunID string
-	TargetID    string
-	Message     string
-	EnvVars     map[string]string
-	data        map[string]string
-	logger      *util.LogEntry
-	env         *util.Environment
-	options     *PipelineOptions
+	SourceRunID   string
+	TargetID      string
+	Message       string
+	EnvVars       map[string]string
+	data          map[string]string
+	logger        *util.LogEntry
+	env           *util.Environment
+	options       *core.PipelineOptions
+	dockerOptions *DockerOptions
 }
 
-func NewTriggerRunStep(stepConfig *StepConfig, options *PipelineOptions) (*TriggerRunStep, error) {
+func NewTriggerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*TriggerRunStep, error) {
 	name := "trigger-run"
 	displayName := "trigger run"
 	if stepConfig.Name != "" {
@@ -49,7 +51,7 @@ func NewTriggerRunStep(stepConfig *StepConfig, options *PipelineOptions) (*Trigg
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 
-	baseStep := NewBaseStep(BaseStepOptions{
+	baseStep := core.NewBaseStep(core.BaseStepOptions{
 		DisplayName: displayName,
 		Env:         &util.Environment{},
 		ID:          name,
@@ -60,10 +62,11 @@ func NewTriggerRunStep(stepConfig *StepConfig, options *PipelineOptions) (*Trigg
 	})
 
 	return &TriggerRunStep{
-		BaseStep: baseStep,
-		options:  options,
-		data:     stepConfig.Data,
-		logger:   util.RootLogger().WithField("Logger", "TriggerRunStep"),
+		BaseStep:      baseStep,
+		options:       options,
+		dockerOptions: dockerOptions,
+		data:          stepConfig.Data,
+		logger:        util.RootLogger().WithField("Logger", "TriggerRunStep"),
 	}, nil
 }
 
@@ -79,12 +82,53 @@ func (s *TriggerRunStep) InitEnv(env *util.Environment) {
 	s.SourceRunID = s.options.RunID
 }
 
-func (s *TriggerRunStep) Execute(ctx context.Context, sess *Session) (int, error) {
+// Execute collects and uploads the current pipeline artifact, and triggers
+// a new run
+func (s *TriggerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
 
-	e, err := EmitterFromContext(ctx)
+	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return -1, err
 	}
+
+	// This is clearly only relevant to docker so we're going to dig into the
+	// transport internals a little bit to get the container ID
+	dt := sess.Transport().(*DockerTransport)
+	containerID := dt.containerID
+
+	e.Emit(core.Logs, &core.LogsArgs{
+		Logs: "Storing artifacts\n",
+	})
+
+	artifact, err := CollectPipelineArtifact(containerID, s.options, s.dockerOptions)
+	// Ignore ErrEmptyTarball errors
+	if err != util.ErrEmptyTarball {
+		if err != nil {
+			e.Emit(core.Logs, &core.LogsArgs{
+				Logs: fmt.Sprintf("Storing artifacts failed: %s\n", err.Error()),
+			})
+			return -1, err
+		}
+
+		if s.options.ShouldStoreS3 {
+			artificer := NewArtificer(s.options, s.dockerOptions)
+			err = artificer.Upload(artifact)
+			if err != nil {
+				e.Emit(core.Logs, &core.LogsArgs{
+					Logs: fmt.Sprintf("Storing artifacts failed: %s\n", err.Error()),
+				})
+				return -1, err
+			}
+		}
+	}
+
+	e.Emit(core.Logs, &core.LogsArgs{
+		Logs: "Storing artifacts complete\n",
+	})
+
+	e.Emit(core.Logs, &core.LogsArgs{
+		Logs: "Triggering run\n",
+	})
 
 	config := &werckerclient.Config{
 		Endpoint: s.options.BaseURL,
@@ -105,7 +149,7 @@ func (s *TriggerRunStep) Execute(ctx context.Context, sess *Session) (int, error
 		return -1, err
 	}
 
-	e.Emit(Logs, &LogsArgs{
+	e.Emit(core.Logs, &core.LogsArgs{
 		Logs: fmt.Sprintf("Started run: %s", newRun.ID),
 	})
 
@@ -124,7 +168,7 @@ func (s *TriggerRunStep) CollectFile(a, b, c string, dst io.Writer) error {
 }
 
 // CollectArtifact NOP
-func (s *TriggerRunStep) CollectArtifact(string) (*Artifact, error) {
+func (s *TriggerRunStep) CollectArtifact(string) (*core.Artifact, error) {
 	return nil, nil
 }
 
