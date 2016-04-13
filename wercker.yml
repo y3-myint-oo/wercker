@@ -34,6 +34,7 @@ build:
           curl -LO https://github.com/Masterminds/glide/releases/download/${GLIDE_VERSION}/glide-${GLIDE_VERSION}-linux-amd64.tar.gz
           tar -xvzf glide-${GLIDE_VERSION}-linux-amd64.tar.gz
           cp linux-amd64/glide /bin/glide
+          rm -rf linux-amd64
           glide install --quick
 
     - script:
@@ -44,11 +45,10 @@ build:
     - script:
         name: go vet
         code: |
-            go get golang.org/x/tools/cmd/vet
             # Once we move to go 1.6 we can probably change this to go vet github.com/wercker/wercker
             for p in $(find -type d -not -path './vendor*' -not -path './.git*' -not -path './tests*' -not -path './Documentation*'); do
               echo "go vet for $p"
-              go vet $(find "$p" -maxdepth 1 -name '*.go')
+              go tool vet $(find "$p" -maxdepth 1 -name '*.go')
             done
 
     # - golint:
