@@ -1,8 +1,8 @@
 hash: 4245507251ba285a3528099dab3563f1bcec405716925dc410d5e632e79b8475
-updated: 2016-03-28T12:33:00.906950379-07:00
+updated: 2016-04-12T20:21:09.103542093-07:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 02af25ef9cfafac6f489fd5cd7f1b1e930506cb8
+  version: c87780456c05445f38e7096b12a4c7b73d3c8d0c
   subpackages:
   - aws
   - aws/credentials
@@ -37,11 +37,11 @@ imports:
   subpackages:
   - winterm
 - name: github.com/CenturyLinkLabs/docker-reg-client
-  version: 4bc892c78c562916189aaa1a0edd43e194dc60b3
+  version: 0bb0ba20bf1a05629226c2da0fdf7a37b9f661ba
   subpackages:
   - registry
 - name: github.com/cheggaaa/pb
-  version: 226d21d43a305fac52b3a104ef83e721b15275e0
+  version: 8808370bf63524e115da1371ba42bce6739f3a6b
 - name: github.com/chuckpreslar/emission
   version: 586ef242e476ff4df75d80fc97e493e81878e194
   vcs: git
@@ -59,12 +59,12 @@ imports:
   subpackages:
   - spew
 - name: github.com/docker/distribution
-  version: 72ec74834b2b84441791b4fc16c431c6b0d5a742
+  version: c6f63e298ebb1dd0a2ce5ada0c0d39e248132634
   subpackages:
   - digest
   - reference
 - name: github.com/docker/docker
-  version: cf91a1be45fc4f1d4e3338610f921d665d406b04
+  version: 40502e381371763ea0942b7d6511f5c98b65bc1e
   subpackages:
   - pkg/term
   - pkg/signal
@@ -93,7 +93,7 @@ imports:
   - pkg/reexec
   - pkg/plugins/transport
 - name: github.com/docker/engine-api
-  version: e37a82dfcea64559ca6a581776253c01d83357d9
+  version: 87b3df23dcba0ce02bfe0474e29a08a97f7814e6
   subpackages:
   - types/container
   - types/blkiodev
@@ -107,13 +107,14 @@ imports:
 - name: github.com/docker/go-units
   version: 5d2041e26a699eaca682e2ea41c8f891e1060444
 - name: github.com/fsouza/go-dockerclient
-  version: 7c07ffce0f7e14a4da49ce92a2842d4e87be1c1e
+  version: 98829062f36e94bc8c31a1c9a8b087b90f9d2d9c
   subpackages:
   - external/github.com/docker/docker/opts
   - external/github.com/docker/docker/pkg/archive
   - external/github.com/docker/docker/pkg/fileutils
   - external/github.com/docker/docker/pkg/homedir
   - external/github.com/docker/docker/pkg/stdcopy
+  - external/github.com/docker/go-units
   - external/github.com/hashicorp/go-cleanhttp
   - external/github.com/Sirupsen/logrus
   - external/github.com/docker/docker/pkg/idtools
@@ -125,7 +126,6 @@ imports:
   - external/github.com/opencontainers/runc/libcontainer/user
   - external/golang.org/x/sys/unix
   - external/golang.org/x/net/context
-  - external/github.com/docker/go-units
 - name: github.com/go-ini/ini
   version: 12f418cc7edc5a618a51407b7ac1f1f512139df3
 - name: github.com/google/shlex
@@ -141,13 +141,13 @@ imports:
 - name: github.com/jtacoma/uritemplates
   version: 802b8e24dbf0f556badb3a1401a49f6bfda80ca6
 - name: github.com/Microsoft/go-winio
-  version: 8f9387ea7efabb228a981b9c381142be7667967f
+  version: 862b6557927a5c5c81e411c12aa6de7e566cbb7a
 - name: github.com/mreiferson/go-snappystream
   version: 028eae7ab5c4c9e2d1cb4c4ca1e53259bbe7e504
   subpackages:
   - snappy-go
 - name: github.com/opencontainers/runc
-  version: 851c050340591ac2e4df9a79a2138d1adc3f783f
+  version: 445d184c81685337fd640fc3da930244ae3c8e95
   subpackages:
   - libcontainer/user
 - name: github.com/pborman/uuid
@@ -160,7 +160,7 @@ imports:
   version: 844911ce078544c0d950b86ef09e6d19270ed33a
   vcs: git
 - name: github.com/stretchr/testify
-  version: 6fe211e493929a8aac0469b93f28b1d0688a9a3a
+  version: 0744955171b0b6e1871ff9d7366abc2b7a7fcec0
   subpackages:
   - suite
   - assert
@@ -171,13 +171,13 @@ imports:
 - name: github.com/vaughan0/go-ini
   version: a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
 - name: github.com/vbatts/tar-split
-  version: e2a62d6b0d98fd7f1a57646812c74564fda999b4
+  version: 226f7c74905f1fcc08ac128b517a1d65a1948eb9
   subpackages:
   - tar/asm
   - tar/storage
   - archive/tar
 - name: github.com/wercker/docker-check-access
-  version: b24a239cdb8b7efa65c58e46743b098eede37bce
+  version: a4b9bb5f7e8804a12a2f671441b6cccf7520fd9d
 - name: github.com/wercker/journalhook
   version: 1572873fdb03095c0f4d726eb9435f0b564a7e9c
 - name: github.com/wercker/reporter-client
@@ -189,7 +189,7 @@ imports:
   - context
   - proxy
 - name: golang.org/x/sys
-  version: 320cb01ddbbf0473674c2585f9b6e245721de355
+  version: 9eef40adf05b951699605195b829612bd7b69952
   subpackages:
   - unix
 - name: gopkg.in/fsnotify.v1
