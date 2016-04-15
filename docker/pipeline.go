@@ -83,7 +83,7 @@ func NewDockerPipeline(name string, config *core.Config, options *core.PipelineO
 
 	steps := []core.Step{initStep}
 	for _, stepConfig := range stepsConfig {
-		step, err := NewStep(stepConfig.StepConfig, options, dockerOptions)
+		step, err := NewStep(stepConfig.StepConfig, options, dockerOptions, builder)
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +96,7 @@ func NewDockerPipeline(name string, config *core.Config, options *core.PipelineO
 
 	var afterSteps []core.Step
 	for _, stepConfig := range afterStepsConfig {
-		step, err := NewStep(stepConfig.StepConfig, options, dockerOptions)
+		step, err := NewStep(stepConfig.StepConfig, options, dockerOptions, builder)
 		if err != nil {
 			return nil, err
 		}

@@ -32,6 +32,7 @@ type TriggerRunStep struct {
 	// ApplicationID string
 	SourceRunID   string
 	TargetID      string
+	Pipeline      string
 	Message       string
 	EnvVars       map[string]string
 	data          map[string]string
@@ -39,9 +40,10 @@ type TriggerRunStep struct {
 	env           *util.Environment
 	options       *core.PipelineOptions
 	dockerOptions *DockerOptions
+	builder       Builder
 }
 
-func NewTriggerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*TriggerRunStep, error) {
+func NewTriggerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*TriggerRunStep, error) {
 	name := "trigger-run"
 	displayName := "trigger run"
 	if stepConfig.Name != "" {
@@ -65,6 +67,7 @@ func NewTriggerRunStep(stepConfig *core.StepConfig, options *core.PipelineOption
 		BaseStep:      baseStep,
 		options:       options,
 		dockerOptions: dockerOptions,
+		builder:       builder,
 		data:          stepConfig.Data,
 		logger:        util.RootLogger().WithField("Logger", "TriggerRunStep"),
 	}, nil
@@ -79,13 +82,16 @@ func (s *TriggerRunStep) InitEnv(env *util.Environment) {
 		s.Message = message
 	}
 
+	if pipeline, ok := s.data["pipeline"]; ok {
+		s.Pipeline = pipeline
+	}
+
 	s.SourceRunID = s.options.RunID
 }
 
 // Execute collects and uploads the current pipeline artifact, and triggers
 // a new run
 func (s *TriggerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
-
 	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return -1, err
@@ -130,28 +136,45 @@ func (s *TriggerRunStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		Logs: "Triggering run\n",
 	})
 
-	config := &werckerclient.Config{
-		Endpoint: s.options.BaseURL,
-	}
-	if s.options.AuthToken != "" {
-		config.Credentials = credentials.Token(s.options.AuthToken)
-	}
+	// TODO(termie): this should be something else
+	if !s.options.EnableDevSteps {
+		config := &werckerclient.Config{
+			Endpoint: s.options.BaseURL,
+		}
+		if s.options.AuthToken != "" {
+			config.Credentials = credentials.Token(s.options.AuthToken)
+		}
 
-	client := werckerclient.NewClient(config)
+		client := werckerclient.NewClient(config)
 
-	params := &werckerclient.CreateChainRunOptions{
-		SourceRunID: s.SourceRunID,
-		TargetID:    s.TargetID,
+		params := &werckerclient.CreateChainRunOptions{
+			SourceRunID: s.SourceRunID,
+			TargetID:    s.TargetID,
+		}
+
+		newRun, err := client.CreateChainRun(params)
+		if err != nil {
+			return -1, err
+		}
+
+		e.Emit(core.Logs, &core.LogsArgs{
+			Logs: fmt.Sprintf("Started run: %s", newRun.ID),
+		})
+	} else {
+		// Run another local build using the current build's output dir
+		newRunID := uuid.NewRandom().String()
+		// fmt.Printf("%v\n", s.options)
+		var newOptions core.PipelineOptions
+		newOptions = *s.options
+		newOptions.RunID = fmt.Sprintf("%s-%s", newOptions.RunID, newRunID)
+		newOptions.Pipeline = s.Pipeline
+		newOptions.ProjectPath = s.options.HostPath("output")
+		fmt.Printf("%v\n", newOptions)
+		err = s.builder.Build(ctx, &newOptions, s.dockerOptions)
+		if err != nil {
+			return -1, err
+		}
 	}
-
-	newRun, err := client.CreateChainRun(params)
-	if err != nil {
-		return -1, err
-	}
-
-	e.Emit(core.Logs, &core.LogsArgs{
-		Logs: fmt.Sprintf("Started run: %s", newRun.ID),
-	})
 
 	return 0, nil
 }

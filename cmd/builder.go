@@ -89,7 +89,7 @@ func (b *DockerBuilder) getOptions(env *util.Environment, config *core.BoxConfig
 }
 
 // Build the image and commit it so we can use it as a service
-func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*dockerlocal.DockerBox, *docker.Image, error) {
+func (b *DockerBuilder) BuildBox(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*dockerlocal.DockerBox, *docker.Image, error) {
 	newOptions, err := b.getOptions(env, config)
 
 	if err != nil {
@@ -120,4 +120,11 @@ func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config
 		return nil, nil, err
 	}
 	return box, image, nil
+}
+
+func (b *DockerBuilder) Build(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) error {
+	newDockerOptions := *b.dockerOptions
+
+	_, err := cmdBuild(ctx, options, &newDockerOptions)
+	return err
 }

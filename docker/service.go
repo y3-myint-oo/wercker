@@ -29,13 +29,18 @@ import (
 // Builder interface to create an image based on a service config
 // kinda needed so we can break a bunch of circular dependencies with cmd
 type Builder interface {
-	Build(context.Context, *util.Environment, *core.BoxConfig) (*DockerBox, *docker.Image, error)
+	BuildBox(context.Context, *util.Environment, *core.BoxConfig) (*DockerBox, *docker.Image, error)
+	Build(context.Context, *core.PipelineOptions, *DockerOptions) error
 }
 
 type nilBuilder struct{}
 
-func (b *nilBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*DockerBox, *docker.Image, error) {
+func (b *nilBuilder) BuildBox(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*DockerBox, *docker.Image, error) {
 	return nil, nil, nil
+}
+
+func (b *nilBuilder) Build(ctx context.Context, options *core.PipelineOptions, dockerOptions *DockerOptions) error {
+	return nil
 }
 
 func NewNilBuilder() *nilBuilder {
@@ -70,7 +75,7 @@ func NewExternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOpti
 // this means running the ExternalServiceBox and comitting the image
 func (s *ExternalServiceBox) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
 	originalShortName := s.externalConfig.ID
-	box, image, err := s.builder.Build(ctx, env, s.externalConfig)
+	box, image, err := s.builder.BuildBox(ctx, env, s.externalConfig)
 	if err != nil {
 		return nil, err
 	}

@@ -1,5 +1,28 @@
 box:
   id: tcnksm/gox:1.5.1
+
+triggerme:
+  box:
+    id: alpine
+    cmd: /bin/sh
+  steps:
+    - script:
+        code: ls
+
+triggerit:
+  box:
+    id: alpine
+    cmd: /bin/sh
+  steps:
+    - script:
+        code: |
+          touch $WERCKER_OUTPUT_DIR/foo
+    - internal/trigger-run:
+        pipeline: triggerme
+    - script:
+        code: |
+          echo "neat"
+
 dev:
   box:
     id: busybox

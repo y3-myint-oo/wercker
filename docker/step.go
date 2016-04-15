@@ -24,7 +24,7 @@ import (
 	"github.com/wercker/wercker/util"
 )
 
-func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (core.Step, error) {
+func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (core.Step, error) {
 	// NOTE(termie) Special case steps are special
 	if config.ID == "internal/docker-push" {
 		return NewDockerPushStep(config, options, dockerOptions)
@@ -36,7 +36,7 @@ func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptio
 		return NewStoreContainerStep(config, options, dockerOptions)
 	}
 	if config.ID == "internal/trigger-run" {
-		return NewTriggerRunStep(config, options, dockerOptions)
+		return NewTriggerRunStep(config, options, dockerOptions, builder)
 	}
 	if strings.HasPrefix(config.ID, "internal/") {
 		if !options.EnableDevSteps {
