@@ -911,24 +911,25 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
 		}
-	}
-	pushOpts := docker.PushImageOptions{
-		Name:          s.repository,
-		OutputStream:  w,
-		RawJSONStream: true,
-	}
-	if !s.dockerOptions.DockerLocal {
-		auth := docker.AuthConfiguration{
-			Username: s.authenticator.Username(),
-			Password: s.authenticator.Password(),
-			Email:    s.email,
+		pushOpts := docker.PushImageOptions{
+			Name:          s.repository,
+			OutputStream:  w,
+			RawJSONStream: true,
+			Tag:           tag,
 		}
-		err := client.PushImage(pushOpts, auth)
-		if err != nil {
-			s.logger.Errorln("Failed to push:", err)
-			return 1, err
+		if !s.dockerOptions.DockerLocal {
+			auth := docker.AuthConfiguration{
+				Username: s.authenticator.Username(),
+				Password: s.authenticator.Password(),
+				Email:    s.email,
+			}
+			err := client.PushImage(pushOpts, auth)
+			if err != nil {
+				s.logger.Errorln("Failed to push:", err)
+				return 1, err
+			}
+			s.logger.Println("Pushed container:", s.repository, s.tags)
 		}
-		s.logger.Println("Pushed container:", s.repository, s.tags)
 	}
 	return 0, nil
 }
