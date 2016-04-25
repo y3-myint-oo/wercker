@@ -1,23 +1,13 @@
 box:
-  id: tcnksm/gox:1.5.1
-dev:
-  box:
-    id: busybox
-    cmd: /bin/sh
-  steps:
-    - internal/watch:
-        code: |
-          echo "starting nc listening on port 8000"
-          nc -l -p 8000
-        reload: false
-    - internal/shell:
-        cmd: /bin/sh
-        code: |-
-          echo "welcome to your shell"
-          echo "stay a while, and listen"
+  id: golang
+
 build:
   # base-path: /gopath/src/github.com/wercker/wercker
   steps:
+    - script:
+        name: apt-get-update
+        code: apt-get update
+
     - install-packages:
         checkpoint: pkgs
         packages: openssh-client pkg-config libsystemd-journal-dev
@@ -26,37 +16,26 @@ build:
         package-dir: github.com/wercker/wercker
 
     - script:
-        checkpoint: deps
-        name: glide install
+        name: go vendor
         code: |
-          export GO15VENDOREXPERIMENT=1
-          export GLIDE_VERSION=0.8.3
-          curl -LO https://github.com/Masterminds/glide/releases/download/${GLIDE_VERSION}/glide-${GLIDE_VERSION}-linux-amd64.tar.gz
-          tar -xvzf glide-${GLIDE_VERSION}-linux-amd64.tar.gz
-          cp linux-amd64/glide /bin/glide
-          glide install --quick
-
-    - script:
-        code: |
-          export GO15VENDOREXPERIMENT=1
-          export GLIDE_VERSION=0.8.3
+          go get -u github.com/kardianos/govendor
+          govendor fetch -v +out
+          # govendor sync
 
     - script:
         name: go vet
         code: |
-            go get golang.org/x/tools/cmd/vet
-            # Once we move to go 1.6 we can probably change this to go vet github.com/wercker/wercker
-            for p in $(find -type d -not -path './vendor*' -not -path './.git*' -not -path './tests*' -not -path './Documentation*'); do
-              echo "go vet for $p"
-              go vet $(find "$p" -maxdepth 1 -name '*.go')
-            done
+          for p in $(find -type d -not -path './vendor*' -not -path './.git*' -not -path './tests*' -not -path './Documentation*'); do
+            echo "go vet for $p"
+            go tool vet $(find "$p" -maxdepth 1 -name '*.go')
+          done
 
     # - golint:
     #     exclude: vendor
 
     - script:
         name: go test
-        code: go test $(glide novendor)
+        code: govendor test +local
 
     - script:
         name: clear out the build binaries
@@ -66,11 +45,12 @@ build:
     - script:
         name: gox
         code: |
-            gox \
+            GOOS=linux GOARCH=amd64 go build \
             -ldflags="-X github.com/wercker/wercker/util.GitCommit=$WERCKER_GIT_COMMIT -X github.com/wercker/wercker/util.PatchVersion=$(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X github.com/wercker/wercker/util.Compiled=$(date +%s)" \
-              -os="linux darwin" \
-              -arch="amd64 386" \
-              -output "$WERCKER_OUTPUT_DIR/latest/{{.OS}}_{{.Arch}}/sentcli"
+              -o "$WERCKER_OUTPUT_DIR/latest/linux_amd64/sentcli"
+            GOOS=darwin GOARCH=amd64 go build \
+            -ldflags="-X github.com/wercker/wercker/util.GitCommit=$WERCKER_GIT_COMMIT -X github.com/wercker/wercker/util.PatchVersion=$(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X github.com/wercker/wercker/util.Compiled=$(date +%s)" \
+              -o "$WERCKER_OUTPUT_DIR/latest/darwin_amd64/sentcli"
 
             cp -r $WERCKER_OUTPUT_DIR/latest/* $WERCKER_REPORT_ARTIFACTS_DIR
 
