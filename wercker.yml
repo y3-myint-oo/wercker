@@ -4,10 +4,6 @@ box:
 build:
   # base-path: /gopath/src/github.com/wercker/wercker
   steps:
-    - script:
-        name: apt-get-update
-        code: apt-get update
-
     - install-packages:
         checkpoint: pkgs
         packages: openssh-client pkg-config libsystemd-journal-dev
