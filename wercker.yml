@@ -19,8 +19,7 @@ build:
         name: go vendor
         code: |
           go get -u github.com/kardianos/govendor
-          govendor fetch -v +out
-          # govendor sync
+          govendor sync
 
     - script:
         name: go vet
