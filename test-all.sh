@@ -18,7 +18,7 @@ basicTest() {
   testName=$1
   shift
   printf "testing %s... " "$testName"
-  $wercker --debug $@ --working-dir "$workingDir" > "${workingDir}/${testName}.log"
+  $wercker --debug $@ --working-dir "$workingDir" &> "${workingDir}/${testName}.log"
   if [ $? -ne 0 ]; then
     printf "failed\n"
     cat "${workingDir}/${testName}.log"
@@ -33,7 +33,7 @@ basicTestFail() {
   testName=$1
   shift
   printf "testing %s... " "$testName"
-  $wercker $@ --working-dir "$workingDir" > "${workingDir}/${testName}.log"
+  $wercker $@ --working-dir "$workingDir" &> "${workingDir}/${testName}.log"
   if [ $? -ne 1 ]; then
     printf "failed\n"
     cat "${workingDir}/${testName}.log"
@@ -51,7 +51,7 @@ testDirectMount() {
   > "$testFile"
   echo "hello" > "$testFile"
   logFile="${workingDir}/direct-mount.log"
-  $wercker build "$testDir" --direct-mount --docker-local --working-dir "$workingDir" > "$logFile"
+  $wercker build "$testDir" --direct-mount --docker-local --working-dir "$workingDir" &> "$logFile"
   contents=$(cat "$testFile")
   if [ "$contents" == 'world' ]
       then echo "passed"
@@ -69,7 +69,7 @@ testScratchPush () {
   logFile="${workingDir}/scratch-n-push.log"
   grepString="uniqueTagFromTest"
   docker images | grep $grepString | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
-  $wercker build "$testDir" --docker-local --working-dir "$workingDir" > "$logFile" && docker images | grep -q "$grepString"
+  $wercker build "$testDir" --docker-local --working-dir "$workingDir" &> "$logFile" && docker images | grep -q "$grepString"
   if [ $? -eq 0 ]; then
     echo "passed"
     return 0
