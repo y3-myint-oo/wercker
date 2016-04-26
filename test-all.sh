@@ -131,6 +131,7 @@ runTests() {
     basicTest "fetch from amazon" build "$testsDir/amzn-test" || return 1
     basicTest "fetch from docker hub" build "$testsDir/docker-hub-test" || return 1
     basicTest "fetch from gcr" build "$testsDir/gcr-test" || return 1
+    basicTest "fetch from docker hub v1" build "$testsDir/reg-v1-test" || return 1
   fi
 }
 
