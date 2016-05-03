@@ -78,7 +78,6 @@ func (d DockerAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
 }
 
 func (a AmazonAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
-	fmt.Printf("%v\n", env)
 	return auth.NewAmazonAuth(env.Interpolate(a.AWSRegistryID), env.Interpolate(a.AWSAccessKey), env.Interpolate(a.AWSSecretKey), env.Interpolate(a.AWSRegion), a.AWSStrictAuth)
 }
 
