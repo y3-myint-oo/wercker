@@ -6,6 +6,7 @@
 wercker=$PWD/wercker
 workingDir=$PWD/.werckertests
 testsDir=$PWD/tests/projects
+rootDir=$PWD
 
 # Make sure we have a working directory
 mkdir -p "$workingDir"
@@ -18,7 +19,7 @@ basicTest() {
   testName=$1
   shift
   printf "testing %s... " "$testName"
-  $wercker --debug $@ --working-dir "$workingDir" > "${workingDir}/${testName}.log"
+  $wercker --debug $@ --working-dir "$workingDir" &> "${workingDir}/${testName}.log"
   if [ $? -ne 0 ]; then
     printf "failed\n"
     cat "${workingDir}/${testName}.log"
@@ -33,7 +34,7 @@ basicTestFail() {
   testName=$1
   shift
   printf "testing %s... " "$testName"
-  $wercker $@ --working-dir "$workingDir" > "${workingDir}/${testName}.log"
+  $wercker $@ --working-dir "$workingDir" &> "${workingDir}/${testName}.log"
   if [ $? -ne 1 ]; then
     printf "failed\n"
     cat "${workingDir}/${testName}.log"
@@ -51,7 +52,7 @@ testDirectMount() {
   > "$testFile"
   echo "hello" > "$testFile"
   logFile="${workingDir}/direct-mount.log"
-  $wercker build "$testDir" --direct-mount --docker-local --working-dir "$workingDir" > "$logFile"
+  $wercker build "$testDir" --direct-mount --docker-local --working-dir "$workingDir" &> "$logFile"
   contents=$(cat "$testFile")
   if [ "$contents" == 'world' ]
       then echo "passed"
@@ -69,7 +70,7 @@ testScratchPush () {
   logFile="${workingDir}/scratch-n-push.log"
   grepString="uniqueTagFromTest"
   docker images | grep $grepString | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
-  $wercker build "$testDir" --docker-local --working-dir "$workingDir" > "$logFile" && docker images | grep -q "$grepString"
+  $wercker build "$testDir" --docker-local --working-dir "$workingDir" &> "$logFile" && docker images | grep -q "$grepString"
   if [ $? -eq 0 ]; then
     echo "passed"
     return 0
@@ -102,7 +103,7 @@ runTests() {
   testScratchPush || return 1
 
   # test runs locally but not in wercker build container
-  basicTest "shellstep" build --docker-local --enable-dev-steps "$testsDir/shellstep" || return 1
+  #basicTest "shellstep" build --docker-local --enable-dev-steps "$testsDir/shellstep" || return 1
 
   # make sure the build successfully completes when cache is too big
   basicTest "cache size too big" build --docker-local "$testsDir/cache-size" || return 1
@@ -120,6 +121,8 @@ runTests() {
   basicTest "local deploy using specific build not containing wercker.yml" deploy --docker-local ./last_build || return 1
   cd "$testsDir/local-deploy/specific-yml"
   basicTest "local deploy using specific build containing wercker.yml" deploy --docker-local ./last_build || return 1
+
+  cd "$rootDir"
 
   # test checkpointers
   basicTest "checkpoint, part 1" build --docker-local --enable-dev-steps "$testsDir/checkpoint" || return 1
