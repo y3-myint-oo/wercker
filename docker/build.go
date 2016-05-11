@@ -48,7 +48,7 @@ func (b *DockerBuild) InitEnv(hostEnv *util.Environment) {
 		[]string{"BUILD", "true"},
 		[]string{"CI", "true"},
 		[]string{"WERCKER_RUN_ID", b.options.RunID},
-		[]string{"WERCKER_RUN_URL", fmt.Sprintf("%s/#run/%s", b.options.BaseURL, b.options.RunID)},
+		[]string{"WERCKER_RUN_URL", b.options.WorkflowURL()},
 		[]string{"WERCKER_GIT_DOMAIN", b.options.GitDomain},
 		[]string{"WERCKER_GIT_OWNER", b.options.GitOwner},
 		[]string{"WERCKER_GIT_REPOSITORY", b.options.GitRepository},
@@ -57,7 +57,7 @@ func (b *DockerBuild) InitEnv(hostEnv *util.Environment) {
 
 		// Legacy env vars
 		[]string{"WERCKER_BUILD_ID", b.options.RunID},
-		[]string{"WERCKER_BUILD_URL", fmt.Sprintf("%s/#run/%s", b.options.BaseURL, b.options.RunID)},
+		[]string{"WERCKER_BUILD_URL", b.options.WorkflowURL()},
 	}
 
 	env.Update(b.CommonEnv())
