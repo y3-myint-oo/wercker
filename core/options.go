@@ -637,6 +637,10 @@ func (o *PipelineOptions) SourcePath() string {
 	return path.Join(o.BasePath(), o.SourceDir)
 }
 
+func (o *PipelineOptions) WorkflowURL() string {
+	return fmt.Sprintf("%s/#%s/%s/%s/%s", o.BaseURL, o.ApplicationOwnerName, o.ApplicationName, o.Pipeline, o.RunID)
+}
+
 // MntPath returns a path relative to the read-only mount root on the guest.
 func (o *PipelineOptions) MntPath(s ...string) string {
 	return path.Join(o.MntRoot, path.Join(s...))

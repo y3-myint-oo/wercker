@@ -50,7 +50,7 @@ func (d *DockerDeploy) InitEnv(hostEnv *util.Environment) {
 	a := [][]string{
 		[]string{"DEPLOY", "true"},
 		[]string{"WERCKER_RUN_ID", d.options.RunID},
-		[]string{"WERCKER_RUN_URL", fmt.Sprintf("%s/#run/%s", d.options.BaseURL, d.options.RunID)},
+		[]string{"WERCKER_RUN_URL", d.options.WorkflowURL()},
 		[]string{"WERCKER_GIT_DOMAIN", d.options.GitDomain},
 		[]string{"WERCKER_GIT_OWNER", d.options.GitOwner},
 		[]string{"WERCKER_GIT_REPOSITORY", d.options.GitRepository},
@@ -59,7 +59,7 @@ func (d *DockerDeploy) InitEnv(hostEnv *util.Environment) {
 
 		// Legacy env vars
 		[]string{"WERCKER_DEPLOY_ID", d.options.RunID},
-		[]string{"WERCKER_DEPLOY_URL", fmt.Sprintf("%s/#run/%s", d.options.BaseURL, d.options.RunID)},
+		[]string{"WERCKER_DEPLOY_URL", d.options.WorkflowURL()},
 	}
 
 	if d.options.DeployTarget != "" {
