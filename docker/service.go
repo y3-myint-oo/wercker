@@ -154,6 +154,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 				Image:           b.Name,
 				Cmd:             cmd,
 				Env:             myEnv,
+				ExposedPorts:    exposedPorts(b.config.Ports),
 				NetworkDisabled: b.networkDisabled,
 				DNS:             b.dockerOptions.DockerDNS,
 				Entrypoint:      entrypoint,
@@ -177,8 +178,9 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 	}
 
 	client.StartContainer(container.ID, &docker.HostConfig{
-		DNS:   b.dockerOptions.DockerDNS,
-		Links: links,
+		DNS:          b.dockerOptions.DockerDNS,
+		PortBindings: portBindings(b.config.Ports),
+		Links:        links,
 	})
 	b.container = container
 
