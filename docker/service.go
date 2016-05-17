@@ -177,9 +177,15 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		b.logger.Println(f.Info(fmt.Sprintf("Starting service %s", b.ShortName), strings.Join(out, " ")))
 	}
 
+	portsToBind := []string{""}
+
+	if b.options.ExposePorts {
+		portsToBind = b.config.Ports
+	}
+
 	client.StartContainer(container.ID, &docker.HostConfig{
 		DNS:          b.dockerOptions.DockerDNS,
-		PortBindings: portBindings(b.config.Ports),
+		PortBindings: portBindings(portsToBind),
 		Links:        links,
 	})
 	b.container = container
