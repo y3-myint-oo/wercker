@@ -15,7 +15,10 @@
 package util
 
 import (
+	"fmt"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -108,4 +111,59 @@ func (s *UtilSuite) TestSplitFunc() {
 		s.Equal(test.output, actual)
 		s.Equal(len(test.output), 2)
 	}
+}
+
+// TestFileInfo is a dummy os.FileInfo for testing
+type TestFileInfo struct {
+	modTime time.Time
+	name    string
+}
+
+func (t TestFileInfo) ModTime() time.Time {
+	return t.modTime
+}
+
+func (t TestFileInfo) Name() string {
+	return t.name
+}
+
+func (t TestFileInfo) Size() int64 {
+	return 0
+}
+
+func (t TestFileInfo) Mode() os.FileMode {
+	return 0
+}
+
+func (t TestFileInfo) IsDir() bool {
+	return true
+}
+
+func (t TestFileInfo) Sys() interface{} {
+	return nil
+}
+
+func (s *UtilSuite) TestSortByModDate() {
+	// create 5 fake file infos, the first one being the oldest
+	dirs := []os.FileInfo{}
+	for day := 1; day <= 5; day++ {
+		dirs = append(dirs, TestFileInfo{
+			// offset modified time so it's jan 1st, 2nd, etc
+			modTime: time.Date(2016, 1, day, 12, 0, 0, 0, time.UTC),
+			name:    fmt.Sprintf("jan-%v", day),
+		})
+	}
+
+	// before sort the first item is the one we added first,
+	// ignoring the modtime
+	s.Equal("jan-1", dirs[0].Name())
+
+	SortByModDate(dirs)
+
+	// after sort the one with the most recent mod time is first
+	s.Equal("jan-5", dirs[0].Name())
+	s.Equal("jan-4", dirs[1].Name())
+	s.Equal("jan-3", dirs[2].Name())
+	s.Equal("jan-2", dirs[3].Name())
+	s.Equal("jan-1", dirs[4].Name())
 }

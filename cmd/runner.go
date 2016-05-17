@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/pborman/uuid"
@@ -221,6 +222,41 @@ func (p *Runner) EnsureCode() (string, error) {
 		}
 	}
 	return projectDir, nil
+}
+
+// CleanupOldBuilds removes old builds and keeps the latest 2
+func (p *Runner) CleanupOldBuilds() error {
+	// how many recent builds to keep
+	const keepDirs = 2
+
+	buildPath := p.options.BuildPath()
+
+	builds, err := ioutil.ReadDir(buildPath)
+	if err != nil {
+		return err
+	}
+
+	// remove files (.DS_Store etc)
+	for i, f := range builds {
+		if !f.IsDir() {
+			builds = append(builds[:i], builds[i+1:]...)
+		}
+	}
+
+	util.SortByModDate(builds)
+
+	if len(builds) < keepDirs {
+		// nothing to do
+		return nil
+	}
+
+	cleanup := builds[keepDirs:]
+
+	for _, f := range cleanup {
+		os.RemoveAll(path.Join(buildPath, f.Name()))
+	}
+
+	return err
 }
 
 // GetConfig parses and returns the wercker.yml file.
