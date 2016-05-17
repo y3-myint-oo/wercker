@@ -899,6 +899,13 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 		})
 		return nil, soft.Exit(err)
 	}
+	err = r.CleanupOldBuilds()
+	if err != nil {
+		e.Emit(core.Logs, &core.LogsArgs{
+			Stream: "stderr",
+			Logs:   err.Error() + "\n",
+		})
+	}
 	if options.Verbose {
 		logger.Printf(f.Success("Copied working dir", timer.String()))
 	}
