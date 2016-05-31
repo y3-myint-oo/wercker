@@ -356,6 +356,13 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 		return nil, err
 	}
 
+	var ports map[docker.Port]struct{}
+	if len(b.options.PublishPorts) > 0 {
+		ports = exposedPorts(b.options.PublishPorts)
+	} else if b.options.ExposePorts {
+		ports = exposedPorts(b.config.Ports)
+	}
+
 	// Make and start the container
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
@@ -369,7 +376,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 				AttachStdin:     true,
 				AttachStdout:    true,
 				AttachStderr:    true,
-				ExposedPorts:    exposedPorts(b.config.Ports),
+				ExposedPorts:    ports,
 				NetworkDisabled: b.networkDisabled,
 				DNS:             b.dockerOptions.DockerDNS,
 				Entrypoint:      entrypoint,
