@@ -40,6 +40,7 @@ type BoxConfig struct {
 	Tag        string
 	Cmd        string
 	Env        map[string]string
+	Ports      []string
 	Username   string
 	Password   string
 	Registry   string

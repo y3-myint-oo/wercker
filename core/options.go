@@ -358,6 +358,7 @@ type PipelineOptions struct {
 	DirectMount    bool
 	EnableDevSteps bool
 	PublishPorts   []string
+	ExposePorts    bool
 	EnableVolumes  bool
 	WerckerYml     string
 	Checkpoint     string
@@ -554,7 +555,9 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	attachOnError, _ := c.Bool("attach-on-error")
 	directMount, _ := c.Bool("direct-mount")
 	enableDevSteps, _ := c.Bool("enable-dev-steps")
+	// Deprecated
 	publishPorts, _ := c.StringSlice("publish")
+	exposePorts, _ := c.Bool("expose-ports")
 	enableVolumes, _ := c.Bool("enable-volumes")
 	werckerYml, _ := c.String("wercker-yml")
 	checkpoint, _ := c.String("checkpoint")
@@ -603,10 +606,12 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		AttachOnError:  attachOnError,
 		DirectMount:    directMount,
 		EnableDevSteps: enableDevSteps,
-		PublishPorts:   publishPorts,
-		EnableVolumes:  enableVolumes,
-		WerckerYml:     werckerYml,
-		Checkpoint:     checkpoint,
+		// Deprecated
+		PublishPorts:  publishPorts,
+		ExposePorts:   exposePorts,
+		EnableVolumes: enableVolumes,
+		WerckerYml:    werckerYml,
+		Checkpoint:    checkpoint,
 	}, nil
 }
 
