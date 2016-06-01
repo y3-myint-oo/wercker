@@ -1,3 +1,21 @@
+
+## 2016.06.01
+
+### Features
+
+- Add checkpointing and base-path (#123)
+- Support for registry v2 (#131)
+- Mount volumes in the container from different local paths (#134)
+- Only push tags that were defined in the wercker.yml (#142)
+- wercker is now using govendor (#146)
+- Display raw config, before parsing it (#149)
+- Allow multiple services with the same images (#159)
+- Add exposed-ports (#161)
+
+### Bug Fixes
+
+- Fix run, build and deploy urls (#163)
+
 ## 2016.03.11
 
 ### Features
