@@ -385,7 +385,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		Hostname:     containerID[:16],
 		WorkingDir:   s.workingDir,
 		Volumes:      s.volumes,
-		ExposedPorts: s.ports,
+		ExposedPorts: tranformPorts(s.ports),
 	}
 	// Make the JSON file we need
 	t := time.Now()
@@ -647,7 +647,6 @@ func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOption
 
 // InitEnv parses our data into our config
 func (s *DockerPushStep) InitEnv(env *util.Environment) {
-
 	if email, ok := s.data["email"]; ok {
 		s.email = env.Interpolate(email)
 	}
@@ -680,13 +679,13 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	if ports, ok := s.data["ports"]; ok {
 		iPorts := env.Interpolate(ports)
 		parts := util.SplitSpaceOrComma(iPorts)
-		portmap := make(map[nat.Port]struct{})
+		portmap := make(map[docker.Port]struct{})
 		for _, port := range parts {
 			port = strings.TrimSpace(port)
 			if !strings.Contains(port, "/") {
 				port = port + "/tcp"
 			}
-			portmap[nat.Port(port)] = struct{}{}
+			portmap[docker.Port(port)] = struct{}{}
 		}
 		s.ports = portmap
 	}
@@ -940,4 +939,14 @@ func (s *DockerPushStep) ShouldSyncEnv() bool {
 		return disableSync != "true"
 	}
 	return true
+}
+
+func tranformPorts(in map[docker.Port]struct{}) map[nat.Port]struct{} {
+	result := make(map[nat.Port]struct{})
+
+	for k, v := range in {
+		result[nat.Port(k)] = v
+	}
+
+	return result
 }
