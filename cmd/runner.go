@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/pborman/uuid"
 	"github.com/termie/go-shutil"
@@ -252,8 +253,12 @@ func (p *Runner) CleanupOldBuilds() error {
 
 	cleanup := builds[keepDirs:]
 
+	// only clean up builds older than 24h
+	oldFile := time.Now().Add(time.Hour * -24)
 	for _, f := range cleanup {
-		os.RemoveAll(path.Join(buildPath, f.Name()))
+		if f.ModTime().Before(oldFile) {
+			os.RemoveAll(path.Join(buildPath, f.Name()))
+		}
 	}
 
 	return err
