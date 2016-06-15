@@ -19,7 +19,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -328,56 +327,58 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	}
 
 	// layer.tar has an extra folder in it so we have to strip it :/
-	tempLayerFile, err := os.Open(s.options.HostPath("layer.tar"))
+	artifactReader, err := os.Open(s.options.HostPath("layer.tar"))
 	if err != nil {
 		return -1, err
 	}
+	defer artifactReader.Close()
 
-	realLayerFile, err := os.OpenFile(s.options.HostPath("real_layer.tar"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	layerFile, err := os.OpenFile(s.options.HostPath("real_layer.tar"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return -1, err
 	}
+	defer layerFile.Close()
 
-	tr := tar.NewReader(tempLayerFile)
-	tw := tar.NewWriter(realLayerFile)
+	dgst := digest.Canonical.New()
+	mwriter := io.MultiWriter(layerFile, dgst.Hash())
+
+	tr := tar.NewReader(artifactReader)
+	tw := tar.NewWriter(mwriter)
+
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
 			// finished the tarball
 			break
 		}
+
 		if err != nil {
 			return -1, err
 		}
+
 		// Skip the base dir
 		if hdr.Name == "./" {
 			continue
 		}
+
 		if strings.HasPrefix(hdr.Name, "output/") {
 			hdr.Name = hdr.Name[len("output/"):]
 		} else if strings.HasPrefix(hdr.Name, "source/") {
 			hdr.Name = hdr.Name[len("source/"):]
 		}
+
 		if len(hdr.Name) == 0 {
 			continue
 		}
+
 		tw.WriteHeader(hdr)
 		_, err = io.Copy(tw, tr)
 		if err != nil {
 			return -1, err
 		}
 	}
-	tw.Close()
-	realLayerFile.Seek(0, 0)
-	dgst := digest.Canonical.New()
-	_, err = io.Copy(dgst.Hash(), realLayerFile)
-	if err != nil {
-		return -1, err
-	}
-	diffID := dgst.Digest()
 
-	tempLayerFile.Close()
-	realLayerFile.Close()
+	digest := dgst.Digest()
 
 	config := &container.Config{
 		Cmd:          s.cmd,
@@ -387,6 +388,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		Volumes:      s.volumes,
 		ExposedPorts: tranformPorts(s.ports),
 	}
+
 	// Make the JSON file we need
 	t := time.Now()
 	base := image.V1Image{
@@ -395,41 +397,38 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		ContainerConfig: container.Config{
 			Hostname: containerID[:16],
 		},
-		DockerVersion: "1.5",
+		DockerVersion: "1.10",
 		Created:       t,
 		OS:            "linux",
 		Config:        config,
 	}
+
 	imageJSON := image.Image{
 		V1Image: base,
-		History: []image.History{image.History{
-			Created: t,
-		}},
+		History: []image.History{image.History{Created: t}},
 		RootFS: &image.RootFS{
-			Type: "layers",
-			DiffIDs: []layer.DiffID{
-				layer.DiffID(diffID),
-			},
+			Type:    "layers",
+			DiffIDs: []layer.DiffID{layer.DiffID(digest)},
 		},
 	}
-	jsonOut, err := json.Marshal(imageJSON)
+
+	js, err := imageJSON.MarshalJSON()
 	if err != nil {
 		return -1, err
 	}
-	img, err := image.NewFromJSON(jsonOut)
-	if err != nil {
-		return -1, err
-	}
-	js, err := img.MarshalJSON()
-	if err != nil {
-		return -1, err
-	}
+
 	hash := sha256.New()
 	hash.Write(js)
 	layerID := hex.EncodeToString(hash.Sum(nil))
-	s.logger.Debugln(layerID)
+
 	err = os.MkdirAll(s.options.HostPath("scratch", layerID), 0755)
-	os.Rename(realLayerFile.Name(), s.options.HostPath("scratch", layerID, "layer.tar"))
+	if err != nil {
+		return -1, err
+	}
+
+	layerFile.Close()
+
+	err = os.Rename(layerFile.Name(), s.options.HostPath("scratch", layerID, "layer.tar"))
 	if err != nil {
 		return -1, err
 	}
@@ -441,10 +440,12 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 	defer versionFile.Close()
+
 	_, err = versionFile.Write([]byte("1.0"))
 	if err != nil {
 		return -1, err
 	}
+
 	err = versionFile.Sync()
 	if err != nil {
 		return -1, err
@@ -456,10 +457,12 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 	defer jsonFile.Close()
+
 	_, err = jsonFile.Write(js)
 	if err != nil {
 		return -1, err
 	}
+
 	err = jsonFile.Sync()
 	if err != nil {
 		return -1, err
@@ -471,6 +474,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 	defer repositoriesFile.Close()
+
 	_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`{"%s":{`, s.authenticator.Repository(s.repository))))
 	if err != nil {
 		return -1, err
@@ -501,12 +505,12 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 
 	// Build our output tarball and start writing to it
 	imageFile, err := os.Create(s.options.HostPath("scratch.tar"))
-	defer imageFile.Close()
 	if err != nil {
 		return -1, err
 	}
-	err = util.TarPath(imageFile, s.options.HostPath("scratch"))
+	defer imageFile.Close()
 
+	err = util.TarPath(imageFile, s.options.HostPath("scratch"))
 	if err != nil {
 		return -1, err
 	}
@@ -516,6 +520,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	if err != nil {
 		return 1, err
 	}
+
 	// Check the auth
 	if !s.dockerOptions.DockerLocal {
 		check, err := s.authenticator.CheckAccess(s.repository, auth.Push)
@@ -524,23 +529,31 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
 		}
 	}
+
 	s.repository = s.authenticator.Repository(s.repository)
 	s.logger.WithFields(util.LogFields{
 		"Repository": s.repository,
 		"Tags":       s.tags,
 		"Message":    s.message,
 	}).Debug("Scratch push to registry")
+
 	// Okay, we can access it, do a docker load to import the image then push it
 	loadFile, err := os.Open(s.options.HostPath("scratch.tar"))
-	defer loadFile.Close()
 	if err != nil {
 		return -1, err
 	}
+	defer loadFile.Close()
+
 	e, err := core.EmitterFromContext(ctx)
+	if err != nil {
+		return 1, err
+	}
+
 	err = client.LoadImage(docker.LoadImageOptions{InputStream: loadFile})
 	if err != nil {
 		return 1, err
 	}
+
 	return s.tagAndPush(layerID, e, client)
 }
 
