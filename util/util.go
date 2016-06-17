@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -408,4 +409,30 @@ func (t *Timer) Elapsed() time.Duration {
 // String repr for time
 func (t *Timer) String() string {
 	return fmt.Sprintf("%.2fs", t.Elapsed().Seconds())
+}
+
+// ByModifiedTime is used for sorting files/folders by mod time
+type ByModifiedTime []os.FileInfo
+
+// Len, Swap and Less are used for sorting
+
+// Len returns the length of items in the slice
+func (s ByModifiedTime) Len() int {
+	return len(s)
+}
+
+// Swap swaps two items when sorting
+func (s ByModifiedTime) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+// Less returns true if the first value shoudl appear first in the
+// sorted results
+func (s ByModifiedTime) Less(i, j int) bool {
+	return s[i].ModTime().After(s[j].ModTime())
+}
+
+// SortByModDate sorts the files or folders descending by modification date
+func SortByModDate(dirs []os.FileInfo) {
+	sort.Sort(ByModifiedTime(dirs))
 }
