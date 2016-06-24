@@ -773,18 +773,18 @@ func cmdVersion(options *core.VersionOptions) error {
 				updater.ServerVersion.FullVersion())
 
 			// try to determine if binary was installed with homebrew
-			// ignore potential error; an error would mean we can't be sure
-			// so optimize for happy-path
-			homebrew, _ := util.InstalledWithHomebrew()
+			homebrew := util.InstalledWithHomebrew()
 
 			if homebrew {
 				logger.Info("\nLooks like wercker was installed with homebrew.\n\n" +
 					"To update to the latest version please use:\n" +
-					"brew upgrade wercker-cli")
-				os.Exit(1)
+					"brew update && brew upgrade wercker-cli")
+
+				logger.Println("\nUsing the built in updater can cause issues with Wercker installed with homebrew.")
+			} else {
+				logger.Infoln("Download it from:", updater.DownloadURL())
 			}
 
-			logger.Infoln("Download it from:", updater.DownloadURL())
 			if AskForUpdate() {
 				if err := updater.Update(); err != nil {
 					logger.WithField("Error", err).Warn(

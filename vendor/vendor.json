@@ -712,12 +712,6 @@
 			"revisionTime": "2016-01-05T22:08:40Z"
 		},
 		{
-			"checksumSHA1": "0USxm725IUV4xoFomgvWhJe4vLY=",
-			"path": "github.com/kardianos/osext",
-			"revision": "29ae4ffbc9a6fe9fb2bc5029050ce6996ea1d3bc",
-			"revisionTime": "2015-12-22T15:32:29Z"
-		},
-		{
 			"checksumSHA1": "c079Nyaher72rGrFsWM9AaWxCsU=",
 			"path": "github.com/mattn/go-colorable",
 			"revision": "bc69d6cebca8dd5675346a34a1c545b67dc74d5e",
