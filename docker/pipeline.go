@@ -39,6 +39,10 @@ func NewDockerPipeline(name string, config *core.Config, options *core.PipelineO
 		return nil, fmt.Errorf("No pipeline named %s", pipelineName)
 	}
 
+	if pipelineConfig == nil {
+		return nil, fmt.Errorf("Pipeline %s is empty", pipelineName)
+	}
+
 	// Select this pipeline's config or the global config
 	rawBoxConfig := pipelineConfig.Box
 	if rawBoxConfig == nil {
