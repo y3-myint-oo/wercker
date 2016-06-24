@@ -370,6 +370,12 @@
 			"revisionTime": "2016-04-25T21:02:26Z"
 		},
 		{
+			"checksumSHA1": "ggO3h21iAuDg7EsDu9ddczlIHFU=",
+			"path": "github.com/docker/docker/opts",
+			"revision": "2fe294c16a7d75b9dcacda55aecf3bec6efe4781",
+			"revisionTime": "2016-06-24T08:58:25Z"
+		},
+		{
 			"checksumSHA1": "hfr1d0VU04e0IQM3iTy1x0y98MA=",
 			"path": "github.com/docker/docker/pkg/archive",
 			"revision": "1b4286f40de1237ef96f9e953a6a8c2f050b8421",
@@ -386,6 +392,12 @@
 			"path": "github.com/docker/docker/pkg/fileutils",
 			"revision": "1b4286f40de1237ef96f9e953a6a8c2f050b8421",
 			"revisionTime": "2016-04-25T21:02:26Z"
+		},
+		{
+			"checksumSHA1": "iQlaOTsq2en8kZrOt7pWWVGO+kk=",
+			"path": "github.com/docker/docker/pkg/homedir",
+			"revision": "2fe294c16a7d75b9dcacda55aecf3bec6efe4781",
+			"revisionTime": "2016-06-24T08:58:25Z"
 		},
 		{
 			"checksumSHA1": "Kao2fJIQGfZ10aP2yGgfMK2ASSQ=",
@@ -466,6 +478,12 @@
 			"revisionTime": "2016-04-25T21:02:26Z"
 		},
 		{
+			"checksumSHA1": "3uz/ivef+IflkDBSB2S5Kc5Xs/I=",
+			"path": "github.com/docker/docker/pkg/stdcopy",
+			"revision": "2fe294c16a7d75b9dcacda55aecf3bec6efe4781",
+			"revisionTime": "2016-06-24T08:58:25Z"
+		},
+		{
 			"checksumSHA1": "9+JGcBE2em1HHs8qdusI/hFwRkE=",
 			"path": "github.com/docker/docker/pkg/stringid",
 			"revision": "1b4286f40de1237ef96f9e953a6a8c2f050b8421",
@@ -506,6 +524,12 @@
 			"path": "github.com/docker/engine-api/types/container",
 			"revision": "3d72d392d07bece8d7d7b2a3b6b2e57c2df376a2",
 			"revisionTime": "2016-04-24T09:22:01Z"
+		},
+		{
+			"checksumSHA1": "0UcvIzobM2POYfKb9Lbr5ny6p7M=",
+			"path": "github.com/docker/engine-api/types/filters",
+			"revision": "f90ecdb1e989f834dabbd91807e891094aa069fe",
+			"revisionTime": "2016-06-17T07:31:37Z"
 		},
 		{
 			"checksumSHA1": "a0fVEBaevxcn0TqlBNEW6D4pEHg=",
@@ -556,10 +580,10 @@
 			"revisionTime": "2016-04-12T13:37:56Z"
 		},
 		{
-			"checksumSHA1": "SzhvLPReGgCOq1FhoK474deJIPc=",
+			"checksumSHA1": "hpj0xzuu165n/5qY5T0YDRxrzuQ=",
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "681783e5c84bb9d669f52814abd42297e058e25b",
-			"revisionTime": "2016-04-25T15:38:51Z"
+			"revision": "107dc3807d24e581e874212dd9a7ba35599b893d",
+			"revisionTime": "2016-06-22T21:42:44Z"
 		},
 		{
 			"checksumSHA1": "xOrW9Lj4uKcPSpMHj1439bADOkA=",
@@ -680,6 +704,12 @@
 			"path": "github.com/gopherjs/gopherjs/js",
 			"revision": "19e100e9652485a76176bc5fd2669f57d3a2743c",
 			"revisionTime": "2016-04-15T13:35:13Z"
+		},
+		{
+			"checksumSHA1": "Uzyon2091lmwacNsl1hCytjhHtg=",
+			"path": "github.com/hashicorp/go-cleanhttp",
+			"revision": "ad28ea4487f05916463e2423a55166280e8254b5",
+			"revisionTime": "2016-04-07T17:41:26Z"
 		},
 		{
 			"checksumSHA1": "lSsPWSWtQzRJe1mqJNZLTA5JvX0=",
