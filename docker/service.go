@@ -147,6 +147,18 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		cmdInfo = append(cmdInfo, origCmd...)
 	}
 
+	portsToBind := []string{""}
+
+	if b.options.ExposePorts {
+		portsToBind = b.config.Ports
+	}
+
+	hostConfig := &docker.HostConfig{
+		DNS:          b.dockerOptions.DockerDNS,
+		PortBindings: portBindings(portsToBind),
+		Links:        links,
+	}
+
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
 			Name: b.getContainerName(),
@@ -159,6 +171,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 				DNS:             b.dockerOptions.DockerDNS,
 				Entrypoint:      entrypoint,
 			},
+			HostConfig: hostConfig,
 		})
 
 	if err != nil {
@@ -177,17 +190,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		b.logger.Println(f.Info(fmt.Sprintf("Starting service %s", b.ShortName), strings.Join(out, " ")))
 	}
 
-	portsToBind := []string{""}
-
-	if b.options.ExposePorts {
-		portsToBind = b.config.Ports
-	}
-
-	client.StartContainer(container.ID, &docker.HostConfig{
-		DNS:          b.dockerOptions.DockerDNS,
-		PortBindings: portBindings(portsToBind),
-		Links:        links,
-	})
+	client.StartContainer(container.ID, hostConfig)
 	b.container = container
 
 	go func() {

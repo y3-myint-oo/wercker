@@ -118,6 +118,7 @@ func NewDockerClient(options *DockerOptions) (*DockerClient, error) {
 
 // RunAndAttach gives us a raw connection to a newly run container
 func (c *DockerClient) RunAndAttach(name string) error {
+	hostConfig := &docker.HostConfig{}
 	container, err := c.CreateContainer(
 		docker.CreateContainerOptions{
 			Name: uuid.NewRandom().String(),
@@ -132,11 +133,12 @@ func (c *DockerClient) RunAndAttach(name string) error {
 				// NetworkDisabled: b.networkDisabled,
 				// Volumes: volumes,
 			},
+			HostConfig: hostConfig,
 		})
 	if err != nil {
 		return err
 	}
-	c.StartContainer(container.ID, &docker.HostConfig{})
+	c.StartContainer(container.ID, hostConfig)
 
 	return c.AttachTerminal(container.ID)
 }
