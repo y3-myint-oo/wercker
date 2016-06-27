@@ -281,6 +281,11 @@ func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 		}
 		r.PipelineConfig.StepsMap[k] = otherSteps
 	}
+
+	// Having a slash in the path will cause sources to end up in /pipeline/source/source.
+	// Remove a potential trailing slash
+	r.PipelineConfig.BasePath = strings.TrimSuffix(r.PipelineConfig.BasePath, "/")
+
 	return nil
 }
 
