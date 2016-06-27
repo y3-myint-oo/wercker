@@ -202,6 +202,10 @@ func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 		return err
 	}
 
+	// Having a slash in the path will cause sources to end up in /pipeline/source/source.
+	// Remove a potential trailing slash
+	r.PipelineConfig.BasePath = strings.TrimSuffix(r.PipelineConfig.BasePath, "/")
+
 	// Then treat it like a map to get the extra fields
 	m := map[string]interface{}{}
 	err = unmarshal(&m)
