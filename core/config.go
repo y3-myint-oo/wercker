@@ -126,7 +126,10 @@ func (r *RawStepConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		// The only item's key will be the stepID, value is data
 		item := topMap[0]
 		stepID = item.Key
-		interData := item.Value.(yaml.MapSlice)
+		interData, ok := item.Value.(yaml.MapSlice)
+		if !ok {
+			return fmt.Errorf("Step %s is empty", item.Key)
+		}
 		for _, item := range interData {
 			stepData[item.Key] = ifaceToString(item.Value)
 		}
