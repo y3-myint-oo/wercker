@@ -99,7 +99,7 @@ runTests() {
   basicTestFail "empty wercker file" build "$testsDir/invalid-config" --docker-local|| return 1
   grep -q "Your wercker.yml is empty." "${workingDir}/empty wercker file.log" || return 1
 
-  basicTest "multiple services with the same image" build || return 1
+  basicTest "multiple services with the same image" build "$testsDir/multidb" || return 1
 
   testDirectMount || return 1
   testScratchPush || return 1
