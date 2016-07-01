@@ -363,6 +363,24 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 		ports = exposedPorts(b.config.Ports)
 	}
 
+	binds, err := b.binds(env)
+
+	portsToBind := []string{""}
+
+	if len(b.options.PublishPorts) >= 1 {
+		b.logger.Warnln("--publish is deprecated, please use --expose-ports and define the ports for the boxes. See: https://github.com/wercker/wercker/pull/161")
+		portsToBind = b.options.PublishPorts
+	} else if b.options.ExposePorts {
+		portsToBind = b.config.Ports
+	}
+
+	hostConfig := &docker.HostConfig{
+		Binds:        binds,
+		Links:        b.links(),
+		PortBindings: portBindings(portsToBind),
+		DNS:          b.dockerOptions.DockerDNS,
+	}
+
 	// Make and start the container
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
@@ -382,34 +400,20 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 				Entrypoint:      entrypoint,
 				// Volumes: volumes,
 			},
+			HostConfig: hostConfig,
 		})
+
 	if err != nil {
 		return nil, err
 	}
 
 	b.logger.Debugln("Docker Container:", container.ID)
 
-	binds, err := b.binds(env)
-
 	if err != nil {
 		return nil, err
 	}
 
-	portsToBind := []string{""}
-
-	if len(b.options.PublishPorts) >= 1 {
-		b.logger.Warnln("--publish is deprecated, please use --expose-ports and define the ports for the boxes. See: https://github.com/wercker/wercker/pull/161")
-		portsToBind = b.options.PublishPorts
-	} else if b.options.ExposePorts {
-		portsToBind = b.config.Ports
-	}
-
-	client.StartContainer(container.ID, &docker.HostConfig{
-		Binds:        binds,
-		Links:        b.links(),
-		PortBindings: portBindings(portsToBind),
-		DNS:          b.dockerOptions.DockerDNS,
-	})
+	client.StartContainer(container.ID, hostConfig)
 	b.container = container
 	return container, nil
 }

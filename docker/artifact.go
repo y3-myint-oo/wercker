@@ -119,17 +119,17 @@ func NewDockerFileCollector(client *DockerClient, containerID string) *DockerFil
 // an error channel to select on
 func (fc *DockerFileCollector) Collect(path string) (*util.Archive, chan error) {
 	pipeReader, pipeWriter := io.Pipe()
-	opts := docker.CopyFromContainerOptions{
+
+	opts := docker.DownloadFromContainerOptions{
 		OutputStream: pipeWriter,
-		Container:    fc.containerID,
-		Resource:     path,
+		Path:         path,
 	}
 
 	errs := make(chan error)
 
 	go func() {
 		defer close(errs)
-		if err := fc.client.CopyFromContainer(opts); err != nil {
+		if err := fc.client.DownloadFromContainer(fc.containerID, opts); err != nil {
 			switch err.(type) {
 			case *docker.Error:
 				derr := err.(*docker.Error)
