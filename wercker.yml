@@ -202,6 +202,5 @@ release-beta:
             -X POST \
             -H "Authorization: Bearer $WERCKER_TOKEN" \
             -H "Content-Type: application/json" \
-            --data "{ \"pipelineId\": \"$HOMEBREW_PIPELINE_ID\", \"branch\": \"update_trigger\", \"envVars\": [{ \"key\": \"CHANNEL\", \"value\": \"beta\" },{ \"key\": \"VERSION\", \"value\": \"$WERCKER_VERSION\" },{ \"key\": \"SHA256\", \"value\": \"$DARWIN_SHA256\" }] }" \
+            --data "{ \"pipelineId\": \"$HOMEBREW_PIPELINE_ID\", \"envVars\": [{ \"key\": \"CHANNEL\", \"value\": \"beta\" },{ \"key\": \"VERSION\", \"value\": \"$WERCKER_VERSION\" },{ \"key\": \"SHA256\", \"value\": \"$DARWIN_SHA256\" }] }" \
             https://app.wercker.com/api/v3/runs
-# TODO(bvdberg): update pipeline id, remove branch (+ do the same for release-stable)
