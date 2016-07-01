@@ -87,10 +87,10 @@ func (s *DockerStep) CollectFile(containerID, path, name string, dst io.Writer) 
 	}
 
 	pipeReader, pipeWriter := io.Pipe()
-	opts := docker.CopyFromContainerOptions{
+
+	opts := docker.DownloadFromContainerOptions{
 		OutputStream: pipeWriter,
-		Container:    containerID,
-		Resource:     filepath.Join(path, name),
+		Path:         filepath.Join(path, name),
 	}
 
 	errs := make(chan error)
@@ -99,7 +99,7 @@ func (s *DockerStep) CollectFile(containerID, path, name string, dst io.Writer) 
 		errs <- util.UntarOne(name, dst, pipeReader)
 	}()
 
-	if err = client.CopyFromContainer(opts); err != nil {
+	if err = client.DownloadFromContainer(containerID, opts); err != nil {
 		s.logger.Debug("Probably expected error:", err)
 		return util.ErrEmptyTarball
 	}
