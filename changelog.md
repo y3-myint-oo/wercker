@@ -1,6 +1,4 @@
-## v2016.06.01
-
-### Features
+## v1.0.547 (2016-07-01)
 
 - Add checkpointing and base-path (#123)
 - Support for registry v2 (#131)
@@ -10,9 +8,6 @@
 - Display raw config, before parsing it (#149)
 - Allow multiple services with the same images (#159)
 - Add exposed-ports (#161)
-
-### Bug Fixes
-
 - Fix run, build and deploy urls (#163)
 
 ## 2016.03.11
