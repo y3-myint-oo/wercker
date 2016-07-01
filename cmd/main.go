@@ -739,6 +739,7 @@ func emitProgress(counter *util.CounterReader, total int64, logger *util.Logger)
 
 func cmdVersion(options *core.VersionOptions) error {
 	logger := util.RootLogger().WithField("Logger", "Main")
+
 	v := util.GetVersions()
 
 	if options.OutputJSON {
@@ -770,7 +771,20 @@ func cmdVersion(options *core.VersionOptions) error {
 		if updater.UpdateAvailable() {
 			logger.Infoln("A new version is available:",
 				updater.ServerVersion.FullVersion())
-			logger.Infoln("Download it from:", updater.DownloadURL())
+
+			// try to determine if binary was installed with homebrew
+			homebrew := util.InstalledWithHomebrew()
+
+			if homebrew {
+				logger.Info("\nLooks like wercker was installed with homebrew.\n\n" +
+					"To update to the latest version please use:\n" +
+					"brew update && brew upgrade wercker-cli")
+
+				logger.Println("\nUsing the built in updater can cause issues with Wercker installed with homebrew.")
+			} else {
+				logger.Infoln("Download it from:", updater.DownloadURL())
+			}
+
 			if AskForUpdate() {
 				if err := updater.Update(); err != nil {
 					logger.WithField("Error", err).Warn(
