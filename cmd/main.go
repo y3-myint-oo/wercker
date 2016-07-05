@@ -1068,6 +1068,47 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 					return err
 				}
 
+				dirContents, err := ioutil.ReadDir(artifact.HostPath)
+				if err != nil {
+					sr.Message = err.Error()
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("Storing artifacts failed: %s\n", sr.Message),
+					})
+					return err
+				}
+
+				e.Emit(core.Logs, &core.LogsArgs{
+					Logs: fmt.Sprintf("Collecting files from %s\n", artifact.GuestPath),
+				})
+
+				for _, file := range dirContents {
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("- %s\n", file.Name()),
+					})
+				}
+
+				tarFile, err := os.Open(artifact.HostTarPath)
+				if err != nil {
+					sr.Message = err.Error()
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("Storing artifacts failed: %s\n", sr.Message),
+					})
+					return err
+				}
+
+				tarInfo, err := tarFile.Stat()
+				if err != nil {
+					sr.Message = err.Error()
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("Storing artifacts failed: %s\n", sr.Message),
+					})
+					return err
+				}
+
+				e.Emit(core.Logs, &core.LogsArgs{
+					Logs: fmt.Sprintf("Total artifact size: %d Kb\n", tarInfo.Size()/1024),
+				})
+
 				if options.ShouldStoreS3 {
 					artificer := dockerlocal.NewArtificer(options, dockerOptions)
 					err = artificer.Upload(artifact)
