@@ -189,7 +189,7 @@ func (h *MetricsEventHandler) sendPayload(args *sendPayloadArgs) {
 		OwnerName: args.options.ApplicationOwnerName,
 	}
 	p.SentCli = h.versions
-	p.Stack = 5
+	p.Stack = 6
 	p.NumSteps = h.numSteps
 	p.NumAfterSteps = h.numAfterSteps
 	p.PipelineName = args.options.Pipeline
