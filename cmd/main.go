@@ -590,7 +590,7 @@ func cmdPull(c *cli.Context, options *core.PullOptions, dockerOptions *dockerloc
 			Branch: options.Branch,
 			Result: options.Result,
 			Status: "finished",
-			Stack:  5,
+			Stack:  6,
 		}
 
 		builds, err := client.GetBuilds(username, applicationName, opts)
