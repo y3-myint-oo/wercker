@@ -1,8 +1,14 @@
 build:
   box:
-    id: busybox
+    id: alpine
     cmd: /bin/sh
   steps:
-    - internal/docker-push:
-        tag: uniqueTagFromTest, alsouniqueTagFromTest
-        repository: quay.io/something/somerepo
+    - script:
+        code: |
+          echo "foo1" > $WERCKER_OUTPUT_DIR/foo1
+    - internal/docker-scratch-push:
+        username: $DOCKER_USER
+        password: $DOCKER_PASSWORD
+        registry: https://quay.io
+        tag: $WERCKER_GIT_BRANCH-$WERCKER_GIT_COMMIT
+        repository: quay.io/wercker/scratch-n-push
