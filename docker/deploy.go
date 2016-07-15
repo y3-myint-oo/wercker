@@ -118,7 +118,7 @@ func (d *DockerDeploy) CollectArtifact(containerID string) (*core.Artifact, erro
 
 	sourceArtifact := &core.Artifact{
 		ContainerID:   containerID,
-		GuestPath:     d.options.SourcePath(),
+		GuestPath:     d.options.BasePath(),
 		HostPath:      d.options.HostPath("output"),
 		HostTarPath:   d.options.HostPath("output.tar"),
 		ApplicationID: d.options.ApplicationID,
