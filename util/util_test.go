@@ -167,3 +167,28 @@ func (s *UtilSuite) TestSortByModDate() {
 	s.Equal("jan-2", dirs[3].Name())
 	s.Equal("jan-1", dirs[4].Name())
 }
+
+func (s *UtilSuite) TestConvertUnit() {
+	tests := []struct {
+		input         int64
+		expectedValue int64
+		expectedUnit  string
+	}{
+		{1, 1, "B"},
+		{1024, 1, "KiB"},
+		{2048, 2, "KiB"},
+		{1047552, 1023, "KiB"},
+		{1048576, 1, "MiB"},
+		{1073741824, 1, "GiB"},
+		{1099511627776, 1024, "GiB"},
+		{1100585369600, 1025, "GiB"}, // GiB is the last unit
+	}
+
+	for _, test := range tests {
+		actualValue, actualUnit := ConvertUnit(test.input)
+
+		s.Equal(test.expectedValue, actualValue)
+		s.Equal(test.expectedUnit, actualUnit)
+
+	}
+}
