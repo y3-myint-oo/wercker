@@ -152,14 +152,14 @@ release-stable:
 
     # Signal wercker/homebrew
     - script:
-        name:
+        name: Trigger homebrew release
         code: |
           export DARWIN_SHA256=$(awk '{print $1}' "./artifacts/latest/darwin_amd64/SHA256SUMS")
           curl \
             -X POST \
             -H "Authorization: Bearer $WERCKER_TOKEN" \
             -H "Content-Type: application/json" \
-            --data "{ \"pipelineId\": \"$HOMEBREW_PIPELINE_ID\", \"envVars\": [{ \"key\": \"CHANNEL\", \"value\": \"stable\" },{ \"key\": \"VERSION\", \"value\": \"$WERCKER_VERSION\" },{ \"key\": \"SHA256\", \"value\": \"$DARWIN_SHA256\" }] }" \
+            --data "{ \"message\": \"Release stable $WERCKER_VERSION\", \"pipelineId\": \"$HOMEBREW_PIPELINE_ID\", \"envVars\": [{ \"key\": \"CHANNEL\", \"value\": \"stable\" },{ \"key\": \"VERSION\", \"value\": \"$WERCKER_VERSION\" },{ \"key\": \"SHA256\", \"value\": \"$DARWIN_SHA256\" }] }" \
             https://app.wercker.com/api/v3/runs
 
 release-beta:
@@ -195,12 +195,12 @@ release-beta:
 
     # Signal wercker/homebrew
     - script:
-        name:
+        name: Trigger homebrew release
         code: |
           export DARWIN_SHA256=$(awk '{print $1}' "./artifacts/latest/darwin_amd64/SHA256SUMS")
           curl \
             -X POST \
             -H "Authorization: Bearer $WERCKER_TOKEN" \
             -H "Content-Type: application/json" \
-            --data "{ \"pipelineId\": \"$HOMEBREW_PIPELINE_ID\", \"envVars\": [{ \"key\": \"CHANNEL\", \"value\": \"beta\" },{ \"key\": \"VERSION\", \"value\": \"$WERCKER_VERSION\" },{ \"key\": \"SHA256\", \"value\": \"$DARWIN_SHA256\" }] }" \
+            --data "{ \"message\": \"Release beta $WERCKER_VERSION\",  \"pipelineId\": \"$HOMEBREW_PIPELINE_ID\", \"envVars\": [{ \"key\": \"CHANNEL\", \"value\": \"beta\" },{ \"key\": \"VERSION\", \"value\": \"$WERCKER_VERSION\" },{ \"key\": \"SHA256\", \"value\": \"$DARWIN_SHA256\" }] }" \
             https://app.wercker.com/api/v3/runs
