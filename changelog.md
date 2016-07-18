@@ -1,6 +1,6 @@
 ## unreleased
 
--
+- Add additional output when storing artifacts (#207)
 
 ## v1.0.560 (2016-07-14)
 

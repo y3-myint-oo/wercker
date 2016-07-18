@@ -436,3 +436,32 @@ func (s ByModifiedTime) Less(i, j int) bool {
 func SortByModDate(dirs []os.FileInfo) {
 	sort.Sort(ByModifiedTime(dirs))
 }
+
+var units = []string{
+	"B",
+	"KiB",
+	"MiB",
+	"GiB",
+}
+
+// ConvertUnit takes the number of bytes and converts this to the largest unit
+// possible, where the result is still > 1. Uses default golang int rounding.
+func ConvertUnit(size int64) (int64, string) {
+	unit := ""
+
+	for i, u := range units {
+		unit = u
+
+		// No need to continue when it is smaller than 1024
+		if size < 1024 {
+			break
+		}
+
+		// Do not divide on the last item
+		if i+1 < len(units) {
+			size = size / 1024
+		}
+	}
+
+	return size, unit
+}

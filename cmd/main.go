@@ -1068,6 +1068,61 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 					return err
 				}
 
+				e.Emit(core.Logs, &core.LogsArgs{
+					Logs: fmt.Sprintf("Collecting files from %s\n", artifact.GuestPath),
+				})
+
+				ignoredDirectories := []string{".git", "node_modules", "vendor", "site-packages"}
+				nameEmit := func(path string, info os.FileInfo, err error) error {
+					relativePath := strings.TrimPrefix(path, artifact.HostPath)
+
+					if info.IsDir() {
+						if util.ContainsString(ignoredDirectories, info.Name()) {
+							e.Emit(core.Logs, &core.LogsArgs{
+								Logs: fmt.Sprintf(".%s/ (content omitted)\n", relativePath),
+							})
+							return filepath.SkipDir
+						}
+
+						return nil
+					}
+
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf(".%s\n", relativePath),
+					})
+
+					return nil
+				}
+
+				err = filepath.Walk(artifact.HostPath, nameEmit)
+				if err != nil {
+					sr.Message = err.Error()
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("Storing artifacts failed: %s\n", sr.Message),
+					})
+					return err
+				}
+
+				tarInfo, err := os.Stat(artifact.HostTarPath)
+				if err != nil {
+					if os.IsNotExist(err) {
+						e.Emit(core.Logs, &core.LogsArgs{
+							Logs: "No artifacts stored",
+						})
+					} else {
+						sr.Message = err.Error()
+						e.Emit(core.Logs, &core.LogsArgs{
+							Logs: fmt.Sprintf("Storing artifacts failed: %s\n", sr.Message),
+						})
+						return err
+					}
+				} else {
+					size, unit := util.ConvertUnit(tarInfo.Size())
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("Total artifact size: %d %s\n", size, unit),
+					})
+				}
+
 				if options.ShouldStoreS3 {
 					artificer := dockerlocal.NewArtificer(options, dockerOptions)
 					err = artificer.Upload(artifact)
@@ -1081,6 +1136,10 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 				}
 
 				sr.PackageURL = artifact.URL()
+			} else {
+				e.Emit(core.Logs, &core.LogsArgs{
+					Logs: "No artifacts found\n",
+				})
 			}
 
 			e.Emit(core.Logs, &core.LogsArgs{
