@@ -1,6 +1,7 @@
 ## unreleased
 
 - Add additional output when storing artifacts (#207)
+- fix longer (2+) chains of runs tha have source-dir specified (#151)
 
 ## v1.0.560 (2016-07-14)
 
