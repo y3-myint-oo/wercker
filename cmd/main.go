@@ -1075,6 +1075,9 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 				ignoredDirectories := []string{".git", "node_modules", "vendor", "site-packages"}
 				nameEmit := func(path string, info os.FileInfo, err error) error {
 					relativePath := strings.TrimPrefix(path, artifact.HostPath)
+					if info == nil {
+						return nil
+					}
 
 					if info.IsDir() {
 						if util.ContainsString(ignoredDirectories, info.Name()) {
