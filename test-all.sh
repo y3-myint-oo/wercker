@@ -85,6 +85,7 @@ testScratchPush () {
 
 runTests() {
   basicTest "source-path" build "$testsDir/source-path" || return 1
+  basicTest "rm pipeline" build --artifacts "$testsDir/rm-pipeline" || return 1
   basicTest "local services" build "$testsDir/local-service/service-consumer" || return 1
   basicTest "deploy" deploy "$testsDir/deploy-no-targets" --docker-local || return 1
   basicTest "deploy target" deploy --deploy-target test "$testsDir/deploy-targets" --docker-local || return 1
