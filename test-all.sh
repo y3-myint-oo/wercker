@@ -115,6 +115,8 @@ runTests() {
   basicTestFail "artifact size too big" build --docker-local --artifacts "$testsDir/artifact-size" || return 1
   grep -q "Storing artifacts failed: Size exceeds maximum size of 1000MB" "${workingDir}/artifact size too big.log" || return 1
 
+  basicTest "artifact empty file" build --docker-local --artifacts "$testsDir/artifact-empty-file" || return 1
+
   # test deploy behavior with different levels of specificity
   cd "$testsDir/local-deploy/latest-no-yml"
   basicTest "local deploy using latest build not containing wercker.yml" deploy --docker-local || return 1
