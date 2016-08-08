@@ -953,6 +953,23 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 		logger.Printf(f.Success("Step passed", "setup environment", timer.String()))
 	}
 
+	// Once SetupEnvironment has finished we want to register some signal
+	// handlers to emit step ended if we get killed but aren't fast enough
+	// at cleaning up the containers before our grace period ends
+	// Signals are process LIFO so we want to register this after the
+	// box cleanup
+	buildFailedHandler := &util.SignalHandler{
+		ID: "build-failed",
+		F: func() bool {
+			logger.Errorln("Interrupt detected, sending build / pipeline failed")
+			fullPipelineFinisher.Finish(pipelineArgs)
+			buildFinisher.Finish(buildFinishedArgs)
+			return true
+		},
+	}
+	util.GlobalSigint().Add(buildFailedHandler)
+	util.GlobalSigterm().Add(buildFailedHandler)
+
 	// Expand our context object
 	box := shared.box
 	buildFinishedArgs.Box = box
