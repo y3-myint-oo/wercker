@@ -866,7 +866,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	// Boilerplate
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := util.RootLogger().WithField("Logger", "Main")
-	logger = logger.WithField("RunID", options.RunID)
+	logger = util.RootLogger().WithField("RunID", options.RunID)
 	e, err := core.EmitterFromContext(cmdCtx)
 	if err != nil {
 		return nil, err
