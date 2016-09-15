@@ -865,8 +865,10 @@ func DumpOptions(options interface{}, indent ...string) {
 func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions, getter pipelineGetter) (*RunnerShared, error) {
 	// Boilerplate
 	soft := NewSoftExit(options.GlobalOptions)
-	logger := util.RootLogger().WithField("Logger", "Main")
-	logger = util.RootLogger().WithField("RunID", options.RunID)
+	logger := util.RootLogger().WithFields(util.LogFields{
+		"Logger": "Main",
+		"RunID":  options.RunID,
+	})
 	e, err := core.EmitterFromContext(cmdCtx)
 	if err != nil {
 		return nil, err
