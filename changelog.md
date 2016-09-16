@@ -3,6 +3,8 @@
 - Add additional output when storing artifacts (#207)
 - Fix longer (2+) chains of runs that have source-dir specified (#151)
 - Output more descriptive error message when setup environment fails (#230)
+- Allow use of an "ignore-file" yaml directive that parse the gitignore syntax
+  (#240)
 
 ## v1.0.560 (2016-07-14)
 
