@@ -1,4 +1,4 @@
-box: golang:1.6
+box: golang:1.7
 no-response-timeout: 15
 
 build:
@@ -82,7 +82,7 @@ deploy:
 
 run-tests:
   box:
-    id: golang:1.6
+    id: golang:1.7
     volumes: $CODE_PATH /var/run/docker.sock
   steps:
       - script:
