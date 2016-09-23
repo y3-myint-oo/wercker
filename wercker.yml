@@ -91,27 +91,6 @@ run-tests:
               cd $CODE_PATH
               ./test-all.sh
 
-wercker-in-a-box:
-  box:
-    id: alpine
-    cmd: /bin/sh
-  steps:
-    - script:
-        code: |
-          apk update && apk add ca-certificates openssh
-    - script:
-        code: |
-          mv ./artifacts/latest/linux_amd64/sentcli /wercker
-          chmod +x /wercker
-    - internal/docker-push:
-        repository: quay.io/wercker/wercker-in-a-box
-        username: $DOCKER_USERNAME
-        password: $DOCKER_PASSWORD
-        registry: https://quay.io
-        entrypoint: /wercker
-        tag: latest
-
-
 release-stable:
   steps:
     - install-packages:

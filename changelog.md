@@ -1,6 +1,6 @@
 ## unreleased
 
-## v1.0.630 (2016-09-22)
+## v1.0.631 (2016-09-23)
 
 - Update to compiling with go 1.7
 
