@@ -1,5 +1,9 @@
 ## unreleased
 
+- Remove google as default container DNS (#245)
+
+## v1.0.629 (2016-09-21)
+
 - Add additional output when storing artifacts (#207)
 - Fix longer (2+) chains of runs that have source-dir specified (#151)
 - Output more descriptive error message when setup environment fails (#230)
