@@ -27,7 +27,6 @@ import (
 	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
-
 	"golang.org/x/net/context"
 )
 
@@ -175,7 +174,12 @@ func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
 			// For local dev we can mount read-write and avoid a copy, so we'll mount
 			// directly in the pipeline path
 			if b.options.DirectMount {
-				binds = append(binds, fmt.Sprintf("%s:%s:rw", b.options.HostPath(entry.Name()), b.options.GuestPath(entry.Name())))
+				if entry.Name() == "source" {
+					binds = append(binds, fmt.Sprintf("%s:%s:rw", b.options.HostPath(entry.Name()), b.options.BasePath()))
+
+				} else {
+					binds = append(binds, fmt.Sprintf("%s:%s:rw", b.options.HostPath(entry.Name()), b.options.GuestPath(entry.Name())))
+				}
 			} else {
 				binds = append(binds, fmt.Sprintf("%s:%s:ro", b.options.HostPath(entry.Name()), b.options.MntPath(entry.Name())))
 			}
