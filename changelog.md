@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.643 (2016-10-05)
+
 - Remove google as default container DNS (#245)
 - Update to compiling with go 1.7
 
