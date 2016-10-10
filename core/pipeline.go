@@ -212,6 +212,8 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 	// Make sure the output path exists
 	cmds = append(cmds, fmt.Sprintf(`mkdir -p "%s"`, p.options.GuestPath("output")))
 
+	cmds = append(cmds, fmt.Sprintf(`chmod a+rx "%s"`, p.options.BasePath()))
+
 	p.logger.Printf(f.Info("Copying source to container"))
 	for _, cmd := range cmds {
 		exit, _, err := sess.SendChecked(sessionCtx, cmd)

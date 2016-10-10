@@ -1,5 +1,7 @@
 ## unreleased
 
+- Explicitly chmods the basepath / source path to a+rx
+
 ## v1.0.643 (2016-10-05)
 
 - Remove google as default container DNS (#245)
