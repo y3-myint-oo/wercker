@@ -874,16 +874,20 @@
 			"revisionTime": "2016-03-30T20:38:51Z"
 		},
 		{
-			"checksumSHA1": "X6zh5kqgIqTDKUPdqMRxCrQdewc=",
+			"checksumSHA1": "TrCgaq58Wn0y2KQmdchNE3chgCc=",
 			"path": "github.com/wercker/docker-check-access",
-			"revision": "415b488fdf8e32a4cb10042d76e6d1b6ae2efa92",
-			"revisionTime": "2016-04-26T21:28:11Z"
+			"revision": "b64495b37dd3c36716a92e7ac822fe557ac5c7fe",
+			"revisionTime": "2016-10-10T23:06:01Z",
+			"version": "force_http1",
+			"versionExact": "force_http1"
 		},
 		{
-			"checksumSHA1": "rpIHxVmXHbM31S0S/2qE1kAvzfw=",
+			"checksumSHA1": "hX8m9l8iUR/eVOPQvyfpMolSmt4=",
 			"path": "github.com/wercker/docker-reg-client/registry",
-			"revision": "290be6ffcbe21d8097a4124bb630bbf4a52d9e7e",
-			"revisionTime": "2016-04-26T21:06:27Z"
+			"revision": "e1b7a2bf6ec3667db189bcf6fb3371f187e1c48a",
+			"revisionTime": "2016-10-11T01:02:38Z",
+			"version": "force_http1",
+			"versionExact": "force_http1"
 		},
 		{
 			"checksumSHA1": "Ssb2tLwjet3QM8ygktrxlkELbOU=",
