@@ -27,8 +27,8 @@ already, you can get it from the
 up your go environment by
 [using this guide](https://golang.org/doc/code.html#Organization)
 
-Next, you'll need `glide` to install the golang dependencies. You can do this
-by running:
+Next, you'll need `govendor` to install the golang dependencies. You can do
+this by running:
 ```
   go get github.com/kardianos/govendor
 ```
