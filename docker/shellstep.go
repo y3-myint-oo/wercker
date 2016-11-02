@@ -103,7 +103,6 @@ func (s *ShellStep) Execute(ctx context.Context, sess *core.Session) (int, error
 
 	code := s.env.Export()
 	code = append(code, "cd $WERCKER_SOURCE_DIR")
-	code = append(code, "clear")
 	code = append(code, s.Code)
 
 	err = client.AttachInteractive(containerID, s.Cmd, code)
