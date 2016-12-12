@@ -24,27 +24,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/pkg/term"
 	"github.com/wercker/wercker/api"
 	"github.com/wercker/wercker/util"
 )
 
-// Credentials holds credentials and auth scope to authenticate with api
-type Credentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Scope    string `json:"oauthScope"`
+// Request contains the name needed to generate a token.
+type Request struct {
+	Name string `json:"name"`
 }
 
 // Response from authentication endpoint
 type Response struct {
-	Result  AuthResult `json:"result"`
-	Success bool       `json:"success"`
-}
-
-// AuthResult holds the auth token
-type AuthResult struct {
 	Token string `json:"token"`
 }
 
@@ -56,6 +49,26 @@ func readUsername() string {
 	_, err := fmt.Scanln(&input)
 	if err != nil {
 		authLogger.WithField("Error", err).Debug("Unable to read username")
+	}
+	return input
+}
+
+// readSessionName read the session name that will be associated with the token.
+func readSessionName() string {
+	component, err := os.Hostname()
+	if err != nil {
+		component = fmt.Sprintf("%d", time.Now().Unix())
+	}
+	sessionName := fmt.Sprintf("werckercli-%s", component)
+	print(fmt.Sprintf("Sessions name [default: %s]: ", sessionName))
+
+	var input string
+	_, err = fmt.Scanln(&input)
+	if err != nil {
+		authLogger.WithField("Error", err).Debug("Unable to read the session name")
+	}
+	if input == "" {
+		return sessionName
 	}
 	return input
 }
@@ -87,30 +100,24 @@ func readPassword() string {
 }
 
 // retrieves a basic access token from the wercker API
-func getAccessToken(username, password, url string) (string, error) {
-	creds := Credentials{
-		Username: username,
-		Password: password,
-		Scope:    "cli",
+func getAccessToken(username, password, sessionName, url string) (string, error) {
+	tokenRequest := &Request{
+		Name: sessionName,
 	}
 
-	b, err := json.Marshal(creds)
-	if err != nil {
-		authLogger.WithField("Error", err).Debug("Unable to serialize credentials")
-		return "", err
-	}
-
+	b, _ := json.Marshal(tokenRequest)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		authLogger.WithField("Error", err).Debug("Unable to post request to wercker API")
 		return "", err
 	}
 
-	req.SetBasicAuth(creds.Username, creds.Password)
 	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(username, password)
 	api.AddRequestHeaders(req)
 
-	client := &http.Client{}
+	client := http.DefaultClient
+	client.Timeout = 30 * time.Second
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -130,15 +137,14 @@ func getAccessToken(username, password, url string) (string, error) {
 	if err != nil {
 		authLogger.WithField("Error", err).Debug("Unable to serialize response")
 		return "", err
-
 	}
-	if response.Success == false {
+	if resp.StatusCode != http.StatusOK {
 		err := errors.New("Invalid credentials")
 		authLogger.WithField("Error", err).Debug("Authentication failed")
 		return "", err
 	}
 
-	return strings.TrimSpace(response.Result.Token), nil
+	return strings.TrimSpace(response.Token), nil
 }
 
 // creates directory when needed, overwrites file when it already exists

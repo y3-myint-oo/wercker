@@ -531,19 +531,20 @@ func cmdLogin(options *core.LoginOptions) error {
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := util.RootLogger().WithField("Logger", "Main")
 
-	logger.Println("########### Logging into wercker! #############")
-	url := fmt.Sprintf("%s/api/1.0/%s", options.BaseURL, "oauth/basicauthaccesstoken")
+	logger.Info("Login with your Wercker Account. If you don't have a Wercker Account, head over to https://app.wercker.com to create one.")
+	url := fmt.Sprintf("%s/api/v3/tokens", options.BaseURL)
 
 	username := readUsername()
 	password := readPassword()
+	sessionName := readSessionName()
 
-	token, err := getAccessToken(username, password, url)
+	token, err := getAccessToken(username, password, sessionName, url)
 	if err != nil {
 		logger.WithField("Error", err).Error("Unable to log into wercker")
 		return soft.Exit(err)
 	}
 
-	logger.Println("Saving token to: ", options.AuthTokenStore)
+	logger.Info("Saving token to: ", options.AuthTokenStore)
 	return saveToken(options.AuthTokenStore, token)
 }
 
