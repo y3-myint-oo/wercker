@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -330,6 +331,8 @@ type PipelineOptions struct {
 	ApplicationOwnerName     string
 	ApplicationStartedByName string
 
+	WerckerContainerRegistry *url.URL
+
 	ShouldCommit  bool
 	Repository    string
 	Tag           string
@@ -527,6 +530,12 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		applicationStartedByName = applicationOwnerName
 	}
 
+	containerRegistry, _ := c.String("wercker-container-registry")
+	containerRegistryURL, err := url.Parse(containerRegistry)
+	if err != nil {
+		return nil, fmt.Errorf("Container Registry URL is not well-formatted: %v", err)
+	}
+
 	repository, _ := c.String("commit")
 	shouldCommit := (repository != "")
 	tag := guessTag(c, e)
@@ -570,7 +579,7 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	werckerYml, _ := c.String("wercker-yml")
 	checkpoint, _ := c.String("checkpoint")
 
-	defaultsUsed := PipelineDefaultsUsed {
+	defaultsUsed := PipelineDefaultsUsed{
 		IgnoreFile: !ignoreFileSet,
 	}
 
@@ -608,6 +617,8 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		ProjectID:   projectID,
 		ProjectURL:  projectURL,
 		ProjectPath: projectPath,
+
+		WerckerContainerRegistry: containerRegistryURL,
 
 		CommandTimeout:    commandTimeout,
 		NoResponseTimeout: noResponseTimeout,
@@ -701,9 +712,9 @@ func (o *PipelineOptions) IgnoreFilePath() string {
 	expandedIgnoreFile := util.ExpandHomePath(o.IgnoreFile, o.HostEnv.Get("HOME"))
 
 	if filepath.IsAbs(expandedIgnoreFile) {
-	  return expandedIgnoreFile
+		return expandedIgnoreFile
 	} else {
-	  return path.Join(o.ProjectPath, o.IgnoreFile)
+		return path.Join(o.ProjectPath, o.IgnoreFile)
 	}
 }
 

@@ -807,6 +807,13 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	if registry, ok := s.data["registry"]; ok {
 		opts.Registry = dockerauth.NormalizeRegistry(env.Interpolate(registry))
 	}
+
+	if opts.Registry == "" && opts.Username == "" && opts.Password == "" && s.repository == "" {
+		opts.Registry = s.options.WerckerContainerRegistry.String()
+		opts.Username = "token"
+		opts.Password = s.options.AuthToken
+		s.repository = fmt.Sprintf("%s/%s/%s", s.options.WerckerContainerRegistry.Host, s.options.ApplicationOwnerName, s.options.ApplicationName)
+	}
 	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
 
 	s.authenticator = auther
