@@ -147,6 +147,27 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		cmdInfo = append(cmdInfo, origCmd...)
 	}
 
+	binds := make([]string,0)
+
+	if b.options.EnableVolumes {
+		vols := util.SplitSpaceOrComma(b.config.Volumes)
+		var interpolatedVols []string
+		for _, vol := range vols {
+			if strings.Contains(vol, ":") {
+				pair := strings.SplitN(vol, ":", 2)
+				interpolatedVols = append(interpolatedVols, env.Interpolate(pair[0]))
+				interpolatedVols = append(interpolatedVols, env.Interpolate(pair[1]))
+			} else {
+				interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
+				interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
+			}
+		}
+		b.volumes = interpolatedVols
+		for i := 0; i < len(b.volumes); i += 2 {
+			binds = append(binds, fmt.Sprintf("%s:%s:rw", b.volumes[i], b.volumes[i+1]))
+		}
+	}
+
 	portsToBind := []string{""}
 
 	if b.options.ExposePorts {
@@ -157,6 +178,10 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		DNS:          b.dockerOptions.DockerDNS,
 		PortBindings: portBindings(portsToBind),
 		Links:        links,
+	}
+
+	if len(binds) > 0 {
+		hostConfig.Binds = binds
 	}
 
 	container, err := client.CreateContainer(
