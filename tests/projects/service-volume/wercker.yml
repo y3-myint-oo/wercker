@@ -1,0 +1,16 @@
+build:
+  services:
+    - name: alpaca
+      env:
+        TEST_PATH: $TEST_SERVICE_VOL_PATH
+      id: alpine
+      volumes: $TEST_SERVICE_VOL_PATH
+      cmd: /bin/sh -c "while true; do ls $TEST_PATH || exit 1; sleep 1; done"
+  box:
+    id: alpine
+    cmd: /bin/sh
+  steps:
+    - script:
+        name: show files
+        code: |
+          true
