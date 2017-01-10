@@ -355,9 +355,9 @@ func (s *ExternalStep) Fetch() (string, error) {
 
 			// TODO(termie): probably don't need these in global options?
 			apiOptions := api.APIOptions{
-				BaseURL:   s.options.GlobalOptions.BaseURL,
-				AuthToken: s.options.GlobalOptions.AuthToken,
+				BaseURL: s.options.GlobalOptions.BaseURL,
 			}
+			// NOTE(kokaz): this client doesn't contain any auth token
 			client := api.NewAPIClient(&apiOptions)
 			stepInfo, err := client.GetStepVersion(s.Owner(), s.Name(), s.Version())
 			if err != nil {
