@@ -78,7 +78,7 @@ type AzureAuth struct {
 	AzureLoginServer       string `yaml:"azure-login-server"`
 }
 
-func (d DockerAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
+func (d DockerAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
 	opts := dockerauth.CheckAccessOptions{
 		Username: env.Interpolate(d.Username),
 		Password: env.Interpolate(d.Password),
@@ -88,11 +88,11 @@ func (d DockerAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
 
 }
 
-func (a AmazonAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
+func (a AmazonAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
 	return auth.NewAmazonAuth(env.Interpolate(a.AWSRegistryID), env.Interpolate(a.AWSAccessKey), env.Interpolate(a.AWSSecretKey), env.Interpolate(a.AWSRegion), a.AWSStrictAuth), nil
 }
 
-func (a AzureAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
+func (a AzureAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
 	return auth.NewAzure(env.Interpolate(a.AzureClientID), env.Interpolate(a.AzureClientSecret), env.Interpolate(a.AzureSubscriptionID), env.Interpolate(a.AzureTenantID), env.Interpolate(a.AzureResourceGroupName), env.Interpolate(a.AzureRegistryName), env.Interpolate(a.AzureLoginServer))
 }
 

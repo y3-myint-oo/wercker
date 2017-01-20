@@ -74,7 +74,7 @@ func (s *ConfigSuite) TestConfigBoxStructs() {
 	_, ok := amzn.Box.Auth.(*AmazonAuth)
 	s.Equal(ok, true)
 	env := util.NewEnvironment(os.Environ()...)
-	authenticator := amzn.Box.Auth.ToAuthenticator(env)
+	authenticator, _ := amzn.Box.Auth.ToAuthenticator(env)
 	_, ok = authenticator.(*auth.AmazonAuth)
 	s.Equal(ok, true)
 
@@ -82,7 +82,7 @@ func (s *ConfigSuite) TestConfigBoxStructs() {
 	assert.NotNil(s.T(), docker.Box.Auth)
 	_, ok = docker.Box.Auth.(*DockerAuth)
 	s.Equal(ok, true)
-	authenticator = docker.Box.Auth.ToAuthenticator(env)
+	authenticator, _ = docker.Box.Auth.ToAuthenticator(env)
 	_, ok = authenticator.(*auth.DockerAuth)
 	s.Equal(ok, true)
 
@@ -90,7 +90,7 @@ func (s *ConfigSuite) TestConfigBoxStructs() {
 	assert.NotNil(s.T(), dockerV1.Box.Auth)
 	_, ok = dockerV1.Box.Auth.(*DockerAuth)
 	s.Equal(ok, true)
-	authenticator = dockerV1.Box.Auth.ToAuthenticator(env)
+	authenticator, _ = dockerV1.Box.Auth.ToAuthenticator(env)
 	_, ok = authenticator.(auth.DockerAuthV1)
 	s.Equal(ok, true)
 }
