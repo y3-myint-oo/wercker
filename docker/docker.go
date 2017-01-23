@@ -804,8 +804,32 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		opts.AwsRegistryID = env.Interpolate(awsRegistryID)
 	}
 
-	if registry, ok := s.data["registry"]; ok {
-		opts.Registry = dockerauth.NormalizeRegistry(env.Interpolate(registry))
+	if azureClient, ok := s.data["azure-client-id"]; ok {
+		opts.AzureClientID = env.Interpolate(azureClient)
+	}
+
+	if azureClientSecret, ok := s.data["azure-client-secret"]; ok {
+		opts.AzureClientSecret = env.Interpolate(azureClientSecret)
+	}
+
+	if azureSubscriptionID, ok := s.data["azure-subscription-id"]; ok {
+		opts.AzureSubscriptionID = env.Interpolate(azureSubscriptionID)
+	}
+
+	if azureTenantID, ok := s.data["azure-tenant-id"]; ok {
+		opts.AzureTenantID = env.Interpolate(azureTenantID)
+	}
+
+	if azureResourceGroupName, ok := s.data["azure-resource-group"]; ok {
+		opts.AzureResourceGroupName = env.Interpolate(azureResourceGroupName)
+	}
+
+	if azureRegistryName, ok := s.data["azure-registry-name"]; ok {
+		opts.AzureRegistryName = env.Interpolate(azureRegistryName)
+	}
+
+	if azureLoginServer, ok := s.data["azure-login-server"]; ok {
+		opts.AzureLoginServer = env.Interpolate(azureLoginServer)
 	}
 
 	if opts.Registry == "" && opts.Username == "" && opts.Password == "" && s.repository == "" {

@@ -51,7 +51,7 @@ type BoxConfig struct {
 }
 
 type Authenticatable interface {
-	ToAuthenticator(*util.Environment) auth.Authenticator
+	ToAuthenticator(*util.Environment) (auth.Authenticator, error)
 }
 
 type DockerAuth struct {
@@ -68,18 +68,32 @@ type AmazonAuth struct {
 	AWSStrictAuth bool   `yaml:"aws-strict-auth"`
 }
 
-func (d DockerAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
+type AzureAuth struct {
+	AzureClientID          string `yaml:"azure-client-id"`
+	AzureClientSecret      string `yaml:"azure-client-secret"`
+	AzureSubscriptionID    string `yaml:"azure-subscription-id"`
+	AzureTenantID          string `yaml:"azure-tenant-id"`
+	AzureResourceGroupName string `yaml:"azure-resource-group"`
+	AzureRegistryName      string `yaml:"azure-registry-name"`
+	AzureLoginServer       string `yaml:"azure-login-server"`
+}
+
+func (d DockerAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
 	opts := dockerauth.CheckAccessOptions{
 		Username: env.Interpolate(d.Username),
 		Password: env.Interpolate(d.Password),
 		Registry: env.Interpolate(d.Registry),
 	}
-	auth, _ := dockerauth.GetRegistryAuthenticator(opts)
-	return auth
+	return dockerauth.GetRegistryAuthenticator(opts)
+
 }
 
-func (a AmazonAuth) ToAuthenticator(env *util.Environment) auth.Authenticator {
-	return auth.NewAmazonAuth(env.Interpolate(a.AWSRegistryID), env.Interpolate(a.AWSAccessKey), env.Interpolate(a.AWSSecretKey), env.Interpolate(a.AWSRegion), a.AWSStrictAuth)
+func (a AmazonAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
+	return auth.NewAmazonAuth(env.Interpolate(a.AWSRegistryID), env.Interpolate(a.AWSAccessKey), env.Interpolate(a.AWSSecretKey), env.Interpolate(a.AWSRegion), a.AWSStrictAuth), nil
+}
+
+func (a AzureAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
+	return auth.NewAzure(env.Interpolate(a.AzureClientID), env.Interpolate(a.AzureClientSecret), env.Interpolate(a.AzureSubscriptionID), env.Interpolate(a.AzureTenantID), env.Interpolate(a.AzureResourceGroupName), env.Interpolate(a.AzureRegistryName), env.Interpolate(a.AzureLoginServer))
 }
 
 // IsExternal tells us if the box (service) is located on disk
@@ -106,11 +120,22 @@ func (r *RawBoxConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	amzn := &AmazonAuth{}
 	err = unmarshal(amzn)
-	if amzn.AWSSecretKey != "" {
+	azure := &AzureAuth{}
+	azureErr := unmarshal(azure)
+	if azureErr != nil {
+		err = azureErr
+	}
+	switch {
+	case amzn.AWSSecretKey != "":
 		r.BoxConfig.Auth = amzn
-	} else {
+	case azure.AzureClientSecret != "":
+		r.BoxConfig.Auth = azure
+	default:
 		dock := &DockerAuth{}
-		err = unmarshal(dock)
+		dockErr := unmarshal(dock)
+		if dockErr != nil {
+			err = dockErr
+		}
 		r.BoxConfig.Auth = dock
 	}
 	return err

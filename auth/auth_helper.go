@@ -10,15 +10,22 @@ import (
 )
 
 type CheckAccessOptions struct {
-	Username      string
-	Password      string
-	AwsSecretKey  string
-	AwsAccessKey  string
-	AwsRegion     string
-	AwsStrictAuth bool
-	AwsID         string
-	AwsRegistryID string
-	Registry      string
+	Username               string
+	Password               string
+	AwsSecretKey           string
+	AwsAccessKey           string
+	AwsRegion              string
+	AwsStrictAuth          bool
+	AwsID                  string
+	AwsRegistryID          string
+	Registry               string
+	AzureClientID          string
+	AzureClientSecret      string
+	AzureSubscriptionID    string
+	AzureTenantID          string
+	AzureResourceGroupName string
+	AzureRegistryName      string
+	AzureLoginServer       string
 }
 
 const (
@@ -71,6 +78,10 @@ func GetRegistryAuthenticator(opts CheckAccessOptions) (auth.Authenticator, erro
 	//try to get domain and check if you're pushing to ecr, so you can make an ecr auth checker
 	if opts.AwsAccessKey != "" && opts.AwsSecretKey != "" && opts.AwsRegion != "" && opts.AwsRegistryID != "" {
 		return auth.NewAmazonAuth(opts.AwsRegistryID, opts.AwsAccessKey, opts.AwsSecretKey, opts.AwsRegion, opts.AwsStrictAuth), nil
+	}
+
+	if opts.AzureClientID != "" && opts.AzureClientSecret != "" && opts.AzureSubscriptionID != "" && opts.AzureTenantID != "" && opts.AzureResourceGroupName != "" && opts.AzureRegistryName != "" && opts.AzureLoginServer != "" {
+		return auth.NewAzure(opts.AzureClientID, opts.AzureClientSecret, opts.AzureSubscriptionID, opts.AzureTenantID, opts.AzureResourceGroupName, opts.AzureRegistryName, opts.AzureLoginServer)
 	}
 
 	parts := strings.Split(reg, "/")

@@ -522,7 +522,10 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if err != nil {
 		return nil, err
 	}
-	authenticator := b.config.Auth.ToAuthenticator(env)
+	authenticator, err := b.config.Auth.ToAuthenticator(env)
+	if err != nil {
+		return nil, err
+	}
 	b.repository = authenticator.Repository(env.Interpolate(b.repository))
 	b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	// Shortcut to speed up local dev
