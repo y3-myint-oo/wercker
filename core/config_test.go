@@ -74,7 +74,8 @@ func (s *ConfigSuite) TestConfigBoxStructs() {
 	_, ok := amzn.Box.Auth.(*AmazonAuth)
 	s.Equal(ok, true)
 	env := util.NewEnvironment(os.Environ()...)
-	authenticator, _ := amzn.Box.Auth.ToAuthenticator(env)
+	authenticator, err := amzn.Box.Auth.ToAuthenticator(env)
+	s.Empty(err)
 	_, ok = authenticator.(*auth.AmazonAuth)
 	s.Equal(ok, true)
 
@@ -82,7 +83,8 @@ func (s *ConfigSuite) TestConfigBoxStructs() {
 	assert.NotNil(s.T(), docker.Box.Auth)
 	_, ok = docker.Box.Auth.(*DockerAuth)
 	s.Equal(ok, true)
-	authenticator, _ = docker.Box.Auth.ToAuthenticator(env)
+	authenticator, err = docker.Box.Auth.ToAuthenticator(env)
+	s.Empty(err)
 	_, ok = authenticator.(*auth.DockerAuth)
 	s.Equal(ok, true)
 
@@ -90,8 +92,18 @@ func (s *ConfigSuite) TestConfigBoxStructs() {
 	assert.NotNil(s.T(), dockerV1.Box.Auth)
 	_, ok = dockerV1.Box.Auth.(*DockerAuth)
 	s.Equal(ok, true)
-	authenticator, _ = dockerV1.Box.Auth.ToAuthenticator(env)
+	authenticator, err = dockerV1.Box.Auth.ToAuthenticator(env)
+	s.Empty(err)
 	_, ok = authenticator.(auth.DockerAuthV1)
+	s.Equal(ok, true)
+
+	azure := config.PipelinesMap["azure"]
+	assert.NotNil(s.T(), azure.Box.Auth)
+	_, ok = azure.Box.Auth.(*AzureAuth)
+	s.Equal(ok, true)
+	authenticator, err = azure.Box.Auth.ToAuthenticator(env)
+	s.Empty(err)
+	_, ok = authenticator.(*auth.Azure)
 	s.Equal(ok, true)
 }
 
