@@ -781,6 +781,9 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	if password, ok := s.data["password"]; ok {
 		opts.Password = env.Interpolate(password)
 	}
+	if registry, ok := s.data["registry"]; ok {
+		opts.Registry = dockerauth.NormalizeRegistry(env.Interpolate(registry))
+	}
 	if awsAccessKey, ok := s.data["aws-access-key"]; ok {
 		opts.AwsAccessKey = env.Interpolate(awsAccessKey)
 	}
