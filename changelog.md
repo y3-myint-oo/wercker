@@ -1,5 +1,6 @@
 ## unreleased
 
+- Add Azure Registry support (#275)
 - Explicitly chmods the basepath / source path to a+rx
 - Removes the explicit clear after launching a shell (#257)
 - Fix `wercker doc` and update `./Documentation/*` (#260)
