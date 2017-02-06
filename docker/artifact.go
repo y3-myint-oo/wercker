@@ -26,6 +26,9 @@ import (
 	"github.com/wercker/wercker/util"
 )
 
+// Set upper limit that we can store
+const maxArtifactSize = 5000 * 1024 * 1024 // in bytes
+
 // Artificer collects artifacts from containers and uploads them.
 type Artificer struct {
 	options       *core.PipelineOptions
@@ -76,7 +79,7 @@ func (a *Artificer) Collect(artifact *core.Artifact) (*core.Artifact, error) {
 	//               or we don't care about it, needs to be replaced by some
 	//               sort of cancellable context
 	case <-time.After(1 * time.Second):
-		err = <-archive.Multi(filepath.Base(artifact.GuestPath), artifact.HostPath, 1024*1024*1000)
+		err = <-archive.Multi(filepath.Base(artifact.GuestPath), artifact.HostPath, maxArtifactSize)
 	}
 
 	if err != nil {

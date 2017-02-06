@@ -116,7 +116,7 @@ runTests() {
 
   # make sure the build fails when an artifact is too big
   basicTestFail "artifact size too big" build --docker-local --artifacts "$testsDir/artifact-size" || return 1
-  grep -q "Storing artifacts failed: Size exceeds maximum size of 1000MB" "${workingDir}/artifact size too big.log" || return 1
+  grep -q "Storing artifacts failed: Size exceeds maximum size of 5000MB" "${workingDir}/artifact size too big.log" || return 1
 
   # test deploy behavior with different levels of specificity
   cd "$testsDir/local-deploy/latest-no-yml"

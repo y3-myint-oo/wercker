@@ -5,5 +5,5 @@ build:
   steps:
     - script:
         code: |
-          dd if=/dev/zero of=$WERCKER_OUTPUT_DIR/testfile  bs=1M  count=1500
+          dd if=/dev/zero of=$WERCKER_OUTPUT_DIR/testfile  bs=1M  count=5500
 

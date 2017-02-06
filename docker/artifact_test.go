@@ -125,7 +125,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorMultiEmptyTarball() {
 	defer os.RemoveAll(tmp)
 
 	select {
-	case err := <-archive.Multi("tmp", tmp, 1024*1024*1000):
+	case err := <-archive.Multi("tmp", tmp, maxArtifactSize):
 		s.Equal(err, util.ErrEmptyTarball)
 	case <-errs:
 		s.FailNow()
@@ -148,7 +148,7 @@ func (s *ArtifactSuite) TestDockerFileCollectorMultiNotFound() {
 	defer os.RemoveAll(tmp)
 
 	select {
-	case <-archive.Multi("default", tmp, 1024*1024*1000):
+	case <-archive.Multi("default", tmp, maxArtifactSize):
 		s.FailNow()
 	case err := <-errs:
 		s.Equal(err, util.ErrEmptyTarball)
