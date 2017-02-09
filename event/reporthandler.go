@@ -15,6 +15,8 @@
 package event
 
 import (
+	"time"
+
 	"github.com/wercker/reporter-client"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
@@ -32,9 +34,10 @@ func NewReportHandler(werckerHost, token string) (*ReportHandler, error) {
 
 	writers := make(map[string]*reporter.LogWriter)
 	h := &ReportHandler{
-		reporter: r,
-		writers:  writers,
-		logger:   logger,
+		reporter:  r,
+		writers:   writers,
+		startStep: make(map[string]time.Time),
+		logger:    logger,
 	}
 	return h, nil
 }
@@ -54,13 +57,17 @@ func mapSteps(phase string, steps ...core.Step) []reporter.NewStep {
 
 // A ReportHandler reports all events to the wercker-api.
 type ReportHandler struct {
-	reporter *reporter.ReportingClient
-	writers  map[string]*reporter.LogWriter
-	logger   *util.LogEntry
+	reporter  *reporter.ReportingClient
+	writers   map[string]*reporter.LogWriter
+	logger    *util.LogEntry
+	startStep map[string]time.Time
 }
 
 // BuildStepStarted will handle the BuildStepStarted event.
 func (h *ReportHandler) StepStarted(args *core.BuildStepStartedArgs) {
+	now := time.Now()
+	h.startStep[args.Step.SafeID()] = now
+
 	opts := reporter.RunStepStartedArgs{
 		RunID:      args.Options.RunID,
 		StepSafeID: args.Step.SafeID(),
@@ -80,6 +87,15 @@ func (h *ReportHandler) flushLogs(safeID string) error {
 // BuildStepFinished will handle the BuildStepFinished event.
 func (h *ReportHandler) StepFinished(args *core.BuildStepFinishedArgs) {
 	h.flushLogs(args.Step.SafeID())
+	now := time.Now()
+
+	var duration int64
+	begin, ok := h.startStep[args.Step.SafeID()]
+	if ok {
+		elapsed := now.Sub(begin)
+		duration = int64(elapsed.Seconds())
+		delete(h.startStep, args.Step.SafeID())
+	}
 
 	result := "failed"
 	if args.Successful {
@@ -94,6 +110,7 @@ func (h *ReportHandler) StepFinished(args *core.BuildStepFinishedArgs) {
 		PackageURL:          args.PackageURL,
 		Message:             args.Message,
 		WerckerYamlContents: args.WerckerYamlContents,
+		Duration:            duration,
 	}
 
 	h.reporter.RunStepFinished(context.TODO(), opts)

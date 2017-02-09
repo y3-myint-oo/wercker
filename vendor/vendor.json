@@ -1002,12 +1002,12 @@
 			"revisionTime": "2016-01-14T23:54:04Z"
 		},
 		{
-			"checksumSHA1": "NX0LPF1e6aVP9xNyo6X/lrJvk1Q=",
+			"checksumSHA1": "6UUCJuk3DXbOGDsni0Z90bFgIpA=",
 			"path": "github.com/wercker/reporter-client",
-			"revision": "ca90b85c7a2b9b1133d552923b51f27326dae268",
-			"revisionTime": "2016-02-12T15:29:52Z",
-			"version": "generic_pipelines",
-			"versionExact": "generic_pipelines"
+			"revision": "690f9f226f25a2526bc0e57e7968d0932c89a994",
+			"revisionTime": "2017-02-09T21:23:32Z",
+			"version": "generic_pipeline_step_times",
+			"versionExact": "generic_pipeline_step_times"
 		},
 		{
 			"checksumSHA1": "jr9CBChWOd6ZdXNikH8Hbx6PuVo=",
