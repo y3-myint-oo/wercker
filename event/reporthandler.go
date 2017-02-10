@@ -67,7 +67,7 @@ type ReportHandler struct {
 func (h *ReportHandler) StepStarted(args *core.BuildStepStartedArgs) {
 	now := time.Now()
 	h.startStep[args.Step.SafeID()] = now
-
+	h.logger.Debugf("this is h.startStep at %s: %v ", args.Step.SafeID(), now)
 	opts := reporter.RunStepStartedArgs{
 		RunID:      args.Options.RunID,
 		StepSafeID: args.Step.SafeID(),
@@ -91,6 +91,7 @@ func (h *ReportHandler) StepFinished(args *core.BuildStepFinishedArgs) {
 
 	var duration int64
 	begin, ok := h.startStep[args.Step.SafeID()]
+	h.logger.Debugf("this is begin %v and this is ok %b \n", begin, ok)
 	if ok {
 		elapsed := now.Sub(begin)
 		duration = int64(elapsed.Seconds())
