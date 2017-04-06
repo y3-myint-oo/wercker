@@ -1,5 +1,7 @@
 ## unreleased
 
+- Add env option to docker-scratch-push (#295)
+
 ## v1.0.758 (2017-01-27)
 
 - Add Azure Registry support (#275)
