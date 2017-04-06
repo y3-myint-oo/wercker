@@ -383,6 +383,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	config := &container.Config{
 		Cmd:          s.cmd,
 		Entrypoint:   s.entrypoint,
+		Env:          s.env,
 		Hostname:     containerID[:16],
 		WorkingDir:   s.workingDir,
 		Volumes:      s.volumes,
