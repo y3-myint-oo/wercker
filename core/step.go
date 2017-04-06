@@ -370,11 +370,15 @@ func (s *ExternalStep) Fetch() (string, error) {
 			s.url = stepInfo.TarballURL
 		}
 
-		// If we have a file uri let's just copytree it.
-		if strings.HasPrefix(s.url, "file:///") {
+		// If we have a file uri let's just symlink it.
+		if strings.HasPrefix(s.url, "file://") {
 			if s.options.EnableDevSteps {
 				localPath := s.url[len("file://"):]
-				err = shutil.CopyTree(localPath, stepPath, nil)
+				localPath, err = filepath.Abs(localPath)
+				if err != nil {
+					return "", err
+				}
+				err = os.Symlink(localPath, stepPath)
 				if err != nil {
 					return "", err
 				}
