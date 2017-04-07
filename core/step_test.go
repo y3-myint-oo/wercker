@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -102,6 +103,7 @@ func (s *StepSuite) TestFetchFileDev() {
 	tmpdir, err := ioutil.TempDir("", "wercker")
 	s.Nil(err)
 	defer os.RemoveAll(tmpdir)
+	os.MkdirAll(filepath.Join(options.WorkingDir, "steps"), 0777)
 
 	fileStep := fmt.Sprintf(`foo "file:///%s"`, tmpdir)
 	cfg := &StepConfig{ID: fileStep, Data: make(map[string]string)}
