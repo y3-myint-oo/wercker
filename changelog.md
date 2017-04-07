@@ -2,6 +2,9 @@
 
 - Add env option to docker-scratch-push (#295)
 - Allow relative paths for file:// targets in dev mode (#296)
+- Better control limiting memory on run containers, when using
+  services gives the services a 25% of the total memoery to split
+  amongst themselves (#299)
 
 ## v1.0.758 (2017-01-27)
 
