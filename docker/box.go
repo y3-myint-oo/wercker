@@ -41,7 +41,7 @@ type DockerBox struct {
 	client          *DockerClient
 	services        []core.ServiceBox
 	options         *core.PipelineOptions
-	dockerOptions   *DockerOptions
+	dockerOptions   *Options
 	container       *docker.Container
 	config          *core.BoxConfig
 	cmd             string
@@ -55,7 +55,7 @@ type DockerBox struct {
 }
 
 // NewDockerBox from a name and other references
-func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerBox, error) {
+func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *Options) (*DockerBox, error) {
 	name := boxConfig.ID
 
 	if strings.Contains(name, "@") {
@@ -385,7 +385,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 		Binds:        binds,
 		Links:        b.links(),
 		PortBindings: portBindings(portsToBind),
-		DNS:          b.dockerOptions.DockerDNS,
+		DNS:          b.dockerOptions.DNS,
 	}
 
 	// Make and start the container
@@ -403,7 +403,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 				AttachStderr:    true,
 				ExposedPorts:    ports,
 				NetworkDisabled: b.networkDisabled,
-				DNS:             b.dockerOptions.DockerDNS,
+				DNS:             b.dockerOptions.DNS,
 				Entrypoint:      entrypoint,
 				// Volumes: volumes,
 			},
@@ -529,7 +529,7 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	b.repository = authenticator.Repository(env.Interpolate(b.repository))
 	b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	// Shortcut to speed up local dev
-	if b.dockerOptions.DockerLocal {
+	if b.dockerOptions.Local {
 		image, err := client.InspectImage(env.Interpolate(b.Name))
 		if err != nil {
 			return nil, err

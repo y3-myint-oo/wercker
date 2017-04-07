@@ -26,10 +26,10 @@ import (
 type DockerPipeline struct {
 	*core.BasePipeline
 	options       *core.PipelineOptions
-	dockerOptions *DockerOptions
+	dockerOptions *Options
 }
 
-func NewDockerPipeline(name string, config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerPipeline, error) {
+func NewDockerPipeline(name string, config *core.Config, options *core.PipelineOptions, dockerOptions *Options, builder Builder) (*DockerPipeline, error) {
 	// decide which configs to use for each thing
 	// TODO(termie): this code is not all specific to docker and should be made
 	//               into something shared

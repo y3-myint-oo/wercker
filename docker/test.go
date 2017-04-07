@@ -39,8 +39,8 @@ func DockerOrSkip(t *testing.T) *DockerClient {
 	return client
 }
 
-func MinimalDockerOptions() *DockerOptions {
-	opts := &DockerOptions{}
+func MinimalDockerOptions() *Options {
+	opts := &Options{}
 	guessAndUpdateDockerOptions(opts, util.NewEnvironment(os.Environ()...))
 	return opts
 }
