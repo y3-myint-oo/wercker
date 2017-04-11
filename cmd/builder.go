@@ -30,10 +30,10 @@ import (
 
 type DockerBuilder struct {
 	options       *core.PipelineOptions
-	dockerOptions *dockerlocal.DockerOptions
+	dockerOptions *dockerlocal.Options
 }
 
-func NewDockerBuilder(options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) *DockerBuilder {
+func NewDockerBuilder(options *core.PipelineOptions, dockerOptions *dockerlocal.Options) *DockerBuilder {
 	return &DockerBuilder{
 		options:       options,
 		dockerOptions: dockerOptions,

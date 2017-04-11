@@ -26,7 +26,7 @@ import (
 func boxByID(s string) (core.Box, error) {
 	settings := util.NewCheapSettings(nil)
 	env := util.NewEnvironment()
-	dockerOptions, err := NewDockerOptions(settings, env)
+	dockerOptions, err := NewOptions(settings, env)
 	if err != nil {
 		return nil, err
 	}

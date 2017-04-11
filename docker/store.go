@@ -33,14 +33,14 @@ import (
 type StoreContainerStep struct {
 	*core.BaseStep
 	options       *core.PipelineOptions
-	dockerOptions *DockerOptions
+	dockerOptions *Options
 	data          map[string]string
 	logger        *util.LogEntry
 	artifact      *core.Artifact
 }
 
 // NewStoreContainerStep constructor
-func NewStoreContainerStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*StoreContainerStep, error) {
+func NewStoreContainerStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*StoreContainerStep, error) {
 	name := "store-container"
 	displayName := "store container"
 	if stepConfig.Name != "" {

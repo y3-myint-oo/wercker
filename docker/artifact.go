@@ -32,13 +32,13 @@ const maxArtifactSize = 5000 * 1024 * 1024 // in bytes
 // Artificer collects artifacts from containers and uploads them.
 type Artificer struct {
 	options       *core.PipelineOptions
-	dockerOptions *DockerOptions
+	dockerOptions *Options
 	logger        *util.LogEntry
 	store         core.Store
 }
 
 // NewArtificer returns an Artificer
-func NewArtificer(options *core.PipelineOptions, dockerOptions *DockerOptions) *Artificer {
+func NewArtificer(options *core.PipelineOptions, dockerOptions *Options) *Artificer {
 	logger := util.RootLogger().WithField("Logger", "Artificer")
 
 	var store core.Store

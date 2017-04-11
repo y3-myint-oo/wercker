@@ -34,11 +34,11 @@ type ShellStep struct {
 	logger        *util.LogEntry
 	env           *util.Environment
 	options       *core.PipelineOptions
-	dockerOptions *DockerOptions
+	dockerOptions *Options
 }
 
 // NewShellStep is a special step for doing docker pushes
-func NewShellStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*ShellStep, error) {
+func NewShellStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*ShellStep, error) {
 	name := "shell"
 	displayName := "shell"
 	if stepConfig.Name != "" {

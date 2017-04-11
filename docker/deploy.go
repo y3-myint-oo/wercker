@@ -29,7 +29,7 @@ type DockerDeploy struct {
 
 // ToDeploy grabs the build section from the config and configures all the
 // instances necessary for the build
-func NewDockerDeploy(name string, config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerDeploy, error) {
+func NewDockerDeploy(name string, config *core.Config, options *core.PipelineOptions, dockerOptions *Options, builder Builder) (*DockerDeploy, error) {
 	base, err := NewDockerPipeline(name, config, options, dockerOptions, builder)
 	if err != nil {
 		return nil, err

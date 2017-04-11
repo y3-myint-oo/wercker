@@ -26,7 +26,7 @@ type DockerBuild struct {
 	*DockerPipeline
 }
 
-func NewDockerBuild(name string, config *core.Config, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*DockerBuild, error) {
+func NewDockerBuild(name string, config *core.Config, options *core.PipelineOptions, dockerOptions *Options, builder Builder) (*DockerBuild, error) {
 	base, err := NewDockerPipeline(name, config, options, dockerOptions, builder)
 	if err != nil {
 		return nil, err

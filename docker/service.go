@@ -56,7 +56,7 @@ type ExternalServiceBox struct {
 }
 
 // NewExternalServiceBox gives us an ExternalServiceBox from config
-func NewExternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (*ExternalServiceBox, error) {
+func NewExternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *Options, builder Builder) (*ExternalServiceBox, error) {
 	logger := util.RootLogger().WithField("Logger", "ExternalService")
 	box := &DockerBox{options: options, dockerOptions: dockerOptions, config: boxConfig}
 	return &ExternalServiceBox{
@@ -80,7 +80,7 @@ func (s *ExternalServiceBox) Fetch(ctx context.Context, env *util.Environment) (
 	return image, err
 }
 
-func NewServiceBox(config *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions, builder Builder) (core.ServiceBox, error) {
+func NewServiceBox(config *core.BoxConfig, options *core.PipelineOptions, dockerOptions *Options, builder Builder) (core.ServiceBox, error) {
 	if config.IsExternal() {
 		return NewExternalServiceBox(config, options, dockerOptions, builder)
 	}
@@ -88,7 +88,7 @@ func NewServiceBox(config *core.BoxConfig, options *core.PipelineOptions, docker
 }
 
 // NewServiceBox from a name and other references
-func NewInternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*InternalServiceBox, error) {
+func NewInternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *Options) (*InternalServiceBox, error) {
 	box, err := NewDockerBox(boxConfig, options, dockerOptions)
 	logger := util.RootLogger().WithField("Logger", "Service")
 	return &InternalServiceBox{DockerBox: box, logger: logger}, err
@@ -147,7 +147,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		cmdInfo = append(cmdInfo, origCmd...)
 	}
 
-	binds := make([]string,0)
+	binds := make([]string, 0)
 
 	if b.options.EnableVolumes {
 		vols := util.SplitSpaceOrComma(b.config.Volumes)
@@ -175,7 +175,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 	}
 
 	hostConfig := &docker.HostConfig{
-		DNS:          b.dockerOptions.DockerDNS,
+		DNS:          b.dockerOptions.DNS,
 		PortBindings: portBindings(portsToBind),
 		Links:        links,
 	}
@@ -193,7 +193,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 				Env:             myEnv,
 				ExposedPorts:    exposedPorts(b.config.Ports),
 				NetworkDisabled: b.networkDisabled,
-				DNS:             b.dockerOptions.DockerDNS,
+				DNS:             b.dockerOptions.DNS,
 				Entrypoint:      entrypoint,
 			},
 			HostConfig: hostConfig,

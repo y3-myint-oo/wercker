@@ -61,7 +61,7 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
+			dockerOptions, err := dockerlocal.NewOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -88,7 +88,7 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
+			dockerOptions, err := dockerlocal.NewOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -116,7 +116,7 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
+			dockerOptions, err := dockerlocal.NewOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -144,7 +144,7 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
+			dockerOptions, err := dockerlocal.NewOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -192,7 +192,7 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
+			dockerOptions, err := dockerlocal.NewOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -264,7 +264,7 @@ var (
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			dockerOptions, err := dockerlocal.NewDockerOptions(settings, env)
+			dockerOptions, err := dockerlocal.NewOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
@@ -395,7 +395,7 @@ func (s *SoftExit) Exit(v ...interface{}) error {
 	return fmt.Errorf("Exiting.")
 }
 
-func cmdDev(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) (*RunnerShared, error) {
+func cmdDev(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.Options) (*RunnerShared, error) {
 	if options.Pipeline == "" {
 		options.Pipeline = "dev"
 	}
@@ -404,7 +404,7 @@ func cmdDev(ctx context.Context, options *core.PipelineOptions, dockerOptions *d
 	return executePipeline(ctx, options, dockerOptions, pipelineGetter)
 }
 
-func cmdBuild(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) (*RunnerShared, error) {
+func cmdBuild(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.Options) (*RunnerShared, error) {
 	if options.Pipeline == "" {
 		options.Pipeline = "build"
 	}
@@ -413,7 +413,7 @@ func cmdBuild(ctx context.Context, options *core.PipelineOptions, dockerOptions 
 	return executePipeline(ctx, options, dockerOptions, pipelineGetter)
 }
 
-func cmdDeploy(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) (*RunnerShared, error) {
+func cmdDeploy(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.Options) (*RunnerShared, error) {
 	if options.Pipeline == "" {
 		options.Pipeline = "deploy"
 	}
@@ -422,7 +422,7 @@ func cmdDeploy(ctx context.Context, options *core.PipelineOptions, dockerOptions
 	return executePipeline(ctx, options, dockerOptions, pipelineGetter)
 }
 
-func cmdCheckConfig(options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions) error {
+func cmdCheckConfig(options *core.PipelineOptions, dockerOptions *dockerlocal.Options) error {
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := util.RootLogger().WithField("Logger", "Main")
 
@@ -515,7 +515,7 @@ outer:
 	return nil
 }
 
-func cmdInspect(options *core.InspectOptions, dockerOptions *dockerlocal.DockerOptions) error {
+func cmdInspect(options *core.InspectOptions, dockerOptions *dockerlocal.Options) error {
 	repoName := fmt.Sprintf("%s/%s", options.ApplicationOwnerName, options.ApplicationName)
 	tag := options.Tag
 
@@ -561,7 +561,7 @@ func cmdLogout(options *core.LogoutOptions) error {
 	return nil
 }
 
-func cmdPull(c *cli.Context, options *core.PullOptions, dockerOptions *dockerlocal.DockerOptions) error {
+func cmdPull(c *cli.Context, options *core.PullOptions, dockerOptions *dockerlocal.Options) error {
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := util.RootLogger().WithField("Logger", "Main")
 
@@ -863,7 +863,7 @@ func DumpOptions(options interface{}, indent ...string) {
 	}
 }
 
-func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.DockerOptions, getter pipelineGetter) (*RunnerShared, error) {
+func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.Options, getter pipelineGetter) (*RunnerShared, error) {
 	// Boilerplate
 	soft := NewSoftExit(options.GlobalOptions)
 	logger := util.RootLogger().WithFields(util.LogFields{

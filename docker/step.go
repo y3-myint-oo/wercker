@@ -24,7 +24,7 @@ import (
 	"github.com/wercker/wercker/util"
 )
 
-func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (core.Step, error) {
+func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (core.Step, error) {
 	// NOTE(termie) Special case steps are special
 	if config.ID == "internal/docker-push" {
 		return NewDockerPushStep(config, options, dockerOptions)
@@ -56,12 +56,12 @@ func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptio
 type DockerStep struct {
 	*core.ExternalStep
 	options       *core.PipelineOptions
-	dockerOptions *DockerOptions
+	dockerOptions *Options
 	logger        *util.LogEntry
 }
 
 // NewDockerStep ctor
-func NewDockerStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*DockerStep, error) {
+func NewDockerStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*DockerStep, error) {
 	base, err := core.NewStep(config, options)
 	if err != nil {
 		return nil, err

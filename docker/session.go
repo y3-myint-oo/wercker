@@ -32,7 +32,7 @@ type DockerTransport struct {
 }
 
 // NewDockerTransport constructor
-func NewDockerTransport(options *core.PipelineOptions, dockerOptions *DockerOptions, containerID string) (core.Transport, error) {
+func NewDockerTransport(options *core.PipelineOptions, dockerOptions *Options, containerID string) (core.Transport, error) {
 	client, err := NewDockerClient(dockerOptions)
 	if err != nil {
 		return nil, err

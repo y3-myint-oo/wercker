@@ -46,11 +46,11 @@ type WatchStep struct {
 	data          map[string]string
 	logger        *util.LogEntry
 	options       *core.PipelineOptions
-	dockerOptions *DockerOptions
+	dockerOptions *Options
 }
 
 // NewWatchStep is a special step for doing docker pushes
-func NewWatchStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *DockerOptions) (*WatchStep, error) {
+func NewWatchStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*WatchStep, error) {
 	name := "watch"
 	displayName := "watch"
 	if stepConfig.Name != "" {
@@ -262,7 +262,7 @@ func (s *WatchStep) Execute(ctx context.Context, sess *core.Session) (int, error
 			s.logger.Errorln(err)
 			return
 		}
-		open, err := exposedPortMaps(s.dockerOptions.DockerHost, s.options.PublishPorts)
+		open, err := exposedPortMaps(s.dockerOptions.Host, s.options.PublishPorts)
 		if err != nil {
 			s.logger.Warnf(f.Info("There was a problem parsing your docker host."), err)
 			return
