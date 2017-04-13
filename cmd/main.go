@@ -942,6 +942,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 		}
 		defer shared.box.Stop()
 	}
+	panic("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 	if err != nil {
 		logger.Errorln(f.Fail("Step failed", "setup environment", timer.String()))
 		e.Emit(core.Logs, &core.LogsArgs{

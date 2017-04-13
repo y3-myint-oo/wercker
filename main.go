@@ -22,6 +22,5 @@ import (
 
 func main() {
 	app := cmd.GetApp()
-	panic("AAAAAAAAAAAAAAAAAAAAA")
 	app.Run(os.Args)
 }
