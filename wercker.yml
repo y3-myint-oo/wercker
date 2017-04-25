@@ -205,3 +205,29 @@ release-beta:
             -H "Content-Type: application/json" \
             --data "{ \"message\": \"Release beta $WERCKER_VERSION\",  \"pipelineId\": \"$HOMEBREW_PIPELINE_ID\", \"envVars\": [{ \"key\": \"CHANNEL\", \"value\": \"beta\" },{ \"key\": \"VERSION\", \"value\": \"$WERCKER_VERSION\" },{ \"key\": \"SHA256\", \"value\": \"$DARWIN_SHA256\" }] }" \
             https://app.wercker.com/api/v3/runs
+
+canary:
+  steps:
+    - script:
+        name: prepare
+        code: |
+            echo $WERCKER_GIT_COMMIT > ./artifacts/HEAD
+            cp -r ./artifacts/latest ./artifacts/$WERCKER_GIT_COMMIT
+
+    - s3sync:
+        source-dir: "./artifacts"
+        delete-removed: false
+        bucket-url: $AWS_BUCKET_URL/canary-$WERCKER_GIT_BRANCH/
+        key-id: $AWS_ACCESS_KEY_ID
+        key-secret: $AWS_SECRET_ACCESS_KEY
+
+    - script:
+        name: Create canary deploy
+        code: |
+          data="{\"sentcliBranch\": \"canary-$WERCKER_GIT_BRANCH\", \"sentcliCommit\": \"$WERCKER_GIT_COMMIT\", \"users\": [ \"$CANARY_USERS\" ], \"percentage\": $CANARY_PERCENTAGE, \"total\": $CANARY_TOTAL}"
+          echo $data
+          curl -X POST --data "$data" "$CANARY_ENDPOINT"
+          if [ $? -ne 0 ]; then
+            exit 1
+          fi
+
