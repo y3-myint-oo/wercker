@@ -1004,10 +1004,8 @@
 		{
 			"checksumSHA1": "NX0LPF1e6aVP9xNyo6X/lrJvk1Q=",
 			"path": "github.com/wercker/reporter-client",
-			"revision": "ca90b85c7a2b9b1133d552923b51f27326dae268",
-			"revisionTime": "2016-02-12T15:29:52Z",
-			"version": "generic_pipelines",
-			"versionExact": "generic_pipelines"
+			"revision": "05b949957366740541b9574f5578084063965dbe",
+			"revisionTime": "2017-04-26T14:52:24Z"
 		},
 		{
 			"checksumSHA1": "jr9CBChWOd6ZdXNikH8Hbx6PuVo=",
