@@ -224,7 +224,7 @@ canary:
     - script:
         name: Create canary deploy
         code: |
-          data="{\"sentcliBranch\": \"canary-$WERCKER_GIT_BRANCH\", \"sentcliCommit\": \"$WERCKER_GIT_COMMIT\", \"users\": [ \"$CANARY_USERS\" ], \"percentage\": $CANARY_PERCENTAGE, \"total\": $CANARY_TOTAL}"
+          data="{\"sentcliBranch\": \"canary-$WERCKER_GIT_BRANCH\", \"sentcliCommit\": \"$WERCKER_GIT_COMMIT\", \"users\": [ \"$CANARY_USERS\" ], \"percentage\": $CANARY_PERCENTAGE, \"total\": $CANARY_TOTAL, \"fastFailThreshold\": \"$CANARY_FAST_FAIL\"}"
           echo $data
           curl -X POST --data "$data" "$CANARY_ENDPOINT"
           if [ $? -ne 0 ]; then
