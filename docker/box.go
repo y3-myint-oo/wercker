@@ -24,7 +24,6 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
-	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 
@@ -560,13 +559,6 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		return image, nil
 	}
 
-	check, err := authenticator.CheckAccess(env.Interpolate(b.repository), auth.Pull)
-	if err != nil {
-		return nil, fmt.Errorf("Error interacting with this repository: %s %v", env.Interpolate(b.repository), err)
-	}
-	if !check {
-		return nil, fmt.Errorf("Not allowed to interact with this repository: %s:", env.Interpolate(b.repository))
-	}
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
 	defer w.Close()
