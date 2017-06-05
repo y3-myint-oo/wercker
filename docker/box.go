@@ -547,11 +547,11 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if err != nil {
 		return nil, err
 	}
-	rep := env.Interpolate(b.repository)
-	if rep == "" {
+	repo := env.Interpolate(b.repository)
+	if repo == "" {
 		return nil, fmt.Errorf("Repository is blank")
 	}
-	b.repository = authenticator.Repository(env.Interpolate(b.repository))
+	b.repository = authenticator.Repository(repo)
 	b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	// Shortcut to speed up local dev
 	if b.dockerOptions.Local {
@@ -571,8 +571,6 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	go EmitStatus(e, r, b.options)
 
 	options := docker.PullImageOptions{
-		// changeme if we have a private registry
-		// Registry:      "docker.tsuru.io",
 		OutputStream:  w,
 		RawJSONStream: true,
 		Repository:    b.repository,
