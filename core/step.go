@@ -23,13 +23,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/pborman/uuid"
-	"github.com/termie/go-shutil"
 	"github.com/wercker/wercker/api"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
+
+	shutil "github.com/termie/go-shutil"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // StepDesc represents a wercker-step.yml
@@ -354,11 +354,16 @@ func (s *ExternalStep) Fetch() (string, error) {
 			// Grab the info about the step from the api
 
 			// TODO(termie): probably don't need these in global options?
-			apiOptions := api.APIOptions{
-				BaseURL: s.options.GlobalOptions.BaseURL,
+			var client api.StepRegistry
+			if s.options.GlobalOptions.StepRegistryURL == "" {
+				apiOptions := api.APIOptions{
+					BaseURL: s.options.GlobalOptions.BaseURL,
+				}
+				// NOTE(kokaz): this client doesn't contain any auth token
+				client = api.NewAPIClient(&apiOptions)
+			} else {
+				client = api.NewWerckerStepRegistry(s.options.GlobalOptions.StepRegistryURL)
 			}
-			// NOTE(kokaz): this client doesn't contain any auth token
-			client := api.NewAPIClient(&apiOptions)
 			stepInfo, err := client.GetStepVersion(s.Owner(), s.Name(), s.Version())
 			if err != nil {
 				if apiErr, ok := err.(*api.APIError); ok && apiErr.StatusCode == 404 {

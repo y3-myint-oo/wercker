@@ -38,11 +38,12 @@ var (
 
 // GlobalOptions applicable to everything
 type GlobalOptions struct {
-	BaseURL    string
-	Debug      bool
-	Journal    bool
-	Verbose    bool
-	ShowColors bool
+	BaseURL         string
+	StepRegistryURL string
+	Debug           bool
+	Journal         bool
+	Verbose         bool
+	ShowColors      bool
 
 	// Auth
 	AuthToken      string
@@ -71,6 +72,7 @@ func guessAuthToken(c util.Settings, e *util.Environment, authTokenStore string)
 // NewGlobalOptions constructor
 func NewGlobalOptions(c util.Settings, e *util.Environment) (*GlobalOptions, error) {
 	baseURL, _ := c.GlobalString("base-url", DEFAULT_BASE_URL)
+	stepsRegistryURL, _ := c.GlobalString("steps-registry")
 	baseURL = strings.TrimRight(baseURL, "/")
 	debug, _ := c.GlobalBool("debug")
 	journal, _ := c.GlobalBool("journal")
@@ -90,11 +92,12 @@ func NewGlobalOptions(c util.Settings, e *util.Environment) (*GlobalOptions, err
 	}
 
 	return &GlobalOptions{
-		BaseURL:    baseURL,
-		Debug:      debug,
-		Journal:    journal,
-		Verbose:    verbose,
-		ShowColors: showColors,
+		BaseURL:         baseURL,
+		StepRegistryURL: stepsRegistryURL,
+		Debug:           debug,
+		Journal:         journal,
+		Verbose:         verbose,
+		ShowColors:      showColors,
 
 		AuthToken:      authToken,
 		AuthTokenStore: authTokenStore,

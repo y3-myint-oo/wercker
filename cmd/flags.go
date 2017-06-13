@@ -26,6 +26,7 @@ var (
 		// deprecated
 		cli.StringFlag{Name: "wercker-endpoint", Value: "", Usage: "Deprecated.", Hidden: true},
 		cli.StringFlag{Name: "base-url", Value: core.DEFAULT_BASE_URL, Usage: "Base url for the wercker app.", Hidden: true},
+		cli.StringFlag{Name: "steps-registry", Value: "", EnvVar: "STEPS_REGISTRY", Usage: "Endpoint for the steps registry", Hidden: true},
 	}
 
 	// These flags let us auth to wercker services
