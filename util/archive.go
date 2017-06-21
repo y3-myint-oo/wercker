@@ -238,21 +238,28 @@ func (p *ArchiveExtract) Process(hdr *tar.Header, r io.Reader) (*tar.Header, io.
 
 	// If a directory make it and continue
 	fpath := filepath.Join(p.workingDir, hdr.Name)
-	if hdr.FileInfo().IsDir() {
-		err := os.MkdirAll(fpath, 0755)
-		return hdr, r, err
-	}
 
-	// Extract the file!
-	file, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE, hdr.FileInfo().Mode())
-	if err != nil {
-		return hdr, r, err
-	}
-	defer file.Close()
+	switch hdr.Typeflag {
+	case tar.TypeDir:
+		if err := os.MkdirAll(fpath, 0755); err != nil {
+			return hdr, r, err
+		}
+	case tar.TypeReg:
+		file, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(hdr.Mode))
+		if err != nil {
+			return hdr, r, err
+		}
+		defer file.Close()
 
-	_, err = io.Copy(file, r)
-	if err != nil {
-		return hdr, r, err
+		_, err = io.Copy(file, r)
+		if err != nil {
+			return hdr, r, err
+		}
+	case tar.TypeSymlink:
+		err := os.Symlink(hdr.Linkname, fpath)
+		if err != nil {
+			return hdr, r, err
+		}
 	}
 
 	return hdr, r, nil
