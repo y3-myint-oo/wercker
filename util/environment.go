@@ -15,6 +15,7 @@
 package util
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
@@ -156,4 +157,35 @@ func (e *Environment) GetInclHidden(key string) string {
 	}
 
 	return ""
+}
+
+// LoadFile imports key,val pairs from the provided file path. File entries
+// should be 1 per line in the form key=value. Blank lines and lines begining
+// with # are ignored.
+func (e *Environment) LoadFile(f string) error {
+	file, err := os.Open(f)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	s := bufio.NewScanner(file)
+	for ok := s.Scan(); ok; ok = s.Scan() {
+		// Ignore comments
+		if strings.HasPrefix(s.Text(), "#") {
+			continue
+		}
+		parts := strings.SplitN(s.Text(), "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key, val := parts[0], parts[1]
+		// Don't override existing environment
+		if e.Get(key) != "" {
+			continue
+		}
+		e.Add(key, val)
+	}
+
+	return nil
 }

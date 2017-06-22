@@ -81,3 +81,22 @@ func (s *EnvironmentSuite) TestExport() {
 	expected := []string{`export PUBLIC="foo"`, `export X_PRIVATE="zed"`}
 	s.Equal(env.Export(), expected)
 }
+
+func (s *EnvironmentSuite) TestLoadFile() {
+	env := NewEnvironment("PUBLIC=foo")
+	expected := [][]string{
+		[]string{"PUBLIC", "foo"},
+		[]string{"A", "1"},
+		[]string{"B", "2"},
+		[]string{"C", "3"},
+		[]string{"D", "4"},
+		[]string{"E", "5"},
+		[]string{"F", "6"},
+		[]string{"G", "7"},
+	}
+	env.LoadFile("../tests/environment-test-load-file.env")
+	s.Equal(8, len(env.Ordered()), "Should only load 8 valid lines.")
+	s.Equal("foo", env.Get("PUBLIC"), "LoadFile should ignore keys already set in env.")
+	s.Equal(expected, env.Ordered(), "LoadFile should maintain order.")
+	s.Equal([]string{"PUBLIC", "A", "B", "C", "D", "E", "F", "G"}, env.Order, "LoadFile should maintain ordered keys.")
+}

@@ -32,7 +32,6 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/joho/godotenv"
 	"github.com/mreiferson/go-snappystream"
 	"github.com/wercker/journalhook"
 	"github.com/wercker/wercker/api"
@@ -51,9 +50,8 @@ var (
 		Usage:     "build a project",
 		Action: func(c *cli.Context) {
 			envfile := c.GlobalString("environment")
-			_ = godotenv.Load(envfile)
-
 			env := util.NewEnvironment(os.Environ()...)
+			env.LoadFile(envfile)
 
 			settings := util.NewCLISettings(c)
 			opts, err := core.NewBuildOptions(settings, env)
@@ -79,10 +77,9 @@ var (
 		Usage: "develop and run a local project",
 		Action: func(c *cli.Context) {
 			envfile := c.GlobalString("environment")
-			_ = godotenv.Load(envfile)
-
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
+			env.LoadFile(envfile)
 			opts, err := core.NewDevOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
@@ -107,10 +104,9 @@ var (
 		Usage: "check the project's yaml",
 		Action: func(c *cli.Context) {
 			envfile := c.GlobalString("environment")
-			_ = godotenv.Load(envfile)
-
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
+			env.LoadFile(envfile)
 			opts, err := core.NewCheckConfigOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
@@ -135,10 +131,9 @@ var (
 		Usage:     "deploy a project",
 		Action: func(c *cli.Context) {
 			envfile := c.GlobalString("environment")
-			_ = godotenv.Load(envfile)
-
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
+			env.LoadFile(envfile)
 			opts, err := core.NewDeployOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
