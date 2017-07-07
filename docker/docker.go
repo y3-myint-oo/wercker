@@ -484,9 +484,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 
-	if len(s.tags) == 0 {
-		s.tags = []string{"latest"}
-	}
+	s.tags = s.buildTags()
 
 	for i, tag := range s.tags {
 		_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`"%s":"%s"`, tag, layerID)))
@@ -613,6 +611,7 @@ type DockerPushStep struct {
 	email         string
 	env           []string
 	stopSignal    string
+	builtInPush   bool
 	labels        map[string]string
 	user          string
 	authServer    string
@@ -844,6 +843,7 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		opts.Username = "token"
 		opts.Password = s.options.AuthToken
 		s.repository = fmt.Sprintf("%s/%s/%s", s.options.WerckerContainerRegistry.Host, s.options.ApplicationOwnerName, s.options.ApplicationName)
+		s.builtInPush = true
 	}
 	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
 
@@ -880,9 +880,8 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
 
-	if len(s.tags) == 0 {
-		s.tags = []string{"latest"}
-	}
+	s.tags = s.buildTags()
+
 	if !s.dockerOptions.Local {
 		check, err := s.authenticator.CheckAccess(s.repository, auth.Push)
 		if err != nil {
@@ -924,6 +923,16 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	}
 	s.logger.WithField("Image", i).Debug("Commit completed")
 	return s.tagAndPush(i.ID, e, client)
+}
+
+func (s *DockerPushStep) buildTags() []string {
+	if len(s.tags) == 0 && !s.builtInPush {
+		s.tags = []string{"latest"}
+	} else if len(s.tags) == 0 && s.builtInPush {
+		gitTag := fmt.Sprintf("%s-%s", s.options.GitBranch, s.options.GitCommit)
+		s.tags = []string{"latest", gitTag}
+	}
+	return s.tags
 }
 
 func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, client *DockerClient) (int, error) {
