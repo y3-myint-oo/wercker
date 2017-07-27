@@ -1,5 +1,11 @@
 ## unreleased
 
+
+## v1.0.938 (2017-07-27)
+
+- Some nice additions to the way we do the docker push and test (#320)
+- Fix env var loading order (#314, #315, #317)
+- Fix internal/watchstep (#312)
 - Add env option to docker-scratch-push (#295)
 - Allow relative paths for file:// targets in dev mode (#296)
 - Better control limiting memory on run containers, when using
@@ -9,7 +15,6 @@
   defaulting to bash if it is there (#301)
 - Fix a small bug when doing local deploys and using a working-dir other
   than .wercker (#301)
-- Fix environment variable export ordering (wercker/envvars#55)
 
 ## v1.0.758 (2017-01-27)
 
