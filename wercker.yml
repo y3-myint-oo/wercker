@@ -65,18 +65,24 @@ build:
 deploy:
   box: ubuntu
   steps:
-    - script:
-        name: prepare
-        code: |
-            echo $WERCKER_GIT_COMMIT > ./artifacts/HEAD
-            cp -r ./artifacts/latest ./artifacts/$WERCKER_GIT_COMMIT
-
-    - s3sync:
-        source-dir: "./artifacts"
-        delete-removed: false
-        bucket-url: $AWS_BUCKET_URL/$WERCKER_GIT_BRANCH/
-        key-id: $AWS_ACCESS_KEY_ID
-        key-secret: $AWS_SECRET_ACCESS_KEY
+#    - script:
+#        name: prepare
+#        code: |
+#            echo $WERCKER_GIT_COMMIT > ./artifacts/HEAD
+#            cp -r ./artifacts/latest ./artifacts/$WERCKER_GIT_COMMIT
+#
+#    - s3sync:
+#        source-dir: "./artifacts"
+#        delete-removed: false
+#        bucket-url: $AWS_BUCKET_URL/$WERCKER_GIT_BRANCH/
+#        key-id: $AWS_ACCESS_KEY_ID
+#        key-secret: $AWS_SECRET_ACCESS_KEY
+    - internal/docker-push:
+        username: "toby"
+        password: "33fcf353f144828a071abd7b655f28ffa60f62ba664f47e922b454eb7aa2655c"
+        repository: "wercker/wercker"
+        tag: "some-tag"
+        registry: "https://registry-alpha.oracledx.com"
 
 #
 

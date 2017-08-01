@@ -21,9 +21,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -659,6 +661,13 @@ func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOption
 	}, nil
 }
 
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	Scope       string `json:"scope"`
+	Token       string `json:"token"`
+}
+
 // The IStep Interface
 
 // InitEnv parses our data into our config
@@ -844,9 +853,69 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		opts.Password = s.options.AuthToken
 		s.repository = fmt.Sprintf("%s/%s/%s", s.options.WerckerContainerRegistry.Host, s.options.ApplicationOwnerName, s.options.ApplicationName)
 		s.builtInPush = true
-	}
-	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
+	} else {
+		registryURL, err := url.Parse(opts.Registry)
+		s.logger.Info(registryURL.Host)
+		s.logger.Info(strings.Contains(registryURL.Host, "oracledx.com"))
+		if err == nil && strings.Contains(registryURL.Host, "oracledx.com") {
+			// &scope=repository:$reponame:$actions
+			// $
+			// dev token: 33fcf353f144828a071abd7b655f28ffa60f62ba664f47e922b454eb7aa2655c
+			//registryURL.Path = "/api/v1/token"
+			//registryURL.RawQuery = "service=skeppare_docker&scope=repository:"
+			//registryURL.RawQuery += s.repository
+			//registryURL.RawQuery += ":push"
+			//
+			//s.logger.Info("URL: ", registryURL.String())
+			//req, err := http.NewRequest(http.MethodGet, registryURL.String(), nil)
+			//if err != nil {
+			//	s.logger.Error("ERROR NewRequest", err)
+			//}
+			//
+			//// "Authorization: Basic dG9ieTozM2ZjZjM1M2YxNDQ4MjhhMDcxYWJkN2I2NTVmMjhmZmE2MGY2MmJhNjY0ZjQ3ZTkyMmI0NTRlYjdhYTI2NTVj"
+			//req.SetBasicAuth("token", s.options.AuthToken)
+			//
+			//s.logger.Info("Request created")
+			//
+			//b, _ := httputil.DumpRequestOut(req, true)
+			//
+			//s.logger.Infof("%v", string(b))
+			//
+			//client := &http.Client{}
+			//resp, err := client.Do(req)
+			//if err != nil {
+			//	s.logger.Error("ERROR http", err)
+			//}
+			//
+			//s.logger.Info("Request sent")
+			//s.logger.Info("Code: ", resp.Status)
+			//body, readErr := ioutil.ReadAll(resp.Body)
+			//if readErr != nil {
+			//	s.logger.Error("ERROR readAll", err)
+			//}
+			//
+			//s.logger.Infof("body: %s", body)
+			//
+			//jsonResp := TokenResponse{}
+			//jsonErr := json.Unmarshal(body, &jsonResp)
+			//
+			//if jsonErr != nil {
+			//	s.logger.Error("ERROR unmarshal", err)
+			//}
+			//
+			//s.logger.Info("Did the json thing")
+			//
+			//s.logger.Println("##################################")
+			//s.logger.Printf("%v", jsonResp)
+			//s.logger.Println("##################################")
 
+			opts.Username = "token"
+			opts.Password = s.options.AuthToken
+		}
+	}
+	s.logger.Infof("%+v", opts)
+	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
+	s.logger.Printf("%s\n", reflect.TypeOf(auther))
 	s.authenticator = auther
 }
 
@@ -881,6 +950,9 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	containerID := dt.containerID
 
 	s.tags = s.buildTags()
+
+	s.logger.Info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+	s.logger.Info(s.repository)
 
 	if !s.dockerOptions.Local {
 		check, err := s.authenticator.CheckAccess(s.repository, auth.Push)
