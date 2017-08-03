@@ -21,7 +21,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"os/signal"
 	"path"
@@ -45,6 +44,8 @@ import (
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
+	"github.com/docker/distribution/reference"
+	"net/url"
 )
 
 var DefaultDockerCommand = `/bin/sh -c "if [ -e /bin/bash ]; then /bin/bash; else /bin/sh; fi"`
@@ -668,10 +669,7 @@ type TokenResponse struct {
 	Token       string `json:"token"`
 }
 
-// The IStep Interface
-
-// InitEnv parses our data into our config
-func (s *DockerPushStep) InitEnv(env *util.Environment) {
+func configurePushStep(s *DockerPushStep, env *util.Environment) {
 	if email, ok := s.data["email"]; ok {
 		s.email = env.Interpolate(email)
 	}
@@ -785,7 +783,13 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		s.forceTags = true
 	}
 
-	//build auther
+	// When repository isn't specified we default to $appOwner/$appName
+	if s.repository == "" {
+		s.repository = s.options.WerckerContainerRegistry.Host + "/" + s.options.ApplicationOwnerName + "/" + s.options.ApplicationName
+	}
+}
+
+func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckAccessOptions  {
 	opts := dockerauth.CheckAccessOptions{}
 	if username, ok := s.data["username"]; ok {
 		opts.Username = env.Interpolate(username)
@@ -847,72 +851,44 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		opts.AzureLoginServer = env.Interpolate(azureLoginServer)
 	}
 
-	if opts.Registry == "" && opts.Username == "" && opts.Password == "" && s.repository == "" {
-		opts.Registry = s.options.WerckerContainerRegistry.String()
-		opts.Username = "token"
-		opts.Password = s.options.AuthToken
-		s.repository = fmt.Sprintf("%s/%s/%s", s.options.WerckerContainerRegistry.Host, s.options.ApplicationOwnerName, s.options.ApplicationName)
-		s.builtInPush = true
-	} else {
-		registryURL, err := url.Parse(opts.Registry)
-		s.logger.Info(registryURL.Host)
-		s.logger.Info(strings.Contains(registryURL.Host, "oracledx.com"))
-		if err == nil && strings.Contains(registryURL.Host, "oracledx.com") {
-			// &scope=repository:$reponame:$actions
-			// $
-			// dev token: 33fcf353f144828a071abd7b655f28ffa60f62ba664f47e922b454eb7aa2655c
-			//registryURL.Path = "/api/v1/token"
-			//registryURL.RawQuery = "service=skeppare_docker&scope=repository:"
-			//registryURL.RawQuery += s.repository
-			//registryURL.RawQuery += ":push"
-			//
-			//s.logger.Info("URL: ", registryURL.String())
-			//req, err := http.NewRequest(http.MethodGet, registryURL.String(), nil)
-			//if err != nil {
-			//	s.logger.Error("ERROR NewRequest", err)
-			//}
-			//
-			//// "Authorization: Basic dG9ieTozM2ZjZjM1M2YxNDQ4MjhhMDcxYWJkN2I2NTVmMjhmZmE2MGY2MmJhNjY0ZjQ3ZTkyMmI0NTRlYjdhYTI2NTVj"
-			//req.SetBasicAuth("token", s.options.AuthToken)
-			//
-			//s.logger.Info("Request created")
-			//
-			//b, _ := httputil.DumpRequestOut(req, true)
-			//
-			//s.logger.Infof("%v", string(b))
-			//
-			//client := &http.Client{}
-			//resp, err := client.Do(req)
-			//if err != nil {
-			//	s.logger.Error("ERROR http", err)
-			//}
-			//
-			//s.logger.Info("Request sent")
-			//s.logger.Info("Code: ", resp.Status)
-			//body, readErr := ioutil.ReadAll(resp.Body)
-			//if readErr != nil {
-			//	s.logger.Error("ERROR readAll", err)
-			//}
-			//
-			//s.logger.Infof("body: %s", body)
-			//
-			//jsonResp := TokenResponse{}
-			//jsonErr := json.Unmarshal(body, &jsonResp)
-			//
-			//if jsonErr != nil {
-			//	s.logger.Error("ERROR unmarshal", err)
-			//}
-			//
-			//s.logger.Info("Did the json thing")
-			//
-			//s.logger.Println("##################################")
-			//s.logger.Printf("%v", jsonResp)
-			//s.logger.Println("##################################")
+	s.logger.Infof("opts.Registry: %+v", opts.Registry)
+	s.logger.Infof("s.repository: %+v", s.repository)
+	// When registry isn't specified we try to find it in the repository
+	if opts.Registry == "" {
+		x, _ := reference.ParseNormalizedNamed(s.repository)
+		domain := reference.Domain(x)
+		pth := reference.Path(x)
+		s.logger.Infof("DOMAIN=%v PATH=%v", domain, pth)
 
-			opts.Username = "token"
-			opts.Password = s.options.AuthToken
+		if domain != "docker.io" {
+			reg := &url.URL{Scheme:"https", Host:domain, Path:"/v2"}
+			opts.Registry = reg.String()
 		}
 	}
+
+	// Set user and password automatically if using wercker registry
+	if opts.Registry == s.options.WerckerContainerRegistry.String() {
+		opts.Username = "token"
+		opts.Password = s.options.AuthToken
+	}
+
+	return opts
+}
+
+// The IStep Interface
+
+// InitEnv parses our data into our config
+func (s *DockerPushStep) InitEnv(env *util.Environment) {
+	configurePushStep(s, env)
+	opts := buildAutherOpts(s, env)
+
+	//TESTS:
+	// - Registry: "", 					repo: "foo/bar" 					- Registry: Dockerhub, 			repo: foo/bar
+	// - Registry: "someregistry.com",  repo: "" 							- Registry: someregistry.com, 	repo: $appOwner/$appName TODO - is this true?
+	// - Registry: "",					repo: ""							- Registry: $werckerRegistry,	repo: $appOwner/$appName
+	// - Registry: "",					repo: "someregistry.com/foo/bar" 	- Registry: someregistry.com,	repo: foo/bar
+	// - Registry: "someregistry.com",	repo: "foo/bar"						- Registry: someregistry.com,	repo: foo/bar
+
 	s.logger.Infof("%+v", opts)
 	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
 	s.logger.Printf("%s\n", reflect.TypeOf(auther))
