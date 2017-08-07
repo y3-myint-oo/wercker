@@ -43,6 +43,8 @@ import (
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
+	"github.com/docker/distribution/reference"
+	"net/url"
 )
 
 var DefaultDockerCommand = `/bin/sh -c "if [ -e /bin/bash ]; then /bin/bash; else /bin/sh; fi"`
@@ -659,10 +661,7 @@ func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOption
 	}, nil
 }
 
-// The IStep Interface
-
-// InitEnv parses our data into our config
-func (s *DockerPushStep) InitEnv(env *util.Environment) {
+func configurePushStep(s *DockerPushStep, env *util.Environment) {
 	if email, ok := s.data["email"]; ok {
 		s.email = env.Interpolate(email)
 	}
@@ -776,7 +775,13 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		s.forceTags = true
 	}
 
-	//build auther
+	// When repository isn't specified we default to $appOwner/$appName
+	if s.repository == "" {
+		s.repository = s.options.WerckerContainerRegistry.Host + "/" + s.options.ApplicationOwnerName + "/" + s.options.ApplicationName
+	}
+}
+
+func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckAccessOptions  {
 	opts := dockerauth.CheckAccessOptions{}
 	if username, ok := s.data["username"]; ok {
 		opts.Username = env.Interpolate(username)
@@ -838,15 +843,34 @@ func (s *DockerPushStep) InitEnv(env *util.Environment) {
 		opts.AzureLoginServer = env.Interpolate(azureLoginServer)
 	}
 
-	if opts.Registry == "" && opts.Username == "" && opts.Password == "" && s.repository == "" {
-		opts.Registry = s.options.WerckerContainerRegistry.String()
+	// When registry isn't specified we try to find it in the repository
+	if opts.Registry == "" {
+		x, _ := reference.ParseNormalizedNamed(s.repository)
+		domain := reference.Domain(x)
+
+		if domain != "docker.io" {
+			reg := &url.URL{Scheme:"https", Host:domain, Path:"/v2"}
+			opts.Registry = reg.String() + "/"
+		}
+	}
+
+	// Set user and password automatically if using wercker registry
+	if opts.Registry == s.options.WerckerContainerRegistry.String() + "/v2/" {
 		opts.Username = "token"
 		opts.Password = s.options.AuthToken
-		s.repository = fmt.Sprintf("%s/%s/%s", s.options.WerckerContainerRegistry.Host, s.options.ApplicationOwnerName, s.options.ApplicationName)
 		s.builtInPush = true
 	}
-	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
 
+	return opts
+}
+
+// The IStep Interfacew
+
+// InitEnv parses our data into our config
+func (s *DockerPushStep) InitEnv(env *util.Environment) {
+	configurePushStep(s, env)
+	opts := buildAutherOpts(s, env)
+	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
 	s.authenticator = auther
 }
 
