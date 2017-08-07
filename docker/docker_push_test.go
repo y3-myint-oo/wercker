@@ -53,21 +53,25 @@ func (s *PushSuite) TestEmptyPush() {
 func (s *DockerSuite) TestRegistryRepository() { //TODO (tvjames) better name for this test
 	testWerckerRegistry, _ := url.Parse("https://test-wercker-registry.com/v2")
 	dockerhub := "https://registry.hub.docker.com/v1/"
-	tests := map[[2]string][2]string{
-		//TODO (Tvjames) use a struct here
-		{"", "appowner/appname"} : 					{dockerhub, dockerhub + "appowner/appname"},
-		{"", ""} : 									{testWerckerRegistry.String(), testWerckerRegistry.String() + "/appowner/appname"},
-		{"", "someregistry.com/appowner/appname"} : {"https://someregistry.com/v2/", "appowner/appname"},
-		{"someregistry.com", "appowner/appname"} : 	{"someregistry.com", "appowner/appname"},
+	tests := []struct {
+		inputRegistry          string
+		inputRepo              string
+		expectedOutputRegistry string
+		expectedOutputRepo     string
+	}{
+		{"", "appowner/appname", dockerhub, dockerhub + "appowner/appname"},
+		{"", "", testWerckerRegistry.String(), testWerckerRegistry.String() + "/appowner/appname"},
+		{"", "someregistry.com/appowner/appname", "https://someregistry.com/v2/", "appowner/appname"},
+		{"someregistry.com", "appowner/appname", "someregistry.com", "appowner/appname"},
 	}
 
-	for input, expected := range tests {
+	for _, test := range tests {
 		config := &core.StepConfig{
 			ID: "internal/docker-push",
 			Data: map[string]string{},
 		}
-		if input[0] != "" {
-			config.Data["registry"] = input[0]
+		if test.inputRegistry != "" {
+			config.Data["registry"] = test.inputRegistry
 		}
 		options := &core.PipelineOptions{
 			ApplicationOwnerName: "appowner",
@@ -75,13 +79,13 @@ func (s *DockerSuite) TestRegistryRepository() { //TODO (tvjames) better name fo
 			WerckerContainerRegistry: testWerckerRegistry,
 		}
 		step, _ := NewDockerPushStep(config, options, nil)
-		step.repository = input[1]
+		step.repository = test.inputRepo
 
 		configurePushStep(step, util.NewEnvironment())
 		opts := buildAutherOpts(step, util.NewEnvironment([]string{}...))
-		fmt.Printf("input: registry: %v, repo: %v\n", input[0], input[1])
-		s.Equal(expected[0], opts.Registry, fmt.Sprintf("input: registry: %v, repo: %v\n", input[0], input[1]))
-		s.Equal(expected[1], step.repository, fmt.Sprintf("input: registry: %v, repo: %v\n", input[0], input[1]))
+		fmt.Printf("input: registry: %v, repo: %v\n", test.inputRegistry, test.inputRepo)
+		s.Equal(test.expectedOutputRegistry, opts.Registry, fmt.Sprintf("input: registry: %v, repo: %v\n", test.inputRegistry, test.inputRepo))
+		s.Equal(test.expectedOutputRepo, step.repository, fmt.Sprintf("input: registry: %v, repo: %v\n", test.inputRegistry, test.inputRepo))
 	}
 
 }
