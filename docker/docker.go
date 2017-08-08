@@ -27,8 +27,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
+	"net/url"
 	"github.com/docker/distribution/digest"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
 	dockersignal "github.com/docker/docker/pkg/signal"
@@ -43,8 +44,6 @@ import (
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
-	"github.com/docker/distribution/reference"
-	"net/url"
 )
 
 var DefaultDockerCommand = `/bin/sh -c "if [ -e /bin/bash ]; then /bin/bash; else /bin/sh; fi"`
@@ -781,7 +780,7 @@ func configurePushStep(s *DockerPushStep, env *util.Environment) {
 	}
 }
 
-func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckAccessOptions  {
+func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckAccessOptions {
 	opts := dockerauth.CheckAccessOptions{}
 	if username, ok := s.data["username"]; ok {
 		opts.Username = env.Interpolate(username)
@@ -849,13 +848,13 @@ func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckA
 		domain := reference.Domain(x)
 
 		if domain != "docker.io" {
-			reg := &url.URL{Scheme:"https", Host:domain, Path:"/v2"}
+			reg := &url.URL{Scheme: "https", Host: domain, Path: "/v2"}
 			opts.Registry = reg.String() + "/"
 		}
 	}
 
 	// Set user and password automatically if using wercker registry
-	if opts.Registry == s.options.WerckerContainerRegistry.String() + "/v2/" {
+	if opts.Registry == s.options.WerckerContainerRegistry.String()+"/v2/" {
 		opts.Username = "token"
 		opts.Password = s.options.AuthToken
 		s.builtInPush = true
@@ -864,7 +863,7 @@ func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckA
 	return opts
 }
 
-// The IStep Interfacew
+// The IStep Interface
 
 // InitEnv parses our data into our config
 func (s *DockerPushStep) InitEnv(env *util.Environment) {

@@ -3,11 +3,10 @@ package dockerlocal
 import (
 	"net/url"
 	"testing"
-
+	"fmt"
 	"github.com/stretchr/testify/suite"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
-	"fmt"
 )
 
 type PushSuite struct {
@@ -66,15 +65,15 @@ func (s *PushSuite) TestRegistryRepositoryInference() {
 
 	for _, test := range tests {
 		config := &core.StepConfig{
-			ID: "internal/docker-push",
+			ID:   "internal/docker-push",
 			Data: map[string]string{},
 		}
 		if test.inputRegistry != "" {
 			config.Data["registry"] = test.inputRegistry
 		}
 		options := &core.PipelineOptions{
-			ApplicationOwnerName: "appowner",
-			ApplicationName: "appname",
+			ApplicationOwnerName:     "appowner",
+			ApplicationName:          "appname",
 			WerckerContainerRegistry: testWerckerRegistry,
 			GlobalOptions: &core.GlobalOptions{
 				AuthToken: "su69persec420uret0k3n",
