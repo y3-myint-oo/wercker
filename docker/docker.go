@@ -21,13 +21,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
 	"strconv"
 	"strings"
 	"time"
-	"net/url"
+
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/image"
@@ -660,7 +661,7 @@ func NewDockerPushStep(stepConfig *core.StepConfig, options *core.PipelineOption
 	}, nil
 }
 
-func configurePushStep(s *DockerPushStep, env *util.Environment) {
+func (s *DockerPushStep) configurePushStep(env *util.Environment) {
 	if email, ok := s.data["email"]; ok {
 		s.email = env.Interpolate(email)
 	}
@@ -773,11 +774,6 @@ func configurePushStep(s *DockerPushStep, env *util.Environment) {
 	} else {
 		s.forceTags = true
 	}
-
-	// When repository isn't specified we default to $appOwner/$appName
-	if s.repository == "" {
-		s.repository = s.options.WerckerContainerRegistry.Host + "/" + s.options.ApplicationOwnerName + "/" + s.options.ApplicationName
-	}
 }
 
 func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckAccessOptions {
@@ -842,19 +838,10 @@ func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckA
 		opts.AzureLoginServer = env.Interpolate(azureLoginServer)
 	}
 
-	// When registry isn't specified we try to find it in the repository
-	if opts.Registry == "" {
-		x, _ := reference.ParseNormalizedNamed(s.repository)
-		domain := reference.Domain(x)
-
-		if domain != "docker.io" {
-			reg := &url.URL{Scheme: "https", Host: domain, Path: "/v2"}
-			opts.Registry = reg.String() + "/"
-		}
-	}
+	s.repository, opts = InferRegistry(s.repository, opts, s.options)
 
 	// Set user and password automatically if using wercker registry
-	if opts.Registry == s.options.WerckerContainerRegistry.String()+"/v2/" {
+	if opts.Registry == s.options.WerckerContainerRegistry.String() {
 		opts.Username = "token"
 		opts.Password = s.options.AuthToken
 		s.builtInPush = true
@@ -863,11 +850,28 @@ func buildAutherOpts(s *DockerPushStep, env *util.Environment) dockerauth.CheckA
 	return opts
 }
 
-// The IStep Interface
+// InferRegistry infers the registry from the repository. If no registry is found
+// we fallback to Docker Hub registry.
+func InferRegistry(repository string, opts dockerauth.CheckAccessOptions, pipelineOptions *core.PipelineOptions) (string, dockerauth.CheckAccessOptions) {
+	if repository == "" {
+		repository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
+	}
+
+	if opts.Registry == "" {
+		x, _ := reference.ParseNormalizedNamed(repository)
+		domain := reference.Domain(x)
+
+		if domain != "docker.io" {
+			reg := &url.URL{Scheme: "https", Host: domain, Path: "/v2"}
+			opts.Registry = reg.String() + "/"
+		}
+	}
+	return repository, opts
+}
 
 // InitEnv parses our data into our config
 func (s *DockerPushStep) InitEnv(env *util.Environment) {
-	configurePushStep(s, env)
+	s.configurePushStep(env)
 	opts := buildAutherOpts(s, env)
 	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
 	s.authenticator = auther

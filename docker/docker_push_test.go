@@ -3,8 +3,9 @@ package dockerlocal
 import (
 	"net/url"
 	"testing"
-	"fmt"
+
 	"github.com/stretchr/testify/suite"
+	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 )
@@ -27,7 +28,6 @@ func (s *PushSuite) TestEmptyPush() {
 		ID:   "internal/docker-push",
 		Data: map[string]string{},
 	}
-	u, _ := url.Parse("https://container-reg.oracle.com")
 	options := &core.PipelineOptions{
 		GitOptions: &core.GitOptions{
 			GitBranch: "master",
@@ -36,7 +36,7 @@ func (s *PushSuite) TestEmptyPush() {
 		ApplicationID:            "1000001",
 		ApplicationName:          "myproject",
 		ApplicationOwnerName:     "wercker",
-		WerckerContainerRegistry: u,
+		WerckerContainerRegistry: &url.URL{Scheme: "https", Host: "wcr.io", Path: "/v2/"},
 		GlobalOptions: &core.GlobalOptions{
 			AuthToken: "su69persec420uret0k3n",
 		},
@@ -44,49 +44,34 @@ func (s *PushSuite) TestEmptyPush() {
 	step, _ := NewDockerPushStep(config, options, nil)
 	step.InitEnv(nil)
 	repositoryName := step.authenticator.Repository(step.repository)
-	s.Equal("container-reg.oracle.com/wercker/myproject", repositoryName)
+	s.Equal("wcr.io/wercker/myproject", repositoryName)
 	tags := step.buildTags()
 	s.Equal([]string{"latest", "master-s4k2r0d6a9b"}, tags)
 }
 
-func (s *PushSuite) TestRegistryRepositoryInference() {
-	testWerckerRegistry, _ := url.Parse("https://test-wercker-registry.com/v2")
-	tests := []struct {
-		inputRegistry          string
-		inputRepo              string
-		expectedOutputRegistry string
-		expectedOutputRepo     string
+func (s *PushSuite) TestInferRegistry() {
+	testWerckerRegistry, _ := url.Parse("https://test.wcr.io/v2")
+	repoTests := []struct {
+		registry           string
+		repository         string
+		expectedRegistry   string
+		expectedRepository string
 	}{
 		{"", "appowner/appname", "", "appowner/appname"},
 		{"", "", testWerckerRegistry.String() + "/", testWerckerRegistry.Host + "/appowner/appname"},
 		{"", "someregistry.com/appowner/appname", "https://someregistry.com/v2/", "someregistry.com/appowner/appname"},
-		{"someregistry.com", "appowner/appname", "https://someregistry.com/v1/", "appowner/appname"},
 	}
 
-	for _, test := range tests {
-		config := &core.StepConfig{
-			ID:   "internal/docker-push",
-			Data: map[string]string{},
-		}
-		if test.inputRegistry != "" {
-			config.Data["registry"] = test.inputRegistry
-		}
+	for _, tt := range repoTests {
 		options := &core.PipelineOptions{
 			ApplicationOwnerName:     "appowner",
 			ApplicationName:          "appname",
 			WerckerContainerRegistry: testWerckerRegistry,
-			GlobalOptions: &core.GlobalOptions{
-				AuthToken: "su69persec420uret0k3n",
-			},
 		}
-		step, _ := NewDockerPushStep(config, options, nil)
-		step.repository = test.inputRepo
-
-		configurePushStep(step, util.NewEnvironment())
-		opts := buildAutherOpts(step, util.NewEnvironment([]string{}...))
-		fmt.Printf("input: registry: %v, repo: %v\n", test.inputRegistry, test.inputRepo)
-		s.Equal(test.expectedOutputRegistry, opts.Registry, fmt.Sprintf("registries don't match, input: registry: %v, repo: %v\n", test.inputRegistry, test.inputRepo))
-		s.Equal(test.expectedOutputRepo, step.repository, fmt.Sprintf("repos don't match, input: registry: %v, repo: %v\n", test.inputRegistry, test.inputRepo))
+		repo, opts := InferRegistry(tt.repository, dockerauth.CheckAccessOptions{
+			Registry: tt.registry,
+		}, options)
+		s.Equal(tt.expectedRegistry, opts.Registry, "%q, wants %q", opts.Registry, tt.expectedRegistry)
+		s.Equal(tt.expectedRepository, repo, "%q, wants %q", repo, tt.expectedRepository)
 	}
-
 }
