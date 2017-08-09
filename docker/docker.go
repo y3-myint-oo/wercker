@@ -47,7 +47,12 @@ import (
 	"golang.org/x/net/context"
 )
 
-var DefaultDockerCommand = `/bin/sh -c "if [ -e /bin/bash ]; then /bin/bash; else /bin/sh; fi"`
+const (
+	// DefaultDockerRegistryUsername is an arbitrary value. It is unused by callees,
+	// so the value can be anything so long as it's not empty.
+	DefaultDockerRegistryUsername = "token"
+	DefaultDockerCommand          = `/bin/sh -c "if [ -e /bin/bash ]; then /bin/bash; else /bin/sh; fi"`
+)
 
 func RequireDockerEndpoint(options *Options) error {
 	client, err := NewDockerClient(options)
@@ -845,7 +850,7 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 
 	// Set user and password automatically if using wercker registry
 	if opts.Registry == s.options.WerckerContainerRegistry.String() {
-		opts.Username = "token"
+		opts.Username = DefaultDockerRegistryUsername
 		opts.Password = s.options.AuthToken
 		s.builtInPush = true
 	}

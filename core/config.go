@@ -23,7 +23,6 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/util"
 )
@@ -41,59 +40,10 @@ type BoxConfig struct {
 	Cmd        string
 	Env        map[string]string
 	Ports      []string
-	Username   string
-	Password   string
-	Registry   string
 	Entrypoint string
 	URL        string
 	Volumes    string
-	Auth       Authenticatable
-}
-
-type Authenticatable interface {
-	ToAuthenticator(*util.Environment) (auth.Authenticator, error)
-}
-
-type DockerAuth struct {
-	Username string
-	Password string
-	Registry string
-}
-
-type AmazonAuth struct {
-	AWSRegion     string `yaml:"aws-region"`
-	AWSSecretKey  string `yaml:"aws-secret-key"`
-	AWSAccessKey  string `yaml:"aws-access-key"`
-	AWSRegistryID string `yaml:"aws-registry-id"`
-	AWSStrictAuth bool   `yaml:"aws-strict-auth"`
-}
-
-type AzureAuth struct {
-	AzureClientID          string `yaml:"azure-client-id"`
-	AzureClientSecret      string `yaml:"azure-client-secret"`
-	AzureSubscriptionID    string `yaml:"azure-subscription-id"`
-	AzureTenantID          string `yaml:"azure-tenant-id"`
-	AzureResourceGroupName string `yaml:"azure-resource-group"`
-	AzureRegistryName      string `yaml:"azure-registry-name"`
-	AzureLoginServer       string `yaml:"azure-login-server"`
-}
-
-func (d DockerAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
-	opts := dockerauth.CheckAccessOptions{
-		Username: env.Interpolate(d.Username),
-		Password: env.Interpolate(d.Password),
-		Registry: env.Interpolate(d.Registry),
-	}
-	return dockerauth.GetRegistryAuthenticator(opts)
-
-}
-
-func (a AmazonAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
-	return auth.NewAmazonAuth(env.Interpolate(a.AWSRegistryID), env.Interpolate(a.AWSAccessKey), env.Interpolate(a.AWSSecretKey), env.Interpolate(a.AWSRegion), a.AWSStrictAuth), nil
-}
-
-func (a AzureAuth) ToAuthenticator(env *util.Environment) (auth.Authenticator, error) {
-	return auth.NewAzure(env.Interpolate(a.AzureClientID), env.Interpolate(a.AzureClientSecret), env.Interpolate(a.AzureSubscriptionID), env.Interpolate(a.AzureTenantID), env.Interpolate(a.AzureResourceGroupName), env.Interpolate(a.AzureRegistryName), env.Interpolate(a.AzureLoginServer))
+	Auth       dockerauth.CheckAccessOptions `yaml:",inline"`
 }
 
 // IsExternal tells us if the box (service) is located on disk
@@ -105,40 +55,18 @@ func (c *BoxConfig) IsExternal() bool {
 // attempts to unmarshal to the whole struct
 func (r *RawBoxConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	r.BoxConfig = &BoxConfig{}
-	err := unmarshal(&r.BoxConfig.ID)
 
+	err := unmarshal(&r.BoxConfig.ID)
 	if err == nil {
-		//set an empty docker auth
-		dock := &DockerAuth{}
-		r.BoxConfig.Auth = dock
 		return nil
 	}
-	err = unmarshal(&r.BoxConfig)
 
+	err = unmarshal(&r.BoxConfig)
 	if err != nil {
 		return err
 	}
-	amzn := &AmazonAuth{}
-	err = unmarshal(amzn)
-	azure := &AzureAuth{}
-	azureErr := unmarshal(azure)
-	if azureErr != nil {
-		err = azureErr
-	}
-	switch {
-	case amzn.AWSSecretKey != "":
-		r.BoxConfig.Auth = amzn
-	case azure.AzureClientSecret != "":
-		r.BoxConfig.Auth = azure
-	default:
-		dock := &DockerAuth{}
-		dockErr := unmarshal(dock)
-		if dockErr != nil {
-			err = dockErr
-		}
-		r.BoxConfig.Auth = dock
-	}
-	return err
+
+	return nil
 }
 
 // RawStepConfig is our unwrapper for config steps

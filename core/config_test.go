@@ -19,6 +19,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/wercker/wercker/auth"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/wercker/docker-check-access"
@@ -44,11 +46,6 @@ func (s *ConfigSuite) TestConfigBoxStrings() {
 	//check to see if both the service and box has an auth
 	assert.NotNil(s.T(), config.Box.Auth)
 	assert.NotNil(s.T(), config.Services[0].Auth)
-
-	_, ok := config.Box.Auth.(*DockerAuth)
-	_, t := config.Services[0].Auth.(*DockerAuth)
-	s.Equal(ok, true)
-	s.Equal(t, true)
 }
 
 func (s *ConfigSuite) TestConfigBoxStructs() {
@@ -71,37 +68,33 @@ func (s *ConfigSuite) TestConfigBoxStructs() {
 	// and if those return the proper authenticators
 	amzn := config.PipelinesMap["amzn"]
 	assert.NotNil(s.T(), amzn.Box.Auth)
-	_, ok := amzn.Box.Auth.(*AmazonAuth)
-	s.Equal(ok, true)
 	env := util.NewEnvironment(os.Environ()...)
-	authenticator, err := amzn.Box.Auth.ToAuthenticator(env)
+	amzn.Box.Auth.Interpolate(env)
+	authenticator, err := dockerauth.GetRegistryAuthenticator(amzn.Box.Auth)
 	s.Empty(err)
-	_, ok = authenticator.(*auth.AmazonAuth)
+	_, ok := authenticator.(*auth.AmazonAuth)
 	s.Equal(ok, true)
 
 	docker := config.PipelinesMap["docker-v2"]
 	assert.NotNil(s.T(), docker.Box.Auth)
-	_, ok = docker.Box.Auth.(*DockerAuth)
-	s.Equal(ok, true)
-	authenticator, err = docker.Box.Auth.ToAuthenticator(env)
+	docker.Box.Auth.Interpolate(env)
+	authenticator, err = dockerauth.GetRegistryAuthenticator(docker.Box.Auth)
 	s.Empty(err)
 	_, ok = authenticator.(*auth.DockerAuth)
 	s.Equal(ok, true)
 
 	dockerV1 := config.PipelinesMap["docker"]
 	assert.NotNil(s.T(), dockerV1.Box.Auth)
-	_, ok = dockerV1.Box.Auth.(*DockerAuth)
-	s.Equal(ok, true)
-	authenticator, err = dockerV1.Box.Auth.ToAuthenticator(env)
+	dockerV1.Box.Auth.Interpolate(env)
+	authenticator, err = dockerauth.GetRegistryAuthenticator(dockerV1.Box.Auth)
 	s.Empty(err)
 	_, ok = authenticator.(auth.DockerAuthV1)
 	s.Equal(ok, true)
 
 	azure := config.PipelinesMap["azure"]
 	assert.NotNil(s.T(), azure.Box.Auth)
-	_, ok = azure.Box.Auth.(*AzureAuth)
-	s.Equal(ok, true)
-	authenticator, err = azure.Box.Auth.ToAuthenticator(env)
+	azure.Box.Auth.Interpolate(env)
+	authenticator, err = dockerauth.GetRegistryAuthenticator(azure.Box.Auth)
 	s.Empty(err)
 	_, ok = authenticator.(*auth.Azure)
 	s.Equal(ok, true)

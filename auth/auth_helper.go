@@ -10,22 +10,38 @@ import (
 )
 
 type CheckAccessOptions struct {
-	Username               string
-	Password               string
-	AwsSecretKey           string
-	AwsAccessKey           string
-	AwsRegion              string
-	AwsStrictAuth          bool
-	AwsID                  string
-	AwsRegistryID          string
-	Registry               string
-	AzureClientID          string
-	AzureClientSecret      string
-	AzureSubscriptionID    string
-	AzureTenantID          string
-	AzureResourceGroupName string
-	AzureRegistryName      string
-	AzureLoginServer       string
+	Username               string `yaml:"username"`
+	Password               string `yaml:"password"`
+	Registry               string `yaml:"registry"`
+	AwsRegistryID          string `yaml:"aws-registry-id"`
+	AwsRegion              string `yaml:"aws-region"`
+	AwsAccessKey           string `yaml:"aws-access-key"`
+	AwsSecretKey           string `yaml:"aws-secret-key"`
+	AwsStrictAuth          bool   `yaml:"aws-strict-auth"`
+	AzureLoginServer       string `yaml:"azure-login-server"`
+	AzureRegistryName      string `yaml:"azure-registry-name"`
+	AzureClientID          string `yaml:"azure-client-id"`
+	AzureClientSecret      string `yaml:"azure-client-secret"`
+	AzureSubscriptionID    string `yaml:"azure-subscription-id"`
+	AzureTenantID          string `yaml:"azure-tenant-id"`
+	AzureResourceGroupName string `yaml:"azure-resource-group"`
+}
+
+func (a *CheckAccessOptions) Interpolate(env *util.Environment) {
+	a.Username = env.Interpolate(a.Username)
+	a.Password = env.Interpolate(a.Password)
+	a.Registry = env.Interpolate(a.Registry)
+	a.AwsRegistryID = env.Interpolate(a.AwsRegistryID)
+	a.AwsRegion = env.Interpolate(a.AwsRegion)
+	a.AwsAccessKey = env.Interpolate(a.AwsAccessKey)
+	a.AwsSecretKey = env.Interpolate(a.AwsSecretKey)
+	a.AzureLoginServer = env.Interpolate(a.AzureLoginServer)
+	a.AzureRegistryName = env.Interpolate(a.AzureRegistryName)
+	a.AzureClientID = env.Interpolate(a.AzureClientID)
+	a.AzureClientSecret = env.Interpolate(a.AzureClientSecret)
+	a.AzureSubscriptionID = env.Interpolate(a.AzureSubscriptionID)
+	a.AzureTenantID = env.Interpolate(a.AzureTenantID)
+	a.AzureResourceGroupName = env.Interpolate(a.AzureResourceGroupName)
 }
 
 const (

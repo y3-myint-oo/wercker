@@ -24,6 +24,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
+	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 
@@ -543,14 +544,25 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if err != nil {
 		return nil, err
 	}
-	authenticator, err := b.config.Auth.ToAuthenticator(env)
+	repo := env.Interpolate(b.repository)
+
+	b.config.Auth.Interpolate(env)
+
+	// If user use Azure or AWS container registry we don't infer.
+	if b.config.Auth.AzureClientSecret == "" && b.config.Auth.AwsSecretKey == "" {
+		repo, b.config.Auth = InferRegistry(repo, b.config.Auth, b.options)
+	}
+
+	if b.config.Auth.Registry == b.options.WerckerContainerRegistry.String() {
+		b.config.Auth.Username = DefaultDockerRegistryUsername
+		b.config.Auth.Password = b.options.AuthToken
+	}
+
+	authenticator, err := dockerauth.GetRegistryAuthenticator(b.config.Auth)
 	if err != nil {
 		return nil, err
 	}
-	repo := env.Interpolate(b.repository)
-	if repo == "" {
-		return nil, fmt.Errorf("Repository is blank")
-	}
+
 	b.repository = authenticator.Repository(repo)
 	b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	// Shortcut to speed up local dev
