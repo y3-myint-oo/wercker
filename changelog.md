@@ -3,6 +3,7 @@
 - Change compilation in separate wercker steps (#331)
 - Add retry and exponential backoff for fetching step metadata and step tarball
   (#330)
+- Add flag to delete Docker image after pushing it to a registry (#327)
 
 ## v1.0.938 (2017-07-27)
 

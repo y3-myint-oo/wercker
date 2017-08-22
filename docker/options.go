@@ -36,6 +36,7 @@ type Options struct {
 	MemoryReservation int64
 	MemorySwap        int64
 	KernelMemory      int64
+	CleanupImage      bool
 }
 
 func guessAndUpdateDockerOptions(opts *Options, e *util.Environment) {
@@ -119,6 +120,7 @@ func NewOptions(c util.Settings, e *util.Environment) (*Options, error) {
 	dockerMemoryReservation, _ := c.Int("docker-memory-reservation")
 	dockerMemorySwap, _ := c.Int("docker-memory-swap")
 	dockerKernelMemory, _ := c.Int("docker-kernel-memory")
+	dockerCleanupImage, _ := c.Bool("docker-cleanup-image")
 
 	speculativeOptions := &Options{
 		Host:              dockerHost,
@@ -132,6 +134,7 @@ func NewOptions(c util.Settings, e *util.Environment) (*Options, error) {
 		MemoryReservation: int64(dockerMemoryReservation) * 1024 * 1024,
 		MemorySwap:        int64(dockerMemorySwap) * 1024 * 1024,
 		KernelMemory:      int64(dockerKernelMemory) * 1024 * 1024,
+		CleanupImage:      dockerCleanupImage,
 	}
 
 	// We're going to try out a few settings and set DockerHost if

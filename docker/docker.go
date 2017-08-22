@@ -956,6 +956,11 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	if err != nil {
 		return -1, err
 	}
+
+	if s.dockerOptions.CleanupImage {
+		defer cleanupImage(s.logger, client, s.repository, s.tags[0])
+	}
+
 	s.logger.WithField("Image", i).Debug("Commit completed")
 	return s.tagAndPush(i.ID, e, client)
 }
@@ -1006,9 +1011,28 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 				return 1, err
 			}
 			s.logger.Println("Pushed container:", s.repository, s.tags)
+
+			if s.dockerOptions.CleanupImage {
+				defer cleanupImage(s.logger, client, s.repository, tag)
+			}
 		}
 	}
 	return 0, nil
+}
+
+func cleanupImage(logger *util.LogEntry, client *DockerClient, repository, tag string) {
+	imageName := fmt.Sprintf("%s:%s", repository, tag)
+	err := client.RemoveImage(imageName)
+	if err != nil {
+		logger.
+			WithError(err).
+			WithField("imageName", imageName).
+			Warn("Failed to delete image")
+	} else {
+		logger.
+			WithField("imageName", imageName).
+			Debug("Deleted image")
+	}
 }
 
 // CollectFile NOP
