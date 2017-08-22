@@ -32,20 +32,40 @@ build:
         code: rm -rf $GOPATH/pkg
 
     - script:
-        name: compile
+        name: compile linux_amd64
         code: |
             export CGO_ENABLED=0
             GOOS=linux GOARCH=amd64 go build \
             -ldflags="-X github.com/wercker/wercker/util.GitCommit=$WERCKER_GIT_COMMIT -X github.com/wercker/wercker/util.PatchVersion=$(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X github.com/wercker/wercker/util.Compiled=$(date +%s)" \
               -o "$WERCKER_OUTPUT_DIR/artifacts/latest/linux_amd64/sentcli"
+
+            cp -r $WERCKER_OUTPUT_DIR/artifacts/latest/* $WERCKER_REPORT_ARTIFACTS_DIR
+
+    - script:
+        name: compile linux_386
+        code: |
+            export CGO_ENABLED=0
             GOOS=linux GOARCH=386 go build \
             -ldflags="-X github.com/wercker/wercker/util.GitCommit=$WERCKER_GIT_COMMIT -X github.com/wercker/wercker/util.PatchVersion=$(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X github.com/wercker/wercker/util.Compiled=$(date +%s)" \
               -o "$WERCKER_OUTPUT_DIR/artifacts/latest/linux_386/sentcli"
+
+            cp -r $WERCKER_OUTPUT_DIR/artifacts/latest/* $WERCKER_REPORT_ARTIFACTS_DIR
+
+    - script:
+        name: compile darwin_amd64
+        code: |
+            export CGO_ENABLED=0
             GOOS=darwin GOARCH=amd64 go build \
             -ldflags="-X github.com/wercker/wercker/util.GitCommit=$WERCKER_GIT_COMMIT -X github.com/wercker/wercker/util.PatchVersion=$(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X github.com/wercker/wercker/util.Compiled=$(date +%s)" \
               -o "$WERCKER_OUTPUT_DIR/artifacts/latest/darwin_amd64/sentcli"
 
             cp -r $WERCKER_OUTPUT_DIR/artifacts/latest/* $WERCKER_REPORT_ARTIFACTS_DIR
+
+    - script:
+        name: wercker version
+        code: |
+          $WERCKER_OUTPUT_DIR/artifacts/latest/linux_amd64/sentcli version --no-update-check
+          $WERCKER_OUTPUT_DIR/artifacts/latest/linux_amd64/sentcli --version > "$WERCKER_REPORT_MESSAGE_FILE"
 
     # generate SHA's for all binaries
     - script:
@@ -55,6 +75,7 @@ build:
             for f in $(find . -type f -name sentcli); do
             cd $WERCKER_OUTPUT_DIR/$(dirname "$f")
             sha256sum sentcli > SHA256SUMS
+            echo "$f: $(cat SHA256SUMS | awk '{print $1}')"
             done
             cd $WERCKER_OUTPUT_DIR
 

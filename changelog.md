@@ -1,5 +1,6 @@
 ## unreleased
 
+- Change compilation in separate wercker steps (#331)
 
 ## v1.0.938 (2017-07-27)
 
