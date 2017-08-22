@@ -392,7 +392,7 @@ func (s *ExternalStep) Fetch() (string, error) {
 			}
 		} else {
 			// Grab the tarball and util.Untargzip it
-			resp, err := util.FetchTarball(s.url)
+			resp, err := util.Get(s.url)
 			if err != nil {
 				return "", err
 			}

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/wercker/wercker/util"
 )
 
 // StepRegistry abstracts registry interaction
@@ -15,26 +17,20 @@ type StepRegistry interface {
 // WerckerStepRegistry implements the StepRegistry interface to handle
 type WerckerStepRegistry struct {
 	baseURL string
-	client  *http.Client
 }
 
 // NewWerckerStepRegistry creates a new instance of NewWerckerStepRegistry
 func NewWerckerStepRegistry(baseURL string) StepRegistry {
 	return &WerckerStepRegistry{
 		baseURL: baseURL,
-		client:  http.DefaultClient,
 	}
 }
 
 // GetStepVersion retrieves a step from the registry
 func (r *WerckerStepRegistry) GetStepVersion(owner, name, version string) (*APIStepVersion, error) {
 	url := fmt.Sprintf("%s/api/steps/%s/%s/%s", r.baseURL, owner, name, version)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
 
-	resp, err := r.client.Do(req)
+	resp, err := util.Get(url)
 	if err != nil {
 		return nil, err
 	}

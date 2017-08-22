@@ -33,7 +33,11 @@ import (
 	"unicode"
 )
 
-const homePrefix = "~/"
+const (
+	homePrefix = "~/"
+
+	maxTries = 3
+)
 
 // ExpandHomePath will expand ~/ in p to home.
 func ExpandHomePath(p string, home string) string {
@@ -56,19 +60,38 @@ func Exists(path string) (bool, error) {
 	return false, err
 }
 
-// FetchTarball tries to fetch a tarball
-// For now this is pretty naive and useless, but we are doing it in a couple
-// places and this is a fine stub to expand upon.
-func FetchTarball(url string) (*http.Response, error) {
+// Get tries to make a GET request to url. It will retry, upto 3 times, when
+// the response is http statuscode 5xx.
+func Get(url string) (*http.Response, error) {
+	return get(url, 1)
+}
+
+func get(url string, try int) (*http.Response, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != 200 {
-		return resp, fmt.Errorf("Bad status code fetching tarball: %s", url)
+
+	if resp.StatusCode == 200 {
+		return resp, nil
 	}
 
-	return resp, nil
+	if shouldRetry(try, resp) {
+		time.Sleep(time.Duration(try*200) * time.Millisecond)
+		return get(url, try+1)
+	}
+
+	return resp, fmt.Errorf("Bad status code while fetching: %s (%d)", url, resp.StatusCode)
+}
+
+// shouldRetry checks whether try exceeds maxRetries, if it doesn't it will
+// check if the status code is 5xx.
+func shouldRetry(try int, resp *http.Response) bool {
+	if try > maxTries {
+		return false
+	}
+
+	return resp.StatusCode >= 500 && resp.StatusCode < 600
 }
 
 // UntarOne writes the contents up a single file to dst

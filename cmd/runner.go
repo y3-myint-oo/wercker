@@ -164,9 +164,9 @@ func (p *Runner) EnsureCode() (string, error) {
 		return projectDir, nil
 	}
 
-	// If the target is a tarball feetch and build that
+	// If the target is a tarball fetch and build that
 	if p.options.ProjectURL != "" {
-		resp, err := util.FetchTarball(p.options.ProjectURL)
+		resp, err := util.Get(p.options.ProjectURL)
 		if err != nil {
 			return projectDir, err
 		}
