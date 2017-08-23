@@ -322,6 +322,30 @@ var (
 			},
 		}
 	}
+
+	dockerCommand = cli.Command{
+		Name:            "docker",
+		Usage:           "docker <docker-command> <args>...",
+		SkipFlagParsing: true,
+		Action: func(c *cli.Context) {
+			settings := util.NewCLISettings(c)
+			fmt.Printf("settings:\n%+v\n", settings)
+			env := util.NewEnvironment(os.Environ()...)
+			fmt.Printf("env:\n%+v\n", env)
+			opts, err := core.NewWerckerDockerOptions(settings, env)
+			if err != nil {
+				cliLogger.Errorln("Invalid options\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("opts:\n%+v\n", opts)
+
+			// TODO: work out how to Load Options e.g wcr-url
+			// TODO: re-use flags from another command, or make a fresh one?
+			ensureWerckerCredentials(c, opts)
+			runDocker(os.Args[2:])
+		},
+		Flags: FlagsFor(WerckerDockerFlagSet),
+	}
 )
 
 func GetApp() *cli.App {
@@ -349,6 +373,7 @@ func GetApp() *cli.App {
 		pullCommand,
 		versionCommand,
 		documentCommand(app),
+		dockerCommand,
 	}
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {
@@ -1289,3 +1314,4 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 
 	return shared, nil
 }
+
