@@ -31,11 +31,11 @@ import (
 
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
 	dockersignal "github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/term"
-	"github.com/docker/engine-api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
