@@ -1272,10 +1272,10 @@
 			"revisionTime": "2016-04-25T21:51:43Z"
 		},
 		{
-			"checksumSHA1": "3ktCzEfmToLu8Oskt/qfVPnr8+k=",
+			"checksumSHA1": "QhJaqD0QC5PXXG5hQ++2jN3Q9G0=",
 			"path": "github.com/opencontainers/runtime-spec/specs-go",
-			"revision": "ec969749e76215401b896917f469063ea6bf69e2",
-			"revisionTime": "2017-08-22T15:05:04Z"
+			"revision": "d42f1eb741e6361e858d83fc75aa6893b66292c4",
+			"revisionTime": "2017-05-08T21:35:35Z"
 		},
 		{
 			"checksumSHA1": "jam7OmzX4/mUJkR3iOPW5/+2IQ4=",
