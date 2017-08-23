@@ -1444,10 +1444,10 @@
 			"revisionTime": "2017-07-17T18:23:50Z"
 		},
 		{
-			"checksumSHA1": "NX0LPF1e6aVP9xNyo6X/lrJvk1Q=",
+			"checksumSHA1": "zmX+YoQS0YIcSDUg0y9BVLI0BMU=",
 			"path": "github.com/wercker/reporter-client",
-			"revision": "05b949957366740541b9574f5578084063965dbe",
-			"revisionTime": "2017-04-26T14:52:24Z"
+			"revision": "f52a96cebbe069791dbb890f534bdf0a51b727a9",
+			"revisionTime": "2017-08-23T13:44:09Z"
 		},
 		{
 			"checksumSHA1": "Csl3lrkis5iUo5In4BltnOc0hS4=",
