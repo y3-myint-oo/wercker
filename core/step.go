@@ -563,7 +563,7 @@ func (s *ExternalStep) ShouldSyncEnv() bool {
 
 // NewWerckerInitStep returns our fake initial step
 func NewWerckerInitStep(options *PipelineOptions) (*ExternalStep, error) {
-	werckerInit := `wercker-init "https://github.com/wercker/wercker-init/archive/v1.0.0.tar.gz"`
+	werckerInit := "wercker/wercker-init@2.0.0"
 	stepConfig := &StepConfig{ID: werckerInit, Data: make(map[string]string)}
 	initStep, err := NewStep(stepConfig, options)
 	if err != nil {

@@ -4,6 +4,7 @@
 - Add retry and exponential backoff for fetching step metadata and step tarball
   (#330)
 - Add flag to delete Docker image after pushing it to a registry (#327)
+- Use wercker registry for wercker-init (#334)
 
 ## v1.0.938 (2017-07-27)
 
