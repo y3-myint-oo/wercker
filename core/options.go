@@ -312,6 +312,15 @@ func NewReporterOptions(c util.Settings, e *util.Environment, globalOpts *Global
 	}, nil
 }
 
+func werckerContainerRegistry(c util.Settings) (*url.URL, error) {
+	containerRegistry, _ := c.String("wercker-container-registry")
+	containerRegistryURL, err := url.Parse(containerRegistry)
+	if err != nil {
+		return nil, fmt.Errorf("Container Registry URL is not well-formatted: %v", err)
+	}
+	return containerRegistryURL, nil
+}
+
 // PipelineOptions for builds and deploys
 type PipelineOptions struct {
 	*GlobalOptions
@@ -914,5 +923,27 @@ func NewVersionOptions(c util.Settings, e *util.Environment) (*VersionOptions, e
 		OutputJSON:     json,
 		BetaChannel:    beta,
 		CheckForUpdate: !noUpdateCheck,
+	}, nil
+}
+
+type WerckerDockerOptions struct {
+	*GlobalOptions
+	WerckerContainerRegistry *url.URL
+}
+
+func NewWerckerDockerOptions(c util.Settings, e *util.Environment) (*WerckerDockerOptions, error) {
+	globalOpts, err := NewGlobalOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+
+	wcr, err := werckerContainerRegistry(c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &WerckerDockerOptions{
+		GlobalOptions:            globalOpts,
+		WerckerContainerRegistry: wcr,
 	}, nil
 }

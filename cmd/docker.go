@@ -8,7 +8,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/docker/cli/cli/config"
-	zz "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types"
 	"github.com/kr/pty"
 	"github.com/wercker/wercker/core"
 )
@@ -20,7 +20,7 @@ func ensureWerckerCredentials(c *cli.Context, opts *core.WerckerDockerOptions) {
 	if hasAuth {
 		fmt.Printf("WE HAVE WERCKER AUTH!!!!\n%+v\n", werckerAuth)
 	} else {
-		dockerConfig.AuthConfigs[opts.WerckerContainerRegistry.String()] = zz.AuthConfig{
+		dockerConfig.AuthConfigs[opts.WerckerContainerRegistry.String()] = types.AuthConfig{
 			Username: "token",
 			Password: opts.AuthToken,
 		}
@@ -28,6 +28,8 @@ func ensureWerckerCredentials(c *cli.Context, opts *core.WerckerDockerOptions) {
 		if err != nil {
 			fmt.Errorf("Couldn't save: %v", err)
 		}
+		fmt.Println(":-((((((((")
+
 	}
 }
 
@@ -42,4 +44,3 @@ func runDocker(args []string) error {
 	io.Copy(os.Stdout, outFile)
 	return nil
 }
-
