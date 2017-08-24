@@ -29,7 +29,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/image"
