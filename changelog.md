@@ -1,5 +1,9 @@
 ## unreleased
 
+
+
+## v1.0.965 (2017-08-23)
+
 - Change compilation in separate wercker steps (#331)
 - Add retry and exponential backoff for fetching step metadata and step tarball
   (#330)
