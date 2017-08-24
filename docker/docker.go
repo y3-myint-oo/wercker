@@ -39,6 +39,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/pborman/uuid"
 	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/auth"
@@ -349,8 +350,8 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 	}
 	defer layerFile.Close()
 
-	dgst := digest.Canonical.New()
-	mwriter := io.MultiWriter(layerFile, dgst.Hash())
+	digester := digest.Canonical.Digester()
+	mwriter := io.MultiWriter(layerFile, digester.Hash())
 
 	tr := tar.NewReader(artifactReader)
 	tw := tar.NewWriter(mwriter)
@@ -388,8 +389,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		}
 	}
 
-	digest := dgst.Digest()
-
 	config := &container.Config{
 		Cmd:          s.cmd,
 		Entrypoint:   s.entrypoint,
@@ -419,7 +418,7 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		History: []image.History{image.History{Created: t}},
 		RootFS: &image.RootFS{
 			Type:    "layers",
-			DiffIDs: []layer.DiffID{layer.DiffID(digest)},
+			DiffIDs: []layer.DiffID{layer.DiffID(digester.Digest())},
 		},
 	}
 
