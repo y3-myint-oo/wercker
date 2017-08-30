@@ -6,16 +6,17 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/codegangsta/cli"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/docker/api/types"
 	"github.com/kr/pty"
 	"github.com/wercker/wercker/core"
 )
 
-func ensureWerckerCredentials(c *cli.Context, opts *core.WerckerDockerOptions) error {
+var errNoWerckerToken = fmt.Errorf("Wercker auth token could not be found, please run wercker login")
+
+func ensureWerckerCredentials(opts *core.WerckerDockerOptions) error {
 	if opts.AuthToken == "" {
-		return fmt.Errorf("Wercker auth token could not be found, please run wercker login")
+		return errNoWerckerToken
 	}
 	dockerConfig := config.LoadDefaultConfigFile(os.Stderr)
 	_, hasAuth := dockerConfig.AuthConfigs[opts.WerckerContainerRegistry.String()]

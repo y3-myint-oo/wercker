@@ -336,7 +336,7 @@ var (
 				os.Exit(1)
 			}
 
-			err = ensureWerckerCredentials(c, opts)
+			err = ensureWerckerCredentials(opts)
 			if err != nil {
 				cliLogger.Errorln("Error ensuring wercker credentials: \n", err)
 				os.Exit(1)
