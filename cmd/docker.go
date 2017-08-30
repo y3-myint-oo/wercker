@@ -26,7 +26,7 @@ func ensureWerckerCredentials(c *cli.Context, opts *core.WerckerDockerOptions) {
 		}
 		err := dockerConfig.Save()
 		if err != nil {
-			fmt.Errorf("Couldn't save: %v", err)
+			fmt.Printf("Couldn't save docker config: %v", err)
 		}
 		fmt.Println(":-((((((((")
 
