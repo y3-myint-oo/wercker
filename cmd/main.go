@@ -329,19 +329,18 @@ var (
 		SkipFlagParsing: true,
 		Action: func(c *cli.Context) {
 			settings := util.NewCLISettings(c)
-			fmt.Printf("settings:\n%+v\n", settings)
 			env := util.NewEnvironment(os.Environ()...)
-			fmt.Printf("env:\n%+v\n", env)
 			opts, err := core.NewWerckerDockerOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("opts:\n%+v\n", opts)
 
-			// TODO: work out how to Load Options e.g wcr-url
-			// TODO: re-use flags from another command, or make a fresh one?
-			ensureWerckerCredentials(c, opts)
+			err = ensureWerckerCredentials(c, opts)
+			if err != nil {
+				cliLogger.Errorln("Error ensuring wercker credentials: \n", err)
+				os.Exit(1)
+			}
 			runDocker(os.Args[2:])
 		},
 		Flags: FlagsFor(WerckerDockerFlagSet),
@@ -1314,4 +1313,3 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 
 	return shared, nil
 }
-

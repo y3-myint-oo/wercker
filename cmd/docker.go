@@ -13,24 +13,23 @@ import (
 	"github.com/wercker/wercker/core"
 )
 
-func ensureWerckerCredentials(c *cli.Context, opts *core.WerckerDockerOptions) {
-	fmt.Println("IMPLEMENT ME!!!")
+func ensureWerckerCredentials(c *cli.Context, opts *core.WerckerDockerOptions) error {
+	if opts.AuthToken == "" {
+		return fmt.Errorf("Wercker auth token could not be found, please run wercker login")
+	}
 	dockerConfig := config.LoadDefaultConfigFile(os.Stderr)
-	werckerAuth, hasAuth := dockerConfig.AuthConfigs[opts.WerckerContainerRegistry.String()]
-	if hasAuth {
-		fmt.Printf("WE HAVE WERCKER AUTH!!!!\n%+v\n", werckerAuth)
-	} else {
+	_, hasAuth := dockerConfig.AuthConfigs[opts.WerckerContainerRegistry.String()]
+	if !hasAuth {
 		dockerConfig.AuthConfigs[opts.WerckerContainerRegistry.String()] = types.AuthConfig{
 			Username: "token",
 			Password: opts.AuthToken,
 		}
 		err := dockerConfig.Save()
 		if err != nil {
-			fmt.Printf("Couldn't save docker config: %v", err)
+			return fmt.Errorf("Could not inject wercker token into docker config %v", err)
 		}
-		fmt.Println(":-((((((((")
-
 	}
+	return nil
 }
 
 func runDocker(args []string) error {
