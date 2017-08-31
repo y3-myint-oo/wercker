@@ -38,8 +38,8 @@ func (s *TestSuite) SetupTest() {
 // TearDownTest cleans up our working dir if we made one
 func (s *TestSuite) TearDownTest() {
 	if s.workingDir != "" {
-		s.workingDir = ""
 		err := os.RemoveAll(s.WorkingDir())
+		s.workingDir = ""
 		if err != nil {
 			s.T().Error(err.Error())
 		}
