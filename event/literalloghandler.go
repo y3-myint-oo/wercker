@@ -15,7 +15,7 @@
 package event
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/wercker/reporter-client"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"

@@ -17,6 +17,8 @@ package util
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -24,9 +26,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/wercker/reporter-client"
+	"golang.org/x/crypto/ssh/terminal"
 )
+
+func isTerminal(w io.Writer) bool {
+	switch v := w.(type) {
+	case *os.File:
+		return terminal.IsTerminal(int(v.Fd()))
+	default:
+		return false
+	}
+}
 
 // Logger is a wrapper for logrus so that we don't have to keep referring
 // to its types everywhere and can add helpers
@@ -112,7 +124,7 @@ func (f *TerseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	b := &bytes.Buffer{}
 
-	isColored := (f.ForceColors || isTerminal) && !f.DisableColors
+	isColored := (f.ForceColors || isTerminal(entry.Logger.Out)) && !f.DisableColors
 	showLevel := true
 
 	var levelColor int
@@ -161,13 +173,11 @@ const (
 
 var (
 	baseTimestamp time.Time
-	isTerminal    bool
 	noQuoteNeeded *regexp.Regexp
 )
 
 func init() {
 	baseTimestamp = time.Now()
-	isTerminal = logrus.IsTerminal()
 }
 
 // This is to not silently overwrite `time`, `msg` and `level` fields when
@@ -226,7 +236,7 @@ func (f *VerboseFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	prefixFieldClashes(entry.Data)
 
-	isColored := (f.ForceColors || isTerminal) && !f.DisableColors
+	isColored := (f.ForceColors || isTerminal(entry.Logger.Out)) && !f.DisableColors
 
 	if isColored {
 		printColored(b, entry, keys)
