@@ -1,5 +1,6 @@
 ## unreleased
 - Update dependencies, as a result of `Sirupsen/logrus` -> `sirupsen/logrus` (#333)
+- Add a Docker subcommand (#335)
 
 ## v1.0.965 (2017-08-23)
 

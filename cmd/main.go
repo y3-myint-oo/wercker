@@ -322,6 +322,29 @@ var (
 			},
 		}
 	}
+
+	dockerCommand = cli.Command{
+		Name:            "docker",
+		Usage:           "docker <docker-command> <args>...",
+		SkipFlagParsing: true,
+		Action: func(c *cli.Context) {
+			settings := util.NewCLISettings(c)
+			env := util.NewEnvironment(os.Environ()...)
+			opts, err := core.NewWerckerDockerOptions(settings, env)
+			if err != nil {
+				cliLogger.Errorln("Invalid options\n", err)
+				os.Exit(1)
+			}
+
+			err = ensureWerckerCredentials(opts)
+			if err != nil {
+				cliLogger.Errorln("Error ensuring wercker credentials:\n", err)
+				os.Exit(1)
+			}
+			runDocker(os.Args[2:])
+		},
+		Flags: FlagsFor(WerckerDockerFlagSet),
+	}
 )
 
 func GetApp() *cli.App {
@@ -349,6 +372,7 @@ func GetApp() *cli.App {
 		pullCommand,
 		versionCommand,
 		documentCommand(app),
+		dockerCommand,
 	}
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {

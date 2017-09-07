@@ -248,6 +248,11 @@ var (
 		KeenFlags,
 		ReporterFlags,
 	}
+
+	WerckerDockerFlagSet = [][]cli.Flag{
+		AuthFlags,
+		WerckerFlags,
+	}
 )
 
 func FlagsFor(flagSets ...[][]cli.Flag) []cli.Flag {
