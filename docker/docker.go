@@ -862,6 +862,8 @@ func InferRegistry(repository string, opts dockerauth.CheckAccessOptions, pipeli
 	if repository == "" {
 		repository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
 	}
+	// Docker repositories must be lowercase
+	repository = strings.ToLower(repository)
 
 	if opts.Registry == "" {
 		x, _ := reference.ParseNormalizedNamed(repository)

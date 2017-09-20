@@ -60,6 +60,7 @@ func (s *PushSuite) TestInferRegistry() {
 		{"", "appowner/appname", "", "appowner/appname"},
 		{"", "", testWerckerRegistry.String() + "/", testWerckerRegistry.Host + "/appowner/appname"},
 		{"", "someregistry.com/appowner/appname", "https://someregistry.com/v2/", "someregistry.com/appowner/appname"},
+		{"", "appOWNER/appname", "", "appowner/appname"},
 	}
 
 	for _, tt := range repoTests {
