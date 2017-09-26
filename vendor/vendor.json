@@ -2000,10 +2000,10 @@
 			"revisionTime": "2017-07-07T00:42:18Z"
 		},
 		{
-			"checksumSHA1": "P8Q2UxUgqp1AIGjig7OY9ij5Nis=",
+			"checksumSHA1": "lO+0ecsudJB/OWHMYlWYcsorkLg=",
 			"path": "github.com/wercker/docker-check-access",
-			"revision": "1729b20dbc5648680310c3f8854399486bd4e4ef",
-			"revisionTime": "2017-09-26T20:18:38Z",
+			"revision": "03868a8affb23f5e6ce5ba5460dd7eeeb72954aa",
+			"revisionTime": "2017-09-26T20:27:52Z",
 			"version": "test-registry",
 			"versionExact": "test-registry"
 		},
