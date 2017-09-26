@@ -2008,11 +2008,6 @@
 			"versionExact": "test-registry"
 		},
 		{
-			"path": "github.com/wercker/docker-check-acess",
-			"revision": "test-registry",
-			"version": "test-registry"
-		},
-		{
 			"checksumSHA1": "rpIHxVmXHbM31S0S/2qE1kAvzfw=",
 			"path": "github.com/wercker/docker-reg-client/registry",
 			"revision": "290be6ffcbe21d8097a4124bb630bbf4a52d9e7e",
