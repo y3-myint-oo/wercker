@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"os"
 	"os/signal"
@@ -29,6 +30,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/image"
@@ -881,6 +883,7 @@ func InferRegistry(repository string, opts dockerauth.CheckAccessOptions, pipeli
 func (s *DockerPushStep) InitEnv(env *util.Environment) {
 	s.configure(env)
 	opts := s.buildAutherOpts(env)
+	log.Println(spew.Sdump(opts))
 	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
 	s.authenticator = auther
 }
