@@ -178,6 +178,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		DNS:          b.dockerOptions.DNS,
 		PortBindings: portBindings(portsToBind),
 		Links:        links,
+		ShmSize:      512 * 1024 * 1024,
 	}
 
 	if len(binds) > 0 {
