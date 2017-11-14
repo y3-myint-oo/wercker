@@ -32,18 +32,19 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// StepDesc represents a wercker-step.yml
+// StepDesc represents a step.yml
 type StepDesc struct {
 	Name        string
 	Version     string
 	Description string
 	Keywords    []string
-	Properties  map[string]StepDescProperty
+	Properties  []StepDescProperty
 }
 
 // StepDescProperty is the structure of the values in the "properties"
 // section of the config
 type StepDescProperty struct {
+	Name     string
 	Default  string
 	Required bool
 	Type     string
@@ -71,8 +72,8 @@ func (sc *StepDesc) Defaults() map[string]string {
 	if sc == nil || sc.Properties == nil {
 		return m
 	}
-	for k, v := range sc.Properties {
-		m[k] = v.Default
+	for _, v := range sc.Properties {
+		m[v.Name] = v.Default
 	}
 	return m
 }
@@ -413,10 +414,10 @@ func (s *ExternalStep) Fetch() (string, error) {
 	}
 
 	// Now that we have the code, load any step config we might find
-	desc, err := ReadStepDesc(s.HostPath("wercker-step.yml"))
+	desc, err := ReadStepDesc(s.HostPath("step.yml"))
 	if err != nil && !os.IsNotExist(err) {
 		// TODO(termie): Log an error instead of printing
-		s.logger.Println("ERROR: Reading wercker-step.yml:", err)
+		s.logger.Println("ERROR: Reading step.yml:", err)
 	}
 	if err == nil {
 		s.stepDesc = desc
