@@ -1,4 +1,8 @@
 ## unreleased
+
+
+## v1.0.1049 (2017-11-15)
+
 - Update dependencies, as a result of `Sirupsen/logrus` -> `sirupsen/logrus` (#333)
 - Add a Docker subcommand (#335)
 - Ensure repository names are always lowercase (#338)
