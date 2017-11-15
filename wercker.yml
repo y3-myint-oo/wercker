@@ -87,6 +87,12 @@ deploy:
   box: ubuntu
   steps:
     - script:
+        name: update certs
+        code: |
+            sudo apt-get update -y
+            sudo apt-get install ca-certificates -y
+
+    - script:
         name: prepare
         code: |
             echo $WERCKER_GIT_COMMIT > ./artifacts/HEAD
