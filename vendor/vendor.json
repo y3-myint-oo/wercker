@@ -748,6 +748,24 @@
 			"revisionTime": "2017-08-23T07:13:08Z"
 		},
 		{
+			"checksumSHA1": "4/Zm2a00DOFQfN3JF2AvByopoxg=",
+			"path": "github.com/docker/docker/builder/dockerfile/command",
+			"revision": "a8cefcf6af6c6bfa1d60a2d9deb80a01ce008690",
+			"revisionTime": "2017-11-03T18:58:20Z"
+		},
+		{
+			"checksumSHA1": "4AHCtn3+bTFStcUqoZazFbJWvdk=",
+			"path": "github.com/docker/docker/builder/dockerfile/instructions",
+			"revision": "a8cefcf6af6c6bfa1d60a2d9deb80a01ce008690",
+			"revisionTime": "2017-11-03T18:58:20Z"
+		},
+		{
+			"checksumSHA1": "6br68WsCJPo9B42rdqg8R2+v3UI=",
+			"path": "github.com/docker/docker/builder/dockerfile/parser",
+			"revision": "a8cefcf6af6c6bfa1d60a2d9deb80a01ce008690",
+			"revisionTime": "2017-11-03T18:58:20Z"
+		},
+		{
 			"checksumSHA1": "k2YA+AlVpmsyrfkbruYaw9jRhpo=",
 			"path": "github.com/docker/docker/daemon/cluster/convert",
 			"revision": "88c0317e23449d6ff730a1073f240586cbdfd4ba",
@@ -782,6 +800,12 @@
 			"path": "github.com/docker/docker/image",
 			"revision": "88c0317e23449d6ff730a1073f240586cbdfd4ba",
 			"revisionTime": "2017-08-23T07:13:08Z"
+		},
+		{
+			"checksumSHA1": "7RnG5/tGTNdhl1285R2UxgCAOgE=",
+			"path": "github.com/docker/docker/internal/testutil",
+			"revision": "a8cefcf6af6c6bfa1d60a2d9deb80a01ce008690",
+			"revisionTime": "2017-11-03T18:58:20Z"
 		},
 		{
 			"checksumSHA1": "l2X7fHCsgCQRFHVDNxEQ0MSZpt4=",
@@ -1522,6 +1546,18 @@
 			"revisionTime": "2016-04-24T11:30:07Z"
 		},
 		{
+			"checksumSHA1": "53VxaAwfETUqY0MvaU5bCeV4xSs=",
+			"path": "github.com/moby/moby/builder/dockerfile/instructions",
+			"revision": "a8cefcf6af6c6bfa1d60a2d9deb80a01ce008690",
+			"revisionTime": "2017-11-03T18:58:20Z"
+		},
+		{
+			"checksumSHA1": "8SrOQfOOpUOyd4P2CnxN74z2tQ0=",
+			"path": "github.com/moby/moby/builder/dockerfile/parser",
+			"revision": "a8cefcf6af6c6bfa1d60a2d9deb80a01ce008690",
+			"revisionTime": "2017-11-03T18:58:20Z"
+		},
+		{
 			"checksumSHA1": "2/5+3QWAReoUSNpaURIN2YoqBJo=",
 			"path": "github.com/monochromegane/go-gitignore",
 			"revision": "38717d0a108ca0e5af632cd6845ca77d45b50729",
@@ -1830,10 +1866,10 @@
 			"revisionTime": "2017-02-23T02:47:09Z"
 		},
 		{
-			"checksumSHA1": "RmL9wD49aRz+vCugwed0ccVTMeY=",
+			"checksumSHA1": "68Hs+dI0PjnG9cnNb/tL3xW+v+g=",
 			"path": "github.com/pkg/errors",
-			"revision": "c605e284fe17294bda444b34710735b29d1a9d90",
-			"revisionTime": "2017-05-05T04:36:39Z"
+			"revision": "f15c970de5b76fac0b59abb32d62c17cc7bed265",
+			"revisionTime": "2017-10-18T19:55:50Z"
 		},
 		{
 			"checksumSHA1": "RZOdTSZN/PgcTqko5LzIAzw+UT4=",

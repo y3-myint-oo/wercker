@@ -373,6 +373,7 @@ func GetApp() *cli.App {
 		versionCommand,
 		documentCommand(app),
 		dockerCommand,
+		dockerfileCommand,
 	}
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {
