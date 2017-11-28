@@ -35,15 +35,13 @@ docker-v2:
     id: node
     username: "superuser"
     password: "supersecure"
-    registry : "https://registry-1.docker.io"
-
 
 docker:
   box:
     id: node
     username: "superuser"
     password: "supersecure"
-
+    registry : "https://index.docker.io/v1"
 
 azure:
   box:

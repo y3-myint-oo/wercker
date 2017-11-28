@@ -45,7 +45,7 @@ func (a *CheckAccessOptions) Interpolate(env *util.Environment) {
 }
 
 const (
-	DockerRegistryV2 = "https://registry-1.docker.io"
+	DockerRegistryV2 = "https://index.docker.io/v2/"
 )
 
 var ErrNoAuthenticator = errors.New("Unable to make authenticator for this registry")
@@ -54,7 +54,7 @@ func NormalizeRegistry(address string) string {
 	logger := util.RootLogger().WithField("Logger", "Docker")
 	if address == "" {
 		logger.Debugln("No registry address provided, using https://registry.hub.docker.com")
-		return "https://registry.hub.docker.com/v1/"
+		return DockerRegistryV2
 	}
 
 	parsed, err := url.Parse(address)
@@ -71,11 +71,6 @@ func NormalizeRegistry(address string) string {
 		address = address[:len(address)-1]
 	}
 
-	// since its not painfully obvious that someone specified a docker hub registry v2 url we need to check explitcly and return it
-	if address == DockerRegistryV2 {
-		ret := DockerRegistryV2 + "/v2/"
-		return ret
-	}
 	parts := strings.Split(address, "/")
 	possiblyAPIVersionStr := parts[len(parts)-1]
 

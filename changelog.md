@@ -1,5 +1,6 @@
 ## unreleased
 
+- Default docker hub push to registry V2 (#348)
 
 ## v1.0.1049 (2017-11-15)
 
