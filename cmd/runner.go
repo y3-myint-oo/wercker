@@ -81,7 +81,6 @@ type Runner struct {
 	options       *core.PipelineOptions
 	dockerOptions *dockerlocal.Options
 	literalLogger *event.LiteralLogHandler
-	metrics       *event.MetricsEventHandler
 	reporter      *event.ReportHandler
 	getPipeline   pipelineGetter
 	logger        *util.LogEntry
@@ -113,15 +112,6 @@ func NewRunner(ctx context.Context, options *core.PipelineOptions, dockerOptions
 	}
 	l.ListenTo(e)
 
-	var mh *event.MetricsEventHandler
-	if options.ShouldKeenMetrics {
-		mh, err = event.NewMetricsHandler(options)
-		if err != nil {
-			logger.WithField("Error", err).Panic("Unable to MetricsHandler")
-		}
-		mh.ListenTo(e)
-	}
-
 	var r *event.ReportHandler
 	if options.ShouldReport {
 		r, err := event.NewReportHandler(options.ReporterHost, options.ReporterKey)
@@ -135,7 +125,6 @@ func NewRunner(ctx context.Context, options *core.PipelineOptions, dockerOptions
 		options:       options,
 		dockerOptions: dockerOptions,
 		literalLogger: l,
-		metrics:       mh,
 		reporter:      r,
 		getPipeline:   getPipeline,
 		logger:        logger,

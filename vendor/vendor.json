@@ -1480,12 +1480,6 @@
 			"revisionTime": "2016-03-11T17:04:51Z"
 		},
 		{
-			"checksumSHA1": "lSsPWSWtQzRJe1mqJNZLTA5JvX0=",
-			"path": "github.com/inconshreveable/go-keen",
-			"revision": "3b8ced996823fd0f94a2f0f1a8c4a991c73463b7",
-			"revisionTime": "2014-12-01T20:35:52Z"
-		},
-		{
 			"checksumSHA1": "TDeiKiCXvRCyaC5uBryv5Av5SMk=",
 			"path": "github.com/jmespath/go-jmespath",
 			"revision": "bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d",

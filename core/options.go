@@ -248,38 +248,6 @@ func NewGitOptions(c util.Settings, e *util.Environment, globalOpts *GlobalOptio
 	}, nil
 }
 
-// KeenOptions for our metrics
-type KeenOptions struct {
-	*GlobalOptions
-	KeenProjectID       string
-	KeenProjectWriteKey string
-	ShouldKeenMetrics   bool
-}
-
-// NewKeenOptions constructor
-func NewKeenOptions(c util.Settings, e *util.Environment, globalOpts *GlobalOptions) (*KeenOptions, error) {
-	keenMetrics, _ := c.Bool("keen-metrics")
-	keenProjectWriteKey, _ := c.String("keen-project-write-key")
-	keenProjectID, _ := c.String("keen-project-id")
-
-	if keenMetrics {
-		if keenProjectWriteKey == "" {
-			return nil, errors.New("keen-project-write-key is required")
-		}
-
-		if keenProjectID == "" {
-			return nil, errors.New("keen-project-id is required")
-		}
-	}
-
-	return &KeenOptions{
-		GlobalOptions:       globalOpts,
-		KeenProjectID:       keenProjectID,
-		KeenProjectWriteKey: keenProjectWriteKey,
-		ShouldKeenMetrics:   keenMetrics,
-	}, nil
-}
-
 // ReporterOptions for our reporting
 type ReporterOptions struct {
 	*GlobalOptions
@@ -327,7 +295,6 @@ type PipelineOptions struct {
 	*AWSOptions
 	// *DockerOptions
 	*GitOptions
-	*KeenOptions
 	*ReporterOptions
 
 	// TODO(termie): i'd like to remove this, it is only used in a couple
@@ -516,11 +483,6 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		return nil, err
 	}
 
-	keenOpts, err := NewKeenOptions(c, e, globalOpts)
-	if err != nil {
-		return nil, err
-	}
-
 	reporterOpts, err := NewReporterOptions(c, e, globalOpts)
 	if err != nil {
 		return nil, err
@@ -600,7 +562,6 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		AWSOptions:    awsOpts,
 		// DockerOptions:   dockerOpts,
 		GitOptions:      gitOpts,
-		KeenOptions:     keenOpts,
 		ReporterOptions: reporterOpts,
 
 		HostEnv: e,

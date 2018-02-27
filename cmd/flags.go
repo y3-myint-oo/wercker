@@ -164,13 +164,6 @@ var (
 		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "AWS region to use for artifact storage."},
 	}
 
-	// keen.io bits
-	KeenFlags = []cli.Flag{
-		cli.BoolFlag{Name: "keen-metrics", Usage: "Report metrics to keen.io.", Hidden: true},
-		cli.StringFlag{Name: "keen-project-write-key", Value: "", Usage: "Keen write key.", Hidden: true},
-		cli.StringFlag{Name: "keen-project-id", Value: "", Usage: "Keen project id.", Hidden: true},
-	}
-
 	// Wercker Reporter settings
 	ReporterFlags = []cli.Flag{
 		cli.BoolFlag{Name: "report", Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token).", Hidden: true},
@@ -250,7 +243,6 @@ var (
 
 	WerckerInternalFlagSet = [][]cli.Flag{
 		InternalPathFlags,
-		KeenFlags,
 		ReporterFlags,
 	}
 
