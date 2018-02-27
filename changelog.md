@@ -1,5 +1,9 @@
 ## unreleased
 
+## v1.0.1153 (2018-02-27)
+
+- Remove Keen dependencies (#354)
+
 ## v1.0.1062 (2017-11-28)
 
 - Default docker hub push to registry V2 (#348)
