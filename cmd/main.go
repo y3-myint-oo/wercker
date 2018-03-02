@@ -549,6 +549,14 @@ outer:
 		case filepath.Ext(f.Name()) == ".go":
 			detected = "golang"
 			break outer
+
+        case f.Name() == "pom.xml":
+            detected = "java-maven"
+            break outer
+
+        case filepath.Ext(f.Name()) == ".gradle", f.Name() == "gradlew":
+            detected = "java-gradle"
+            break outer
 		}
 	}
 	if detected == "" {
