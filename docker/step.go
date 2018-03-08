@@ -32,6 +32,9 @@ func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptio
 	if config.ID == "internal/docker-scratch-push" {
 		return NewDockerScratchPushStep(config, options, dockerOptions)
 	}
+	if config.ID == "internal/docker-build" {
+		return NewDockerBuildStep(config, options, dockerOptions)
+	}
 	if config.ID == "internal/store-container" {
 		return NewStoreContainerStep(config, options, dockerOptions)
 	}
