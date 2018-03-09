@@ -632,10 +632,10 @@ type DockerPushStep struct {
 	logger        *util.LogEntry
 	workingDir    string
 	authenticator auth.Authenticator
-	// id is the Image name or ID of an existing image
-	// if id is set then this image is tagged and pushed (equivalent to "docker push")
-	// if id is not set then the pipeline container is committed, tagged and pushed (classic behaviour)
-	id string
+	// image is the Image name or ID of an existing image
+	// if image is set then this image is tagged and pushed (equivalent to "docker push")
+	// if image is not set then the pipeline container is committed, tagged and pushed (classic behaviour)
+	image string
 }
 
 // NewDockerPushStep is a special step for doing docker pushes
@@ -782,8 +782,8 @@ func (s *DockerPushStep) configure(env *util.Environment) {
 		s.forceTags = true
 	}
 
-	if id, ok := s.data["id"]; ok {
-		s.id = env.Interpolate(id)
+	if image, ok := s.data["image"]; ok {
+		s.image = env.Interpolate(image)
 	}
 }
 
@@ -951,7 +951,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	}
 
 	var imageID string
-	if s.id == "" {
+	if s.image == "" {
 		// id is not set, so commit, tag and push the pipeline container
 
 		commitOpts := docker.CommitContainerOptions{
@@ -977,7 +977,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		imageID = i.ID
 	} else {
 		// id is set to the name or ID of an existing image which will be tagged and pushed (equivalent to "docker push")
-		imageID = s.id
+		imageID = s.image
 	}
 	return s.tagAndPush(imageID, e, client)
 }
