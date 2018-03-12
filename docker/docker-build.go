@@ -20,12 +20,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/google/shlex"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pborman/uuid"
-	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
@@ -37,27 +38,14 @@ type DockerBuildStep struct {
 	options       *core.PipelineOptions
 	dockerOptions *Options
 	data          map[string]string
-	email         string
-	env           []string
-	stopSignal    string
-	builtInPush   bool
-	labels        map[string]string
-	user          string
-	authServer    string
-	repository    string
-	author        string
-	message       string
 	tags          []string
-	ports         map[docker.Port]struct{}
-	volumes       map[string]struct{}
-	cmd           []string
-	entrypoint    []string
-	forceTags     bool
 	logger        *util.LogEntry
-	workingDir    string
-	authenticator auth.Authenticator
-
-	dockerfile string
+	dockerfile    string
+	extrahosts    []string
+	q             bool
+	squash        bool
+	buildargs     []docker.BuildArg
+	labels        map[string]string
 }
 
 // NewDockerBuildStep is a special step for doing docker builds
@@ -104,6 +92,82 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 	if dockerfile, ok := s.data["dockerfile"]; ok {
 		s.dockerfile = env.Interpolate(dockerfile)
 	}
+
+	if labelsProp, ok := s.data["labels"]; ok {
+		parsedLabels, err := shlex.Split(labelsProp)
+		if err == nil {
+			labelMap := make(map[string]string)
+			for _, labelPair := range parsedLabels {
+				pair := strings.Split(labelPair, "=")
+				labelMap[env.Interpolate(pair[0])] = env.Interpolate(pair[1])
+			}
+			s.labels = labelMap
+		}
+	}
+
+	if buildargsProp, ok := s.data["buildargs"]; ok {
+		parsedArgs, err := shlex.Split(buildargsProp)
+		if err == nil {
+			argMap := make(map[string]string)
+			var buildArgs = make([]docker.BuildArg, len(parsedArgs))
+			for i, labelPair := range parsedArgs {
+				pair := strings.Split(labelPair, "=")
+				argMap[env.Interpolate(pair[0])] = env.Interpolate(pair[1])
+				buildArgs[i] = docker.BuildArg{Name: pair[0], Value: pair[1]}
+			}
+			s.buildargs = buildArgs
+		}
+	}
+
+	if qProp, ok := s.data["q"]; ok {
+		q, err := strconv.ParseBool(qProp)
+		if err == nil {
+			s.q = q
+		} else {
+			// bad value, default to false (verbose)
+			s.q = true
+		}
+	} else {
+		// not set, default to false (verbose)
+		s.q = true
+	}
+
+	if extrahostsProp, ok := s.data["extrahosts"]; ok {
+		parsedExtrahosts, err := shlex.Split(extrahostsProp)
+		if err == nil {
+			interpolatedExtrahosts := make([]string, len(parsedExtrahosts))
+			for i, thisExtrahost := range parsedExtrahosts {
+				interpolatedExtrahosts[i] = env.Interpolate(thisExtrahost)
+			}
+			s.extrahosts = interpolatedExtrahosts
+		}
+	}
+
+	if squashProp, ok := s.data["squash"]; ok {
+		squash, err := strconv.ParseBool(squashProp)
+		if err == nil {
+			s.squash = squash
+		} else {
+			// bad value, default to false (do not squash)
+			s.squash = false
+		}
+	} else {
+		// not set, default to false (do not squash)
+		s.squash = false
+	}
+
+	if labelsProp, ok := s.data["labels"]; ok {
+		parsedLabels, err := shlex.Split(labelsProp)
+		if err == nil {
+			labelMap := make(map[string]string)
+			for _, labelPair := range parsedLabels {
+				pair := strings.Split(labelPair, "=")
+				labelMap[env.Interpolate(pair[0])] = env.Interpolate(pair[1])
+			}
+			s.labels = labelMap
+		}
+	}
+
 }
 
 // InitEnv parses our data into our config
@@ -154,8 +218,6 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		return 1, err
 	}
 
-	s.tags = s.buildTags()
-
 	// Create an io.Writer to which the BuildImage API call will write build status messages
 	// EmitBuildStatus will emit these messages as Log messages
 	r, w := io.Pipe()
@@ -166,10 +228,15 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 	tarReader := bufio.NewReader(tarFile)
 
 	buildOpts := docker.BuildImageOptions{
-		Dockerfile:   s.dockerfile,
-		InputStream:  tarReader,
-		OutputStream: w,
-		Name:         s.tags[0], // go-dockerclient only allows us to set one tag
+		Dockerfile:     s.dockerfile,
+		InputStream:    tarReader,
+		OutputStream:   w,
+		Name:           s.tags[0], // go-dockerclient only allows us to set one tag
+		BuildArgs:      s.buildargs,
+		SuppressOutput: s.q,
+		// cannot set Labels paramater as it is not supported by BuildImageOptions
+		// cannot set Extrahosts paramater as it is not supported by BuildImageOptions
+		// cannot set Squash parameter as it is not supported by BuildImageOptions
 	}
 
 	s.logger.Debugln("Build image")
@@ -184,16 +251,6 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 
 	s.logger.Debug("Image built")
 	return 0, nil
-}
-
-func (s *DockerBuildStep) buildTags() []string {
-	if len(s.tags) == 0 && !s.builtInPush {
-		s.tags = []string{"latest"}
-	} else if len(s.tags) == 0 && s.builtInPush {
-		gitTag := fmt.Sprintf("%s-%s", s.options.GitBranch, s.options.GitCommit)
-		s.tags = []string{"latest", gitTag}
-	}
-	return s.tags
 }
 
 // CollectFile NOP
