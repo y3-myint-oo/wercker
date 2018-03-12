@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+// Copyright 2016, 2018 Oracle and/or its affliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -28,6 +28,9 @@ func NewStep(config *core.StepConfig, options *core.PipelineOptions, dockerOptio
 	// NOTE(termie) Special case steps are special
 	if config.ID == "internal/docker-push" {
 		return NewDockerPushStep(config, options, dockerOptions)
+	}
+	if config.ID == "internal/docker-kill" {
+		return NewDockerKillStep(config, options, dockerOptions)
 	}
 	if config.ID == "internal/docker-scratch-push" {
 		return NewDockerScratchPushStep(config, options, dockerOptions)
