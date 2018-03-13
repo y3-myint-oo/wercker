@@ -27,12 +27,15 @@ type DockerKillStep struct {
 	logger          *util.LogEntry
 	options         *core.PipelineOptions
 	dockerOptions   *Options
-	containerToKill string
+	containerName   string
 }
 //NewDockerKillStep is a special step for killing and removing container.
 func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*DockerKillStep, error) {
 	name := "docker-kill"
 	displayName := "docker kill"
+	if stepConfig.Name != "" {
+		displayName = stepConfig.Name
+	}
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
 	baseStep := core.NewBaseStep(core.BaseStepOptions{
@@ -46,14 +49,17 @@ func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOption
 	})
 	return &DockerKillStep{
 		BaseStep:        baseStep,
-		logger:          util.RootLogger().WithField("Logger", "DockerPushStep"),
+		data:            stepConfig.Data,
+		logger:          util.RootLogger().WithField("Logger", "DockerKillStep"),
 		options:         options,
 		dockerOptions:   dockerOptions,
-		containerToKill: stepConfig.Name,
 	}, nil
 }
 // InitEnv parses our data into our config
 func (s *DockerKillStep) InitEnv(env *util.Environment) {
+	if containerName, ok := s.data["containerName"]; ok {
+		s.containerName = containerName
+	}
 }
 // Fetch NOP
 func (s *DockerKillStep) Fetch() (string, error) {
@@ -67,27 +73,24 @@ func (s *DockerKillStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	if err != nil {
 		return 1, err
 	}
-	_, err = core.EmitterFromContext(ctx) //TODO check return type usage
-	if err != nil {
-		return 1, err
-	}
+
 	killOpts := docker.KillContainerOptions{
-		ID: s.containerToKill,
+		ID: s.containerName,
 	}
-	s.logger.Debugln("kill container:", s.containerToKill)
+	s.logger.Debugln("kill container:", s.containerName)
 	err = client.KillContainer(killOpts)
 	if err != nil {
 		return -1, err
 	}
 	removeContainerOpts := docker.RemoveContainerOptions{
-		ID: s.containerToKill,
+		ID: s.containerName,
 	}
-	s.logger.Debugln("Remove container:", s.containerToKill)
+	s.logger.Debugln("Remove container:", s.containerName)
 	err = client.RemoveContainer(removeContainerOpts)
 	if err != nil {
 		return -1, err
 	}
-	s.logger.WithField("Container", s.containerToKill).Debug("Docker-kill completed")
+	s.logger.WithField("Container", s.containerName).Debug("Docker-kill completed")
 	return 0, nil
 }
 // CollectFile NOP
