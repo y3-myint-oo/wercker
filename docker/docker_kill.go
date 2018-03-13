@@ -58,7 +58,7 @@ func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOption
 }
 // InitEnv parses our data into our config
 func (s *DockerKillStep) InitEnv(env *util.Environment) {
-	if containerName, ok := s.data["containerName"]; ok {
+	if containerName, ok := s.data["container-name"]; ok {
 		s.containerName = env.Interpolate(containerName)
 	}
 }
