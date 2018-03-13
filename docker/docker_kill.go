@@ -27,6 +27,7 @@ type DockerKillStep struct {
 	logger          *util.LogEntry
 	options         *core.PipelineOptions
 	dockerOptions   *Options
+	data            map[string]string
 	containerName   string
 }
 //NewDockerKillStep is a special step for killing and removing container.
@@ -58,7 +59,7 @@ func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOption
 // InitEnv parses our data into our config
 func (s *DockerKillStep) InitEnv(env *util.Environment) {
 	if containerName, ok := s.data["containerName"]; ok {
-		s.containerName = containerName
+		s.containerName = env.Interpolate(containerName)
 	}
 }
 // Fetch NOP
