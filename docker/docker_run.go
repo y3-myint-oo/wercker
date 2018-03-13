@@ -17,10 +17,11 @@ package dockerlocal
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/google/shlex"
 	"github.com/pborman/uuid"
-	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
@@ -28,28 +29,21 @@ import (
 
 type DockerRunStep struct {
 	*core.BaseStep
-	options       *core.PipelineOptions
-	dockerOptions *Options
-	data          map[string]string
-	email         string
-	env           []string
-	stopSignal    string
-	builtInPush   bool
-	labels        map[string]string
-	user          string
-	authServer    string
-	repository    string
-	author        string
-	message       string
-	tags          []string
-	ports         map[docker.Port]struct{}
-	volumes       map[string]struct{}
-	cmd           []string
-	entrypoint    []string
-	forceTags     bool
-	logger        *util.LogEntry
-	workingDir    string
-	authenticator auth.Authenticator
+	options         *core.PipelineOptions
+	dockerOptions   *Options
+	data            map[string]string
+	env             []string
+	logger          *util.LogEntry
+	cmd             []string
+	entrypoint      []string
+	workingDir      string
+	portBindings    map[docker.Port][]docker.PortBinding
+	exposedPorts    map[docker.Port]struct{}
+	user            string
+	containerName   string
+	networkDisabled bool
+	image           string
+	links           []string
 }
 
 // NewDockerRunStep is a special step for doing docker pushes
@@ -84,14 +78,80 @@ func NewDockerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions
 
 // InitEnv parses our data into our config
 func (s *DockerRunStep) InitEnv(hostEnv *util.Environment) {
-
 	env := s.Env()
+	s.configure(env)
 	a := [][]string{
 		[]string{"WERCKER_GIT_COMMIT", hostEnv.Map["WERCKER_GIT_COMMIT"]},
 		[]string{"WERCKER_GIT_REPOSITORY", hostEnv.Map["WERCKER_GIT_REPOSITORY"]},
 		[]string{"WERCKER_APPLICATION_OWNER_NAME", hostEnv.Map["WERCKER_APPLICATION_OWNER_NAME"]},
 	}
 	env.Update(a)
+}
+
+func (s *DockerRunStep) configure(env *util.Environment) {
+
+	if ports, ok := s.data["ports"]; ok {
+		parts, err := shlex.Split(ports)
+		if err == nil {
+			s.portBindings = portBindings(parts)
+			s.exposedPorts = exposedPorts(parts)
+		}
+	}
+
+	if workingDir, ok := s.data["working-dir"]; ok {
+		s.workingDir = env.Interpolate(workingDir)
+	}
+
+	if image, ok := s.data["image"]; ok {
+		s.image = env.Interpolate(image)
+	}
+
+	if containerName, ok := s.data["container-name"]; ok {
+		s.containerName = env.Interpolate(containerName)
+	}
+
+	if workingDir, ok := s.data["links"]; ok {
+		s.workingDir = env.Interpolate(workingDir)
+	}
+
+	if networkDisabled, ok := s.data["networkdisabled"]; ok {
+		n, err := strconv.ParseBool(networkDisabled)
+		if err == nil {
+			s.networkDisabled = n
+		}
+	} else {
+		s.networkDisabled = true
+	}
+
+	if cmd, ok := s.data["cmd"]; ok {
+		parts, err := shlex.Split(cmd)
+		if err == nil {
+			s.cmd = parts
+		}
+	}
+
+	if entrypoint, ok := s.data["entrypoint"]; ok {
+		parts, err := shlex.Split(entrypoint)
+		if err == nil {
+			s.entrypoint = parts
+		}
+	}
+
+	if envi, ok := s.data["env"]; ok {
+		parsedEnv, err := shlex.Split(envi)
+
+		if err == nil {
+			interpolatedEnv := make([]string, len(parsedEnv))
+			for i, envVar := range parsedEnv {
+				interpolatedEnv[i] = env.Interpolate(envVar)
+			}
+			s.env = interpolatedEnv
+		}
+	}
+
+	if user, ok := s.data["user"]; ok {
+		s.user = env.Interpolate(user)
+	}
 }
 
 // Fetch NOP
@@ -109,25 +169,35 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 		return 1, err
 	}
 
-	//TODO use this
-	//e, err := core.EmitterFromContext(ctx)
-
 	if err != nil {
 		return 1, err
 	}
+
 	conf := &docker.Config{
-		Image: s.data["image"],
+		Image:           s.image,
+		Cmd:             s.cmd,
+		Env:             s.env,
+		ExposedPorts:    s.exposedPorts,
+		NetworkDisabled: s.networkDisabled,
+		Entrypoint:      s.entrypoint,
+		DNS:             s.dockerOptions.DNS,
+		WorkingDir:      s.workingDir,
 	}
-	hostconfig := &docker.HostConfig{}
+
+	hostconfig := &docker.HostConfig{
+		DNS:          s.dockerOptions.DNS,
+		PortBindings: s.portBindings,
+		Links:        s.links,
+	}
 
 	client.CreateContainer(
 		docker.CreateContainerOptions{
-			Name:       s.BaseStep.DisplayName(),
+			Name:       s.containerName,
 			Config:     conf,
 			HostConfig: hostconfig,
 		})
 
-	client.StartContainer(s.BaseStep.DisplayName(), hostconfig)
+	client.StartContainer(s.containerName, hostconfig)
 
 	return 0, nil
 }
