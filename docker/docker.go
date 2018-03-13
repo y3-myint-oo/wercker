@@ -950,10 +950,10 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		Volumes:      s.volumes,
 	}
 
-	var imageID string
-	if s.image == "" {
-		// id is not set, so commit, tag and push the pipeline container
-
+	var imageID = s.image
+	// if image is specified then it is assumed to be the name or ID of an existing image
+	// if image is not specified then create a new image by committing the pipeline container
+	if imageID == "" {
 		commitOpts := docker.CommitContainerOptions{
 			Container:  containerID,
 			Repository: s.repository,
@@ -975,9 +975,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 
 		s.logger.WithField("Image", i).Debug("Commit completed")
 		imageID = i.ID
-	} else {
-		// id is set to the name or ID of an existing image which will be tagged and pushed (equivalent to "docker push")
-		imageID = s.image
 	}
 	return s.tagAndPush(imageID, e, client)
 }

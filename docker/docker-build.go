@@ -25,7 +25,6 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
-	digest "github.com/opencontainers/go-digest"
 	"github.com/pborman/uuid"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
@@ -79,7 +78,6 @@ func NewDockerBuildStep(stepConfig *core.StepConfig, options *core.PipelineOptio
 }
 
 func (s *DockerBuildStep) configure(env *util.Environment) {
-
 	if tags, ok := s.data["tag"]; ok {
 		splitTags := util.SplitSpaceOrComma(tags)
 		interpolatedTags := make([]string, len(splitTags))
@@ -119,17 +117,12 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		}
 	}
 
+	s.q = false // default to false (verbose) when value is bad or not set
 	if qProp, ok := s.data["q"]; ok {
 		q, err := strconv.ParseBool(qProp)
 		if err == nil {
 			s.q = q
-		} else {
-			// bad value, default to false (verbose)
-			s.q = true
 		}
-	} else {
-		// not set, default to false (verbose)
-		s.q = true
 	}
 
 	if extrahostsProp, ok := s.data["extrahosts"]; ok {
@@ -143,17 +136,12 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		}
 	}
 
+	s.squash = false // default to false (do not squash) when value is bad or not set
 	if squashProp, ok := s.data["squash"]; ok {
 		squash, err := strconv.ParseBool(squashProp)
 		if err == nil {
 			s.squash = squash
-		} else {
-			// bad value, default to false (do not squash)
-			s.squash = false
 		}
-	} else {
-		// not set, default to false (do not squash)
-		s.squash = false
 	}
 
 	if labelsProp, ok := s.data["labels"]; ok {
@@ -183,7 +171,6 @@ func (s *DockerBuildStep) Fetch() (string, error) {
 
 // Execute builds an image
 func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
-
 	s.logger.Debugln("Starting DockerBuildStep", s.data)
 
 	// This is clearly only relevant to docker so we're going to dig into the
@@ -308,11 +295,8 @@ func (s *DockerBuildStep) buildInputTar(sourceTar string, destTar string) error 
 	}
 	defer layerFile.Close()
 
-	digester := digest.Canonical.Digester()
-	mwriter := io.MultiWriter(layerFile, digester.Hash())
-
 	tr := tar.NewReader(artifactReader)
-	tw := tar.NewWriter(mwriter)
+	tw := tar.NewWriter(layerFile)
 
 	for {
 		hdr, err := tr.Next()
