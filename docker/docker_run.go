@@ -80,12 +80,14 @@ func NewDockerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions
 func (s *DockerRunStep) InitEnv(hostEnv *util.Environment) {
 	env := s.Env()
 	s.configure(env)
-	a := [][]string{
-		[]string{"WERCKER_GIT_COMMIT", hostEnv.Map["WERCKER_GIT_COMMIT"]},
-		[]string{"WERCKER_GIT_REPOSITORY", hostEnv.Map["WERCKER_GIT_REPOSITORY"]},
-		[]string{"WERCKER_APPLICATION_OWNER_NAME", hostEnv.Map["WERCKER_APPLICATION_OWNER_NAME"]},
-	}
-	env.Update(a)
+	// if hostEnv != nil {
+	// 	a := [][]string{
+	// 		[]string{"WERCKER_GIT_COMMIT", hostEnv.Map["WERCKER_GIT_COMMIT"]},
+	// 		[]string{"WERCKER_GIT_REPOSITORY", hostEnv.Map["WERCKER_GIT_REPOSITORY"]},
+	// 		[]string{"WERCKER_APPLICATION_OWNER_NAME", hostEnv.Map["WERCKER_APPLICATION_OWNER_NAME"]},
+	// 	}
+	// 	env.Update(a)
+	// }
 }
 
 func (s *DockerRunStep) configure(env *util.Environment) {
@@ -190,16 +192,25 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 		Links:        s.links,
 	}
 
-	client.CreateContainer(
+	s.createContainer(client, conf, hostconfig)
+
+	s.startContainer(client, hostconfig)
+
+	return 0, nil
+}
+
+func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Config, hostconfig *docker.HostConfig) (*docker.Container, error) {
+	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
 			Name:       s.containerName,
 			Config:     conf,
 			HostConfig: hostconfig,
 		})
+	return container, err
+}
 
-	client.StartContainer(s.containerName, hostconfig)
-
-	return 0, nil
+func (s *DockerRunStep) startContainer(client *DockerClient, hostConfig *docker.HostConfig) {
+	client.StartContainer(s.containerName, hostConfig)
 }
 
 // CollectFile NOP
