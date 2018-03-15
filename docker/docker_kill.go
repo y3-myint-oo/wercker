@@ -12,6 +12,7 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 package dockerlocal
+
 import (
 "fmt"
 "io"
@@ -21,6 +22,7 @@ docker "github.com/fsouza/go-dockerclient"
 "github.com/wercker/wercker/util"
 "golang.org/x/net/context"
 )
+
 // DockerKillStep needs to implemenet IStep
 type DockerKillStep struct {
 	*core.BaseStep
