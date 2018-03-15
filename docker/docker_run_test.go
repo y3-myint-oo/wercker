@@ -28,8 +28,8 @@ func (s *RunSuite) TestCreateContainer() {
 
 	step, _ := NewDockerRunStep(config, options, nil)
 	step.containerName = "test_container"
-	step.dockerOptions = &Options{Host: "unix:///var/run/docker.sock"}
-	client, err := NewDockerClient(MinimalDockerOptions())
+	step.dockerOptions = MinimalDockerOptions()
+	client, err := NewDockerClient(step.dockerOptions)
 	if err != nil {
 		s.Fail("Failed to create docker client.")
 	}
@@ -53,6 +53,7 @@ func (s *RunSuite) TestCreateContainer() {
 	s.NotNilf(actual_container, "actual container is not nil")
 	s.NotEmptyf(actual_container, "actual container should not be empty")
 	s.Equal("/"+step.containerName, actual_container.Name)
+	s.Equal("created", actual_container.State.Status)
 
 	cleanupContainer(client, actual_container.ID)
 }
