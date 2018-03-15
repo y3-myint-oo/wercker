@@ -80,14 +80,6 @@ func NewDockerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions
 func (s *DockerRunStep) InitEnv(hostEnv *util.Environment) {
 	env := s.Env()
 	s.configure(env)
-	// if hostEnv != nil {
-	// 	a := [][]string{
-	// 		[]string{"WERCKER_GIT_COMMIT", hostEnv.Map["WERCKER_GIT_COMMIT"]},
-	// 		[]string{"WERCKER_GIT_REPOSITORY", hostEnv.Map["WERCKER_GIT_REPOSITORY"]},
-	// 		[]string{"WERCKER_APPLICATION_OWNER_NAME", hostEnv.Map["WERCKER_APPLICATION_OWNER_NAME"]},
-	// 	}
-	// 	env.Update(a)
-	// }
 }
 
 func (s *DockerRunStep) configure(env *util.Environment) {
@@ -162,10 +154,9 @@ func (s *DockerRunStep) Fetch() (string, error) {
 	return "", nil
 }
 
-// Execute commits the current container and pushes it to the configured
-// registry
+// Execute creates the container and starts the container.
 func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
-	// TODO(termie): could probably re-use the tansport's client
+
 	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
@@ -209,8 +200,9 @@ func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Confi
 	return container, err
 }
 
-func (s *DockerRunStep) startContainer(client *DockerClient, hostConfig *docker.HostConfig) {
-	client.StartContainer(s.containerName, hostConfig)
+func (s *DockerRunStep) startContainer(client *DockerClient, hostConfig *docker.HostConfig) error {
+	err := client.StartContainer(s.containerName, hostConfig)
+	return err
 }
 
 // CollectFile NOP
