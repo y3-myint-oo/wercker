@@ -3,6 +3,24 @@
 # This is a shell script to run a bunch of regression tests that require
 # running sentcli in a fully docker-enabled environment. They'll eventually
 # be moved into a golang test package.
+# 
+# These tests use the --docker-local parameter, which means that if they need an image
+# that is not alreadfy in the docker daemon these tests will fail with "image not found"
+#
+# Currently the following images are required, so you can avoid this by running the following before running the tests:
+# (A better solution is needed)
+#
+#  docker pull docker.io/library/alpine:latest
+#  docker pull busybox
+#  docker pull node
+#  docker pull alpine
+#  docker pull ubuntu
+#
+# To run the tests
+#
+#  cd $GOPATH//src/github.com/wercker/wercker
+#  ./test-all.sh
+#
 wercker=$PWD/wercker
 workingDir=$PWD/.werckertests
 testsDir=$PWD/tests/projects
