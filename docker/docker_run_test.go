@@ -1,3 +1,5 @@
+//   Copyright @2018, Oracle and/or its affiliates. All rights reserved.
+
 package dockerlocal
 
 import (
@@ -28,10 +30,10 @@ func (s *RunSuite) TestCreateContainer() {
 
 	step, _ := NewDockerRunStep(config, options, nil)
 	step.containerName = "test_container"
-	step.dockerOptions = MinimalDockerOptions()
+	//step.dockerOptions = MinimalDockerOptions()
 
 	// For running on local env
-	// step.dockerOptions = &Options{Host: "unix:///var/run/docker.sock"}
+	step.dockerOptions = &Options{Host: "unix:///var/run/docker.sock"}
 
 	client, err := NewDockerClient(step.dockerOptions)
 	if err != nil {
@@ -46,6 +48,8 @@ func (s *RunSuite) TestCreateContainer() {
 	if err != nil {
 		s.Fail("Failed to create container.")
 	}
+
+	actual_container, err = client.InspectContainer(actual_container.ID)
 
 	if err != nil {
 		s.Fail("Failed to retrieve container")
@@ -53,53 +57,26 @@ func (s *RunSuite) TestCreateContainer() {
 
 	s.NotNilf(actual_container, "actual container is not nil")
 	s.NotEmptyf(actual_container, "actual container should not be empty")
-	s.Equal(step.containerName, actual_container.Name)
-	//	s.Equal("created", actual_container.State.Status)
+	s.Equal("/"+step.containerName, actual_container.Name)
+	s.Equal("created", actual_container.State.Status)
 
 	cleanupContainer(client, actual_container.ID)
 }
 
-func (s *RunSuite) TestRunContainer() {
-	config := &core.StepConfig{
-		ID:   "internal/docker-run",
-		Data: map[string]string{},
-	}
-	options := &core.PipelineOptions{}
+//TODO
+func (s *RunSuite) TestStartContainer() {
+}
 
-	step, _ := NewDockerRunStep(config, options, nil)
-	step.containerName = "test_container"
-	step.dockerOptions = MinimalDockerOptions()
+//TODO
+func (s *RunSuite) TestCustomCmd() {
+}
 
-	// For running on local env
-	// step.dockerOptions = &Options{Host: "unix:///var/run/docker.sock"}
+//TODO
+func (s *RunSuite) TestCustomEntrypoint() {
+}
 
-	client, err := NewDockerClient(step.dockerOptions)
-	if err != nil {
-		s.Fail("Failed to create docker client.")
-	}
-
-	conf := &docker.Config{
-		Image: "elasticsearch:latest",
-	}
-	hostConfig := &docker.HostConfig{}
-	actual_container, err := step.createContainer(client, conf, hostConfig)
-
-	if err != nil {
-		s.Fail("Failed to create container.")
-	}
-
-	err = step.startContainer(client, hostConfig)
-
-	if err != nil {
-		s.Fail("Failed to start container")
-	}
-
-	s.NotNilf(actual_container, "actual container is not nil")
-	s.NotEmptyf(actual_container, "actual container should not be empty")
-	s.Equal(step.containerName, actual_container.Name)
-	//	s.Equal("created", actual_container.State.Status)
-
-	cleanupContainer(client, actual_container.ID)
+//TODO
+func (s *RunSuite) TestPortBinding() {
 }
 
 func cleanupContainer(client *DockerClient, id string) {
