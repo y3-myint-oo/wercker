@@ -32,6 +32,7 @@ type DockerKillStep struct {
 	data            map[string]string
 	containerName   string
 }
+
 //NewDockerKillStep is a special step for killing and removing container.
 func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*DockerKillStep, error) {
 	name := "docker-kill"
@@ -61,7 +62,7 @@ func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOption
 // InitEnv parses our data into our config
 func (s *DockerKillStep) InitEnv(env *util.Environment) {
 	if containerName, ok := s.data["container-name"]; ok {
-		s.containerName = env.Interpolate(containerName)
+		s.containerName = s.options.RunID + env.Interpolate(containerName)
 	}
 }
 // Fetch NOP
@@ -69,6 +70,7 @@ func (s *DockerKillStep) Fetch() (string, error) {
 	// nop
 	return "", nil
 }
+
 // Execute kills container
 func (s *DockerKillStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
 	// TODO(termie): could probably re-use the tansport's client
@@ -96,19 +98,23 @@ func (s *DockerKillStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	s.logger.WithField("Container", s.containerName).Debug("Docker-kill completed")
 	return 0, nil
 }
+
 // CollectFile NOP
 func (s *DockerKillStep) CollectFile(a, b, c string, dst io.Writer) error {
 	return nil
 }
+
 // CollectArtifact NOP
 func (s *DockerKillStep) CollectArtifact(string) (*core.Artifact, error) {
 	return nil, nil
 }
+
 // ReportPath NOP
 func (s *DockerKillStep) ReportPath(...string) string {
 	// for now we just want something that doesn't exist
 	return uuid.NewRandom().String()
 }
+
 // ShouldSyncEnv before running this step = FALSE
 func (s *DockerKillStep) ShouldSyncEnv() bool {
 	return false
