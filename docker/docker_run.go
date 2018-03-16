@@ -89,7 +89,7 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 	}
 
 	if containerName, ok := s.data["container-name"]; ok {
-		s.containerName = env.Interpolate(containerName)
+		s.containerName = s.options.RunID + env.Interpolate(containerName)
 	}
 
 	if workingDir, ok := s.data["links"]; ok {
