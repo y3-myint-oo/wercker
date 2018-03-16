@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 )
