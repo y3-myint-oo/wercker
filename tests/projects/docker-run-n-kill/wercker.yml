@@ -1,0 +1,8 @@
+box: golang:latest
+dev:
+ steps:
+   - internal/docker-run:
+       image: elasticsearch:latest
+       container-name: my-first-test-container
+   - internal/docker-kill:
+       container-name: my-first-test-container

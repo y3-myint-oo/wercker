@@ -68,8 +68,6 @@ testScratchPush () {
   echo -n "testing scratch-n-push.."
   testDir=$testsDir/scratch-n-push
   logFile="${workingDir}/scratch-n-push.log"
-  grepString="uniqueTagFromTest"
-  docker images | grep $grepString | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
   $wercker build "$testDir" --docker-local --working-dir "$workingDir" &> "$logFile" && docker images | grep -q "$grepString"
   if [ $? -eq 0 ]; then
     echo "passed"
@@ -82,7 +80,23 @@ testScratchPush () {
   fi
 }
 
-
+testDockerRunKill () {
+  echo -n "testing docker-run-n-kill.."
+  testDir=$testsDir/docker-run-n-kill
+  logFile="${workingDir}/docker-run-n-kill.log"
+  grepString="uniqueTagFromTest"
+  docker images | grep $grepString | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
+  $wercker dev "$testDir" --docker-local --working-dir "$workingDir" &> "$logFile"
+  if [ $? -eq 0 ]; then
+    echo "passed"
+    return 0
+  else
+      echo 'failed'
+      cat "$logFile"
+      docker images
+      return 1
+  fi
+}
 runTests() {
   export X_TEST_SERVICE_VOL_PATH=$testsDir/test-service-vol
   basicTest "service volume"    build "$testsDir/service-volume" --docker-local --enable-volumes  || return 1
@@ -120,6 +134,7 @@ runTests() {
 
   testDirectMount || return 1
   testScratchPush || return 1
+  testDockerRunKill || return 1
 
   # test runs locally but not in wercker build container
   #basicTest "shellstep" build --docker-local --enable-dev-steps "$testsDir/shellstep" || return 1

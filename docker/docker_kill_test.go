@@ -16,6 +16,7 @@ package dockerlocal
 import (
 	"net/url"
 	"testing"
+
 	"github.com/stretchr/testify/suite"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
@@ -45,9 +46,10 @@ func (s *DockerKillSuite) TestContainerName() {
 			GitBranch: "master",
 			GitCommit: "s4k2r0d6a9b",
 		},
-		ApplicationID:            "1000001",
-		ApplicationName:          "myproject",
-		ApplicationOwnerName:     "wercker",
+		ApplicationID:        "1000001",
+		ApplicationName:      "myproject",
+		ApplicationOwnerName: "wercker",
+
 		WerckerContainerRegistry: &url.URL{Scheme: "https", Host: "wcr.io", Path: "/v2/"},
 		GlobalOptions: &core.GlobalOptions{
 			AuthToken: "su69persec420uret0k3n",
