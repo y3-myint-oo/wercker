@@ -1,4 +1,4 @@
-// Copyright 2018 Oracle and/or its affliates.  All rights reserved.
+/* Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved. */
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -70,7 +70,6 @@ func (s *DockerKillStep) Fetch() (string, error) {
 	// nop
 	return "", nil
 }
-
 // Execute kills container
 func (s *DockerKillStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
 	// TODO(termie): could probably re-use the tansport's client
@@ -98,23 +97,19 @@ func (s *DockerKillStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	s.logger.WithField("Container", s.containerName).Debug("Docker-kill completed")
 	return 0, nil
 }
-
 // CollectFile NOP
 func (s *DockerKillStep) CollectFile(a, b, c string, dst io.Writer) error {
 	return nil
 }
-
 // CollectArtifact NOP
 func (s *DockerKillStep) CollectArtifact(string) (*core.Artifact, error) {
 	return nil, nil
 }
-
 // ReportPath NOP
 func (s *DockerKillStep) ReportPath(...string) string {
 	// for now we just want something that doesn't exist
 	return uuid.NewRandom().String()
 }
-
 // ShouldSyncEnv before running this step = FALSE
 func (s *DockerKillStep) ShouldSyncEnv() bool {
 	return false
