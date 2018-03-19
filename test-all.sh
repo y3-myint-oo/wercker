@@ -84,8 +84,6 @@ testDockerRunKill () {
   echo -n "testing docker-run-n-kill.."
   testDir=$testsDir/docker-run-n-kill
   logFile="${workingDir}/docker-run-n-kill.log"
-  grepString="uniqueTagFromTest"
-  docker images | grep $grepString | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
   $wercker dev "$testDir" --docker-local --working-dir "$workingDir" &> "$logFile"
   if [ $? -eq 0 ]; then
     echo "passed"
@@ -97,6 +95,7 @@ testDockerRunKill () {
       return 1
   fi
 }
+
 runTests() {
   export X_TEST_SERVICE_VOL_PATH=$testsDir/test-service-vol
   basicTest "service volume"    build "$testsDir/service-volume" --docker-local --enable-volumes  || return 1
