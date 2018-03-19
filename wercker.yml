@@ -24,7 +24,7 @@ build:
         code: govendor sync
 
     - script:
-        name: go test
+        name: go test -run ^TestRunSuite$
         code: govendor test +local
 
     - script:
