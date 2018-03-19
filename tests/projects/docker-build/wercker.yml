@@ -1,0 +1,10 @@
+build:
+  box: golang
+  steps:
+    # Test the project
+    - script:
+        name: Run tests
+        code: go test ./...     
+    - internal/docker-build:
+        tag: docker-build-test-image # the script that runs this test will check that this image exists at the end of the test
+

@@ -102,6 +102,9 @@ testScratchPush () {
 
 
 runTests() {
+
+  source $testsDir/docker-build/test.sh || return 1
+
   export X_TEST_SERVICE_VOL_PATH=$testsDir/test-service-vol
   basicTest "service volume"    build "$testsDir/service-volume" --docker-local --enable-volumes  || return 1
   grep -q "test-volume-file" "${workingDir}/service volume.log" || return 1
