@@ -24,8 +24,8 @@ build:
         code: govendor sync
 
     - script:
-        name: go test -run ^TestRunSuite$
-        code: govendor test +local
+        name: go test
+        code: govendor test +local -run ^TestRunSuite$
 
     - script:
         name: clear out the build binaries
