@@ -54,17 +54,29 @@ testDockerBuild () {
   # start the image using the docker CLI
   docker run --name ${testName}-container --rm -d -p 5000:5000 ${repo}:${tag} >> "${workingDir}/${testName}.log" 2>&1
   # test the image
-  curlOutput=`curl -s localhost:5000`
+  curlOutput1=`curl -s localhost:5000`         # should return "Hello World!"
+  curlOutput2=`curl -s localhost:5000/env/foo` # should return value of build-arg foo (set in wercker.yml)"
+  curlOutput3=`curl -s localhost:5000/env/bar` # should return value of build-arg bar (set in wercker.yml)"
   # stop the container
   docker kill ${testName}-container >> "${workingDir}/${testName}.log" 2>&1
   # delete the image we've just created
   docker images | grep $tag | awk '{print $3}' | xargs -n1 docker rmi -f >> "${workingDir}/${testName}.log" 2>&1
   # now the container and image have been cleaned up, check whether the test worked
-  if [ "$curlOutput" != "Hello World!" ]; then
+  if [ "$curlOutput1" != "Hello World!" ]; then
     cat "${workingDir}/${testName}.log"
-    echo "Unexpected response from test container: " $curlOutput
+    echo "Unexpected response from test container for localhost:5000 " $curlOutput1
     return 1
   fi
+  if [ "$curlOutput2" != "val1" ]; then
+    cat "${workingDir}/${testName}.log"
+    echo "Unexpected response from test container for localhost:5000/env/foo " $curlOutput2
+    return 1
+  fi
+  if [ "$curlOutput3" != "val2" ]; then
+    cat "${workingDir}/${testName}.log"
+    echo "Unexpected response from test container for localhost:5000/env/bar " $curlOutput3
+    return 1
+  fi    
   # test passed
   #cat "${workingDir}/${testName}.log"
   printf "passed\n"
