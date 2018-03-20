@@ -5,16 +5,8 @@
 # be moved into a golang test package.
 # 
 # These tests use the --docker-local parameter, which means that if they need an image
-# that is not alreadfy in the docker daemon these tests will fail with "image not found"
-#
-# Currently the following images are required, so you can avoid this by running the following before running the tests:
-# (A better solution is needed)
-#
-#  docker pull docker.io/library/alpine:latest
-#  docker pull busybox
-#  docker pull node
-#  docker pull alpine
-#  docker pull ubuntu
+# that is not already in the docker daemon these tests will fail with "image not found"
+# The function pullImages below pulls a list of specified images before running the tests. Update it if needed.
 #
 # To run the tests
 #
@@ -32,6 +24,24 @@ if [ ! -e "$wercker" ]; then
   go build
 fi
 
+pullIfNeeded () {
+  ## check whether an image exists locally with the specified repository
+  ## TODO extend to allow a tag to be specified 
+  docker images | awk '{print $1}' | grep -q $1
+  if [ $? -ne 0 ]; then
+    echo pulling $1
+    docker pull $1
+  fi
+}
+
+# Since most tests run with the --docker-local parameter we need to make sure that the required base images are pulled into the daemon
+pullImages () {
+  pullIfNeeded "busybox"
+  pullIfNeeded "node"
+  pullIfNeeded "alpine"
+  pullIfNeeded "ubuntu"
+  pullIfNeeded "golang"
+}
 
 basicTest() {
   testName=$1
@@ -104,6 +114,7 @@ testScratchPush () {
 runTests() {
 
   source $testsDir/docker-build/test.sh || return 1
+  source $testsDir/docker-push-image/test.sh || return 1
 
   export X_TEST_SERVICE_VOL_PATH=$testsDir/test-service-vol
   basicTest "service volume"    build "$testsDir/service-volume" --docker-local --enable-volumes  || return 1
@@ -182,5 +193,6 @@ runTests() {
   fi
 }
 
+pullImages
 runTests
 rm -rf "$workingDir"
