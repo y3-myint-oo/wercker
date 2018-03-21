@@ -63,7 +63,7 @@ func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOption
 // InitEnv parses our data into our config
 func (s *DockerKillStep) InitEnv(env *util.Environment) {
 	if containerName, ok := s.data["container-name"]; ok {
-		s.containerName = s.options.RunID + env.Interpolate(containerName)
+		s.containerName = env.Interpolate(containerName)
 	}
 }
 
@@ -80,24 +80,26 @@ func (s *DockerKillStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	if err != nil {
 		return 1, err
 	}
-
+	containerToKill := s.options.RunID + s.containerName
 	killOpts := docker.KillContainerOptions{
-		ID: s.containerName,
+		ID: containerToKill,
 	}
-	s.logger.Debugln("kill container:", s.containerName)
+	s.logger.Debugln("kill container:", containerToKill)
 	err = client.KillContainer(killOpts)
 	if err != nil {
+		s.logger.Error("Failed to kill container", err)
 		return -1, err
 	}
 	removeContainerOpts := docker.RemoveContainerOptions{
-		ID: s.containerName,
+		ID: containerToKill,
 	}
-	s.logger.Debugln("Remove container:", s.containerName)
+	s.logger.Debugln("Remove container:", containerToKill)
 	err = client.RemoveContainer(removeContainerOpts)
 	if err != nil {
+		s.logger.Error("Failed to remove container", err)
 		return -1, err
 	}
-	s.logger.WithField("Container", s.containerName).Debug("Docker-kill completed")
+	s.logger.WithField("container-name", s.containerName).Debug("Docker-kill completed")
 	return 0, nil
 }
 
