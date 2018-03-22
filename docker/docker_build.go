@@ -221,9 +221,10 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		Name:           s.tags[0], // go-dockerclient only allows us to set one tag
 		BuildArgs:      s.buildargs,
 		SuppressOutput: s.q,
-		// cannot set Labels paramater as it is not supported by BuildImageOptions
-		// cannot set Extrahosts paramater as it is not supported by BuildImageOptions
+		// cannot set Labels parameter as it is not supported by BuildImageOptions
+		// cannot set Extrahosts parameter as it is not supported by BuildImageOptions
 		// cannot set Squash parameter as it is not supported by BuildImageOptions
+		Pull: !s.dockerOptions.Local, // pull images unless docker-local is specified
 	}
 
 	s.logger.Debugln("Build image")
@@ -232,9 +233,6 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		s.logger.Errorln("Failed to build image:", err)
 		return -1, err
 	}
-
-	// TODO delete intermediate images created when running the Dockerfile
-	// See cleanupImage in docker.go
 
 	s.logger.Debug("Image built")
 	return 0, nil
