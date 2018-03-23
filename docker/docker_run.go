@@ -1,4 +1,16 @@
-//   Copyright @2018, Oracle and/or its affiliates. All rights reserved.
+//   Copyright © 2018, Oracle and/or its affiliates.  All rights reserved.
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
 
 package dockerlocal
 
@@ -31,7 +43,6 @@ type DockerRunStep struct {
 	containerName   string
 	networkDisabled bool
 	image           string
-	links           []string
 }
 
 // NewDockerRunStep is a special step for doing docker runs
@@ -65,13 +76,11 @@ func NewDockerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions
 }
 
 // InitEnv parses our data into our config
-func (s *DockerRunStep) InitEnv(hostEnv *util.Environment) {
-	env := s.Env()
+func (s *DockerRunStep) InitEnv(env *util.Environment) {
 	s.configure(env)
 }
 
 func (s *DockerRunStep) configure(env *util.Environment) {
-
 	if ports, ok := s.data["ports"]; ok {
 		parts, err := shlex.Split(ports)
 		if err == nil {
@@ -92,17 +101,13 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		s.containerName = s.options.RunID + env.Interpolate(containerName)
 	}
 
-	if workingDir, ok := s.data["links"]; ok {
-		s.workingDir = env.Interpolate(workingDir)
-	}
-
 	if networkDisabled, ok := s.data["networkdisabled"]; ok {
 		n, err := strconv.ParseBool(networkDisabled)
 		if err == nil {
 			s.networkDisabled = n
 		}
 	} else {
-		s.networkDisabled = true
+		s.networkDisabled = false
 	}
 
 	if cmd, ok := s.data["cmd"]; ok {
@@ -144,7 +149,6 @@ func (s *DockerRunStep) Fetch() (string, error) {
 
 // Execute creates the container and starts the container.
 func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
-
 	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
@@ -168,7 +172,6 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 	hostconfig := &docker.HostConfig{
 		DNS:          s.dockerOptions.DNS,
 		PortBindings: s.portBindings,
-		Links:        s.links,
 	}
 
 	s.createContainer(client, conf, hostconfig)
@@ -185,12 +188,23 @@ func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Confi
 			Config:     conf,
 			HostConfig: hostconfig,
 		})
+	if err != nil {
+		s.logger.Debugln("Error in creating container %s%", s.containerName)
+	} else {
+		s.logger.Debugln("Container is created with %s%", container.ID)
+	}
+
 	return container, err
 }
 
-func (s *DockerRunStep) startContainer(client *DockerClient, hostConfig *docker.HostConfig) error {
+func (s *DockerRunStep) startContainer(client *DockerClient, hostConfig *docker.HostConfig) {
 	err := client.StartContainer(s.containerName, hostConfig)
-	return err
+	if err != nil {
+		s.logger.Debugln("Error in starting container %s%", s.containerName)
+	} else {
+		s.logger.Debugln("Container is successfully started %s%", s.containerName)
+	}
+
 }
 
 // CollectFile NOP
