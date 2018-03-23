@@ -24,12 +24,13 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/fsnotify.v1"
+	// I am going to fix this soon
 
 	"github.com/pborman/uuid"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
+	fsnotify "gopkg.in/fsnotify/fsnotify.v1"
 )
 
 // test TODO (mh)
