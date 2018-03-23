@@ -5,6 +5,6 @@ build:
         name: Run tests
         code: go test ./...     
     - internal/docker-build:
-        tag: repo1:docker-build-image-tag1
+        image-name: docker-build-image-name-1
         buildargs: "foo=val1 bar=val2"
 

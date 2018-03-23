@@ -17,6 +17,7 @@ package dockerlocal
 import (
 	"archive/tar"
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,7 +38,7 @@ type DockerBuildStep struct {
 	options       *core.PipelineOptions
 	dockerOptions *Options
 	data          map[string]string
-	tags          []string
+	tag           string
 	logger        *util.LogEntry
 	dockerfile    string
 	extrahosts    []string
@@ -78,13 +79,10 @@ func NewDockerBuildStep(stepConfig *core.StepConfig, options *core.PipelineOptio
 }
 
 func (s *DockerBuildStep) configure(env *util.Environment) {
-	if tags, ok := s.data["tag"]; ok {
-		splitTags := util.SplitSpaceOrComma(tags)
-		interpolatedTags := make([]string, len(splitTags))
-		for i, tag := range splitTags {
-			interpolatedTags[i] = env.Interpolate(tag)
-		}
-		s.tags = interpolatedTags
+	if imagename, ok := s.data["image-name"]; ok {
+		// note that Execute() fails the step (naming the image-name property) if this is not set
+		// we don't let the user specify the tag directly, but prepend it with the build ID
+		s.tag = s.options.RunID + env.Interpolate(imagename)
 	}
 
 	if dockerfile, ok := s.data["dockerfile"]; ok {
@@ -173,6 +171,10 @@ func (s *DockerBuildStep) Fetch() (string, error) {
 func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
 	s.logger.Debugln("Starting DockerBuildStep", s.data)
 
+	if s.tag == "" {
+		return -1, errors.New("image-name not set")
+	}
+
 	// This is clearly only relevant to docker so we're going to dig into the
 	// transport internals a little bit to get the container ID
 	dt := sess.Transport().(*DockerTransport)
@@ -218,7 +220,7 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		Dockerfile:     s.dockerfile,
 		InputStream:    tarReader,
 		OutputStream:   w,
-		Name:           s.tags[0], // go-dockerclient only allows us to set one tag
+		Name:           s.tag,
 		BuildArgs:      s.buildargs,
 		SuppressOutput: s.q,
 		// cannot set Labels parameter as it is not supported by BuildImageOptions

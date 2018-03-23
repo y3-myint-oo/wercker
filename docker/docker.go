@@ -632,7 +632,7 @@ type DockerPushStep struct {
 	logger        *util.LogEntry
 	workingDir    string
 	authenticator auth.Authenticator
-	// image is the Image name or ID of an existing image
+	// image (if set) is the tag of an existing image, and obtained by prepending the build ID to the specified image-name property
 	// if image is set then this image is tagged and pushed (equivalent to "docker push")
 	// if image is not set then the pipeline container is committed, tagged and pushed (classic behaviour)
 	image string
@@ -782,8 +782,8 @@ func (s *DockerPushStep) configure(env *util.Environment) {
 		s.forceTags = true
 	}
 
-	if image, ok := s.data["image"]; ok {
-		s.image = env.Interpolate(image)
+	if image, ok := s.data["image-name"]; ok {
+		s.image = s.options.RunID + env.Interpolate(image)
 	}
 }
 

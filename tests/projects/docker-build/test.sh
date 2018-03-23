@@ -11,26 +11,19 @@ testDockerBuild () {
   testName=docker-build
   testDir=$testsDir/docker-build
   printf "testing %s... " "$testName"
-  # this test will create an image with the following repo and tag - should match the repo and tag in wercker.yml
-  repo=repo1
-  tag=docker-build-image-tag1
+  # this test will create an image whose repository setting has the following suffix - should match the image-name setting in wercker.yml
+  repo=docker-build-image-name-1
   # stop any existing container started by a previous run
   docker kill ${testName}-container > /dev/null 2>&1
   # delete any existing image built by a previous run
-  docker images | grep $tag | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
-  # check no existing image with the specified tag 
-  docker images | awk '{print $2}' | grep -q "$tag"
-  if [ $? -eq 0 ]; then
-    echo "An image with tag $tag already exists"
-    return 1
-  fi
-  # check no existing image with the specified repository (column 1 is the repo)
+  docker images | grep $repo | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
+  # check no existing image with the specified repository (column 1 is the repository)
   docker images | awk '{print $1}' | grep -q "$repo"
   if [ $? -eq 0 ]; then
     echo "An image with repository $repo already exists"
     return 1
   fi
-  # now run the build pipeline - this creates an image with the specified tag
+  # now run the build pipeline - this creates an image with the specified repository setting
   $wercker build "$testDir" --docker-local --working-dir "$workingDir" &> "${workingDir}/${testName}.log"
   if [ $? -ne 0 ]; then
     printf "failed\n"
@@ -39,20 +32,16 @@ testDockerBuild () {
     fi
     return 1
   fi
-  # verify that an image was created with expected tag (column 2 is the tag)
-  docker images | awk '{print $2}' | grep -q "$tag"
-  if [ $? -ne 0 ]; then
-    echo "An image with tag $tag was not found"
-    return 1
-  fi
-  # verify that an image was created with expected repo (column 1 is the repo)
+  # verify that an image was created with the expected repository setting (column 1 is the repository)
   docker images | awk '{print $1}' | grep -q "$repo"
   if [ $? -ne 0 ]; then
     echo "An image with repository $repo was not found"
     return 1
   fi
+  # find the imageid of this image (we don't know the complete repository name as it is prefixed with build-id)
+  imageid=`docker images | grep "$repo" | awk '{print $3}'`
   # start the image using the docker CLI
-  docker run --name ${testName}-container --rm -d -p 5000:5000 ${repo}:${tag} >> "${workingDir}/${testName}.log" 2>&1
+  docker run --name ${testName}-container --rm -d -p 5000:5000 ${imageid} >> "${workingDir}/${testName}.log" 2>&1
   # test the image
   curlOutput1=`curl -s localhost:5000`         # should return "Hello World!"
   curlOutput2=`curl -s localhost:5000/env/foo` # should return value of build-arg foo (set in wercker.yml)"
@@ -60,7 +49,7 @@ testDockerBuild () {
   # stop the container
   docker kill ${testName}-container >> "${workingDir}/${testName}.log" 2>&1
   # delete the image we've just created
-  docker images | grep $tag | awk '{print $3}' | xargs -n1 docker rmi -f >> "${workingDir}/${testName}.log" 2>&1
+  docker images | grep $repo | awk '{print $3}' | xargs -n1 docker rmi -f >> "${workingDir}/${testName}.log" 2>&1
   # now the container and image have been cleaned up, check whether the test worked
   if [ "$curlOutput1" != "Hello World!" ]; then
     cat "${workingDir}/${testName}.log"

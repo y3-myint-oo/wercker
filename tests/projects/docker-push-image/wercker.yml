@@ -2,9 +2,9 @@ build:
   box: golang
   steps:
     - internal/docker-build:
-        tag: myrepo1:docker-push-image-tag1  # assumed to be of the form repo:tag 
+        image-name: docker-push-image-name-1  
     - internal/docker-push: 
-        image: myrepo1:docker-push-image-tag1
+        image-name: docker-push-image-name-1
         repository: myrepo2
-        tag: docker-push-image-tag2 # cannot include the repo 
+        tag: docker-push-image-tag2 
 
