@@ -31,7 +31,7 @@ func TestDockerKillSuite(t *testing.T) {
 	suite.Run(t, suiteTester)
 }
 
-//TestContainerName tests if passed container name is set properly.
+// TestContainerName tests if passed container name is set properly.
 // - internal/docker-kill
 func (s *DockerKillSuite) TestContainerName() {
 	var data map[string]string

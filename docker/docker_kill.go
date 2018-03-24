@@ -14,26 +14,27 @@
 package dockerlocal
 
 import (
-"fmt"
-"io"
-docker "github.com/fsouza/go-dockerclient"
-"github.com/pborman/uuid"
-"github.com/wercker/wercker/core"
-"github.com/wercker/wercker/util"
-"golang.org/x/net/context"
+	"fmt"
+	"io"
+
+	docker "github.com/fsouza/go-dockerclient"
+	"github.com/pborman/uuid"
+	"github.com/wercker/wercker/core"
+	"github.com/wercker/wercker/util"
+	"golang.org/x/net/context"
 )
 
 // DockerKillStep needs to implemenet IStep
 type DockerKillStep struct {
 	*core.BaseStep
-	logger          *util.LogEntry
-	options         *core.PipelineOptions
-	dockerOptions   *Options
-	data            map[string]string
-	containerName   string
+	logger        *util.LogEntry
+	options       *core.PipelineOptions
+	dockerOptions *Options
+	data          map[string]string
+	containerName string
 }
 
-//NewDockerKillStep is a special step for killing and removing container.
+// NewDockerKillStep is a special step for killing and removing container.
 func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*DockerKillStep, error) {
 	name := "docker-kill"
 	displayName := "docker kill"
@@ -52,11 +53,11 @@ func NewDockerKillStep(stepConfig *core.StepConfig, options *core.PipelineOption
 		Version:     util.Version(),
 	})
 	return &DockerKillStep{
-		BaseStep:        baseStep,
-		data:            stepConfig.Data,
-		logger:          util.RootLogger().WithField("Logger", "DockerKillStep"),
-		options:         options,
-		dockerOptions:   dockerOptions,
+		BaseStep:      baseStep,
+		data:          stepConfig.Data,
+		logger:        util.RootLogger().WithField("Logger", "DockerKillStep"),
+		options:       options,
+		dockerOptions: dockerOptions,
 	}, nil
 }
 
@@ -87,7 +88,7 @@ func (s *DockerKillStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	s.logger.Debugln("kill container:", containerToKill)
 	err = client.KillContainer(killOpts)
 	if err != nil {
-		s.logger.Error("Failed to kill container", err)
+		s.logger.Errorln("Failed to kill container", err)
 		return -1, err
 	}
 	removeContainerOpts := docker.RemoveContainerOptions{
@@ -96,7 +97,7 @@ func (s *DockerKillStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	s.logger.Debugln("Remove container:", containerToKill)
 	err = client.RemoveContainer(removeContainerOpts)
 	if err != nil {
-		s.logger.Error("Failed to remove container", err)
+		s.logger.Errorln("Failed to remove container", err)
 		return -1, err
 	}
 	s.logger.WithField("container-name", s.containerName).Debug("Docker-kill completed")
