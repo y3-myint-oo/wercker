@@ -26,12 +26,12 @@ pullIfNeeded () {
 
 # Since most tests run with the --docker-local parameter we need to make sure that the required base images are pulled into the daemon
 pullImages () {
-  pullIfNeeded "busybox"
-  pullIfNeeded "node"
-  pullIfNeeded "alpine"
-  pullIfNeeded "ubuntu"
-  pullIfNeeded "golang"
-  pullIfNeeded "elasticsearch"
+  pullIfNeeded "busybox:latest"
+  pullIfNeeded "node:latest"
+  pullIfNeeded "alpine:latest"
+  pullIfNeeded "ubuntu:latest"
+  pullIfNeeded "golang:latest"
+  pullIfNeeded "elasticsearch:latest"
 }
 
 basicTest() {
@@ -110,10 +110,10 @@ testDockerRunKill () {
     echo "passed"
     return 0
   else
-      echo 'failed'
-      cat "$logFile"
-      docker images
-      return 1
+    echo 'failed'
+    cat "$logFile"
+    docker images
+    return 1
   fi
 }
 
