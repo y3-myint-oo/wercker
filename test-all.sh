@@ -14,6 +14,25 @@ if [ ! -e "$wercker" ]; then
   go build
 fi
 
+pullIfNeeded () {
+  ## check whether an image exists locally with the specified repository
+  ## TODO extend to allow a tag to be specified
+  docker images | awk '{print $1}' | grep -q $1
+  if [ $? -ne 0 ]; then
+    echo pulling $1
+    docker pull $1
+  fi
+}
+
+# Since most tests run with the --docker-local parameter we need to make sure that the required base images are pulled into the daemon
+pullImages () {
+  pullIfNeeded "busybox"
+  pullIfNeeded "node"
+  pullIfNeeded "alpine"
+  pullIfNeeded "ubuntu"
+  pullIfNeeded "golang"
+  pullIfNeeded "elasticsearch"
+}
 
 basicTest() {
   testName=$1
@@ -68,6 +87,8 @@ testScratchPush () {
   echo -n "testing scratch-n-push.."
   testDir=$testsDir/scratch-n-push
   logFile="${workingDir}/scratch-n-push.log"
+  grepString="uniqueTagFromTest"
+  docker images | grep $grepString | awk '{print $3}' | xargs -n1 docker rmi -f > /dev/null 2>&1
   $wercker build "$testDir" --docker-local --working-dir "$workingDir" &> "$logFile" && docker images | grep -q "$grepString"
   if [ $? -eq 0 ]; then
     echo "passed"
@@ -175,5 +196,6 @@ runTests() {
   fi
 }
 
+pullImages
 runTests
 rm -rf "$workingDir"
