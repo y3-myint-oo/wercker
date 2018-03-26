@@ -202,6 +202,13 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 	if err != nil {
 		return 1, err
 	}
+
+	version, err := client.Version()
+	if err != nil {
+		return 1, err
+	}
+	s.logger.Println("Docker server version used is " + version.Get("Version"))
+
 	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return 1, err
