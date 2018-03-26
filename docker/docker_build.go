@@ -203,16 +203,21 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		return 1, err
 	}
 
+	e, err := core.EmitterFromContext(ctx)
+	if err != nil {
+		return 1, err
+	}
+
 	version, err := client.Version()
 	if err != nil {
 		return 1, err
 	}
 	s.logger.Println("Docker server version used is " + version.Get("Version"))
 
-	e, err := core.EmitterFromContext(ctx)
-	if err != nil {
-		return 1, err
-	}
+	e.Emit(core.Logs, &core.LogsArgs{
+		Logs:   "Docker server version used is " + version.Get("Version") + "\n",
+		Stream: "docker",
+	})
 
 	// Create an io.Writer to which the BuildImage API call will write build status messages
 	// EmitBuildStatus will emit these messages as Log messages
