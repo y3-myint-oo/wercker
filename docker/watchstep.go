@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/fsnotify.v1"
+	"gopkg.in/fsnotify/fsnotify.v1"
 
 	"github.com/pborman/uuid"
 	"github.com/wercker/wercker/core"
@@ -59,7 +59,6 @@ func NewWatchStep(stepConfig *core.StepConfig, options *core.PipelineOptions, do
 
 	// Add a random number to the name to prevent collisions on disk
 	stepSafeID := fmt.Sprintf("%s-%s", name, uuid.NewRandom().String())
-
 	baseStep := core.NewBaseStep(core.BaseStepOptions{
 		DisplayName: displayName,
 		Env:         util.NewEnvironment(),
