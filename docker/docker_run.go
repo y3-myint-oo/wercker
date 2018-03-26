@@ -17,7 +17,6 @@ package dockerlocal
 import (
 	"fmt"
 	"io"
-	"strconv"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
@@ -29,20 +28,19 @@ import (
 
 type DockerRunStep struct {
 	*core.BaseStep
-	options         *core.PipelineOptions
-	dockerOptions   *Options
-	data            map[string]string
-	env             []string
-	logger          *util.LogEntry
-	cmd             []string
-	entrypoint      []string
-	workingDir      string
-	portBindings    map[docker.Port][]docker.PortBinding
-	exposedPorts    map[docker.Port]struct{}
-	user            string
-	containerName   string
-	networkDisabled bool
-	image           string
+	options       *core.PipelineOptions
+	dockerOptions *Options
+	data          map[string]string
+	env           []string
+	logger        *util.LogEntry
+	cmd           []string
+	entrypoint    []string
+	workingDir    string
+	portBindings  map[docker.Port][]docker.PortBinding
+	exposedPorts  map[docker.Port]struct{}
+	user          string
+	containerName string
+	image         string
 }
 
 // NewDockerRunStep is a special step for doing docker runs
@@ -101,15 +99,6 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		s.containerName = s.options.RunID + env.Interpolate(containerName)
 	}
 
-	if networkDisabled, ok := s.data["networkdisabled"]; ok {
-		n, err := strconv.ParseBool(networkDisabled)
-		if err == nil {
-			s.networkDisabled = n
-		}
-	} else {
-		s.networkDisabled = false
-	}
-
 	if cmd, ok := s.data["cmd"]; ok {
 		parts, err := shlex.Split(cmd)
 		if err == nil {
@@ -154,19 +143,14 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 		return 1, err
 	}
 
-	if err != nil {
-		return 1, err
-	}
-
 	conf := &docker.Config{
-		Image:           s.image,
-		Cmd:             s.cmd,
-		Env:             s.env,
-		ExposedPorts:    s.exposedPorts,
-		NetworkDisabled: s.networkDisabled,
-		Entrypoint:      s.entrypoint,
-		DNS:             s.dockerOptions.DNS,
-		WorkingDir:      s.workingDir,
+		Image:        s.image,
+		Cmd:          s.cmd,
+		Env:          s.env,
+		ExposedPorts: s.exposedPorts,
+		Entrypoint:   s.entrypoint,
+		DNS:          s.dockerOptions.DNS,
+		WorkingDir:   s.workingDir,
 	}
 
 	hostconfig := &docker.HostConfig{
@@ -174,9 +158,22 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 		PortBindings: s.portBindings,
 	}
 
-	s.createContainer(client, conf, hostconfig)
+	container, err := s.createContainer(client, conf, hostconfig)
 
-	s.startContainer(client, hostconfig)
+	if err != nil {
+		s.logger.Errorln("Error in creating container %s%", s.containerName)
+	} else {
+		s.logger.Infoln("Container is created with %s%", container.ID)
+	}
+
+	if err != nil {
+		err = s.startContainer(client, hostconfig)
+		if err != nil {
+			s.logger.Errorln("Error in starting container %s%", s.containerName)
+		} else {
+			s.logger.Infoln("Container is successfully started %s%", s.containerName)
+		}
+	}
 
 	return 0, nil
 }
@@ -188,23 +185,12 @@ func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Confi
 			Config:     conf,
 			HostConfig: hostconfig,
 		})
-	if err != nil {
-		s.logger.Debugln("Error in creating container %s%", s.containerName)
-	} else {
-		s.logger.Debugln("Container is created with %s%", container.ID)
-	}
-
 	return container, err
 }
 
-func (s *DockerRunStep) startContainer(client *DockerClient, hostConfig *docker.HostConfig) {
+func (s *DockerRunStep) startContainer(client *DockerClient, hostConfig *docker.HostConfig) error {
 	err := client.StartContainer(s.containerName, hostConfig)
-	if err != nil {
-		s.logger.Debugln("Error in starting container %s%", s.containerName)
-	} else {
-		s.logger.Debugln("Container is successfully started %s%", s.containerName)
-	}
-
+	return err
 }
 
 // CollectFile NOP
