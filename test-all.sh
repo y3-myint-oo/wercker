@@ -112,7 +112,7 @@ testDockerRunKill () {
       echo "passed"
       return 0
     else
-	    echo 'failed'
+      echo 'failed'
       cat "$logFile"
       docker images
       return 1
