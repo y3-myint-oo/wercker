@@ -107,8 +107,16 @@ testDockerRunKill () {
   logFile="${workingDir}/docker-run-n-kill.log"
   $wercker dev "$testDir" --docker-local --working-dir "$workingDir" &> "$logFile"
   if [ $? -eq 0 ]; then
-    echo "passed"
-    return 0
+    cName=`docker ps -a | grep my-first-test-container | awk '{print $NF}'`
+    if [ ! "$cName" ]; then
+      echo "passed"
+      return 0
+    else
+	    echo 'failed'
+      cat "$logFile"
+      docker images
+      return 1
+    fi
   else
     echo 'failed'
     cat "$logFile"
