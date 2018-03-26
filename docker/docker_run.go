@@ -162,18 +162,16 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 
 	if err != nil {
 		s.logger.Errorln("Error in creating container %s%", s.containerName)
-	} else {
-		s.logger.Infoln("Container is created with %s%", container.ID)
+		return 1, err
 	}
+	s.logger.Infoln("Container is created with %s%", container.ID)
 
+	err = s.startContainer(client, hostconfig)
 	if err != nil {
-		err = s.startContainer(client, hostconfig)
-		if err != nil {
-			s.logger.Errorln("Error in starting container %s%", s.containerName)
-		} else {
-			s.logger.Infoln("Container is successfully started %s%", s.containerName)
-		}
+		s.logger.Errorln("Error in starting container %s%", s.containerName)
+		return 1, err
 	}
+	s.logger.Infoln("Container is successfully started %s%", s.containerName)
 
 	return 0, nil
 }
