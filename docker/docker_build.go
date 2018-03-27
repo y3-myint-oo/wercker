@@ -224,6 +224,10 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		Name:           s.tag,
 		BuildArgs:      s.buildargs,
 		SuppressOutput: s.q,
+		// Note: setting RmTmpContainer to false is ignored by the fsouza docker client due to a bug, so intermediate containers are always removed when successful
+		RmTmpContainer:      s.options.ShouldRemove, // remove intermediate containers when successful unless --no-remove specified in CLI
+		ForceRmTmpContainer: s.options.ShouldRemove, // remove intermediate containers when unsuccessful unless --no-remove specified in CLI
+
 		// cannot set Labels parameter as it is not supported by BuildImageOptions
 		// cannot set Extrahosts parameter as it is not supported by BuildImageOptions
 		// cannot set Squash parameter as it is not supported by BuildImageOptions
