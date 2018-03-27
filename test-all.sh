@@ -34,7 +34,6 @@ fi
 
 pullIfNeeded () {
   ## check whether an image exists locally with the specified repository
-  ## TODO extend to allow a tag to be specified
   docker images | awk '{print $1}' | grep -q $1
   if [ $? -ne 0 ]; then
     echo pulling $1
