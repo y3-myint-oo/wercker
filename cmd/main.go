@@ -1086,7 +1086,8 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName()
 			pr.FailedStepMessage = sr.Message
-			logger.Printf(f.Fail("Step failed", step.DisplayName(), timer.String()))
+			logger.Printf(f.Fail(sr.Message))
+			logger.Printf(f.Fail("Step failed", step.DisplayName(), sr.Message, timer.String()))
 			break
 		}
 

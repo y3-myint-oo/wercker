@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016,2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -632,6 +632,10 @@ type DockerPushStep struct {
 	logger        *util.LogEntry
 	workingDir    string
 	authenticator auth.Authenticator
+	// image (if set) is the tag of an existing image, and obtained by prepending the build ID to the specified image-name property
+	// if image is set then this image is tagged and pushed (equivalent to "docker push")
+	// if image is not set then the pipeline container is committed, tagged and pushed (classic behaviour)
+	image string
 }
 
 // NewDockerPushStep is a special step for doing docker pushes
@@ -776,6 +780,10 @@ func (s *DockerPushStep) configure(env *util.Environment) {
 		}
 	} else {
 		s.forceTags = true
+	}
+
+	if image, ok := s.data["image-name"]; ok {
+		s.image = s.options.RunID + env.Interpolate(image)
 	}
 }
 
@@ -942,27 +950,33 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		Volumes:      s.volumes,
 	}
 
-	commitOpts := docker.CommitContainerOptions{
-		Container:  containerID,
-		Repository: s.repository,
-		Author:     s.author,
-		Message:    s.message,
-		Run:        &config,
-		Tag:        s.tags[0],
-	}
+	var imageID = s.image
+	// if image is specified then it is assumed to be the name or ID of an existing image
+	// if image is not specified then create a new image by committing the pipeline container
+	if imageID == "" {
+		commitOpts := docker.CommitContainerOptions{
+			Container:  containerID,
+			Repository: s.repository,
+			Author:     s.author,
+			Message:    s.message,
+			Run:        &config,
+			Tag:        s.tags[0],
+		}
 
-	s.logger.Debugln("Commit container:", containerID)
-	i, err := client.CommitContainer(commitOpts)
-	if err != nil {
-		return -1, err
-	}
+		s.logger.Debugln("Commit container:", containerID)
+		i, err := client.CommitContainer(commitOpts)
+		if err != nil {
+			return -1, err
+		}
 
-	if s.dockerOptions.CleanupImage {
-		defer cleanupImage(s.logger, client, s.repository, s.tags[0])
-	}
+		if s.dockerOptions.CleanupImage {
+			defer cleanupImage(s.logger, client, s.repository, s.tags[0])
+		}
 
-	s.logger.WithField("Image", i).Debug("Commit completed")
-	return s.tagAndPush(i.ID, e, client)
+		s.logger.WithField("Image", i).Debug("Commit completed")
+		imageID = i.ID
+	}
+	return s.tagAndPush(imageID, e, client)
 }
 
 func (s *DockerPushStep) buildTags() []string {
