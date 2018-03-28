@@ -41,6 +41,7 @@ type DockerRunStep struct {
 	user          string
 	containerName string
 	image         string
+	containerID   string
 }
 
 // NewDockerRunStep is a special step for doing docker runs
@@ -95,9 +96,8 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		s.image = env.Interpolate(image)
 	}
 
-	if containerName, ok := s.data["container-name"]; ok {
-		s.containerName = s.options.RunID + env.Interpolate(containerName)
-	}
+	containerName := s.DisplayName()
+	s.containerName = s.options.RunID + env.Interpolate(containerName)
 
 	if cmd, ok := s.data["cmd"]; ok {
 		parts, err := shlex.Split(cmd)
@@ -159,19 +159,20 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 	}
 
 	container, err := s.createContainer(client, conf, hostconfig)
+	s.containerID = container.ID
 
 	if err != nil {
-		s.logger.Errorln("Error in creating container %s%", s.containerName)
+		s.logger.Errorln("Error in creating container name : ", s.containerName)
 		return 1, err
 	}
-	s.logger.Infoln("Container is created with %s%", container.ID)
+	s.logger.Infoln("Container is created with container id : ", container.ID)
 
 	err = s.startContainer(client, hostconfig)
 	if err != nil {
-		s.logger.Errorln("Error in starting container %s%", s.containerName)
+		s.logger.Errorln("Error in starting container name : ", s.containerName)
 		return 1, err
 	}
-	s.logger.Infoln("Container is successfully started %s%", s.containerName)
+	s.logger.Infoln("Container is successfully started name : ", s.containerName)
 
 	return 0, nil
 }
@@ -214,4 +215,27 @@ func (s *DockerRunStep) ShouldSyncEnv() bool {
 		return disableSync != "true"
 	}
 	return true
+}
+
+func (s *DockerRunStep) Clean() {
+	client, err := NewDockerClient(s.dockerOptions)
+	if err != nil {
+		s.logger.Errorln("Error in creating docker client")
+		return
+	}
+
+	err = client.StopContainer(s.containerID, 1)
+	if err != nil {
+		s.logger.Errorln("Error in stopping the container with id : ", s.containerID)
+	}
+
+	opts := docker.RemoveContainerOptions{
+		ID:            s.containerID,
+		RemoveVolumes: true,
+		Force:         true,
+	}
+	err = client.RemoveContainer(opts)
+	if err != nil {
+		s.logger.Errorln("Error in deleting the container with id : ", s.containerID)
+	}
 }
