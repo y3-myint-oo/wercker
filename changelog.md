@@ -1,5 +1,9 @@
 ## unreleased
 
+## v1.0.XXXX (2018-02-29)
+
+- New docker-build step and enhanded docker-push step (#362)
+
 ## v1.0.1153 (2018-02-27)
 
 - Remove Keen dependencies (#354)
