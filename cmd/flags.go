@@ -253,6 +253,7 @@ var (
 
 	ExternalRunnerCommonFlags = []cli.Flag{
 		cli.StringFlag{Name: "name", Usage: "specify a unique name for active runner(s))"},
+		cli.StringFlag{Name: "group", Usage: "specify the group name for starting runner(s)"},
 	}
 
 	ExternalRunnerStartFlags = []cli.Flag{
@@ -264,6 +265,7 @@ var (
 		cli.StringFlag{Name: "storepath", Usage: "local file system path for storing results"},
 		cli.StringFlag{Name: "logpath", Usage: "local file system path for storing log file"},
 		cli.IntFlag{Name: "runners", Value: 1, Usage: "number of runners to start, default is one"},
+		cli.StringFlag{Name: "token", Usage: "bearer token for external runner", EnvVar: "WERCKER_RUNNER_TOKEN"},
 	}
 )
 

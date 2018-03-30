@@ -384,23 +384,10 @@ var (
 				Usage: "start external runner(s)",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
-					settings := util.NewCLISettings(c)
-					env := util.NewEnvironment(os.Environ()...)
-					opts, err := core.NewExternalRunnerOptions(settings, env)
-					if err != nil {
-						cliLogger.Errorln("Invalid options\n", err)
-						os.Exit(1)
+					err := setupExternalRunnerParams(c, params)
+					if err == nil {
+						params.RunDockerController(false)
 					}
-
-					params.InstanceName = opts.RunnerName
-					params.GroupName = opts.RunnerGroup
-					params.OrgList = opts.RunnerOrgs
-					params.AppNames = opts.RunnerApps
-					params.Workflows = opts.Workflows
-					params.OutputPath = opts.StorePath
-					params.LoggerPath = opts.LoggerPath
-					params.RunnerCount = opts.NumRunners
-					params.RunDockerController(false)
 				},
 				Flags: ExternalRunnerStartFlags,
 			},
@@ -409,16 +396,11 @@ var (
 				Usage: "stop external runner(s)",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
-					settings := util.NewCLISettings(c)
-					env := util.NewEnvironment(os.Environ()...)
-					opts, err := core.NewExternalRunnerOptions(settings, env)
-					if err != nil {
-						cliLogger.Errorln("Invalid options\n", err)
-						os.Exit(1)
+					err := setupExternalRunnerParams(c, params)
+					if err == nil {
+						params.ShutdownFlag = true
+						params.RunDockerController(true)
 					}
-					params.InstanceName = opts.RunnerName
-					params.ShutdownFlag = true
-					params.RunDockerController(false)
 				},
 				Flags: ExternalRunnerCommonFlags,
 			},
@@ -427,21 +409,39 @@ var (
 				Usage: "display the status of started external runner(s)",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
-					settings := util.NewCLISettings(c)
-					env := util.NewEnvironment(os.Environ()...)
-					opts, err := core.NewExternalRunnerOptions(settings, env)
-					if err != nil {
-						cliLogger.Errorln("Invalid options\n", err)
-						os.Exit(1)
+					err := setupExternalRunnerParams(c, params)
+					if err == nil {
+						params.RunDockerController(true)
 					}
-					params.InstanceName = opts.RunnerName
-					params.RunDockerController(true)
 				},
 				Flags: ExternalRunnerCommonFlags,
 			},
 		},
 	}
 )
+
+func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) error {
+
+	settings := util.NewCLISettings(c)
+	env := util.NewEnvironment(os.Environ()...)
+	opts, err := core.NewExternalRunnerOptions(settings, env)
+	if err != nil {
+		cliLogger.Errorln("Invalid options\n", err)
+		os.Exit(1)
+	}
+
+	params.InstanceName = opts.RunnerName
+	params.GroupName = opts.RunnerGroup
+	params.OrgList = opts.RunnerOrgs
+	params.Workflows = opts.Workflows
+	params.AppNames = opts.RunnerApps
+	params.StorePath = opts.StorePath
+	params.LoggerPath = opts.LoggerPath
+	params.RunnerCount = opts.NumRunners
+	params.BearerToken = opts.BearerToken
+
+	return nil
+}
 
 func GetApp() *cli.App {
 	// logger.SetLevel(logger.DebugLevel)

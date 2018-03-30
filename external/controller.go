@@ -13,19 +13,11 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
-// NewDockerController -
-func NewDockerController() *RunnerParams {
-	return &RunnerParams{
-		RunnerCount:  1,
-		ShutdownFlag: false,
-	}
-}
-
 // RunnerParams - The parameters that drive the control of Docker
 // containers twhere the external runner executes. This structure is
 // passed from the Wercker CLI when runner is specified.
 type RunnerParams struct {
-	WerckerToken string // API Bearer token
+	BearerToken  string // API Bearer token
 	InstanceName string // Runner name
 	GroupName    string // Runner group name
 	ImageName    string // Docker image
@@ -33,12 +25,19 @@ type RunnerParams struct {
 	AppNames     string // Application names
 	OrgList      string // Organizations
 	Workflows    string // Workflows
-	OutputPath   string // Local storage locatioin
+	StorePath    string // Local storage locatioin
 	LoggerPath   string // Where to write logs
 	RunnerCount  int    // Number of runner containers
 	ShutdownFlag bool   // Shutdown if true
 	// following values are set during processing
 	client *docker.Client
+}
+
+// NewDockerController -
+func NewDockerController() *RunnerParams {
+	return &RunnerParams{
+		ImageName: "external-runner:latest",
+	}
 }
 
 // RunDockerController - This is commander-in-chief of external runners. It is called from
@@ -117,6 +116,11 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 	}
 
 	// OK, we want to start something.
+	if len(runners) > 0 {
+		detail := fmt.Sprintf("External runner(s) for %s already started.", cp.InstanceName)
+		log.Print(detail)
+		return
+	}
 	cp.startTheRunners()
 	return
 }
@@ -125,11 +129,17 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 // specified by the user.
 func (cp *RunnerParams) startTheRunners() {
 
+	if cp.BearerToken == "" {
+		log.Print("Unable to start runner(s) because runner bearer token was not supplied.")
+		return
+	}
+
 	ct := 1
 	for i := cp.RunnerCount; i > 0; i-- {
-		cmd, err := cp.createTheRunnerCommand()
+		runnerName := fmt.Sprintf("%s_%d", cp.InstanceName, ct)
+		cmd, err := cp.createTheRunnerCommand(runnerName)
 		if err == nil {
-			cp.startTheContainer(cmd, ct)
+			cp.startTheContainer(runnerName, cmd)
 			ct++
 		}
 	}
@@ -138,52 +148,76 @@ func (cp *RunnerParams) startTheRunners() {
 // Create the command to run the external runner in a container.
 // Temporarily just read in the arguments from the runner.args file
 // to create the command and argument array.
-func (cp *RunnerParams) createTheRunnerCommand() ([]string, error) {
+func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 
 	cmd := []string{}
 	cmd = append(cmd, "/externalRunner.sh")
-
-	/*
-		// Temporary code for building the command by reading arguments from a file.
-		file, err := os.Open("runner.args")
-		if err != nil {
-			return cmd, err
-		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			cmd = append(cmd, scanner.Text())
-		}
-	*/
+	cmd = append(cmd, fmt.Sprintf("--runner-name=%s", name))
+	cmd = append(cmd, fmt.Sprintf("--runner-api-token=%s", cp.BearerToken))
+	if cp.GroupName != "" {
+		cmd = append(cmd, fmt.Sprintf("--runner-group=%s", cp.GroupName))
+	}
+	if cp.OrgList != "" {
+		cmd = append(cmd, fmt.Sprintf("--runner-orgs=%s", cp.OrgList))
+	}
+	if cp.AppNames != "" {
+		cmd = append(cmd, fmt.Sprintf("--runner-apps=%s", cp.AppNames))
+	}
+	if cp.Workflows != "" {
+		cmd = append(cmd, fmt.Sprintf("--runner-workflows=%s", cp.Workflows))
+	}
+	if cp.StorePath != "" {
+		cmd = append(cmd, fmt.Sprintf("--runner-store-path=%s", cp.StorePath))
+	}
+	if cp.LoggerPath != "" {
+		cmd = append(cmd, fmt.Sprintf("--runner-logs-path=%s", cp.LoggerPath))
+	}
 	return cmd, nil
 }
 
 // Start the runner container(s). The command and arguments are supplied so
 // create the container, then start it.
-func (cp *RunnerParams) startTheContainer(cmd []string, ct int) error {
+func (cp *RunnerParams) startTheContainer(name string, cmd []string) error {
 
-	name := fmt.Sprintf("%s_%d", cp.InstanceName, ct)
-	labels := map[string]string{}
-	lName := fmt.Sprintf("runner=/wercker-external-runner-%s", cp.InstanceName)
-	labels["runner"] = lName
+	args := []string{}
+	labels := []string{}
+	volumes := []string{}
+
+	labels = append(labels, fmt.Sprintf("runner=/wercker-external-runner-%s", cp.InstanceName))
+	if cp.GroupName != "" {
+		labels = append(labels, fmt.Sprintf("runnergroup=%s", cp.GroupName))
+	}
+
+	volumes = append(volumes, "/Users/bihaber/wercher:/var/lib/wercker:rw")
+	volumes = append(volumes, "/var/run/docker.sock:/var/run/docker.sock")
+	if cp.LoggerPath != "" {
+		volumes = append(volumes, fmt.Sprintf("%s:/runlogs:rw", cp.LoggerPath))
+	}
+	if cp.StorePath != "" {
+		volumes = append(volumes, fmt.Sprintf("%s:/runstore:rw", cp.StorePath))
+	}
 
 	// This is a super Kludge until go-dockerclient is updated to support mounts.
 
-	args := []string{}
 	args = append(args, "run")
 	args = append(args, "--detach")
-	args = append(args, "--label")
-	args = append(args, lName)
 	args = append(args, "--name")
 	args = append(args, name)
-	args = append(args, "--volume")
-	args = append(args, "/Users/bihaber/wercher:/var/lib/wercker:rw")
-	args = append(args, "--volume")
-	args = append(args, "/var/run/docker.sock:/var/run/docker.sock")
-	args = append(args, "external-runner:latest")
-	args = append(args, "/externalRunner.sh")
-
+	args = append(args, "-e")
+	args = append(args, fmt.Sprintf("WERCKER_RUNNER_TOKEN=%s", cp.BearerToken))
+	for _, label := range labels {
+		args = append(args, "--label")
+		args = append(args, label)
+	}
+	for _, volume := range volumes {
+		args = append(args, "--volume")
+		args = append(args, volume)
+	}
+	args = append(args, cp.ImageName)
+	// Add the command arguments
+	for _, cmdarg := range cmd {
+		args = append(args, cmdarg)
+	}
 	err := runDocker(args)
 	if err != nil {
 		log.Print(err)
@@ -262,7 +296,7 @@ func (cp *RunnerParams) shutdownRunners(runners []*docker.Container) {
 			}
 		}
 	}
-	var finalMessage = "External-runner shutdown complete."
+	var finalMessage = "External runner stop is complete."
 	log.Print(finalMessage)
 }
 
