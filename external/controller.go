@@ -39,7 +39,7 @@ type RunnerParams struct {
 // NewDockerController -
 func NewDockerController() *RunnerParams {
 	return &RunnerParams{
-		ImageName: "external-runner:latest",
+		ImageName: "oracle/wercker/runner:latest",
 	}
 }
 
@@ -156,6 +156,8 @@ func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 
 	cmd := []string{}
 	cmd = append(cmd, "/externalRunner.sh")
+	cmd = append(cmd, "--external-runner")
+	cmd = append(cmd, fmt.Sprintf("--runner-image=%s", cp.ImageName))
 	cmd = append(cmd, fmt.Sprintf("--runner-name=%s", name))
 	cmd = append(cmd, fmt.Sprintf("--runner-api-token=%s", cp.BearerToken))
 	if cp.GroupName != "" {
@@ -176,6 +178,12 @@ func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 	if cp.LoggerPath != "" {
 		cmd = append(cmd, fmt.Sprintf("--runner-logs-path=%s", cp.LoggerPath))
 	}
+	if cp.Debug == true {
+		cmd = append(cmd, "-d")
+	}
+	if cp.Journal == true {
+		cmd = append(cmd, "--journal")
+	}
 	return cmd, nil
 }
 
@@ -187,7 +195,7 @@ func (cp *RunnerParams) startTheContainer(name string, cmd []string) error {
 	labels := []string{}
 	volumes := []string{}
 
-	labels = append(labels, fmt.Sprintf("runner=/wercker-external-runner-%s", cp.InstanceName))
+	labels = append(labels, fmt.Sprintf("runner=/wercker-external-runner-%s", cp.Basename))
 	if cp.GroupName != "" {
 		labels = append(labels, fmt.Sprintf("runnergroup=%s", cp.GroupName))
 	}
@@ -300,7 +308,7 @@ func (cp *RunnerParams) shutdownRunners(runners []*docker.Container) {
 			}
 		}
 	}
-	var finalMessage = fmt.Sprintf("External runner(s) for %s - stop is complete.", cp.Basename)
+	var finalMessage = fmt.Sprintf("External runner(s) for %s stopped.", cp.Basename)
 	log.Print(finalMessage)
 }
 
