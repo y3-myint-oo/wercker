@@ -29,8 +29,11 @@ type RunnerParams struct {
 	LoggerPath   string // Where to write logs
 	RunnerCount  int    // Number of runner containers
 	ShutdownFlag bool   // Shutdown if true
+	Debug        bool   // debug enabled
+	Journal      bool   // journal logging
 	// following values are set during processing
-	client *docker.Client
+	Basename string // base name for container creation
+	client   *docker.Client
 }
 
 // NewDockerController -
@@ -46,6 +49,7 @@ func NewDockerController() *RunnerParams {
 func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 
 	// When no instance name was supplied, use the hostname
+	cp.Basename = cp.InstanceName
 	if cp.InstanceName == "" {
 		hostName, err := os.Hostname()
 
@@ -53,7 +57,7 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 			log.Print(fmt.Sprintf("unable to access hostname: %s", err))
 			return
 		}
-		cp.InstanceName = hostName
+		cp.Basename = hostName
 	}
 
 	endpoint := "unix:///var/run/docker.sock"
@@ -72,7 +76,7 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 
 	// Pick out containers related to this runner instance set.
 	runners := []*docker.Container{}
-	lName := fmt.Sprintf("/wercker-external-runner-%s", cp.InstanceName)
+	lName := fmt.Sprintf("/wercker-external-runner-%s", cp.Basename)
 	for _, dockerAPIContainer := range clist {
 		for _, label := range dockerAPIContainer.Labels {
 			if label == lName {
@@ -117,7 +121,7 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 
 	// OK, we want to start something.
 	if len(runners) > 0 {
-		detail := fmt.Sprintf("External runner(s) for %s already started.", cp.InstanceName)
+		detail := fmt.Sprintf("External runner(s) for %s already started.", cp.Basename)
 		log.Print(detail)
 		return
 	}
@@ -136,7 +140,7 @@ func (cp *RunnerParams) startTheRunners() {
 
 	ct := 1
 	for i := cp.RunnerCount; i > 0; i-- {
-		runnerName := fmt.Sprintf("%s_%d", cp.InstanceName, ct)
+		runnerName := fmt.Sprintf("%s_%d", cp.Basename, ct)
 		cmd, err := cp.createTheRunnerCommand(runnerName)
 		if err == nil {
 			cp.startTheContainer(runnerName, cmd)
@@ -296,7 +300,7 @@ func (cp *RunnerParams) shutdownRunners(runners []*docker.Container) {
 			}
 		}
 	}
-	var finalMessage = "External runner stop is complete."
+	var finalMessage = fmt.Sprintf("External runner(s) for %s - stop is complete.", cp.Basename)
 	log.Print(finalMessage)
 }
 

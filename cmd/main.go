@@ -429,7 +429,6 @@ func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) er
 		cliLogger.Errorln("Invalid options\n", err)
 		os.Exit(1)
 	}
-
 	params.InstanceName = opts.RunnerName
 	params.GroupName = opts.RunnerGroup
 	params.OrgList = opts.RunnerOrgs
@@ -439,6 +438,10 @@ func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) er
 	params.LoggerPath = opts.LoggerPath
 	params.RunnerCount = opts.NumRunners
 	params.BearerToken = opts.BearerToken
+	// Pickup global options that apply to runner assuming these are passed
+	// to the runner service
+	params.Debug = opts.GlobalOptions.Debug
+	params.Journal = opts.GlobalOptions.Journal
 
 	return nil
 }

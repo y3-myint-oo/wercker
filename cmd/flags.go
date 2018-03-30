@@ -257,13 +257,13 @@ var (
 	}
 
 	ExternalRunnerStartFlags = []cli.Flag{
-		cli.StringFlag{Name: "name", Usage: "specify a unique name for starting runner(s)"},
-		cli.StringFlag{Name: "group", Usage: "specify the group name for starting runner(s)"},
+		cli.StringFlag{Name: "name", Usage: "specify an instance name for runner(s)"},
+		cli.StringFlag{Name: "group", Usage: "specify the group name for runner(s)"},
 		cli.StringFlag{Name: "orgs", Usage: "comma separated list of organization names"},
 		cli.StringFlag{Name: "apps", Usage: "comma separated list of application names"},
 		cli.StringFlag{Name: "workflows", Usage: "comma separated list of workflows"},
 		cli.StringFlag{Name: "storepath", Usage: "local file system path for storing results"},
-		cli.StringFlag{Name: "logpath", Usage: "local file system path for storing log file"},
+		cli.StringFlag{Name: "logpath", Usage: "local file system path for storing log files"},
 		cli.IntFlag{Name: "runners", Value: 1, Usage: "number of runners to start, default is one"},
 		cli.StringFlag{Name: "token", Usage: "bearer token for external runner", EnvVar: "WERCKER_RUNNER_TOKEN"},
 	}
