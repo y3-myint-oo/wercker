@@ -21,6 +21,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
+	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
@@ -42,6 +43,13 @@ type DockerRunStep struct {
 	containerName string
 	image         string
 	containerID   string
+	repository    string
+	Auth          dockerauth.CheckAccessOptions `yaml:",inline"`
+}
+
+type BoxDockerRun struct {
+	*DockerBox
+	logger *util.LogEntry
 }
 
 // NewDockerRunStep is a special step for doing docker runs
@@ -130,14 +138,26 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 	}
 }
 
+// NewServiceBox from a name and other references
+func NewDockerRunDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *Options) (*BoxDockerRun, error) {
+	box, err := NewDockerBox(boxConfig, options, dockerOptions)
+	logger := util.RootLogger().WithField("Logger", "DockerRun")
+	return &BoxDockerRun{DockerBox: box, logger: logger}, err
+}
+
 // Fetch NOP
 func (s *DockerRunStep) Fetch() (string, error) {
-	// nop
 	return "", nil
 }
 
 // Execute creates the container and starts the container.
 func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
+	boxConfig := &core.BoxConfig{
+		ID: s.image,
+	}
+	dockerRunDockerBox, err := NewDockerRunDockerBox(boxConfig, s.options, s.dockerOptions)
+	dockerRunDockerBox.Fetch(ctx, s.Env())
+
 	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
