@@ -1034,6 +1034,7 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 	r, w := io.Pipe()
 	// emitStatusses in a different go routine
 	go EmitStatus(e, r, s.options)
+	defer w.Close()
 	for _, tag := range s.tags {
 		tagOpts := docker.TagImageOptions{
 			Repo:  s.repository,
@@ -1059,7 +1060,6 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 		if s.dockerOptions.CleanupImage {
 			defer cleanupImage(s.logger, client, s.repository, tag)
 		}
-		defer w.Close()
 		if !s.dockerOptions.Local {
 			auth := docker.AuthConfiguration{
 				Username: s.authenticator.Username(),
