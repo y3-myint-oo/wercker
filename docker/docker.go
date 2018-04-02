@@ -16,9 +16,11 @@ package dockerlocal
 
 import (
 	"archive/tar"
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -40,6 +42,7 @@ import (
 	"github.com/google/shlex"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/core"
@@ -52,7 +55,44 @@ const (
 	// so the value can be anything so long as it's not empty.
 	DefaultDockerRegistryUsername = "token"
 	DefaultDockerCommand          = `/bin/sh -c "if [ -e /bin/bash ]; then /bin/bash; else /bin/sh; fi"`
+	NoPushConfirmationInStatus    = "Docker push failed to complete.Please check logs for any error condition"
 )
+
+//TODO: The current fsouza/go-dockerclient does not contain structs for status messages emitted
+// from docker in case of push - therefore had to explicitly create these structs for better
+// usablity of code (instead of decofing json to a map). Official docker client should contain
+// these structs(or equivalents) already and this code should be refactored to use those instead
+// having to maintain our own.
+
+//PushStatusAux : The "aux" component of status message
+type PushStatusAux struct {
+	Tag    string `json:"Tag,omitempty"`
+	Digest string `json:"Digest,omitempty"`
+	Size   int64  `json:"Size,omitempty"`
+}
+
+//PushStatusProgressDetail : The "progressDetail" component of status message
+type PushStatusProgressDetail struct {
+	Current int64 `json:"current,omitempty"`
+	Total   int64 `json:"total,omitempty"`
+}
+
+//PushStatusErrorDetail : The "errorDetail" component of status message
+type PushStatusErrorDetail struct {
+	Message string `json:"message,omitempty"`
+	Code    string `json:"code,omitempty"`
+}
+
+//PushStatus : Status message from Push message
+type PushStatus struct {
+	Status         string                    `json:"status,omitempty"`
+	ID             string                    `json:"id,omitempty"`
+	Progress       string                    `json:"progress,omitempty"`
+	Error          string                    `json:"error,omitempty"`
+	Aux            *PushStatusAux            `json:"aux,omitempty"`
+	ProgressDetail *PushStatusProgressDetail `json:"progressDetail,omitempty"`
+	ErrorDetail    *PushStatusErrorDetail    `json:"errorDetail,omitempty"`
+}
 
 func RequireDockerEndpoint(options *Options) error {
 	client, err := NewDockerClient(options)
@@ -994,7 +1034,6 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 	r, w := io.Pipe()
 	// emitStatusses in a different go routine
 	go EmitStatus(e, r, s.options)
-	defer w.Close()
 	for _, tag := range s.tags {
 		tagOpts := docker.TagImageOptions{
 			Repo:  s.repository,
@@ -1007,12 +1046,20 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err
 		}
+		inactivityDuration := 5 * time.Minute
+		buf := new(bytes.Buffer)
+		mw := io.MultiWriter(w, buf)
 		pushOpts := docker.PushImageOptions{
-			Name:          s.repository,
-			OutputStream:  w,
-			RawJSONStream: true,
-			Tag:           tag,
+			Name:              s.repository,
+			OutputStream:      mw,
+			RawJSONStream:     true,
+			Tag:               tag,
+			InactivityTimeout: inactivityDuration,
 		}
+		if s.dockerOptions.CleanupImage {
+			defer cleanupImage(s.logger, client, s.repository, tag)
+		}
+		defer w.Close()
 		if !s.dockerOptions.Local {
 			auth := docker.AuthConfiguration{
 				Username: s.authenticator.Username(),
@@ -1024,11 +1071,36 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 				s.logger.Errorln("Failed to push:", err)
 				return 1, err
 			}
-			s.logger.Println("Pushed container:", s.repository, s.tags)
-
-			if s.dockerOptions.CleanupImage {
-				defer cleanupImage(s.logger, client, s.repository, tag)
+			// Covert status messages in stream {...} {...} to a proper json array [{...},{...},...]
+			statusJSON := strings.Join([]string{"[", strings.TrimSuffix(strings.Replace(buf.String(), "\n", ",", -1), ","), "]"}, "")
+			statusMessages := make([]PushStatus, 0)
+			err = json.Unmarshal(([]byte)(statusJSON), &statusMessages)
+			if err != nil {
+				s.logger.Errorln("Failed to parse status outputs from docker push:", err)
+				return 1, err
 			}
+			isContainerPushed := false
+			for _, statusMessage := range statusMessages {
+				if len(strings.TrimSpace(statusMessage.Error)) != 0 {
+					errorMessageToDisplay := statusMessage.Error
+					if statusMessage.ErrorDetail != nil {
+						jsonMessage, _ := json.Marshal(statusMessage.ErrorDetail)
+						errorMessageToDisplay = string(jsonMessage)
+					}
+					s.logger.Errorln("Failed to push:", errorMessageToDisplay)
+					return 1, errors.New(errorMessageToDisplay)
+				}
+				if statusMessage.Aux != nil && statusMessage.Aux.Tag == tag {
+					s.logger.Println("Pushed container:", s.repository, tag, ",Digest:", statusMessage.Aux.Digest)
+					isContainerPushed = true
+				}
+
+			}
+			if !isContainerPushed {
+				s.logger.Errorln("Failed to push tag:", tag, "Please check log messages")
+				return 1, errors.New(NoPushConfirmationInStatus)
+			}
+
 		}
 	}
 	return 0, nil
