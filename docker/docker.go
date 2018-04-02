@@ -60,7 +60,7 @@ const (
 
 //TODO: The current fsouza/go-dockerclient does not contain structs for status messages emitted
 // from docker in case of push - therefore had to explicitly create these structs for better
-// usablity of code (instead of decofing json to a map). Official docker client should contain
+// usablity of code (instead of unmarshalling json to a map). Official docker client should contain
 // these structs(or equivalents) already and this code should be refactored to use those instead
 // having to maintain our own.
 
