@@ -1,5 +1,7 @@
 ## unreleased
 
+- Extend docker-build step to support more build parameters
+
 ## v1.0.1183 (2018-03-29)
 
 - New docker-build step and enhanded docker-push step (#362)
