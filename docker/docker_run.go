@@ -49,7 +49,6 @@ type DockerRunStep struct {
 
 type BoxDockerRun struct {
 	*DockerBox
-	logger *util.LogEntry
 }
 
 // NewDockerRunStep is a special step for doing docker runs
@@ -138,11 +137,13 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 	}
 }
 
-// NewServiceBox from a name and other references
-func NewDockerRunDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *Options) (*BoxDockerRun, error) {
+// NewBoxDockerRun gives a wrapper for a box.
+func NewBoxDockerRun(boxConfig *core.BoxConfig, options *core.PipelineOptions, dockerOptions *Options) (*BoxDockerRun, error) {
 	box, err := NewDockerBox(boxConfig, options, dockerOptions)
-	logger := util.RootLogger().WithField("Logger", "DockerRun")
-	return &BoxDockerRun{DockerBox: box, logger: logger}, err
+	if err != nil {
+		return nil, err
+	}
+	return &BoxDockerRun{DockerBox: box}, err
 }
 
 // Fetch NOP
@@ -155,7 +156,11 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 	boxConfig := &core.BoxConfig{
 		ID: s.image,
 	}
-	dockerRunDockerBox, err := NewDockerRunDockerBox(boxConfig, s.options, s.dockerOptions)
+	dockerRunDockerBox, err := NewBoxDockerRun(boxConfig, s.options, s.dockerOptions)
+	if err != nil {
+		s.logger.Errorln("Error in creating a box from boxConfig ", boxConfig)
+		return 1, err
+	}
 	dockerRunDockerBox.Fetch(ctx, s.Env())
 
 	client, err := NewDockerClient(s.dockerOptions)
