@@ -7,6 +7,8 @@ build:
     - internal/docker-build:
         image-name: docker-build-image-name-1
         buildargs: "foo=val1 bar=val2"
+        labels: "Label1=value1 'Three word key'=value2 Label3='Three word value'"
+
 build-and-squash:
   box: golang
   steps:

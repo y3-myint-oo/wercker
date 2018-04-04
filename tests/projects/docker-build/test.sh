@@ -51,7 +51,25 @@ testDockerBuild () {
     echo "Image was unexpectedly merged"
     return 1
   fi
-
+  # Verify that the labels have been set as specified
+  val1Expected="value1"
+  val1Actual=`docker inspect $imageid -f '{{index .ContainerConfig.Labels "Label1"}}'`
+  if [ $val1Actual != $val1Expected ]; then
+    echo "Label incorrect: expected " $val1Expected " but was " $val1Actual
+    return 1
+  fi 
+  val2Expected="value2"
+  val2Actual=`docker inspect $imageid -f '{{index .ContainerConfig.Labels "Three word key"}}'`
+  if [ $val2Actual != $val2Expected ]; then
+    echo "Label incorrect: expected " $val2Expected " but was " $val2Actual
+    return 1
+  fi 
+  val3Expected="Three word value"
+  val3Actual=`docker inspect $imageid -f '{{index .ContainerConfig.Labels "Label3"}}'`
+  if [ "$val3Actual" != "$val3Expected" ]; then
+    echo "Label incorrect: expected " $val3Expected " but was " $val3Actual
+    return 1
+  fi  
   # start the image using the docker CLI
   docker run --name ${testName}-container --rm -d -p 5000:5000 ${imageid} >> "${workingDir}/${testName}.log" 2>&1
   # test the image
