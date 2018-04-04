@@ -700,6 +700,12 @@
 			"revisionTime": "2017-08-28T12:18:12Z"
 		},
 		{
+			"checksumSHA1": "5Urs82qov1TyfgJ1nBpEobv6X4Q=",
+			"path": "github.com/docker/docker/api",
+			"revision": "deed26f7f0f9a9d279b8ac99389f204d9063d1a4",
+			"revisionTime": "2018-03-29T10:06:29Z"
+		},
+		{
 			"checksumSHA1": "iYT7abLMy0Vfyy8nwoDZYirLrI4=",
 			"path": "github.com/docker/docker/api/types",
 			"revision": "deed26f7f0f9a9d279b8ac99389f204d9063d1a4",
