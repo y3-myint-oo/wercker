@@ -7,4 +7,9 @@ build:
     - internal/docker-build:
         image-name: docker-build-image-name-1
         buildargs: "foo=val1 bar=val2"
-
+build-and-squash:
+  box: golang
+  steps:
+    - internal/docker-build:
+        image-name: docker-build-image-name-2
+        squash: true
