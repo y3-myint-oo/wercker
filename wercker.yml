@@ -1,4 +1,4 @@
-box: golang:1.7
+box: golang:1.9.5
 no-response-timeout: 15
 
 build:
@@ -6,7 +6,7 @@ build:
   steps:
     - install-packages:
         checkpoint: pkgs
-        packages: openssh-client pkg-config libsystemd-journal-dev
+        packages: openssh-client pkg-config libsystemd-dev
 
     - script:
         name: install govendor
