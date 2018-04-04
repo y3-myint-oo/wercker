@@ -1,6 +1,6 @@
 ## unreleased
 
-## v1.0.XXXX(2018-04-04)
+## v1.0.1189(2018-04-04)
 
 - Fix status reporting for docker push (#371)
 
