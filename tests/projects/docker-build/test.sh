@@ -37,6 +37,19 @@ testDockerBuild () {
     fi
     return 1
   fi
+  # the Dockerfile includes a RUN command that listed /etc/hosts. verify that this includes the two extrahosts we specified
+  ip1=`grep somehost ${workingDir}/${testName}.log | awk '{print $1}'`
+  if [ "$ip1" != "192.168.0.1" ]; then
+    cat "${workingDir}/${testName}.log"
+    echo "Unexpected extrahost setting for somehost: " $ip1
+    return 1
+  fi   
+  ip2=`grep anotherhost ${workingDir}/${testName}.log | awk '{print $1}'`
+  if [ "$ip2" != "192.168.0.2" ]; then
+    cat "${workingDir}/${testName}.log"
+    echo "Unexpected extrahost setting for anotherhost: " $ip2
+    return 1
+  fi   
   # verify that an image was created with the expected repository setting (column 1 is the repository)
   docker images | awk '{print $1}' | grep -q "$imagename"
   if [ $? -ne 0 ]; then
