@@ -55,7 +55,7 @@ const (
 	// so the value can be anything so long as it's not empty.
 	DefaultDockerRegistryUsername = "token"
 	DefaultDockerCommand          = `/bin/sh -c "if [ -e /bin/bash ]; then /bin/bash; else /bin/sh; fi"`
-	NoPushConfirmationInStatus    = "Docker push failed to complete.Please check logs for any error condition"
+	NoPushConfirmationInStatus    = "Docker push failed to complete. Please check logs for any error condition.."
 )
 
 //TODO: The current fsouza/go-dockerclient does not contain structs for status messages emitted
@@ -66,9 +66,9 @@ const (
 
 //PushStatusAux : The "aux" component of status message
 type PushStatusAux struct {
-	Tag    string `json:"Tag,omitempty"`
-	Digest string `json:"Digest,omitempty"`
-	Size   int64  `json:"Size,omitempty"`
+	Tag    string `json:"tag,omitempty"`
+	Digest string `json:"digest,omitempty"`
+	Size   int64  `json:"size,omitempty"`
 }
 
 //PushStatusProgressDetail : The "progressDetail" component of status message
@@ -1071,13 +1071,17 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 				s.logger.Errorln("Failed to push:", err)
 				return 1, err
 			}
-			// Covert status messages in stream {...} {...} to a proper json array [{...},{...},...]
-			statusJSON := strings.Join([]string{"[", strings.TrimSuffix(strings.Replace(buf.String(), "\n", ",", -1), ","), "]"}, "")
 			statusMessages := make([]PushStatus, 0)
-			err = json.Unmarshal(([]byte)(statusJSON), &statusMessages)
-			if err != nil {
-				s.logger.Errorln("Failed to parse status outputs from docker push:", err)
-				return 1, err
+			dec := json.NewDecoder(bytes.NewReader(buf.Bytes()))
+			for {
+				var status PushStatus
+				if err := dec.Decode(&status); err == io.EOF {
+					break
+				} else if err != nil {
+					s.logger.Errorln("Failed to parse status outputs from docker push:", err)
+					break
+				}
+				statusMessages = append(statusMessages, status)
 			}
 			isContainerPushed := false
 			for _, statusMessage := range statusMessages {
