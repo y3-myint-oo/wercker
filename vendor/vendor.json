@@ -700,10 +700,10 @@
 			"revisionTime": "2017-08-28T12:18:12Z"
 		},
 		{
-			"checksumSHA1": "5Urs82qov1TyfgJ1nBpEobv6X4Q=",
+			"checksumSHA1": "QOmOsBF53XdwMZEmj4OAwZdg2X8=",
 			"path": "github.com/docker/docker/api",
-			"revision": "deed26f7f0f9a9d279b8ac99389f204d9063d1a4",
-			"revisionTime": "2018-03-29T10:06:29Z"
+			"revision": "094aa1a5527df23922e1de85919da7ab67455067",
+			"revisionTime": "2018-04-04T04:22:52Z"
 		},
 		{
 			"checksumSHA1": "iYT7abLMy0Vfyy8nwoDZYirLrI4=",
@@ -724,10 +724,22 @@
 			"revisionTime": "2017-08-23T07:13:08Z"
 		},
 		{
+			"checksumSHA1": "fF+hqcXRnyL/ZeDFP7b5HSa734Q=",
+			"path": "github.com/docker/docker/api/types/events",
+			"revision": "094aa1a5527df23922e1de85919da7ab67455067",
+			"revisionTime": "2018-04-04T04:22:52Z"
+		},
+		{
 			"checksumSHA1": "Ts5q9D0DtZFVbx1NRHxe9T3Jw3I=",
 			"path": "github.com/docker/docker/api/types/filters",
 			"revision": "deed26f7f0f9a9d279b8ac99389f204d9063d1a4",
 			"revisionTime": "2018-03-29T10:06:29Z"
+		},
+		{
+			"checksumSHA1": "KuC0C6jo1t7tlvIqb7G3u1FIaZU=",
+			"path": "github.com/docker/docker/api/types/image",
+			"revision": "094aa1a5527df23922e1de85919da7ab67455067",
+			"revisionTime": "2018-04-04T04:22:52Z"
 		},
 		{
 			"checksumSHA1": "uJeLBKpHZXP+bWhXP4HhpyUTWYI=",
@@ -766,10 +778,22 @@
 			"revisionTime": "2017-08-23T07:13:08Z"
 		},
 		{
+			"checksumSHA1": "7d4W+G0yQW+Fu3k9BmBUgqF/rPM=",
+			"path": "github.com/docker/docker/api/types/time",
+			"revision": "094aa1a5527df23922e1de85919da7ab67455067",
+			"revisionTime": "2018-04-04T04:22:52Z"
+		},
+		{
 			"checksumSHA1": "a2nSd80cg+Dpy7ZmNpFmbhjn+2U=",
 			"path": "github.com/docker/docker/api/types/versions",
 			"revision": "88c0317e23449d6ff730a1073f240586cbdfd4ba",
 			"revisionTime": "2017-08-23T07:13:08Z"
+		},
+		{
+			"checksumSHA1": "/MWgG81LBSCrzhfdXYp6AKMgZcE=",
+			"path": "github.com/docker/docker/api/types/volume",
+			"revision": "094aa1a5527df23922e1de85919da7ab67455067",
+			"revisionTime": "2018-04-04T04:22:52Z"
 		},
 		{
 			"checksumSHA1": "fbFZwcuT6HUsU67jGTYhS2Zp2FM=",
