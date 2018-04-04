@@ -25,8 +25,9 @@ build:
 
     - script:
         name: go test
-        code: govendor test +local
-
+        code: |
+            govendor list
+            govendor test -v +local
     - script:
         name: clear out the build binaries
         code: rm -rf $GOPATH/pkg
