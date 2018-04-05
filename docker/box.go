@@ -454,7 +454,6 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 	}
 
 	b.container = container
-
 	return container, nil
 }
 
@@ -685,9 +684,12 @@ func (b *DockerBox) ExportImage(options *ExportImageOptions) error {
 func (b *DockerBox) createDockerNetwork() (*docker.Network, error) {
 	b.logger.Debugln("Creating docker network")
 	client := b.client
+	options := make(map[string]interface{})
+	options["com.docker.network.bridge.enable_ip_masquerade"] = false
 	return client.CreateNetwork(docker.CreateNetworkOptions{
 		Name:           b.options.RunID,
 		CheckDuplicate: true,
+		Options:        options,
 	})
 }
 
@@ -702,7 +704,7 @@ func (b *DockerBox) prepareSvcVarDockerEnvMap() ([]string, error) {
 				return nil, err
 			}
 			ns := container.NetworkSettings
-			containerName := strings.ToUpper(service.GetServiceName())
+			serviceName := strings.ToUpper(service.GetServiceName())
 			var serviceIPAddress string
 			for _, v := range ns.Networks {
 				serviceIPAddress = v.IPAddress
@@ -710,9 +712,9 @@ func (b *DockerBox) prepareSvcVarDockerEnvMap() ([]string, error) {
 			}
 			for k, _ := range container.Config.ExposedPorts {
 				s := strings.Split(string(k), "/")
-				env = append(env, fmt.Sprintf("%s=%s", containerName+"_PORT_"+s[0]+"_"+s[1]+"_ADDR", serviceIPAddress))
-				env = append(env, fmt.Sprintf("%s=%s", containerName+"_PORT_"+s[0]+"_"+s[1]+"_PORT", s[0]))
-				env = append(env, fmt.Sprintf("%s=%s", containerName+"_PORT_"+s[0]+"_"+s[1]+"_PROTO", s[1]))
+				env = append(env, fmt.Sprintf("%s=%s", serviceName+"_PORT_"+s[0]+"_"+s[1]+"_ADDR", serviceIPAddress))
+				env = append(env, fmt.Sprintf("%s=%s", serviceName+"_PORT_"+s[0]+"_"+s[1]+"_PORT", s[0]))
+				env = append(env, fmt.Sprintf("%s=%s", serviceName+"_PORT_"+s[0]+"_"+s[1]+"_PROTO", s[1]))
 			}
 		}
 	}
