@@ -17,7 +17,6 @@ package dockerlocal
 import (
 	"archive/tar"
 	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -231,7 +230,7 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		return -1, err
 	}
 
-	emitBuildStatus(e, imageBuildResponse.Body, s.options)
+	EmitStatus(e, imageBuildResponse.Body, s.options)
 	imageBuildResponse.Body.Close()
 
 	s.logger.Debug("Image built")
@@ -348,30 +347,4 @@ func (s *DockerBuildStep) ShouldSyncEnv() bool {
 		return disableSync != "true"
 	}
 	return true
-}
-
-// Each line of output from the ImageBuild API call is a JSON data structure containing one element, "stream", which contains a message
-type jsonResponse struct {
-	Stream string `json:"stream"`
-}
-
-// emitBuildStatus is used to log the messages returned by the ImageBuild API call
-func emitBuildStatus(e *core.NormalizedEmitter, r io.Reader, options *core.PipelineOptions) {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		response := jsonResponse{}
-		err := json.Unmarshal([]byte(scanner.Text()), &response)
-		if err != nil {
-			e.Emit(core.Logs, &core.LogsArgs{
-				Logs:   err.Error() + ":" + scanner.Text(),
-				Stream: "docker",
-			})
-			continue
-		}
-		e.Emit(core.Logs, &core.LogsArgs{
-			Logs:   response.Stream,
-			Stream: "docker",
-		})
-
-	}
 }
