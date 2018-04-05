@@ -197,7 +197,6 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		return -1, err
 	}
 
-	// TODO could we reuse the "transport's" client?
 	officialClient, err := NewOfficialDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
@@ -232,10 +231,8 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		return -1, err
 	}
 
-	//go func() {
 	emitBuildStatus(e, imageBuildResponse.Body, s.options)
 	imageBuildResponse.Body.Close()
-	//}()
 
 	s.logger.Debug("Image built")
 	return 0, nil
