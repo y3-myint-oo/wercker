@@ -17,7 +17,7 @@ build:
         code: govendor sync
 
     - script:
-        name: go vet
+        name: go vet -composites=false
         code: govendor vet +local
 
     # - golint:
