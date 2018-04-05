@@ -119,15 +119,15 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 	}, nil
 }
 
-func (b *DockerBox) links() []string {
-	serviceLinks := []string{}
+// func (b *DockerBox) links() []string {
+// 	serviceLinks := []string{}
 
-	for _, service := range b.services {
-		serviceLinks = append(serviceLinks, service.Link())
-	}
-	b.logger.Debugln("Creating links:", serviceLinks)
-	return serviceLinks
-}
+// 	for _, service := range b.services {
+// 		serviceLinks = append(serviceLinks, service.Link())
+// 	}
+// 	b.logger.Debugln("Creating links:", serviceLinks)
+// 	return serviceLinks
+// }
 
 // Link gives us the parameter to Docker to link to this box
 func (b *DockerBox) Link() string {
@@ -207,18 +207,16 @@ func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
 
 // RunServices runs the services associated with this box
 func (b *DockerBox) RunServices(ctx context.Context, env *util.Environment) error {
-	links := []string{}
 
 	// TODO(termie): terrible hack, sorry world
 	ctxWithServiceCount := context.WithValue(ctx, "ServiceCount", len(b.services))
 
 	for _, service := range b.services {
 		b.logger.Debugln("Startinq service:", service.GetName())
-		_, err := service.Run(ctxWithServiceCount, env, links)
+		_, err := service.Run(ctxWithServiceCount, env)
 		if err != nil {
 			return err
 		}
-		links = append(links, service.Link())
 	}
 	return nil
 }
@@ -344,10 +342,21 @@ func (b *DockerBox) getContainerName() string {
 
 // Run creates the container and runs it.
 func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Container, error) {
+	networkName := b.dockerOptions.NetworkName
+	if networkName == "" {
+		_, err := b.createDockerNetwork()
+		if err != nil {
+			b.logger.Error(err)
+			return nil, err
+		}
+		networkName = b.options.RunID
+	}
+
 	err := b.RunServices(ctx, env)
 	if err != nil {
 		return nil, err
 	}
+	dockerEnvVar, err := b.prepareSvcVarDockerEnvMap()
 	b.logger.Debugln("Starting base box:", b.Name)
 
 	// TODO(termie): maybe move the container manipulation outside of here?
@@ -355,6 +364,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
+	myEnv = append(myEnv, dockerEnvVar...)
 
 	var entrypoint []string
 	if b.entrypoint != "" {
@@ -389,9 +399,9 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 
 	hostConfig := &docker.HostConfig{
 		Binds:        binds,
-		Links:        b.links(),
 		PortBindings: portBindings(portsToBind),
 		DNS:          b.dockerOptions.DNS,
+		NetworkMode:  networkName,
 	}
 
 	conf := &docker.Config{
@@ -444,6 +454,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 	}
 
 	b.container = container
+
 	return container, nil
 }
 
@@ -486,6 +497,21 @@ func (b *DockerBox) Clean() error {
 		}
 	}
 
+	networkNameToRemove := b.dockerOptions.NetworkName
+	if networkNameToRemove == "" {
+		networkNameToRemove = b.options.RunID
+	} else {
+		if b.dockerOptions.RemoveNetwork == false {
+			networkNameToRemove = ""
+		}
+	}
+	if networkNameToRemove != "" {
+		err := client.RemoveNetwork(networkNameToRemove)
+		if err != nil {
+			b.logger.Error(err)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -654,4 +680,41 @@ func (b *DockerBox) ExportImage(options *ExportImageOptions) error {
 	client := b.client
 
 	return client.ExportImage(exportImageOptions)
+}
+
+func (b *DockerBox) createDockerNetwork() (*docker.Network, error) {
+	b.logger.Debugln("Creating docker network")
+	client := b.client
+	return client.CreateNetwork(docker.CreateNetworkOptions{
+		Name:           b.options.RunID,
+		CheckDuplicate: true,
+	})
+}
+
+// It prepares Environment variables
+func (b *DockerBox) prepareSvcVarDockerEnvMap() ([]string, error) {
+	env := []string{}
+	client := b.client
+	for _, service := range b.services {
+		if containerID := service.GetID(); containerID != "" {
+			container, err := client.InspectContainer(containerID)
+			if err != nil {
+				return nil, err
+			}
+			ns := container.NetworkSettings
+			containerName := strings.ToUpper(service.GetServiceName())
+			var serviceIPAddress string
+			for _, v := range ns.Networks {
+				serviceIPAddress = v.IPAddress
+				break
+			}
+			for k, _ := range container.Config.ExposedPorts {
+				s := strings.Split(string(k), "/")
+				env = append(env, fmt.Sprintf("%s=%s", containerName+"_PORT_"+s[0]+"_"+s[1]+"_ADDR", serviceIPAddress))
+				env = append(env, fmt.Sprintf("%s=%s", containerName+"_PORT_"+s[0]+"_"+s[1]+"_PORT", s[0]))
+				env = append(env, fmt.Sprintf("%s=%s", containerName+"_PORT_"+s[0]+"_"+s[1]+"_PROTO", s[1]))
+			}
+		}
+	}
+	return env, nil
 }
