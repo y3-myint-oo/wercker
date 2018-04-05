@@ -1,4 +1,4 @@
-box: golang:1.9.5
+box: golang:1.10
 no-response-timeout: 15
 
 build:
@@ -13,8 +13,8 @@ build:
         code: go get -u github.com/kardianos/govendor
 
     - script:
-        name: go vet
-        code: govendor vet +local
+        name: go vet -composites=false
+        code: govendor vet -composites=false +local
 
     # - golint:
     #     exclude: vendor
