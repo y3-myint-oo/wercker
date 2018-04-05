@@ -18,7 +18,7 @@ build:
 
     - script:
         name: go vet -composites=false
-        code: govendor vet +local
+        code: govendor vet -composites=false +local
 
     # - golint:
     #     exclude: vendor
