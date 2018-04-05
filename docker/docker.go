@@ -891,7 +891,12 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 
 	// If user use Azure or AWS container registry we don't infer.
 	if opts.AzureClientSecret == "" && opts.AwsSecretKey == "" {
-		s.repository, opts = InferRegistry(s.repository, opts, s.options)
+		repository, registry, err := InferRegistryAndRepository(s.repository, opts.Registry, s.options)
+		if err != nil {
+			s.logger.Panic(err)
+		}
+		s.repository = repository
+		opts.Registry = registry
 	}
 
 	// Set user and password automatically if using wercker registry
@@ -904,25 +909,59 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 	return opts
 }
 
-// InferRegistry infers the registry from the repository. If no registry is found
+// InferRegistryAndRepository infers the registry from the repository. If no registry is found
 // we fallback to Docker Hub registry.
-func InferRegistry(repository string, opts dockerauth.CheckAccessOptions, pipelineOptions *core.PipelineOptions) (string, dockerauth.CheckAccessOptions) {
+func InferRegistryAndRepository(repository string, registry string, pipelineOptions *core.PipelineOptions) (inferredRepository string, inferredRegistry string, err error) {
+	_logger := util.RootLogger().WithFields(util.LogFields{"Logger": "Docker"})
 	if repository == "" {
-		repository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
-	}
-	// Docker repositories must be lowercase
-	repository = strings.ToLower(repository)
-
-	if opts.Registry == "" {
-		x, _ := reference.ParseNormalizedNamed(repository)
-		domain := reference.Domain(x)
-
-		if domain != "docker.io" {
-			reg := &url.URL{Scheme: "https", Host: domain, Path: "/v2"}
-			opts.Registry = reg.String() + "/"
+		inferredRepository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
+		inferredRegistry = pipelineOptions.WerckerContainerRegistry.String()
+		_logger.Infoln("No repository specified - using " + inferredRepository)
+		_logger.Infoln("username/password fields are ignored while using wcr.io registry, supplied authToken (if provided) will be used for authorization to wcr.io registry")
+	} else {
+		// Docker repositories must be lowercase
+		inferredRepository = strings.ToLower(repository)
+		inferredRegistry = registry
+		x, _ := reference.ParseNormalizedNamed(inferredRepository)
+		domainFromRepository := reference.Domain(x)
+		registryInferredFromRepository := ""
+		if domainFromRepository != "docker.io" {
+			reg := &url.URL{Scheme: "https", Host: domainFromRepository, Path: "/v2"}
+			registryInferredFromRepository = reg.String() + "/"
 		}
+
+		if len(strings.TrimSpace(inferredRegistry)) != 0 {
+			regsitryURLFromStepConfig, err := url.Parse(inferredRegistry)
+			if err != nil {
+				_logger.Errorln("Invalid registry url specified: ", err.Error)
+				if registryInferredFromRepository != "" {
+					_logger.Infoln("Using registry url inferred from repository: " + registryInferredFromRepository)
+					inferredRegistry = registryInferredFromRepository
+				} else {
+					_logger.Errorln("Please specify valid registry parameter.If you intended to use docker hub as registry, you may omit registry parameter")
+					return "", "", err
+				}
+
+			} else {
+				domainFromRegistryURL := regsitryURLFromStepConfig.Host
+				if len(strings.TrimSpace(domainFromRepository)) != 0 && domainFromRepository != "docker.io" {
+					if domainFromRegistryURL != domainFromRepository {
+						_logger.Infoln("Different registry hosts specified in repository: " + domainFromRepository + " and registry: " + domainFromRegistryURL)
+						inferredRegistry = registryInferredFromRepository
+						_logger.Infoln("Using registry inferred from repository: " + inferredRegistry)
+					}
+				} else {
+					inferredRepository = domainFromRegistryURL + "/" + inferredRepository
+					_logger.Infoln("Using repository inferred from registry: " + inferredRepository)
+				}
+
+			}
+		} else {
+			inferredRegistry = registryInferredFromRepository
+		}
+
 	}
-	return repository, opts
+	return
 }
 
 // InitEnv parses our data into our config

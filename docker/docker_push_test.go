@@ -83,9 +83,11 @@ func (s *PushSuite) TestInferRegistry() {
 			ApplicationName:          "appname",
 			WerckerContainerRegistry: testWerckerRegistry,
 		}
-		repo, opts := InferRegistry(tt.repository, dockerauth.CheckAccessOptions{
+		opts := dockerauth.CheckAccessOptions{
 			Registry: tt.registry,
-		}, options)
+		}
+		repo, registry, _ := InferRegistryAndRepository(tt.repository, opts.Registry, options)
+		opts.Registry = registry
 		s.Equal(tt.expectedRegistry, opts.Registry, "%q, wants %q", opts.Registry, tt.expectedRegistry)
 		s.Equal(tt.expectedRepository, repo, "%q, wants %q", repo, tt.expectedRepository)
 	}
