@@ -941,6 +941,8 @@ type WerckerRunnerOptions struct {
 	LoggerPath  string
 	BearerToken string
 	NumRunners  int
+	Polling     int
+	AllOption   bool
 }
 
 // NewExternalRunnerOptions -
@@ -958,6 +960,8 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 	lpath, _ := c.String("logpath")
 	norun, _ := c.Int("runners")
 	token, _ := c.String("token")
+	pfreq, _ := c.Int("poll-frequency")
+	isall, _ := c.Bool("all")
 
 	return &WerckerRunnerOptions{
 		GlobalOptions: globalOpts,
@@ -970,5 +974,7 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 		StorePath:     spath,
 		LoggerPath:    lpath,
 		NumRunners:    norun,
+		Polling:       pfreq,
+		AllOption:     isall,
 	}, nil
 }

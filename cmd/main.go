@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -416,6 +417,13 @@ var (
 				},
 				Flags: ExternalRunnerCommonFlags,
 			},
+			{
+				Name:  "configure",
+				Usage: "perform setup configuration for external runner operation",
+				Action: func(c *cli.Context) {
+					log.Print("The configure runner action is not yet supported.")
+				},
+			},
 		},
 	}
 )
@@ -442,6 +450,8 @@ func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) er
 	// to the runner service
 	params.Debug = opts.GlobalOptions.Debug
 	params.Journal = opts.GlobalOptions.Journal
+	params.AllOption = opts.AllOption
+	params.PollFreq = opts.Polling
 
 	return nil
 }

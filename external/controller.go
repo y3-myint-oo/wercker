@@ -31,6 +31,8 @@ type RunnerParams struct {
 	ShutdownFlag bool   // Shutdown if true
 	Debug        bool   // debug enabled
 	Journal      bool   // journal logging
+	AllOption    bool   // --all option
+	PollFreq     int    // Polling frequency
 	// following values are set during processing
 	Basename string // base name for container creation
 	client   *docker.Client
@@ -183,6 +185,12 @@ func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 	}
 	if cp.Journal == true {
 		cmd = append(cmd, "--journal")
+	}
+	if cp.AllOption == true {
+		cmd = append(cmd, "--runner-all")
+	}
+	if cp.PollFreq > 0 {
+		cmd = append(cmd, fmt.Sprintf("--poll-frequency=%d", cp.PollFreq))
 	}
 	return cmd, nil
 }
