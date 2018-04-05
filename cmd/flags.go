@@ -267,7 +267,7 @@ var (
 		cli.IntFlag{Name: "runners", Value: 1, Usage: "number of runners to start, default is one"},
 		cli.IntFlag{Name: "poll-frequency", Value: 15, Usage: "number of seconds between runner polling for a job"},
 		cli.StringFlag{Name: "token", Usage: "bearer token for external runner", EnvVar: "WERCKER_RUNNER_TOKEN"},
-		cli.BoolFlag{Name: "all", Usage: "specify that all jobs allowed to the user are eligible for selection by thois runner"},
+		cli.BoolFlag{Name: "all", Usage: "specify that all jobs allowed to the user are eligible for selection by this runner"},
 	}
 )
 
