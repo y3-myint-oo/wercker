@@ -153,12 +153,15 @@ func (p *Runner) EnsureCode() (string, error) {
 		return projectDir, nil
 	}
 
+	const copyingMessage = "Copying working directory to"
+
 	// If the target is a tarball fetch and build that
 	if p.options.ProjectURL != "" {
 		resp, err := util.Get(p.options.ProjectURL)
 		if err != nil {
 			return projectDir, err
 		}
+		p.logger.Printf(p.formatter.Info(copyingMessage, projectDir))
 		err = util.Untargzip(projectDir, resp.Body)
 		if err != nil {
 			return projectDir, err
@@ -209,6 +212,7 @@ func (p *Runner) EnsureCode() (string, error) {
 		}
 		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy, Symlinks: true}
 		os.Rename(projectDir, fmt.Sprintf("%s-%s", projectDir, uuid.NewRandom().String()))
+		p.logger.Printf(p.formatter.Info(copyingMessage, projectDir))
 		err = shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
 		if err != nil {
 			return projectDir, err
