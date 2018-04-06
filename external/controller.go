@@ -136,8 +136,14 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 func (cp *RunnerParams) startTheRunners() {
 
 	if cp.BearerToken == "" {
-		log.Print("Unable to start runner(s) because runner bearer token was not supplied.")
-		return
+		// Check if token is supplied in the environment and pick it up from
+		// there.
+		token := os.Getenv("WERCKER-RUNNER-TOKEN")
+		if token == "" {
+			log.Print("Unable to start runner(s) because runner bearer token was not supplied.")
+			return
+		}
+		cp.BearerToken = token
 	}
 
 	ct := 1
@@ -158,7 +164,7 @@ func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 
 	cmd := []string{}
 	cmd = append(cmd, "/externalRunner.sh")
-	cmd = append(cmd, "--external-runner")
+	//cmd = append(cmd, "--external-runner")
 	cmd = append(cmd, fmt.Sprintf("--runner-image=%s", cp.ImageName))
 	cmd = append(cmd, fmt.Sprintf("--runner-name=%s", name))
 	cmd = append(cmd, fmt.Sprintf("--runner-api-token=%s", cp.BearerToken))
