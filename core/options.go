@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -962,6 +963,17 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 	token, _ := c.String("token")
 	pfreq, _ := c.Int("poll-frequency")
 	isall, _ := c.Bool("all")
+
+	// check if --all is valid
+	if isall {
+		if rorgs != "" || flows != "" || rapps != "" {
+			log.Fatal("--all is not valid with --orgs, --apps, or --workflows")
+		}
+	} else {
+		if rorgs == "" && flows == "" && rapps == "" {
+			log.Fatal("--all must be specified when no other selection criteria")
+		}
+	}
 
 	return &WerckerRunnerOptions{
 		GlobalOptions: globalOpts,
