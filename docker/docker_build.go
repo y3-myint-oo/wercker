@@ -46,6 +46,7 @@ type DockerBuildStep struct {
 	squash        bool
 	buildargs     map[string]*string
 	labels        map[string]string
+	nocache       bool
 }
 
 // NewDockerBuildStep is a special step for doing docker builds
@@ -119,6 +120,14 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		q, err := strconv.ParseBool(qProp)
 		if err == nil {
 			s.q = q
+		}
+	}
+
+	s.nocache = false // default to false when value is bad or not set
+	if nocacheProp, ok := s.data["nocache"]; ok {
+		nocache, err := strconv.ParseBool(nocacheProp)
+		if err == nil {
+			s.nocache = nocache
 		}
 	}
 
@@ -222,6 +231,7 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		ExtraHosts:     s.extrahosts,
 		Squash:         s.squash,
 		PullParent:     !s.dockerOptions.Local, // always pull images unless docker-local is specified
+		NoCache:        s.nocache,
 	}
 
 	imageBuildResponse, err := officialClient.ImageBuild(ctx, tarReader, officialBuildOpts)

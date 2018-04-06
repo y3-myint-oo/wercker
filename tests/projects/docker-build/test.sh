@@ -38,6 +38,7 @@ testDockerBuild () {
     return 1
   fi
   # the Dockerfile includes a RUN command that listed /etc/hosts. verify that this includes the two extrahosts we specified
+  # (note that this requires nocache to be set to make this repeatable)
   ip1=`grep somehost ${workingDir}/${testName}.log | awk '{print $1}'`
   if [ "$ip1" != "192.168.0.1" ]; then
     cat "${workingDir}/${testName}.log"
@@ -64,7 +65,7 @@ testDockerBuild () {
     echo "Image was unexpectedly merged"
     return 1
   fi
-  # Verify that the labels have been set as specified
+  # Verify that the labels have been set as specified 
   val1Expected="value1"
   val1Actual=`docker inspect $imageid -f '{{index .ContainerConfig.Labels "Label1"}}'`
   if [ $val1Actual != $val1Expected ]; then
@@ -109,6 +110,12 @@ testDockerBuild () {
     echo "Unexpected response from test container for localhost:5000/env/bar " $curlOutput3
     return 1
   fi    
+
+  printf "passed\n"
+  return 0
+
+  # Skip following tests because squash doesn't work yet
+  # Re-enable (by deleting the early return above) just as soon as the docker daemon is updated and the API version used by the docker client is increased to 1.25 or greater
 
   ##############################################################################
   # Test2: test the "squash" property by running the build-and-squash pipeline #

@@ -34,9 +34,9 @@ func NewOfficialDockerClient(options *Options) (*client.Client, error) {
 		cert := path.Join(dockerCertPath, fmt.Sprintf("cert.pem"))
 		ca := path.Join(dockerCertPath, fmt.Sprintf("ca.pem"))
 		key := path.Join(dockerCertPath, fmt.Sprintf("key.pem"))
-		dockerClient, err = client.NewClientWithOpts(client.WithHost(options.Host), client.WithTLSClientConfig(ca, cert, key), client.WithVersion("1.37"))
+		dockerClient, err = client.NewClientWithOpts(client.WithHost(options.Host), client.WithTLSClientConfig(ca, cert, key), client.WithVersion("1.24"))
 	} else {
-		dockerClient, err = client.NewClientWithOpts(client.WithHost(options.Host), client.WithVersion("1.37"))
+		dockerClient, err = client.NewClientWithOpts(client.WithHost(options.Host), client.WithVersion("1.24"))
 	}
 	if err != nil {
 		return nil, err
