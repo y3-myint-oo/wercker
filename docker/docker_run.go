@@ -244,25 +244,25 @@ func (s *DockerRunStep) ShouldSyncEnv() bool {
 	return true
 }
 
-// func (s *DockerRunStep) Clean() {
-// 	client, err := NewDockerClient(s.dockerOptions)
-// 	if err != nil {
-// 		s.logger.Errorln("Error in creating docker client")
-// 		return
-// 	}
+func (s *DockerRunStep) Clean() {
+	client, err := NewDockerClient(s.dockerOptions)
+	if err != nil {
+		s.logger.Errorln("Error in creating docker client")
+		return
+	}
 
-// 	err = client.StopContainer(s.containerID, 1)
-// 	if err != nil {
-// 		s.logger.Errorln("Error in stopping the container with id : ", s.containerID)
-// 	}
+	err = client.StopContainer(s.containerID, 1)
+	if err != nil {
+		s.logger.Errorln("Error in stopping the container with id : ", s.containerID)
+	}
 
-// 	opts := docker.RemoveContainerOptions{
-// 		ID:            s.containerID,
-// 		RemoveVolumes: true,
-// 		Force:         true,
-// 	}
-// 	err = client.RemoveContainer(opts)
-// 	if err != nil {
-// 		s.logger.Errorln("Error in deleting the container with id : ", s.containerID)
-// 	}
-// }
+	opts := docker.RemoveContainerOptions{
+		ID:            s.containerID,
+		RemoveVolumes: true,
+		Force:         true,
+	}
+	err = client.RemoveContainer(opts)
+	if err != nil {
+		s.logger.Errorln("Error in deleting the container with id : ", s.containerID)
+	}
+}
