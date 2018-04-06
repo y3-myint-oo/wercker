@@ -22,9 +22,10 @@ import (
 
 // ServiceBox interface to services
 type ServiceBox interface {
-	Run(context.Context, *util.Environment, []string) (*docker.Container, error)
+	Run(context.Context, *util.Environment) (*docker.Container, error)
 	Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error)
 	Link() string
 	GetID() string
 	GetName() string
+	GetServiceName() string
 }

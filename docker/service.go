@@ -106,7 +106,7 @@ func (b *InternalServiceBox) getContainerName() string {
 }
 
 // Run executes the service
-func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, links []string) (*docker.Container, error) {
+func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment) (*docker.Container, error) {
 	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -174,10 +174,15 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		portsToBind = b.config.Ports
 	}
 
+	networkName := b.dockerOptions.NetworkName
+	if networkName == "" {
+		networkName = b.options.RunID
+	}
+
 	hostConfig := &docker.HostConfig{
 		DNS:          b.dockerOptions.DNS,
 		PortBindings: portBindings(portsToBind),
-		Links:        links,
+		NetworkMode:  networkName,
 	}
 
 	if len(binds) > 0 {
@@ -270,6 +275,11 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 			})
 		}
 	}()
-
 	return container, nil
+}
+
+// service name
+func (b *InternalServiceBox) GetServiceName() string {
+	name := b.config.Name
+	return name
 }
