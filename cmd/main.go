@@ -550,13 +550,13 @@ outer:
 			detected = "golang"
 			break outer
 
-        case f.Name() == "pom.xml":
-            detected = "java-maven"
-            break outer
+		case f.Name() == "pom.xml":
+			detected = "java-maven"
+			break outer
 
-        case filepath.Ext(f.Name()) == ".gradle", f.Name() == "gradlew":
-            detected = "java-gradle"
-            break outer
+		case filepath.Ext(f.Name()) == ".gradle", f.Name() == "gradlew":
+			detected = "java-gradle"
+			break outer
 		}
 	}
 	if detected == "" {
@@ -982,9 +982,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 			Logs:   err.Error() + "\n",
 		})
 	}
-	if options.Verbose {
-		logger.Printf(f.Success("Copied working dir", timer.String()))
-	}
+	logger.Printf(f.Success("Copied working directory", timer.String()))
 
 	// Setup environment is still a fairly special step, it needs
 	// to start our boxes and get everything set up
@@ -1088,7 +1086,8 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 			pr.Success = false
 			pr.FailedStepName = step.DisplayName()
 			pr.FailedStepMessage = sr.Message
-			logger.Printf(f.Fail("Step failed", step.DisplayName(), timer.String()))
+			logger.Printf(f.Fail(sr.Message))
+			logger.Printf(f.Fail("Step failed", step.DisplayName(), sr.Message, timer.String()))
 			break
 		}
 

@@ -1,5 +1,13 @@
 ## unreleased
 
+## v1.0.1189(2018-04-04)
+
+- Fix status reporting for docker push (#371)
+
+## v1.0.1183 (2018-03-29)
+
+- New docker-build step and enhanded docker-push step (#362)
+
 ## v1.0.1153 (2018-02-27)
 
 - Remove Keen dependencies (#354)
