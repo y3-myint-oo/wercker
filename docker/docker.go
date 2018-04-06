@@ -1153,11 +1153,12 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 				if statusMessage.Aux != nil && statusMessage.Aux.Tag == tag {
 					s.logger.Println("Pushed container:", s.repository, tag, ",Digest:", statusMessage.Aux.Digest)
 					e.Emit(core.Logs, &core.LogsArgs{
-						Logs: fmt.Sprintf("Pushed %s:%s", s.repository, tag),
+						Logs: fmt.Sprintf("\n Pushed %s:%s", s.repository, tag),
 					})
 					isContainerPushed = true
 				}
 
+				s
 			}
 			if !isContainerPushed {
 				s.logger.Errorln("Failed to push tag:", tag, "Please check log messages")
