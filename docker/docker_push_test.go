@@ -79,6 +79,7 @@ func (s *PushSuite) TestInferRegistryAndRepository() {
 		{"https://someregistry.com/v1", "appowner/appname", "https://someregistry.com/v1", "someregistry.com/appowner/appname"},
 		{"https://someregistry.com/v2", "appowner/appname", "https://someregistry.com/v2", "someregistry.com/appowner/appname"},
 		{"https://someregistry.com", "someotherregistry.com/appowner/appname", "https://someotherregistry.com/v2/", "someotherregistry.com/appowner/appname"},
+		{"https://someregistry.com", "appowner/appname", "https://someregistry.com", "someregistry.com/appowner/appname"},
 	}
 
 	for _, tt := range repoTests {

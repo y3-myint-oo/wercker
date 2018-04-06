@@ -909,8 +909,26 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 	return opts
 }
 
-// InferRegistryAndRepository infers the registry from the repository. If no registry is found
-// we fallback to Docker Hub registry.
+//InferRegistryAndRepository infers the registry and repository to be used from input registry and repository.
+// 1. If no repository is specified, it is assumed that the user wants to push an image of current application
+//    for which  the build is running to wcr.io repository and therefore registry is inferred as
+//    https://test.wcr.io/v2 and repository as test.wcr.io/<application-owner>/<application-name>
+// 2. In case a repository is provided but no registry - registry is derived from the name of the domain (if any)
+//    from the registry - e.g. for a repository quay.io/<repo-owner>/<repo-name> - quay.io will be the registry host
+//    and https://quay.io/v2/ will be the registry url. In case the repository name does not contain a domain name -
+//    docker hub is assumed to be the registry and therefore any authorization with supplied username/password is carried
+//    out with docker hub.
+// 4. In case both repository and registry are provided -
+//    4(a) - In case registry provided points to a wrong url - we use registry inferred from the domain name(if any) prefixed
+//           to the repository. However in this case if no domain name is specified in repository - we return an error since
+//           user probably wanted to use this repository with a different registry and not docker hub and should be alerted
+//           that the registry url is invalid.In case registry url is valid - we evaluate scenarios 4(b) and 4(c)
+//    4(b) - In case no domain name is prefixed to the repository - we assume repository belongs to the registry specified
+//           and prefix domain name extracted from registry.
+//    4(c) - In case repository also contains a domain name - we check if domain name of registry and repository are same,
+//           we assume that user wanted to use the registry host as specified in repository and change the registry to point
+//           to domain name present in repository. If domain names in both registry and repository are same - no changes are
+//           made.
 func InferRegistryAndRepository(repository string, registry string, pipelineOptions *core.PipelineOptions) (inferredRepository string, inferredRegistry string, err error) {
 	_logger := util.RootLogger().WithFields(util.LogFields{"Logger": "Docker"})
 	if repository == "" {
@@ -1127,8 +1145,7 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 				if len(strings.TrimSpace(statusMessage.Error)) != 0 {
 					errorMessageToDisplay := statusMessage.Error
 					if statusMessage.ErrorDetail != nil {
-						jsonMessage, _ := json.Marshal(statusMessage.ErrorDetail)
-						errorMessageToDisplay = string(jsonMessage)
+						errorMessageToDisplay = fmt.Sprintf("Code: %s, Message: %s", statusMessage.ErrorDetail.Code, statusMessage.ErrorDetail.Message)
 					}
 					s.logger.Errorln("Failed to push:", errorMessageToDisplay)
 					return 1, errors.New(errorMessageToDisplay)
