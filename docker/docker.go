@@ -918,14 +918,14 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 //    and https://quay.io/v2/ will be the registry url. In case the repository name does not contain a domain name -
 //    docker hub is assumed to be the registry and therefore any authorization with supplied username/password is carried
 //    out with docker hub.
-// 4. In case both repository and registry are provided -
-//    4(a) - In case registry provided points to a wrong url - we use registry inferred from the domain name(if any) prefixed
+// 3. In case both repository and registry are provided -
+//    3(a) - In case registry provided points to a wrong url - we use registry inferred from the domain name(if any) prefixed
 //           to the repository. However in this case if no domain name is specified in repository - we return an error since
 //           user probably wanted to use this repository with a different registry and not docker hub and should be alerted
 //           that the registry url is invalid.In case registry url is valid - we evaluate scenarios 4(b) and 4(c)
-//    4(b) - In case no domain name is prefixed to the repository - we assume repository belongs to the registry specified
+//    3(b) - In case no domain name is prefixed to the repository - we assume repository belongs to the registry specified
 //           and prefix domain name extracted from registry.
-//    4(c) - In case repository also contains a domain name - we check if domain name of registry and repository are same,
+//    3(c) - In case repository also contains a domain name - we check if domain name of registry and repository are same,
 //           we assume that user wanted to use the registry host as specified in repository and change the registry to point
 //           to domain name present in repository. If domain names in both registry and repository are same - no changes are
 //           made.
