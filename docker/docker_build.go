@@ -102,7 +102,7 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		}
 	}
 
-	if buildargsProp, ok := s.data["buildargs"]; ok {
+	if buildargsProp, ok := s.data["build-args"]; ok {
 		parsedArgs, err := shlex.Split(buildargsProp)
 		if err == nil {
 			s.buildargs = make(map[string]*string)
@@ -124,14 +124,14 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 	}
 
 	s.nocache = false // default to false when value is bad or not set
-	if nocacheProp, ok := s.data["nocache"]; ok {
+	if nocacheProp, ok := s.data["no-cache"]; ok {
 		nocache, err := strconv.ParseBool(nocacheProp)
 		if err == nil {
 			s.nocache = nocache
 		}
 	}
 
-	if extrahostsProp, ok := s.data["extrahosts"]; ok {
+	if extrahostsProp, ok := s.data["extra-hosts"]; ok {
 		parsedExtrahosts, err := shlex.Split(extrahostsProp)
 		if err == nil {
 			interpolatedExtrahosts := make([]string, len(parsedExtrahosts))
