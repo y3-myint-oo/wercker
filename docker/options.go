@@ -46,7 +46,7 @@ func guessAndUpdateDockerOptions(opts *Options, e *util.Environment) {
 
 	logger := util.RootLogger().WithField("Logger", "docker")
 	// f := &util.Formatter{opts.GlobalOptions.ShowColors}
-	f := &util.Formatter{false}
+	f := &util.Formatter{ShowColors: false}
 
 	// Check the unix socket, default on linux
 	// This will fail instantly so don't bother with the goroutine
