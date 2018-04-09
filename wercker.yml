@@ -24,7 +24,7 @@ build:
         name: install dependencies
         code: govendor sync
         
-        - script:
+    - script:
         name: go test
         code: govendor test -v +local
 
