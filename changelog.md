@@ -1,5 +1,7 @@
 ## unreleased
 
+- Fix "go build" and "wercker build" on golang 1.10 (#374)
+
 ## v1.0.1189(2018-04-04)
 
 - Fix status reporting for docker push (#371)
