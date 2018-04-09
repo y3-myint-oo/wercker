@@ -14,11 +14,11 @@ build:
     
     - script:
         name: install dependencies
-        code: govendor sync 
+        code: govendor sync
 
     - script:
         name: go vet
-        code: govendor vet +local    
+        code: govendor vet +local
 
     # - golint:
     #     exclude: vendor
