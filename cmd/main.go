@@ -929,7 +929,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	if err != nil {
 		return nil, err
 	}
-	f := &util.Formatter{options.GlobalOptions.ShowColors}
+	f := &util.Formatter{ShowColors: options.GlobalOptions.ShowColors}
 
 	// Set up the runner
 	r, err := NewRunner(cmdCtx, options, dockerOptions, getter)
