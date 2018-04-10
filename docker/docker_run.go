@@ -155,6 +155,11 @@ func (s *DockerRunStep) Fetch() (string, error) {
 
 // Execute creates the container and starts the container.
 func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
+	networkName := s.dockerOptions.NetworkName
+	if networkName == "" {
+		networkName = s.options.RunID
+	}
+
 	boxConfig := &core.BoxConfig{
 		ID: s.image,
 	}
@@ -183,9 +188,21 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 	hostconfig := &docker.HostConfig{
 		DNS:          s.dockerOptions.DNS,
 		PortBindings: s.portBindings,
+		NetworkMode:  networkName,
 	}
 
-	container, err := s.createContainer(client, conf, hostconfig)
+	endpointConfig := &docker.EndpointConfig{
+		Aliases: []string{s.DisplayName()},
+	}
+	endpointConfigMap := make(map[string]*docker.EndpointConfig)
+	endpointConfigMap[networkName] = endpointConfig
+
+	networkingconfig := &docker.NetworkingConfig{
+		EndpointsConfig: endpointConfigMap,
+	}
+
+	container, err := s.createContainer(client, conf, hostconfig, networkingconfig)
+
 	s.containerID = container.ID
 
 	if err != nil {
@@ -204,12 +221,13 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 	return 0, nil
 }
 
-func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Config, hostconfig *docker.HostConfig) (*docker.Container, error) {
+func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Config, hostconfig *docker.HostConfig, networkingConfig *docker.NetworkingConfig) (*docker.Container, error) {
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
-			Name:       s.containerName,
-			Config:     conf,
-			HostConfig: hostconfig,
+			Name:             s.containerName,
+			Config:           conf,
+			HostConfig:       hostconfig,
+			NetworkingConfig: networkingConfig,
 		})
 	return container, err
 }

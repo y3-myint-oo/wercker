@@ -684,12 +684,12 @@ func (b *DockerBox) ExportImage(options *ExportImageOptions) error {
 func (b *DockerBox) createDockerNetwork() (*docker.Network, error) {
 	b.logger.Debugln("Creating docker network")
 	client := b.client
-	options := make(map[string]interface{})
-	options["com.docker.network.bridge.enable_ip_masquerade"] = false
+	// options := make(map[string]interface{})
+	// options["com.docker.network.bridge.enable_ip_masquerade"] = false
 	return client.CreateNetwork(docker.CreateNetworkOptions{
 		Name:           b.options.RunID,
 		CheckDuplicate: true,
-		Options:        options,
+		// Options:        options,
 	})
 }
 
