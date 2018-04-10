@@ -67,20 +67,20 @@ testDockerBuild () {
   fi
   # Verify that the labels have been set as specified 
   val1Expected="value1"
-  val1Actual=`docker inspect $imageid -f '{{index .ContainerConfig.Labels "Label1"}}'`
-  if [ $val1Actual != $val1Expected ]; then
+  val1Actual=`docker inspect $imageid -f '{{index .Config.Labels "Label1"}}'`
+  if [ -z "$val1Actual" ] || [ "$val1Actual" != "$val1Expected" ]; then
     echo "Label incorrect: expected " $val1Expected " but was " $val1Actual
     return 1
   fi 
   val2Expected="value2"
-  val2Actual=`docker inspect $imageid -f '{{index .ContainerConfig.Labels "Three word key"}}'`
-  if [ $val2Actual != $val2Expected ]; then
+  val2Actual=`docker inspect $imageid -f '{{index .Config.Labels "Three word key"}}'`
+  if [ -z "$val2Actual" ] || [ "$val2Actual" != "$val2Expected" ]; then
     echo "Label incorrect: expected " $val2Expected " but was " $val2Actual
     return 1
   fi 
   val3Expected="Three word value"
-  val3Actual=`docker inspect $imageid -f '{{index .ContainerConfig.Labels "Label3"}}'`
-  if [ "$val3Actual" != "$val3Expected" ]; then
+  val3Actual=`docker inspect $imageid -f '{{index .Config.Labels "Label3"}}'`
+  if [ -z "$val3Actual" ] || [ "$val3Actual" != "$val3Expected" ]; then
     echo "Label incorrect: expected " $val3Expected " but was " $val3Actual
     return 1
   fi  
