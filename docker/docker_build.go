@@ -150,18 +150,6 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		}
 	}
 
-	if labelsProp, ok := s.data["labels"]; ok {
-		parsedLabels, err := shlex.Split(labelsProp)
-		if err == nil {
-			labelMap := make(map[string]string)
-			for _, labelPair := range parsedLabels {
-				pair := strings.Split(labelPair, "=")
-				labelMap[env.Interpolate(pair[0])] = env.Interpolate(pair[1])
-			}
-			s.labels = labelMap
-		}
-	}
-
 }
 
 // InitEnv parses our data into our config
