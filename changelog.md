@@ -1,5 +1,7 @@
 ## unreleased
 
+- Fixes and additional properties for internal/docker-build step (#372)
+
 ## v1.0.1195(2018-04-10)
 
 - Fix for correctly inferring regsitry and repoistory from step inputs (#375) 
