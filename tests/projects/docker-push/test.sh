@@ -78,7 +78,7 @@ testDockerPush () {
     echo "Unexpected response from test container for localhost:5000/env/foo " $curlOutput2
     return 1
   fi
-  if [ "$curlOutput3" != "val2" ]; then
+  if [ "$curlOutput3" != "Three word value" ]; then
     cat "${workingDir}/${testName}.log"
     echo "Unexpected response from test container for localhost:5000/env/bar " $curlOutput3
     return 1

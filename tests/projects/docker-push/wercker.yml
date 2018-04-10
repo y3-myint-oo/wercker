@@ -14,7 +14,7 @@ build:
         registry: https://hub.docker.com
         repository: test-docker-push
         tag: latest        
-        env: "foo=val1 bar=val2"
+        env: "foo=val1 bar='Three word value'"
         labels: "Label1=value1 'Three word key'=value2 Label3='Three word value'"
 
 
