@@ -1,5 +1,8 @@
 ## unreleased
 
+## v1.0.1195(2018-04-10)
+
+- Fix for correctly inferring regsitry and repoistory from step inputs (#375) 
 - Fix "go build" and "wercker build" on golang 1.10 (#374)
 
 ## v1.0.1189(2018-04-04)
