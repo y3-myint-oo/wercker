@@ -550,7 +550,12 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 
 	// If user use Azure or AWS container registry we don't infer.
 	if b.config.Auth.AzureClientSecret == "" && b.config.Auth.AwsSecretKey == "" {
-		repo, b.config.Auth = InferRegistry(repo, b.config.Auth, b.options)
+		repository, registry, err := InferRegistryAndRepository(repo, b.config.Auth.Registry, b.options)
+		if err != nil {
+			return nil, err
+		}
+		repo = repository
+		b.config.Auth.Registry = registry
 	}
 
 	if b.config.Auth.Registry == b.options.WerckerContainerRegistry.String() {

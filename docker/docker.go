@@ -891,7 +891,12 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 
 	// If user use Azure or AWS container registry we don't infer.
 	if opts.AzureClientSecret == "" && opts.AwsSecretKey == "" {
-		s.repository, opts = InferRegistry(s.repository, opts, s.options)
+		repository, registry, err := InferRegistryAndRepository(s.repository, opts.Registry, s.options)
+		if err != nil {
+			s.logger.Panic(err)
+		}
+		s.repository = repository
+		opts.Registry = registry
 	}
 
 	// Set user and password automatically if using wercker registry
@@ -904,25 +909,76 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 	return opts
 }
 
-// InferRegistry infers the registry from the repository. If no registry is found
-// we fallback to Docker Hub registry.
-func InferRegistry(repository string, opts dockerauth.CheckAccessOptions, pipelineOptions *core.PipelineOptions) (string, dockerauth.CheckAccessOptions) {
+//InferRegistryAndRepository infers the registry and repository to be used from input registry and repository.
+// 1. If no repository is specified, it is assumed that the user wants to push an image of current application
+//    for which  the build is running to wcr.io repository and therefore registry is inferred as
+//    https://test.wcr.io/v2 and repository as test.wcr.io/<application-owner>/<application-name>
+// 2. In case a repository is provided but no registry - registry is derived from the name of the domain (if any)
+//    from the registry - e.g. for a repository quay.io/<repo-owner>/<repo-name> - quay.io will be the registry host
+//    and https://quay.io/v2/ will be the registry url. In case the repository name does not contain a domain name -
+//    docker hub is assumed to be the registry and therefore any authorization with supplied username/password is carried
+//    out with docker hub.
+// 3. In case both repository and registry are provided -
+//    3(a) - In case registry provided points to a wrong url - we use registry inferred from the domain name(if any) prefixed
+//           to the repository. However in this case if no domain name is specified in repository - we return an error since
+//           user probably wanted to use this repository with a different registry and not docker hub and should be alerted
+//           that the registry url is invalid.In case registry url is valid - we evaluate scenarios 4(b) and 4(c)
+//    3(b) - In case no domain name is prefixed to the repository - we assume repository belongs to the registry specified
+//           and prefix domain name extracted from registry.
+//    3(c) - In case repository also contains a domain name - we check if domain name of registry and repository are same,
+//           we assume that user wanted to use the registry host as specified in repository and change the registry to point
+//           to domain name present in repository. If domain names in both registry and repository are same - no changes are
+//           made.
+func InferRegistryAndRepository(repository string, registry string, pipelineOptions *core.PipelineOptions) (inferredRepository string, inferredRegistry string, err error) {
+	_logger := util.RootLogger().WithFields(util.LogFields{"Logger": "Docker"})
 	if repository == "" {
-		repository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
+		inferredRepository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
+		inferredRegistry = pipelineOptions.WerckerContainerRegistry.String()
+		_logger.Infoln("No repository specified - using " + inferredRepository)
+		_logger.Infoln("username/password fields are ignored while using wcr.io registry, supplied authToken (if provided) will be used for authorization to wcr.io registry")
+		return inferredRepository, inferredRegistry, nil
 	}
 	// Docker repositories must be lowercase
-	repository = strings.ToLower(repository)
-
-	if opts.Registry == "" {
-		x, _ := reference.ParseNormalizedNamed(repository)
-		domain := reference.Domain(x)
-
-		if domain != "docker.io" {
-			reg := &url.URL{Scheme: "https", Host: domain, Path: "/v2"}
-			opts.Registry = reg.String() + "/"
-		}
+	inferredRepository = strings.ToLower(repository)
+	inferredRegistry = registry
+	x, _ := reference.ParseNormalizedNamed(inferredRepository)
+	domainFromRepository := reference.Domain(x)
+	registryInferredFromRepository := ""
+	if domainFromRepository != "docker.io" {
+		reg := &url.URL{Scheme: "https", Host: domainFromRepository, Path: "/v2"}
+		registryInferredFromRepository = reg.String() + "/"
 	}
-	return repository, opts
+
+	if len(strings.TrimSpace(inferredRegistry)) != 0 {
+		regsitryURLFromStepConfig, err := url.Parse(inferredRegistry)
+		if err != nil {
+			_logger.Errorln("Invalid registry url specified: ", err.Error)
+			if registryInferredFromRepository != "" {
+				_logger.Infoln("Using registry url inferred from repository: " + registryInferredFromRepository)
+				inferredRegistry = registryInferredFromRepository
+			} else {
+				_logger.Errorln("Please specify valid registry parameter.If you intended to use docker hub as registry, you may omit registry parameter")
+				return "", "", err
+			}
+
+		} else {
+			domainFromRegistryURL := regsitryURLFromStepConfig.Host
+			if len(strings.TrimSpace(domainFromRepository)) != 0 && domainFromRepository != "docker.io" {
+				if domainFromRegistryURL != domainFromRepository {
+					_logger.Infoln("Different registry hosts specified in repository: " + domainFromRepository + " and registry: " + domainFromRegistryURL)
+					inferredRegistry = registryInferredFromRepository
+					_logger.Infoln("Using registry inferred from repository: " + inferredRegistry)
+				}
+			} else {
+				inferredRepository = domainFromRegistryURL + "/" + inferredRepository
+				_logger.Infoln("Using repository inferred from registry: " + inferredRepository)
+			}
+
+		}
+	} else {
+		inferredRegistry = registryInferredFromRepository
+	}
+	return inferredRepository, inferredRegistry, nil
 }
 
 // InitEnv parses our data into our config
@@ -1088,17 +1144,18 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 				if len(strings.TrimSpace(statusMessage.Error)) != 0 {
 					errorMessageToDisplay := statusMessage.Error
 					if statusMessage.ErrorDetail != nil {
-						jsonMessage, _ := json.Marshal(statusMessage.ErrorDetail)
-						errorMessageToDisplay = string(jsonMessage)
+						errorMessageToDisplay = fmt.Sprintf("Code: %s, Message: %s", statusMessage.ErrorDetail.Code, statusMessage.ErrorDetail.Message)
 					}
 					s.logger.Errorln("Failed to push:", errorMessageToDisplay)
 					return 1, errors.New(errorMessageToDisplay)
 				}
 				if statusMessage.Aux != nil && statusMessage.Aux.Tag == tag {
 					s.logger.Println("Pushed container:", s.repository, tag, ",Digest:", statusMessage.Aux.Digest)
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("\nPushed %s:%s", s.repository, tag),
+					})
 					isContainerPushed = true
 				}
-
 			}
 			if !isContainerPushed {
 				s.logger.Errorln("Failed to push tag:", tag, "Please check log messages")

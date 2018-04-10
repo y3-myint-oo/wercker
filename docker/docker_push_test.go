@@ -63,7 +63,7 @@ func (s *PushSuite) TestEmptyPush() {
 	s.Equal([]string{"latest", "master-s4k2r0d6a9b"}, tags)
 }
 
-func (s *PushSuite) TestInferRegistry() {
+func (s *PushSuite) TestInferRegistryAndRepository() {
 	testWerckerRegistry, _ := url.Parse("https://test.wcr.io/v2")
 	repoTests := []struct {
 		registry           string
@@ -72,9 +72,14 @@ func (s *PushSuite) TestInferRegistry() {
 		expectedRepository string
 	}{
 		{"", "appowner/appname", "", "appowner/appname"},
-		{"", "", testWerckerRegistry.String() + "/", testWerckerRegistry.Host + "/appowner/appname"},
+		{"", "", testWerckerRegistry.String(), testWerckerRegistry.Host + "/appowner/appname"},
 		{"", "someregistry.com/appowner/appname", "https://someregistry.com/v2/", "someregistry.com/appowner/appname"},
 		{"", "appOWNER/appname", "", "appowner/appname"},
+		{"https://someregistry.com", "appowner/appname", "https://someregistry.com", "someregistry.com/appowner/appname"},
+		{"https://someregistry.com/v1", "appowner/appname", "https://someregistry.com/v1", "someregistry.com/appowner/appname"},
+		{"https://someregistry.com/v2", "appowner/appname", "https://someregistry.com/v2", "someregistry.com/appowner/appname"},
+		{"https://someregistry.com", "someotherregistry.com/appowner/appname", "https://someotherregistry.com/v2/", "someotherregistry.com/appowner/appname"},
+		{"https://someregistry.com", "appowner/appname", "https://someregistry.com", "someregistry.com/appowner/appname"},
 	}
 
 	for _, tt := range repoTests {
@@ -83,9 +88,11 @@ func (s *PushSuite) TestInferRegistry() {
 			ApplicationName:          "appname",
 			WerckerContainerRegistry: testWerckerRegistry,
 		}
-		repo, opts := InferRegistry(tt.repository, dockerauth.CheckAccessOptions{
+		opts := dockerauth.CheckAccessOptions{
 			Registry: tt.registry,
-		}, options)
+		}
+		repo, registry, _ := InferRegistryAndRepository(tt.repository, opts.Registry, options)
+		opts.Registry = registry
 		s.Equal(tt.expectedRegistry, opts.Registry, "%q, wants %q", opts.Registry, tt.expectedRegistry)
 		s.Equal(tt.expectedRepository, repo, "%q, wants %q", repo, tt.expectedRepository)
 	}
