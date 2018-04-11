@@ -12,7 +12,7 @@ testDockerPush () {
   testDir=$testsDir/docker-push
   printf "testing %s... " "$testName"
   # this test will create an image with the following repository: should match the repository setting in wercker.yml
-  repo=test-docker-push
+  repo=my.registry.com/someuser/test-docker-push
   # stop any existing container started by a previous run
   docker kill ${testName}-container > /dev/null 2>&1
   # delete any existing image built by a previous run
