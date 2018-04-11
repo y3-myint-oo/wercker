@@ -29,22 +29,23 @@ import (
 
 type DockerRunStep struct {
 	*core.BaseStep
-	options       *core.PipelineOptions
-	dockerOptions *Options
-	data          map[string]string
-	env           []string
-	logger        *util.LogEntry
-	cmd           []string
-	entrypoint    []string
-	workingDir    string
-	portBindings  map[docker.Port][]docker.PortBinding
-	exposedPorts  map[docker.Port]struct{}
-	user          string
-	containerName string
-	image         string
-	containerID   string
-	repository    string
-	Auth          dockerauth.CheckAccessOptions `yaml:",inline"`
+	options               *core.PipelineOptions
+	dockerOptions         *Options
+	data                  map[string]string
+	env                   []string
+	logger                *util.LogEntry
+	Cmd                   []string
+	EntryPoint            []string
+	WorkingDir            string
+	PortBindings          map[docker.Port][]docker.PortBinding
+	ExposedPorts          map[docker.Port]struct{}
+	User                  string
+	ContainerName         string
+	OriginalContainerName string
+	Image                 string
+	ContainerID           string
+	Repository            string
+	Auth                  dockerauth.CheckAccessOptions `yaml:",inline"`
 }
 
 type BoxDockerRun struct {
@@ -55,8 +56,9 @@ type BoxDockerRun struct {
 func NewDockerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*DockerRunStep, error) {
 	name := "docker-run"
 	displayName := "docker run"
+	originalContainerName := name
 	if stepConfig.Name != "" {
-		displayName = stepConfig.Name
+		originalContainerName = stepConfig.Name
 	}
 
 	// Add a random number to the name to prevent collisions on disk
@@ -73,11 +75,12 @@ func NewDockerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions
 	})
 
 	return &DockerRunStep{
-		BaseStep:      baseStep,
-		data:          stepConfig.Data,
-		logger:        util.RootLogger().WithField("Logger", "DockerRunStep"),
-		options:       options,
-		dockerOptions: dockerOptions,
+		BaseStep:              baseStep,
+		data:                  stepConfig.Data,
+		logger:                util.RootLogger().WithField("Logger", "DockerRunStep"),
+		options:               options,
+		dockerOptions:         dockerOptions,
+		OriginalContainerName: originalContainerName,
 	}, nil
 }
 
@@ -91,34 +94,33 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		if ports, ok := s.data["ports"]; ok {
 			parts, err := shlex.Split(ports)
 			if err == nil {
-				s.portBindings = portBindings(parts)
-				s.exposedPorts = exposedPorts(parts)
+				s.PortBindings = portBindings(parts)
+				s.ExposedPorts = exposedPorts(parts)
 			}
 		}
 	}
 
 	if workingDir, ok := s.data["working-dir"]; ok {
-		s.workingDir = env.Interpolate(workingDir)
+		s.WorkingDir = env.Interpolate(workingDir)
 	}
 
 	if image, ok := s.data["image"]; ok {
-		s.image = env.Interpolate(image)
+		s.Image = env.Interpolate(image)
 	}
 
-	containerName := s.DisplayName()
-	s.containerName = s.options.RunID + env.Interpolate(containerName)
+	s.ContainerName = s.options.RunID + env.Interpolate(s.OriginalContainerName)
 
 	if cmd, ok := s.data["cmd"]; ok {
 		parts, err := shlex.Split(cmd)
 		if err == nil {
-			s.cmd = parts
+			s.Cmd = parts
 		}
 	}
 
-	if entrypoint, ok := s.data["entrypoint"]; ok {
-		parts, err := shlex.Split(entrypoint)
+	if entryPoint, ok := s.data["entrypoint"]; ok {
+		parts, err := shlex.Split(entryPoint)
 		if err == nil {
-			s.entrypoint = parts
+			s.EntryPoint = parts
 		}
 	}
 
@@ -135,7 +137,7 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 	}
 
 	if user, ok := s.data["user"]; ok {
-		s.user = env.Interpolate(user)
+		s.User = env.Interpolate(user)
 	}
 }
 
@@ -161,7 +163,7 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 	}
 
 	boxConfig := &core.BoxConfig{
-		ID: s.image,
+		ID: s.Image,
 	}
 	dockerRunDockerBox, err := NewBoxDockerRun(boxConfig, s.options, s.dockerOptions)
 	if err != nil {
@@ -176,23 +178,23 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 	}
 
 	conf := &docker.Config{
-		Image:        s.image,
-		Cmd:          s.cmd,
+		Image:        s.Image,
+		Cmd:          s.Cmd,
 		Env:          s.env,
-		ExposedPorts: s.exposedPorts,
-		Entrypoint:   s.entrypoint,
+		ExposedPorts: s.ExposedPorts,
+		Entrypoint:   s.EntryPoint,
 		DNS:          s.dockerOptions.DNS,
-		WorkingDir:   s.workingDir,
+		WorkingDir:   s.WorkingDir,
 	}
 
 	hostconfig := &docker.HostConfig{
 		DNS:          s.dockerOptions.DNS,
-		PortBindings: s.portBindings,
+		PortBindings: s.PortBindings,
 		NetworkMode:  networkName,
 	}
 
 	endpointConfig := &docker.EndpointConfig{
-		Aliases: []string{s.DisplayName()},
+		Aliases: []string{s.OriginalContainerName},
 	}
 	endpointConfigMap := make(map[string]*docker.EndpointConfig)
 	endpointConfigMap[networkName] = endpointConfig
@@ -202,21 +204,20 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 	}
 
 	container, err := s.createContainer(client, conf, hostconfig, networkingconfig)
-
-	s.containerID = container.ID
-
 	if err != nil {
-		s.logger.Errorln("Error in creating container name : ", s.containerName)
+		s.logger.Errorln("Error in creating container name : ", s.ContainerName)
 		return 1, err
 	}
 	s.logger.Infoln("Container is created with container id : ", container.ID)
 
+	s.ContainerID = container.ID
+
 	err = s.startContainer(client, hostconfig)
 	if err != nil {
-		s.logger.Errorln("Error in starting container name : ", s.containerName)
+		s.logger.Errorln("Error in starting container name : ", s.ContainerName)
 		return 1, err
 	}
-	s.logger.Infoln("Container is successfully started name : ", s.containerName)
+	s.logger.Infoln("Container is successfully started name : ", s.ContainerName)
 
 	return 0, nil
 }
@@ -224,7 +225,7 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Config, hostconfig *docker.HostConfig, networkingConfig *docker.NetworkingConfig) (*docker.Container, error) {
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
-			Name:             s.containerName,
+			Name:             s.ContainerName,
 			Config:           conf,
 			HostConfig:       hostconfig,
 			NetworkingConfig: networkingConfig,
@@ -233,7 +234,7 @@ func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Confi
 }
 
 func (s *DockerRunStep) startContainer(client *DockerClient, hostConfig *docker.HostConfig) error {
-	err := client.StartContainer(s.containerName, hostConfig)
+	err := client.StartContainer(s.ContainerName, hostConfig)
 	return err
 }
 
@@ -269,18 +270,18 @@ func (s *DockerRunStep) Clean() {
 		return
 	}
 
-	err = client.StopContainer(s.containerID, 1)
+	err = client.StopContainer(s.ContainerID, 1)
 	if err != nil {
-		s.logger.Errorln("Error in stopping the container with id : ", s.containerID)
+		s.logger.Errorln("Error in stopping the container with id : ", s.ContainerID)
 	}
 
 	opts := docker.RemoveContainerOptions{
-		ID:            s.containerID,
+		ID:            s.ContainerID,
 		RemoveVolumes: true,
 		Force:         true,
 	}
 	err = client.RemoveContainer(opts)
 	if err != nil {
-		s.logger.Errorln("Error in deleting the container with id : ", s.containerID)
+		s.logger.Errorln("Error in deleting the container with id : ", s.ContainerID)
 	}
 }
