@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.xxxx(2018-04-11)
+
 - Fixes and additional properties for internal/docker-build step (#372)
 
 ## v1.0.1195(2018-04-10)
