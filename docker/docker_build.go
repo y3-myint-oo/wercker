@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
 	"github.com/wercker/wercker/core"
@@ -44,8 +44,9 @@ type DockerBuildStep struct {
 	extrahosts    []string
 	q             bool
 	squash        bool
-	buildargs     []docker.BuildArg
+	buildargs     map[string]*string
 	labels        map[string]string
+	nocache       bool
 }
 
 // NewDockerBuildStep is a special step for doing docker builds
@@ -101,17 +102,16 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		}
 	}
 
-	if buildargsProp, ok := s.data["buildargs"]; ok {
+	if buildargsProp, ok := s.data["build-args"]; ok {
 		parsedArgs, err := shlex.Split(buildargsProp)
 		if err == nil {
-			argMap := make(map[string]string)
-			var buildArgs = make([]docker.BuildArg, len(parsedArgs))
-			for i, labelPair := range parsedArgs {
+			s.buildargs = make(map[string]*string)
+			for _, labelPair := range parsedArgs {
 				pair := strings.Split(labelPair, "=")
-				argMap[env.Interpolate(pair[0])] = env.Interpolate(pair[1])
-				buildArgs[i] = docker.BuildArg{Name: pair[0], Value: pair[1]}
+				name := env.Interpolate(pair[0])
+				value := env.Interpolate(pair[1])
+				s.buildargs[name] = &value
 			}
-			s.buildargs = buildArgs
 		}
 	}
 
@@ -123,7 +123,15 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		}
 	}
 
-	if extrahostsProp, ok := s.data["extrahosts"]; ok {
+	s.nocache = false // default to false when value is bad or not set
+	if nocacheProp, ok := s.data["no-cache"]; ok {
+		nocache, err := strconv.ParseBool(nocacheProp)
+		if err == nil {
+			s.nocache = nocache
+		}
+	}
+
+	if extrahostsProp, ok := s.data["extra-hosts"]; ok {
 		parsedExtrahosts, err := shlex.Split(extrahostsProp)
 		if err == nil {
 			interpolatedExtrahosts := make([]string, len(parsedExtrahosts))
@@ -139,18 +147,6 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		squash, err := strconv.ParseBool(squashProp)
 		if err == nil {
 			s.squash = squash
-		}
-	}
-
-	if labelsProp, ok := s.data["labels"]; ok {
-		parsedLabels, err := shlex.Split(labelsProp)
-		if err == nil {
-			labelMap := make(map[string]string)
-			for _, labelPair := range parsedLabels {
-				pair := strings.Split(labelPair, "=")
-				labelMap[env.Interpolate(pair[0])] = env.Interpolate(pair[1])
-			}
-			s.labels = labelMap
 		}
 	}
 
@@ -177,7 +173,7 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 
 	// This is clearly only relevant to docker so we're going to dig into the
 	// transport internals a little bit to get the container ID
-	dt := sess.Transport().(*DockerTransport)
+	dt := sess.Transport().(*DockerTransport) //              TODO Change this to use code which doesn't use fsouza client
 	containerID := dt.containerID
 
 	// Extract the /pipeline/source directory from the running pipeline container
@@ -197,8 +193,7 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		return -1, err
 	}
 
-	// TODO(termie): could probably re-use the transport's client
-	client, err := NewDockerClient(s.dockerOptions)
+	officialClient, err := NewOfficialDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
 	}
@@ -208,38 +203,33 @@ func (s *DockerBuildStep) Execute(ctx context.Context, sess *core.Session) (int,
 		return 1, err
 	}
 
-	// Create an io.Writer to which the BuildImage API call will write build status messages
-	// EmitBuildStatus will emit these messages as Log messages
-	r, w := io.Pipe()
-	go emitBuildStatus(e, r, s.options)
-	defer w.Close()
-
 	tarFile, err := os.Open(s.options.HostPath(currentSourceUnderRootTar))
 	tarReader := bufio.NewReader(tarFile)
 
-	buildOpts := docker.BuildImageOptions{
+	s.logger.Debugln("Build image")
+
+	officialBuildOpts := types.ImageBuildOptions{
 		Dockerfile:     s.dockerfile,
-		InputStream:    tarReader,
-		OutputStream:   w,
-		Name:           s.tag,
+		Tags:           []string{s.tag},
 		BuildArgs:      s.buildargs,
 		SuppressOutput: s.q,
-		// Note: setting RmTmpContainer to false is ignored by the fsouza docker client due to a bug, so intermediate containers are always removed when successful
-		RmTmpContainer:      s.options.ShouldRemove, // remove intermediate containers when successful unless --no-remove specified in CLI
-		ForceRmTmpContainer: s.options.ShouldRemove, // remove intermediate containers when unsuccessful unless --no-remove specified in CLI
-
-		// cannot set Labels parameter as it is not supported by BuildImageOptions
-		// cannot set Extrahosts parameter as it is not supported by BuildImageOptions
-		// cannot set Squash parameter as it is not supported by BuildImageOptions
-		Pull: !s.dockerOptions.Local, // pull images unless docker-local is specified
+		Remove:         s.options.ShouldRemove, // remove intermediate containers when successful unless --no-remove specified in CLI
+		ForceRemove:    s.options.ShouldRemove, // remove intermediate containers when unsuccessful unless --no-remove specified in CLI
+		Labels:         s.labels,
+		ExtraHosts:     s.extrahosts,
+		Squash:         s.squash,
+		PullParent:     !s.dockerOptions.Local, // always pull images unless docker-local is specified
+		NoCache:        s.nocache,
 	}
 
-	s.logger.Debugln("Build image")
-	err = client.BuildImage(buildOpts)
+	imageBuildResponse, err := officialClient.ImageBuild(ctx, tarReader, officialBuildOpts)
 	if err != nil {
 		s.logger.Errorln("Failed to build image:", err)
 		return -1, err
 	}
+
+	EmitStatus(e, imageBuildResponse.Body, s.options)
+	imageBuildResponse.Body.Close()
 
 	s.logger.Debug("Image built")
 	return 0, nil
@@ -355,17 +345,4 @@ func (s *DockerBuildStep) ShouldSyncEnv() bool {
 		return disableSync != "true"
 	}
 	return true
-}
-
-// EmitBuildStatus is used to Log the normal docker build progress messages returned by the BuildImage API call
-// There's a slight bug here in that image downloads are displayed as separate lines rather than a single animated line
-func emitBuildStatus(e *core.NormalizedEmitter, r io.Reader, options *core.PipelineOptions) {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		e.Emit(core.Logs, &core.LogsArgs{
-			Logs:   scanner.Text() + "\n",
-			Stream: "docker",
-		})
-
-	}
 }
