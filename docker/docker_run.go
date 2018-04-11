@@ -104,9 +104,7 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		s.WorkingDir = env.Interpolate(workingDir)
 	}
 
-	if image, ok := s.data["image"]; ok {
-		s.Image = env.Interpolate(image)
-	}
+	s.Image = getCorrectImageName(s)
 
 	s.ContainerName = s.options.RunID + env.Interpolate(s.OriginalContainerName)
 
@@ -138,6 +136,23 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 
 	if user, ok := s.data["user"]; ok {
 		s.User = env.Interpolate(user)
+	}
+}
+
+func getCorrectImageName(s *DockerRunStep) string {
+	i := s.data["image"]
+
+	client, err := NewDockerClient(s.dockerOptions)
+	if err != nil {
+		return ""
+	}
+
+	// local image should exists with a prepend of build id.
+	image, err := client.InspectImage(s.options.RunID + i)
+	if err != nil {
+		return i
+	} else {
+		return image.ID
 	}
 }
 
