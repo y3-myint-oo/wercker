@@ -731,8 +731,6 @@ func (p *Runner) RunStep(shared *RunnerShared, step core.Step, order int) (*Step
 		sr.Artifact = artifact
 	}
 
-	defer step.Clean()
-
 	if !sr.Success {
 		return sr, fmt.Errorf("Step failed with exit code: %d", sr.ExitCode)
 	}
