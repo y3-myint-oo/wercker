@@ -680,7 +680,7 @@ func (b *DockerBox) createDockerNetwork() (*docker.Network, error) {
 	b.logger.Debugln("Creating docker network")
 	client := b.client
 	return client.CreateNetwork(docker.CreateNetworkOptions{
-		Name:           b.options.RunID,
+		Name:           b.getNetworkName(),
 		CheckDuplicate: true,
 	})
 }
@@ -724,4 +724,9 @@ func (b *DockerBox) prepareSvcDockerEnvVar(env *util.Environment) ([]string, err
 		}
 	}
 	return serviceEnv, nil
+}
+
+// returns docker network name
+func (b *DockerBox) getNetworkName() string {
+	return "wercker-" + b.options.RunID
 }
