@@ -2078,10 +2078,10 @@
 			"revisionTime": "2017-07-07T00:42:18Z"
 		},
 		{
-			"checksumSHA1": "Ft9KJiHmy2K6nWgnvESIjs2bYlc=",
+			"checksumSHA1": "i1gpnf4IT86qrCIZqMKbtGIDllo=",
 			"path": "github.com/wercker/docker-check-access",
-			"revision": "5e5b341ecaef78c7b1a8cfb32e21de7424967d0b",
-			"revisionTime": "2018-04-12T07:07:35Z",
+			"revision": "c2ca0866a4f5d0ba98a3311c326540fa996f5b16",
+			"revisionTime": "2018-04-12T11:07:08Z",
 			"version": "=upgrade_azure",
 			"versionExact": "upgrade_azure"
 		},
