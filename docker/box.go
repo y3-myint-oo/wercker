@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
@@ -130,13 +132,13 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 // }
 
 // Link gives us the parameter to Docker to link to this box
-func (b *DockerBox) Link() string {
-	name := b.config.Name
-	if name == "" {
-		name = b.ShortName
-	}
-	return fmt.Sprintf("%s:%s", b.container.Name, name)
-}
+// func (b *DockerBox) Link() string {
+// 	name := b.config.Name
+// 	if name == "" {
+// 		name = b.ShortName
+// 	}
+// 	return fmt.Sprintf("%s:%s", b.container.Name, name)
+// }
 
 // GetName gets the box name
 func (b *DockerBox) GetName() string {
@@ -356,7 +358,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 	if err != nil {
 		return nil, err
 	}
-	dockerEnvVar, err := b.prepareSvcVarDockerEnvMap()
+	dockerEnvVar, err := b.prepareSvcVarDockerEnvVar(env)
 	b.logger.Debugln("Starting base box:", b.Name)
 
 	// TODO(termie): maybe move the container manipulation outside of here?
@@ -681,42 +683,53 @@ func (b *DockerBox) ExportImage(options *ExportImageOptions) error {
 	return client.ExportImage(exportImageOptions)
 }
 
+// Create docker network
 func (b *DockerBox) createDockerNetwork() (*docker.Network, error) {
 	b.logger.Debugln("Creating docker network")
 	client := b.client
-	options := make(map[string]interface{})
-	options["com.docker.network.bridge.enable_ip_masquerade"] = false
 	return client.CreateNetwork(docker.CreateNetworkOptions{
 		Name:           b.options.RunID,
 		CheckDuplicate: true,
-		Options:        options,
 	})
 }
 
-// It prepares Environment variables
-func (b *DockerBox) prepareSvcVarDockerEnvMap() ([]string, error) {
-	env := []string{}
+// It prepares DockerEnvironment variables list corresponding to services.
+func (b *DockerBox) prepareSvcVarDockerEnvVar(env *util.Environment) ([]string, error) {
+	serviceEnv := []string{}
 	client := b.client
 	for _, service := range b.services {
+		serviceName := service.GetServiceAlias()
 		if containerID := service.GetID(); containerID != "" {
 			container, err := client.InspectContainer(containerID)
 			if err != nil {
 				return nil, err
 			}
 			ns := container.NetworkSettings
-			serviceName := strings.ToUpper(service.GetServiceName())
 			var serviceIPAddress string
 			for _, v := range ns.Networks {
 				serviceIPAddress = v.IPAddress
 				break
 			}
+			serviceEnv = append(serviceEnv, fmt.Sprintf("%s_NAME=/%s/%s", strings.ToUpper(serviceName), b.getContainerName(), serviceName))
+			lowestPort := math.MaxInt64
+			var protLowestPort string
 			for k, _ := range container.Config.ExposedPorts {
 				s := strings.Split(string(k), "/")
-				env = append(env, fmt.Sprintf("%s=%s", serviceName+"_PORT_"+s[0]+"_"+s[1]+"_ADDR", serviceIPAddress))
-				env = append(env, fmt.Sprintf("%s=%s", serviceName+"_PORT_"+s[0]+"_"+s[1]+"_PORT", s[0]))
-				env = append(env, fmt.Sprintf("%s=%s", serviceName+"_PORT_"+s[0]+"_"+s[1]+"_PROTO", s[1]))
+				x, _ := strconv.Atoi(s[0])
+				if lowestPort > x {
+					lowestPort = x
+					protLowestPort = s[1]
+				}
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT_%s_%s=%s://%s:%s", strings.ToUpper(serviceName), s[0], strings.ToUpper(s[1]), s[1], serviceIPAddress, s[0]))
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT_%s_%s_ADDR=%s", strings.ToUpper(serviceName), s[0], strings.ToUpper(s[1]), serviceIPAddress))
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT_%s_%s_PORT=%s", strings.ToUpper(serviceName), s[0], strings.ToUpper(s[1]), s[0]))
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT_%s_%s_PROTO=%s", strings.ToUpper(serviceName), s[0], strings.ToUpper(s[1]), s[1]))
+			}
+			serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT=%s://%s:%s", strings.ToUpper(serviceName), protLowestPort, serviceIPAddress, strconv.Itoa(lowestPort)))
+			for _, envVar := range container.Config.Env {
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_ENV_%s", strings.ToUpper(serviceName), envVar))
 			}
 		}
 	}
-	return env, nil
+	return serviceEnv, nil
 }
