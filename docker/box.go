@@ -704,7 +704,7 @@ func (b *DockerBox) prepareSvcDockerEnvVar(env *util.Environment) ([]string, err
 				break
 			}
 			serviceEnv = append(serviceEnv, fmt.Sprintf("%s_NAME=/%s/%s", strings.ToUpper(serviceName), b.getContainerName(), serviceName))
-			lowestPort := math.MaxInt64
+			lowestPort := math.MaxInt32
 			var protLowestPort string
 			for k, _ := range container.Config.ExposedPorts {
 				s := strings.Split(string(k), "/")
