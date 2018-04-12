@@ -358,7 +358,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 	if err != nil {
 		return nil, err
 	}
-	dockerEnvVar, err := b.prepareSvcVarDockerEnvVar(env)
+	dockerEnvVar, err := b.prepareSvcDockerEnvVar(env)
 	b.logger.Debugln("Starting base box:", b.Name)
 
 	// TODO(termie): maybe move the container manipulation outside of here?
@@ -498,18 +498,10 @@ func (b *DockerBox) Clean() error {
 		}
 	}
 
-	networkNameToRemove := b.dockerOptions.NetworkName
-	if networkNameToRemove == "" {
-		networkNameToRemove = b.options.RunID
-	} else {
-		if b.dockerOptions.RemoveNetwork == false {
-			networkNameToRemove = ""
-		}
-	}
-	if networkNameToRemove != "" {
-		err := client.RemoveNetwork(networkNameToRemove)
+	if b.dockerOptions.NetworkName == "" {
+		err := client.RemoveNetwork(b.options.RunID)
 		if err != nil {
-			b.logger.Error(err)
+			b.logger.Error("Error while removing docker network", err)
 			return err
 		}
 	}
@@ -693,8 +685,8 @@ func (b *DockerBox) createDockerNetwork() (*docker.Network, error) {
 	})
 }
 
-// It prepares DockerEnvironment variables list corresponding to services.
-func (b *DockerBox) prepareSvcVarDockerEnvVar(env *util.Environment) ([]string, error) {
+// Prepares and return DockerEnvironment variables list created in case of DBlinks corresponding to each service.
+func (b *DockerBox) prepareSvcDockerEnvVar(env *util.Environment) ([]string, error) {
 	serviceEnv := []string{}
 	client := b.client
 	for _, service := range b.services {
