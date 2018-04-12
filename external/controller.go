@@ -214,7 +214,7 @@ func (cp *RunnerParams) startTheContainer(name string, cmd []string) error {
 		labels = append(labels, fmt.Sprintf("runnergroup=%s", cp.GroupName))
 	}
 
-	volumes = append(volumes, "/Users/bihaber/wercher:/var/lib/wercker:rw")
+	volumes = append(volumes, "/var/lib/wercker:/var/lib/wercker:rw")
 	volumes = append(volumes, "/var/run/docker.sock:/var/run/docker.sock")
 	if cp.LoggerPath != "" {
 		volumes = append(volumes, fmt.Sprintf("%s:/runlogs:rw", cp.LoggerPath))
