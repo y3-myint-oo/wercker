@@ -37,52 +37,76 @@
 			"revisionTime": "2017-01-04T19:13:27Z"
 		},
 		{
-			"checksumSHA1": "+5HrSbd/nMeqqwFBGkiV6VT2iNc=",
+			"checksumSHA1": "uxqhpe2KAMLaOJ4UJZbNW85/DRQ=",
+			"path": "github.com/Azure/azure-sdk-for-go/services/authorization/mgmt/2015-07-01/authorization",
+			"revision": "0b745831a99da5f43aa3cc641cfcb9ed323e1f9f",
+			"revisionTime": "2018-04-09T17:42:04Z"
+		},
+		{
+			"checksumSHA1": "7t0VrdSexJ3Fkft4qx6Y7i+XUag=",
+			"path": "github.com/Azure/azure-sdk-for-go/services/containerregistry/mgmt/2017-10-01/containerregistry",
+			"revision": "0b745831a99da5f43aa3cc641cfcb9ed323e1f9f",
+			"revisionTime": "2018-04-09T17:42:04Z"
+		},
+		{
+			"checksumSHA1": "Gp9PjNDzkHRrBqQ4iSH0UcQlNMU=",
+			"path": "github.com/Azure/azure-sdk-for-go/version",
+			"revision": "0b745831a99da5f43aa3cc641cfcb9ed323e1f9f",
+			"revisionTime": "2018-04-09T17:42:04Z"
+		},
+		{
+			"checksumSHA1": "Rx2jz7Zt3Ov9HdtwEDAsjr1boXk=",
 			"path": "github.com/Azure/go-ansiterm",
-			"revision": "19f72df4d05d31cbe1c56bfc8045c96babff6c7e",
-			"revisionTime": "2017-06-29T20:46:27Z"
+			"revision": "d6e3b3328b783f23731bc4d058875b0371ff8109",
+			"revisionTime": "2017-09-29T23:40:23Z"
 		},
 		{
-			"checksumSHA1": "J6OhSKiGRYT0ymRvvu1T6YnKSWo=",
+			"checksumSHA1": "3/UphB+6Hbx5otA4PjFjvObT+L4=",
 			"path": "github.com/Azure/go-ansiterm/winterm",
-			"revision": "19f72df4d05d31cbe1c56bfc8045c96babff6c7e",
-			"revisionTime": "2017-06-29T20:46:27Z"
+			"revision": "d6e3b3328b783f23731bc4d058875b0371ff8109",
+			"revisionTime": "2017-09-29T23:40:23Z"
 		},
 		{
-			"checksumSHA1": "l3xnDy6zygxM3HbLUlNf9+wKwhI=",
+			"checksumSHA1": "CVXGpPjtwLovG/idljK5PvI8alA=",
 			"path": "github.com/Azure/go-autorest/autorest",
-			"revision": "0c7d3adb1d6992a173eedd673f44698fe2c901be",
-			"revisionTime": "2017-01-18T21:10:45Z"
+			"revision": "9ad9326b278af8fa5cc67c30c0ce9a58cc0862b2",
+			"revisionTime": "2018-04-04T23:29:44Z"
 		},
 		{
-			"checksumSHA1": "xiFGiBXXaRlIBcoKE3AIbVbNmxc=",
+			"checksumSHA1": "Um4a72Un1F7aPxIU/nVemD158xA=",
+			"path": "github.com/Azure/go-autorest/autorest/adal",
+			"revision": "9ad9326b278af8fa5cc67c30c0ce9a58cc0862b2",
+			"revisionTime": "2018-04-04T23:29:44Z"
+		},
+		{
+			"checksumSHA1": "yVzzVlRjg2zZ454NfYe0cUwbXI0=",
 			"path": "github.com/Azure/go-autorest/autorest/azure",
-			"revision": "0c7d3adb1d6992a173eedd673f44698fe2c901be",
-			"revisionTime": "2017-01-18T21:10:45Z"
+			"revision": "9ad9326b278af8fa5cc67c30c0ce9a58cc0862b2",
+			"revisionTime": "2018-04-04T23:29:44Z"
 		},
 		{
-			"checksumSHA1": "THRprFQ4KtpJn5AkHBFvnZ+QFkk=",
+			"checksumSHA1": "OR34oZgLJAvRkgthOz/qUKuDHjk=",
 			"path": "github.com/Azure/go-autorest/autorest/date",
-			"revision": "0c7d3adb1d6992a173eedd673f44698fe2c901be",
-			"revisionTime": "2017-01-18T21:10:45Z"
+			"revision": "9ad9326b278af8fa5cc67c30c0ce9a58cc0862b2",
+			"revisionTime": "2018-04-04T23:29:44Z"
 		},
 		{
-			"checksumSHA1": "0PR2beQ5w5iVBW8T8xTOvPQXh5A=",
+			"checksumSHA1": "ixQF0aMAl/iW2NIDbzOdUvTLiFE=",
 			"path": "github.com/Azure/go-autorest/autorest/mocks",
-			"revision": "0c7d3adb1d6992a173eedd673f44698fe2c901be",
-			"revisionTime": "2017-01-18T21:10:45Z"
+			"revision": "9ad9326b278af8fa5cc67c30c0ce9a58cc0862b2",
+			"revisionTime": "2018-04-04T23:29:44Z"
 		},
 		{
-			"checksumSHA1": "axEUOz9Tq8m8RnSmeqPWNXpA5cU=",
+			"checksumSHA1": "FgPCpcVSCZl9T8WMepFrvLboa7g=",
 			"path": "github.com/Azure/go-autorest/autorest/to",
-			"revision": "0c7d3adb1d6992a173eedd673f44698fe2c901be",
-			"revisionTime": "2017-01-18T21:10:45Z"
+			"revision": "9ad9326b278af8fa5cc67c30c0ce9a58cc0862b2",
+			"revisionTime": "2018-04-04T23:29:44Z"
 		},
 		{
-			"checksumSHA1": "OIVOV52Qb1v74IFdxjK2xSHOXjw=",
+			"checksumSHA1": "bhXi4ok9DTNnK2CRffIeS37RsvA=",
 			"path": "github.com/Azure/go-autorest/autorest/validation",
-			"revision": "0c7d3adb1d6992a173eedd673f44698fe2c901be",
-			"revisionTime": "2017-01-18T21:10:45Z"
+			"revision": "9ad9326b278af8fa5cc67c30c0ce9a58cc0862b2",
+			"revisionTime": "2018-04-04T23:29:44Z"
 		},
 		{
 			"checksumSHA1": "/fG2fCUTbztgs7Pt/KBuoKKaA4w=",
@@ -2054,10 +2078,12 @@
 			"revisionTime": "2017-07-07T00:42:18Z"
 		},
 		{
-			"checksumSHA1": "hwuhOL78FeNle4mOksY8Bx+5j3k=",
+			"checksumSHA1": "SSkWFiRqpP3I4tc0mxXnTjHvG/Y=",
 			"path": "github.com/wercker/docker-check-access",
-			"revision": "6de3890fc137c624884041d0af695128cb6db976",
-			"revisionTime": "2018-04-10T06:27:42Z"
+			"revision": "767e4652e50d877543509147feb4af737d08cce0",
+			"revisionTime": "2018-04-12T06:39:31Z",
+			"version": "=upgrade_azure",
+			"versionExact": "upgrade_azure"
 		},
 		{
 			"checksumSHA1": "rpIHxVmXHbM31S0S/2qE1kAvzfw=",
