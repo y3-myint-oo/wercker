@@ -694,6 +694,7 @@ func (b *DockerBox) prepareSvcDockerEnvVar(env *util.Environment) ([]string, err
 		if containerID := service.GetID(); containerID != "" {
 			container, err := client.InspectContainer(containerID)
 			if err != nil {
+				b.logger.Error("Error while inspecting container", err)
 				return nil, err
 			}
 			ns := container.NetworkSettings
