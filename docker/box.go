@@ -344,14 +344,13 @@ func (b *DockerBox) getContainerName() string {
 
 // Run creates the container and runs it.
 func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Container, error) {
-	networkName := b.dockerOptions.NetworkName
-	if networkName == "" {
-		_, err := b.createDockerNetwork()
+	dockerNetworkName, custom := b.GetDockerNetworkName()
+	if custom == false {
+		_, err := b.createDockerNetwork(dockerNetworkName)
 		if err != nil {
-			b.logger.Error(err)
+			b.logger.Error("Error while creating network", err)
 			return nil, err
 		}
-		networkName = b.options.RunID
 	}
 
 	err := b.RunServices(ctx, env)
@@ -403,7 +402,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 		Binds:        binds,
 		PortBindings: portBindings(portsToBind),
 		DNS:          b.dockerOptions.DNS,
-		NetworkMode:  networkName,
+		NetworkMode:  dockerNetworkName,
 	}
 
 	conf := &docker.Config{
@@ -498,8 +497,9 @@ func (b *DockerBox) Clean() error {
 		}
 	}
 
-	if b.dockerOptions.NetworkName == "" {
-		err := client.RemoveNetwork(b.options.RunID)
+	dockerNetworkName, custom := b.GetDockerNetworkName()
+	if custom == false {
+		err := client.RemoveNetwork(dockerNetworkName)
 		if err != nil {
 			b.logger.Error("Error while removing docker network", err)
 			return err
@@ -676,11 +676,11 @@ func (b *DockerBox) ExportImage(options *ExportImageOptions) error {
 }
 
 // Create docker network
-func (b *DockerBox) createDockerNetwork() (*docker.Network, error) {
+func (b *DockerBox) createDockerNetwork(dockerNetworkName string) (*docker.Network, error) {
 	b.logger.Debugln("Creating docker network")
 	client := b.client
 	return client.CreateNetwork(docker.CreateNetworkOptions{
-		Name:           b.getNetworkName(),
+		Name:           dockerNetworkName,
 		CheckDuplicate: true,
 	})
 }
@@ -726,7 +726,13 @@ func (b *DockerBox) prepareSvcDockerEnvVar(env *util.Environment) ([]string, err
 	return serviceEnv, nil
 }
 
-// returns docker network name
-func (b *DockerBox) getNetworkName() string {
-	return "wercker-" + b.options.RunID
+// returns docker network name and custom flag for user passed docker-network
+func (b *DockerBox) GetDockerNetworkName() (string, bool) {
+	dockerNetworkName := b.dockerOptions.NetworkName
+	custom := true
+	if dockerNetworkName == "" {
+		dockerNetworkName = "wercker-" + b.options.RunID
+		custom = false
+	}
+	return dockerNetworkName, custom
 }
