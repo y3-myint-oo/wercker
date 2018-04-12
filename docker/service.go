@@ -174,10 +174,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment) (*d
 		portsToBind = b.config.Ports
 	}
 
-	networkName := b.dockerOptions.NetworkName
-	if networkName == "" {
-		networkName = b.options.RunID
-	}
+	networkName, _ := b.GetDockerNetworkName()
 
 	hostConfig := &docker.HostConfig{
 		DNS:          b.dockerOptions.DNS,
