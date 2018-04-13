@@ -80,17 +80,18 @@ func NewWatchStep(stepConfig *core.StepConfig, options *core.PipelineOptions, do
 }
 
 // InitEnv parses our data into our config
-func (s *WatchStep) InitEnv(env *util.Environment) {
+func (s *WatchStep) InitEnv(env *util.Environment) error {
 	if code, ok := s.data["code"]; ok {
 		s.Code = code
 	}
-	if reload, ok := s.data["reload"]; ok {
+	if reload, ok := s.data["reload"]; ok && reload != "" {
 		if v, err := strconv.ParseBool(reload); err == nil {
 			s.reload = v
 		} else {
-			s.logger.Panic(err)
+			return fmt.Errorf("%s is an invalid value for reload, error while validating: %s", reload, err.Error())
 		}
 	}
+	return nil
 }
 
 // Fetch NOP

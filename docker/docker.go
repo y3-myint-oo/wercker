@@ -627,7 +627,7 @@ func (s *DockerPushStep) configure(env *util.Environment) {
 	}
 }
 
-func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.CheckAccessOptions {
+func (s *DockerPushStep) buildAutherOpts(env *util.Environment) (dockerauth.CheckAccessOptions, error) {
 	opts := dockerauth.CheckAccessOptions{}
 	if username, ok := s.data["username"]; ok {
 		opts.Username = env.Interpolate(username)
@@ -693,7 +693,7 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 	if opts.AzureClientSecret == "" && opts.AwsSecretKey == "" {
 		repository, registry, err := InferRegistryAndRepository(s.repository, opts.Registry, s.options)
 		if err != nil {
-			s.logger.Panic(err)
+			return dockerauth.CheckAccessOptions{}, err
 		}
 		s.repository = repository
 		opts.Registry = registry
@@ -706,7 +706,7 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 		s.builtInPush = true
 	}
 
-	return opts
+	return opts, nil
 }
 
 //InferRegistryAndRepository infers the registry and repository to be used from input registry and repository.
@@ -741,7 +741,10 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 	// Docker repositories must be lowercase
 	inferredRepository = strings.ToLower(repository)
 	inferredRegistry = registry
-	x, _ := reference.ParseNormalizedNamed(inferredRepository)
+	x, err := reference.ParseNormalizedNamed(inferredRepository)
+	if err != nil {
+		return "", "", fmt.Errorf("%s is not a valid repository, error while validating repository name: %s", inferredRepository, err.Error())
+	}
 	domainFromRepository := reference.Domain(x)
 	registryInferredFromRepository := ""
 	if domainFromRepository != "docker.io" {
@@ -782,11 +785,20 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 }
 
 // InitEnv parses our data into our config
-func (s *DockerPushStep) InitEnv(env *util.Environment) {
+func (s *DockerPushStep) InitEnv(env *util.Environment) error {
 	s.configure(env)
-	opts := s.buildAutherOpts(env)
-	auther, _ := dockerauth.GetRegistryAuthenticator(opts)
+	opts, err := s.buildAutherOpts(env)
+	if err != nil {
+		return err
+	}
+
+	auther, err := dockerauth.GetRegistryAuthenticator(opts)
+	if err != nil {
+		return err
+	}
+
 	s.authenticator = auther
+	return nil
 }
 
 // Fetch NOP
