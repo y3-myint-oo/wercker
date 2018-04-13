@@ -428,8 +428,8 @@ var (
 	}
 )
 
+// Setup parameters for external runners
 func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) error {
-
 	settings := util.NewCLISettings(c)
 	env := util.NewEnvironment(os.Environ()...)
 	opts, err := core.NewExternalRunnerOptions(settings, env)
@@ -452,6 +452,8 @@ func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) er
 	params.Journal = opts.GlobalOptions.Journal
 	params.AllOption = opts.AllOption
 	params.PollFreq = opts.Polling
+	params.DockerEndpoint = opts.DockerEndpoint
+	params.Logger = cliLogger
 
 	return nil
 }

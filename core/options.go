@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -933,17 +932,18 @@ func NewWerckerStepOptions(c util.Settings, e *util.Environment) (*WerckerStepOp
 // WerckerRunnerOptions -
 type WerckerRunnerOptions struct {
 	*GlobalOptions
-	RunnerName  string
-	RunnerGroup string
-	RunnerOrgs  string
-	RunnerApps  string
-	Workflows   string
-	StorePath   string
-	LoggerPath  string
-	BearerToken string
-	NumRunners  int
-	Polling     int
-	AllOption   bool
+	RunnerName     string
+	RunnerGroup    string
+	RunnerOrgs     string
+	RunnerApps     string
+	Workflows      string
+	StorePath      string
+	LoggerPath     string
+	BearerToken    string
+	DockerEndpoint string
+	NumRunners     int
+	Polling        int
+	AllOption      bool
 }
 
 // NewExternalRunnerOptions -
@@ -963,30 +963,25 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 	token, _ := c.String("token")
 	pfreq, _ := c.Int("poll-frequency")
 	isall, _ := c.Bool("all")
+	dhost, _ := c.String("docker-host")
 
-	// check if --all is valid
-	if isall {
-		if rorgs != "" || flows != "" || rapps != "" {
-			log.Fatal("--all is not valid with --orgs, --apps, or --workflows")
-		}
-	} else {
-		if rorgs == "" && flows == "" && rapps == "" {
-			log.Fatal("--all must be specified when no other selection criteria")
-		}
+	if dhost == "" {
+		dhost = "unix:///var/run/docker.sock"
 	}
 
 	return &WerckerRunnerOptions{
-		GlobalOptions: globalOpts,
-		BearerToken:   token,
-		RunnerName:    rname,
-		RunnerGroup:   rgroup,
-		RunnerOrgs:    rorgs,
-		RunnerApps:    rapps,
-		Workflows:     flows,
-		StorePath:     spath,
-		LoggerPath:    lpath,
-		NumRunners:    norun,
-		Polling:       pfreq,
-		AllOption:     isall,
+		GlobalOptions:  globalOpts,
+		BearerToken:    token,
+		RunnerName:     rname,
+		RunnerGroup:    rgroup,
+		RunnerOrgs:     rorgs,
+		RunnerApps:     rapps,
+		Workflows:      flows,
+		StorePath:      spath,
+		LoggerPath:     lpath,
+		NumRunners:     norun,
+		Polling:        pfreq,
+		AllOption:      isall,
+		DockerEndpoint: dhost,
 	}, nil
 }
