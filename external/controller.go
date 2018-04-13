@@ -158,8 +158,6 @@ func (cp *RunnerParams) startTheRunners() {
 }
 
 // Create the command to run the external runner in a container.
-// Temporarily just read in the arguments from the runner.args file
-// to create the command and argument array.
 func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 
 	cmd := []string{}
@@ -260,12 +258,10 @@ func runDocker(args []string) error {
 	dockerCmd := exec.Command("docker", args...)
 	// run using a pseudo-terminal so that we get the nice docker output :)
 	err := dockerCmd.Start()
-	//_, err := pty.Start(dockerCmd)
+
 	if err != nil {
 		return err
 	}
-	// Stream output of the command to stdout
-	//io.Copy(os.Stdout, outFile)
 	return nil
 }
 
