@@ -121,25 +121,6 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 	}, nil
 }
 
-// func (b *DockerBox) links() []string {
-// 	serviceLinks := []string{}
-
-// 	for _, service := range b.services {
-// 		serviceLinks = append(serviceLinks, service.Link())
-// 	}
-// 	b.logger.Debugln("Creating links:", serviceLinks)
-// 	return serviceLinks
-// }
-
-// Link gives us the parameter to Docker to link to this box
-// func (b *DockerBox) Link() string {
-// 	name := b.config.Name
-// 	if name == "" {
-// 		name = b.ShortName
-// 	}
-// 	return fmt.Sprintf("%s:%s", b.container.Name, name)
-// }
-
 // GetName gets the box name
 func (b *DockerBox) GetName() string {
 	return b.Name
@@ -358,6 +339,9 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 		return nil, err
 	}
 	dockerEnvVar, err := b.prepareSvcDockerEnvVar(env)
+	if err != nil {
+		return nil, err
+	}
 	b.logger.Debugln("Starting base box:", b.Name)
 
 	// TODO(termie): maybe move the container manipulation outside of here?
@@ -707,16 +691,21 @@ func (b *DockerBox) prepareSvcDockerEnvVar(env *util.Environment) ([]string, err
 			lowestPort := math.MaxInt32
 			var protLowestPort string
 			for k, _ := range container.Config.ExposedPorts {
-				s := strings.Split(string(k), "/")
-				x, _ := strconv.Atoi(s[0])
+				exposedPort := strings.Split(string(k), "/") //exposedPort[0]=portNum and exposedPort[1]=protocal(tcp/udp)
+				x, err := strconv.Atoi(exposedPort[0])
+				if err != nil {
+					b.logger.Error("Unable to convert string port to integer", err)
+					return nil, err
+				}
 				if lowestPort > x {
 					lowestPort = x
-					protLowestPort = s[1]
+					protLowestPort = exposedPort[1]
 				}
-				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT_%s_%s=%s://%s:%s", strings.ToUpper(serviceName), s[0], strings.ToUpper(s[1]), s[1], serviceIPAddress, s[0]))
-				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT_%s_%s_ADDR=%s", strings.ToUpper(serviceName), s[0], strings.ToUpper(s[1]), serviceIPAddress))
-				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT_%s_%s_PORT=%s", strings.ToUpper(serviceName), s[0], strings.ToUpper(s[1]), s[0]))
-				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT_%s_%s_PROTO=%s", strings.ToUpper(serviceName), s[0], strings.ToUpper(s[1]), s[1]))
+				dockerEnvPrefix := fmt.Sprintf("%s_PORT_%s_%s", strings.ToUpper(serviceName), exposedPort[0], strings.ToUpper(exposedPort[1]))
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s=%s://%s:%s", dockerEnvPrefix, exposedPort[1], serviceIPAddress, exposedPort[0]))
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_ADDR=%s", dockerEnvPrefix, serviceIPAddress))
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT=%s", dockerEnvPrefix, exposedPort[0]))
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PROTO=%s", dockerEnvPrefix, exposedPort[1]))
 			}
 			serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT=%s://%s:%s", strings.ToUpper(serviceName), protLowestPort, serviceIPAddress, strconv.Itoa(lowestPort)))
 			for _, envVar := range container.Config.Env {
