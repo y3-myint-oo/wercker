@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+// Copyright (c) 2016,2018 Oracle and/or its affiliates. All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@ package core
 import (
 	"fmt"
 	"os"
+	"strings"
 	"path/filepath"
 
 	"github.com/wercker/wercker/util"
 )
 
 // Artifact holds the information required to extract a folder
-// from a container and eventually upload it to S3.
+// from a container and eventually upload it to S3 or OCI objectStore.
 type Artifact struct {
 	ContainerID   string
 	GuestPath     string
@@ -32,18 +33,25 @@ type Artifact struct {
 	ApplicationID string
 	RunID         string
 	RunStepID     string
+	Store         string
+	Namespace     string
 	Bucket        string
 	Key           string
 	ContentType   string
 	Meta          map[string]*string
 }
 
-// URL returns the artifact's S3 url
+// URL returns the artifact's S3 or OCI url
 func (art *Artifact) URL() string {
-	return fmt.Sprintf("https://s3.amazonaws.com/%s/%s", art.Bucket, art.RemotePath())
+	if art.Store == "oci" {
+		remotePath := strings.Replace(art.RemotePath(), "/", "%2F", -1)
+		return fmt.Sprintf("https://objectstorage.us-ashburn-1.oraclecloud.com/n/%s/b/%s/o/%s", art.Namespace, art.Bucket, remotePath)
+	} else {
+		return fmt.Sprintf("https://s3.amazonaws.com/%s/%s", art.Bucket, art.RemotePath())
+	}
 }
 
-// RemotePath returns the S3 path for an artifact
+// RemotePath returns the S3 path or OCI objectName for an artifact
 func (art *Artifact) RemotePath() string {
 	if art.Key != "" {
 		return art.Key
