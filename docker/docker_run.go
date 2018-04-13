@@ -104,7 +104,7 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		s.WorkingDir = env.Interpolate(workingDir)
 	}
 
-	s.Image = getCorrectImageName(s)
+	s.Image = getCorrectImageName(env, s)
 
 	s.ContainerName = s.options.RunID + env.Interpolate(s.OriginalContainerName)
 
@@ -139,8 +139,8 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 	}
 }
 
-func getCorrectImageName(s *DockerRunStep) string {
-	i := s.data["image"]
+func getCorrectImageName(env *util.Environment, s *DockerRunStep) string {
+	i := env.Interpolate(s.data["image"])
 
 	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
