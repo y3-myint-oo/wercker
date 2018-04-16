@@ -194,3 +194,39 @@ func (c *DockerClient) PushImage(opts docker.PushImageOptions, auth docker.AuthC
 	opts.OutputStream.Write(jsonData)
 	return nil
 }
+
+//TestInferRegistryAndRepositoryInvalidInputs validates that poper errors
+// are being returned by InferRegistryAndRepository menthod when invalid
+// inputs are provided for repository and registry
+func (s *PushSuite) TestInferRegistryAndRepositoryInvalidInputs() {
+	testWerckerRegistry, _ := url.Parse("https://test.wcr.io/v2")
+	repoTests := []struct {
+		registry           string
+		repository         string
+		expectedRegistry   string
+		expectedRepository string
+		errorMessage       string
+	}{
+		{"invalidregistry", "appowner/appname", "", "", "not a valid registry URL"},
+		{"https://someregistry.com", "appowner//appname", "", "", "not a valid repository"},
+		{"https://someregistry.com", "https://someregistry.com/appowner/appname", "", "", "not a valid repository"},
+	}
+
+	for _, tt := range repoTests {
+		options := &core.PipelineOptions{
+			ApplicationOwnerName:     "appowner",
+			ApplicationName:          "appname",
+			WerckerContainerRegistry: testWerckerRegistry,
+		}
+		opts := dockerauth.CheckAccessOptions{
+			Registry: tt.registry,
+		}
+		repo, registry, err := InferRegistryAndRepository(tt.repository, opts.Registry, options)
+		opts.Registry = registry
+		s.Error(err)
+		s.Contains(err.Error(), tt.errorMessage)
+		s.Equal(tt.expectedRegistry, opts.Registry, "%q, wants %q", opts.Registry, tt.expectedRegistry)
+		s.Equal(tt.expectedRepository, repo, "%q, wants %q", repo, tt.expectedRepository)
+	}
+
+}

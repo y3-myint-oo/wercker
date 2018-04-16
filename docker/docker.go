@@ -712,7 +712,7 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) (dockerauth.Chec
 //InferRegistryAndRepository infers the registry and repository to be used from input registry and repository.
 // 1. If no repository is specified, it is assumed that the user wants to push an image of current application
 //    for which  the build is running to wcr.io repository and therefore registry is inferred as
-//    https://test.wcr.io/v2 and repository as test.wcr.io/<application-owner>/<application-name>
+//    https://wcr.io/v2 and repository as wcr.io/<application-owner>/<application-name>
 // 2. In case a repository is provided but no registry - registry is derived from the name of the domain (if any)
 //    from the registry - e.g. for a repository quay.io/<repo-owner>/<repo-name> - quay.io will be the registry host
 //    and https://quay.io/v2/ will be the registry url. In case the repository name does not contain a domain name -
@@ -753,7 +753,7 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 	}
 
 	if len(strings.TrimSpace(inferredRegistry)) != 0 {
-		regsitryURLFromStepConfig, err := url.Parse(inferredRegistry)
+		regsitryURLFromStepConfig, err := url.ParseRequestURI(inferredRegistry)
 		if err != nil {
 			_logger.Errorln("Invalid registry url specified: ", err.Error)
 			if registryInferredFromRepository != "" {
@@ -761,7 +761,7 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 				inferredRegistry = registryInferredFromRepository
 			} else {
 				_logger.Errorln("Please specify valid registry parameter.If you intended to use docker hub as registry, you may omit registry parameter")
-				return "", "", err
+				return "", "", fmt.Errorf("%s is not a valid registry URL, error: %s", inferredRegistry, err.Error())
 			}
 
 		} else {
@@ -956,7 +956,7 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 				if len(strings.TrimSpace(statusMessage.Error)) != 0 {
 					errorMessageToDisplay := statusMessage.Error
 					if statusMessage.ErrorDetail != nil {
-						errorMessageToDisplay = fmt.Sprintf("Code: %s, Message: %s", statusMessage.ErrorDetail.Code, statusMessage.ErrorDetail.Message)
+						errorMessageToDisplay = fmt.Sprintf("Push failed, Error Details: Code: %s, Message: %s", statusMessage.ErrorDetail.Code, statusMessage.ErrorDetail.Message)
 					}
 					s.logger.Errorln("Failed to push:", errorMessageToDisplay)
 					return 1, errors.New(errorMessageToDisplay)
