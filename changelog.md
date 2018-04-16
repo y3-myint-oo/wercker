@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1201 (2018-04-16)
+
 - Update azure client to allow docker-push in all regions (#381)
 
 ## v1.0.1196(2018-04-11)
