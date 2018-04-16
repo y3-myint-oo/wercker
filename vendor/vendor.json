@@ -2080,10 +2080,8 @@
 		{
 			"checksumSHA1": "wPQ3c6Cb/QHmKLwAID2fIrCPsM0=",
 			"path": "github.com/wercker/docker-check-access",
-			"revision": "2272b947e918f5a89b38d6cdbf06d6e0d57b4d93",
-			"revisionTime": "2018-04-13T06:00:48Z",
-			"version": "=upgrade_azure",
-			"versionExact": "upgrade_azure"
+			"revision": "836cd5a55a65df341195171b26f4f8875a66cd88",
+			"revisionTime": "2018-04-16T04:57:47Z"
 		},
 		{
 			"checksumSHA1": "rpIHxVmXHbM31S0S/2qE1kAvzfw=",
