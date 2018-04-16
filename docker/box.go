@@ -483,7 +483,20 @@ func (b *DockerBox) Clean() error {
 
 	dockerNetworkName, custom := b.GetDockerNetworkName()
 	if custom == false {
-		err := client.RemoveNetwork(dockerNetworkName)
+		dockerNetwork, err := client.NetworkInfo(dockerNetworkName)
+		if err != nil {
+			b.logger.Error("Unable to get network Infor", err)
+		}
+		for k, _ := range dockerNetwork.Containers {
+			err = client.DisconnectNetwork(dockerNetwork.ID, docker.NetworkConnectionOptions{
+				Container: k,
+				Force:     true,
+			})
+			if err != nil {
+				b.logger.Error("Error while disconnecting container from network", err)
+			}
+		}
+		err = client.RemoveNetwork(dockerNetworkName)
 		if err != nil {
 			b.logger.Error("Error while removing docker network", err)
 			return err
@@ -669,7 +682,16 @@ func (b *DockerBox) createDockerNetwork(dockerNetworkName string) (*docker.Netwo
 	})
 }
 
-// Prepares and return DockerEnvironment variables list created in case of DBlinks corresponding to each service.
+// Prepares and return DockerEnvironment variables list created in case of docker links corresponding to each service.
+// For each service In case of docker links, docker creates some environment variables and inject them to box container.
+// Since docker links is replaced by docker network, these environment variables needs to be created manually.
+// Below environment variables created and injected to box container.
+// 01) <container name>_PORT_<port>_<protocol>_ADDR  - variable contains the IP Address from the URL.
+// 02) <container name>_PORT_<port>_<protocol>_PORT - variable contains just the port number from the URL.
+// 03) <container name>_PORT_<port>_<protocol>_PROTO - variable contains just the protocol from the URL.
+// 04) <container name>_ENV_<name> - Docker also exposes each Docker originated environment variable from the source container as an environment variable in the target.
+// 05) <container name>_PORT - variable contains the URL of the source container’s first exposed port. The ‘first’ port is defined as the exposed port with the lowest number.
+// 06) <container name>_NAME - variable is set for each service specified in wercker.yml.
 func (b *DockerBox) prepareSvcDockerEnvVar(env *util.Environment) ([]string, error) {
 	serviceEnv := []string{}
 	client := b.client
