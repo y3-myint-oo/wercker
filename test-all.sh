@@ -129,9 +129,9 @@ testDockerNetworks () {
 }
 
 runTests() {
-  testDockerNetworks || return 1
-  #source $testsDir/docker-build/test.sh || return 1
-  #source $testsDir/docker-push-image/test.sh || return 1
+  
+  source $testsDir/docker-build/test.sh || return 1
+  source $testsDir/docker-push-image/test.sh || return 1
 
   export X_TEST_SERVICE_VOL_PATH=$testsDir/test-service-vol
   basicTest "service volume"    build "$testsDir/service-volume" --docker-local --enable-volumes  || return 1
