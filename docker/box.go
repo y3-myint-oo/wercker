@@ -332,6 +332,13 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 			b.logger.Error("Error while creating network", err)
 			return nil, err
 		}
+	} else {
+		client := b.client
+		_, err := client.NetworkInfo(dockerNetworkName)
+		if err != nil {
+			b.logger.Error("Network does not exist", err)
+			return nil, err
+		}
 	}
 
 	err := b.RunServices(ctx, env)
@@ -485,7 +492,8 @@ func (b *DockerBox) Clean() error {
 	if custom == false {
 		dockerNetwork, err := client.NetworkInfo(dockerNetworkName)
 		if err != nil {
-			b.logger.Error("Unable to get network Infor", err)
+			b.logger.Error("Unable to get network Info", err)
+			return err
 		}
 		for k, _ := range dockerNetwork.Containers {
 			err = client.DisconnectNetwork(dockerNetwork.ID, docker.NetworkConnectionOptions{
@@ -494,6 +502,7 @@ func (b *DockerBox) Clean() error {
 			})
 			if err != nil {
 				b.logger.Error("Error while disconnecting container from network", err)
+				return err
 			}
 		}
 		err = client.RemoveNetwork(dockerNetworkName)
@@ -686,9 +695,9 @@ func (b *DockerBox) createDockerNetwork(dockerNetworkName string) (*docker.Netwo
 // For each service In case of docker links, docker creates some environment variables and inject them to box container.
 // Since docker links is replaced by docker network, these environment variables needs to be created manually.
 // Below environment variables created and injected to box container.
-// 01) <container name>_PORT_<port>_<protocol>_ADDR  - variable contains the IP Address from the URL.
-// 02) <container name>_PORT_<port>_<protocol>_PORT - variable contains just the port number from the URL.
-// 03) <container name>_PORT_<port>_<protocol>_PROTO - variable contains just the protocol from the URL.
+// 01) <container name>_PORT_<port>_<protocol>_ADDR  - variable contains the IP Address.
+// 02) <container name>_PORT_<port>_<protocol>_PORT - variable contains just the port number.
+// 03) <container name>_PORT_<port>_<protocol>_PROTO - variable contains just the protocol.
 // 04) <container name>_ENV_<name> - Docker also exposes each Docker originated environment variable from the source container as an environment variable in the target.
 // 05) <container name>_PORT - variable contains the URL of the source container’s first exposed port. The ‘first’ port is defined as the exposed port with the lowest number.
 // 06) <container name>_NAME - variable is set for each service specified in wercker.yml.
@@ -729,16 +738,19 @@ func (b *DockerBox) prepareSvcDockerEnvVar(env *util.Environment) ([]string, err
 				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT=%s", dockerEnvPrefix, exposedPort[0]))
 				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PROTO=%s", dockerEnvPrefix, exposedPort[1]))
 			}
-			serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT=%s://%s:%s", strings.ToUpper(serviceName), protLowestPort, serviceIPAddress, strconv.Itoa(lowestPort)))
+			if protLowestPort != "" {
+				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_PORT=%s://%s:%s", strings.ToUpper(serviceName), protLowestPort, serviceIPAddress, strconv.Itoa(lowestPort)))
+			}
 			for _, envVar := range container.Config.Env {
 				serviceEnv = append(serviceEnv, fmt.Sprintf("%s_ENV_%s", strings.ToUpper(serviceName), envVar))
 			}
 		}
 	}
+	b.logger.Debug("Exposed Service Evnironment variables", serviceEnv)
 	return serviceEnv, nil
 }
 
-// returns docker network name and custom flag for user passed docker-network
+// GetDockerNetworkName returns docker network name and custom flag for user passed docker-network
 func (b *DockerBox) GetDockerNetworkName() (string, bool) {
 	dockerNetworkName := b.dockerOptions.NetworkName
 	custom := true
