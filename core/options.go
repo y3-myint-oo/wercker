@@ -928,3 +928,60 @@ func NewWerckerStepOptions(c util.Settings, e *util.Environment) (*WerckerStepOp
 		Owner:         owner,
 	}, nil
 }
+
+// WerckerRunnerOptions -
+type WerckerRunnerOptions struct {
+	*GlobalOptions
+	RunnerName     string
+	RunnerGroup    string
+	RunnerOrgs     string
+	RunnerApps     string
+	Workflows      string
+	StorePath      string
+	LoggerPath     string
+	BearerToken    string
+	DockerEndpoint string
+	NumRunners     int
+	Polling        int
+	AllOption      bool
+}
+
+// NewExternalRunnerOptions -
+func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRunnerOptions, error) {
+	globalOpts, err := NewGlobalOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+	rname, _ := c.String("name")
+	rgroup, _ := c.String("group")
+	rorgs, _ := c.String("orgs")
+	flows, _ := c.String("workflows")
+	rapps, _ := c.String("apps")
+	spath, _ := c.String("storepath")
+	lpath, _ := c.String("logpath")
+	norun, _ := c.Int("runners")
+	token, _ := c.String("token")
+	pfreq, _ := c.Int("poll-frequency")
+	isall, _ := c.Bool("all")
+	dhost, _ := c.String("docker-host")
+
+	if dhost == "" {
+		dhost = "unix:///var/run/docker.sock"
+	}
+
+	return &WerckerRunnerOptions{
+		GlobalOptions:  globalOpts,
+		BearerToken:    token,
+		RunnerName:     rname,
+		RunnerGroup:    rgroup,
+		RunnerOrgs:     rorgs,
+		RunnerApps:     rapps,
+		Workflows:      flows,
+		StorePath:      spath,
+		LoggerPath:     lpath,
+		NumRunners:     norun,
+		Polling:        pfreq,
+		AllOption:      isall,
+		DockerEndpoint: dhost,
+	}, nil
+}
