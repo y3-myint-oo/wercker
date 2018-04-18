@@ -505,6 +505,9 @@ func (b *DockerBox) Clean() error {
 				return err
 			}
 		}
+		b.logger.WithFields(util.LogFields{
+			"Name": dockerNetworkName,
+		}).Debugln("Removing docker network ", dockerNetworkName)
 		err = client.RemoveNetwork(dockerNetworkName)
 		if err != nil {
 			b.logger.Error("Error while removing docker network", err)
@@ -690,13 +693,16 @@ func (b *DockerBox) ExportImage(options *ExportImageOptions) error {
 func (b *DockerBox) createDockerNetwork(dockerNetworkName string) (*docker.Network, error) {
 	b.logger.Debugln("Creating docker network")
 	client := b.client
+	b.logger.WithFields(util.LogFields{
+		"Name": dockerNetworkName,
+	}).Debugln("Creating docker network :", dockerNetworkName)
 	return client.CreateNetwork(docker.CreateNetworkOptions{
 		Name:           dockerNetworkName,
 		CheckDuplicate: true,
 	})
 }
 
-// Prepares and return DockerEnvironment variables list created in case of docker links corresponding to each service.
+// Prepares and return DockerEnvironment variables list.
 // For each service In case of docker links, docker creates some environment variables and inject them to box container.
 // Since docker links is replaced by docker network, these environment variables needs to be created manually.
 // Below environment variables created and injected to box container.
