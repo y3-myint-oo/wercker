@@ -115,7 +115,7 @@ testDockerNetworks () {
   echo -n "testing docker-n-networks.."
   testDir=$testsDir/docker-n-networks
   logFile="${workingDir}/docker-n-networks.log"
-  
+
   $wercker build "$testDir" --docker-local --working-dir "$workingDir" &> "$logFile"
   if [ $? -eq 0 ]; then
     echo "passed"
@@ -129,7 +129,8 @@ testDockerNetworks () {
 }
 
 runTests() {
-  
+
+  source $testsDir/docker-push/test.sh || return 1
   source $testsDir/docker-build/test.sh || return 1
   source $testsDir/docker-push-image/test.sh || return 1
 

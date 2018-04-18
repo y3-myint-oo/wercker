@@ -9,10 +9,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o myapp .
 # Step #2: Copy the executable into a minimal image (less than 5MB) 
 #         which doesn't contain the build tools and artifacts
 FROM alpine:latest  
-ARG foo
-ARG bar
-ENV foo=${foo}
-ENV bar=${bar}
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=firststage /work/myapp .
