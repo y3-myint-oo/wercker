@@ -109,5 +109,5 @@ func (s *RunnerSuite) TestRunnerStepFailedOnInitEnvError() {
 	fmt.Println(err.Error())
 	s.Contains(err.Error(), "Step initEnv failed with error message")
 	s.Equal(sr.Message, initEnvErrorMessage)
-	s.NotEqual(sr.Message, 0)
+	s.NotEqual(sr.ExitCode, 0)
 }
