@@ -753,7 +753,7 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 	}
 
 	if len(strings.TrimSpace(inferredRegistry)) != 0 {
-		regsitryURLFromStepConfig, err := url.ParseRequestURI(inferredRegistry)
+		registryURLFromStepConfig, err := url.ParseRequestURI(inferredRegistry)
 		if err != nil {
 			_logger.Errorln("Invalid registry url specified: ", err.Error)
 			if registryInferredFromRepository != "" {
@@ -765,7 +765,7 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 			}
 
 		} else {
-			domainFromRegistryURL := regsitryURLFromStepConfig.Host
+			domainFromRegistryURL := registryURLFromStepConfig.Host
 			if len(strings.TrimSpace(domainFromRepository)) != 0 && domainFromRepository != "docker.io" {
 				if domainFromRegistryURL != domainFromRepository {
 					_logger.Infoln("Different registry hosts specified in repository: " + domainFromRepository + " and registry: " + domainFromRegistryURL)
