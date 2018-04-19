@@ -1,6 +1,6 @@
 ## unreleased
 
-
+- Changes for robust error handling and reporting in docker-push (#387)
 - Replace docker links with docker network (#382)
 
 ## v1.0.1201 (2018-04-16)

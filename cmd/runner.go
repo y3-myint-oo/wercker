@@ -675,7 +675,12 @@ func (p *Runner) RunStep(shared *RunnerShared, step core.Step, order int) (*Step
 		}
 	}
 
-	step.InitEnv(shared.pipeline.Env())
+	err := step.InitEnv(shared.pipeline.Env())
+	if err != nil {
+		sr.Message = err.Error()
+		return sr, fmt.Errorf("Step initEnv failed with error message: %s", err.Error())
+	}
+
 	p.logger.Debugln("Step Environment")
 	for _, pair := range step.Env().Ordered() {
 		p.logger.Debugln(" ", pair[0], pair[1])

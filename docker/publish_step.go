@@ -77,7 +77,7 @@ func NewPublishStep(stepConfig *core.StepConfig, options *core.PipelineOptions, 
 }
 
 // InitEnv parses our data into our config
-func (s *PublishStep) InitEnv(env *util.Environment) {
+func (s *PublishStep) InitEnv(env *util.Environment) error {
 	if owner, ok := s.data["owner"]; ok {
 		s.user = env.Interpolate(owner)
 	}
@@ -90,6 +90,7 @@ func (s *PublishStep) InitEnv(env *util.Environment) {
 	if path, ok := s.data["path"]; ok {
 		s.pathInContainer = pathInContainer(path)
 	}
+	return nil
 }
 
 // Fetch NOP

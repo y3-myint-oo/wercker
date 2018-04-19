@@ -153,8 +153,9 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 }
 
 // InitEnv parses our data into our config
-func (s *DockerBuildStep) InitEnv(env *util.Environment) {
+func (s *DockerBuildStep) InitEnv(env *util.Environment) error {
 	s.configure(env)
+	return nil
 }
 
 // Fetch NOP
