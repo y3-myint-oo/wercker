@@ -25,8 +25,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"os/signal"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -35,8 +33,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
-	dockersignal "github.com/docker/docker/pkg/signal"
-	"github.com/docker/docker/pkg/term"
 	"github.com/docker/go-connections/nat"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
@@ -128,202 +124,6 @@ func GenerateDockerID() (string, error) {
 	}
 
 	return hex.EncodeToString(b), nil
-}
-
-// DockerClient is our wrapper for docker.Client
-type DockerClient struct {
-	*docker.Client
-	logger *util.LogEntry
-}
-
-// NewDockerClient based on options and env
-func NewDockerClient(options *Options) (*DockerClient, error) {
-	dockerHost := options.Host
-	tlsVerify := options.TLSVerify
-
-	logger := util.RootLogger().WithField("Logger", "Docker")
-
-	var (
-		client *docker.Client
-		err    error
-	)
-
-	if tlsVerify == "1" {
-		// We're using TLS, let's locate our certs and such
-		// boot2docker puts its certs at...
-		dockerCertPath := options.CertPath
-
-		// TODO(termie): maybe fast-fail if these don't exist?
-		cert := path.Join(dockerCertPath, fmt.Sprintf("cert.pem"))
-		ca := path.Join(dockerCertPath, fmt.Sprintf("ca.pem"))
-		key := path.Join(dockerCertPath, fmt.Sprintf("key.pem"))
-		client, err = docker.NewVersionnedTLSClient(dockerHost, cert, key, ca, "")
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		client, err = docker.NewClient(dockerHost)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &DockerClient{Client: client, logger: logger}, nil
-}
-
-// RunAndAttach gives us a raw connection to a newly run container
-func (c *DockerClient) RunAndAttach(name string) error {
-	hostConfig := &docker.HostConfig{}
-	cmd, _ := shlex.Split(DefaultDockerCommand)
-	container, err := c.CreateContainer(
-		docker.CreateContainerOptions{
-			Name: uuid.NewRandom().String(),
-			Config: &docker.Config{
-				Image:        name,
-				Tty:          true,
-				OpenStdin:    true,
-				Cmd:          cmd,
-				AttachStdin:  true,
-				AttachStdout: true,
-				AttachStderr: true,
-				// NetworkDisabled: b.networkDisabled,
-				// Volumes: volumes,
-			},
-			HostConfig: hostConfig,
-		})
-	if err != nil {
-		return err
-	}
-	c.StartContainer(container.ID, hostConfig)
-
-	return c.AttachTerminal(container.ID)
-}
-
-// AttachInteractive starts an interactive session and runs cmd
-func (c *DockerClient) AttachInteractive(containerID string, cmd []string, initialStdin []string) error {
-
-	exec, err := c.CreateExec(docker.CreateExecOptions{
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-		Cmd:          cmd,
-		Container:    containerID,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	// Dump any initial stdin then go into os.Stdin
-	readers := []io.Reader{}
-	for _, s := range initialStdin {
-		if s != "" {
-			readers = append(readers, strings.NewReader(s+"\n"))
-		}
-	}
-	readers = append(readers, os.Stdin)
-	stdin := io.MultiReader(readers...)
-
-	// This causes our ctrl-c's to be passed to the stuff in the terminal
-	var oldState *term.State
-	oldState, err = term.SetRawTerminal(os.Stdin.Fd())
-	if err != nil {
-		return err
-	}
-	defer term.RestoreTerminal(os.Stdin.Fd(), oldState)
-
-	// Handle resizes
-	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, dockersignal.SIGWINCH)
-	go func() {
-		for range sigchan {
-			c.ResizeTTY(exec.ID)
-		}
-	}()
-
-	err = c.StartExec(exec.ID, docker.StartExecOptions{
-		InputStream:  stdin,
-		OutputStream: os.Stdout,
-		ErrorStream:  os.Stderr,
-		Tty:          true,
-		RawTerminal:  true,
-	})
-
-	return err
-}
-
-// ResizeTTY resizes the tty size of docker connection so output looks normal
-func (c *DockerClient) ResizeTTY(execID string) error {
-	ws, err := term.GetWinsize(os.Stdout.Fd())
-	if err != nil {
-		c.logger.Debugln("Error getting term size: %s", err)
-		return err
-	}
-	err = c.ResizeExecTTY(execID, int(ws.Height), int(ws.Width))
-	if err != nil {
-		c.logger.Debugln("Error resizing term: %s", err)
-		return err
-	}
-	return nil
-}
-
-// AttachTerminal connects us to container and gives us a terminal
-func (c *DockerClient) AttachTerminal(containerID string) error {
-	c.logger.Println("Attaching to ", containerID)
-	opts := docker.AttachToContainerOptions{
-		Container:    containerID,
-		Logs:         true,
-		Stdin:        true,
-		Stdout:       true,
-		Stderr:       true,
-		Stream:       true,
-		InputStream:  os.Stdin,
-		ErrorStream:  os.Stderr,
-		OutputStream: os.Stdout,
-		RawTerminal:  true,
-	}
-
-	var oldState *term.State
-
-	oldState, err := term.SetRawTerminal(os.Stdin.Fd())
-	if err != nil {
-		return err
-	}
-	defer term.RestoreTerminal(os.Stdin.Fd(), oldState)
-
-	go func() {
-		err := c.AttachToContainer(opts)
-		if err != nil {
-			c.logger.Panicln("attach panic", err)
-		}
-	}()
-
-	_, err = c.WaitContainer(containerID)
-	return err
-}
-
-// ExecOne uses docker exec to run a command in the container
-func (c *DockerClient) ExecOne(containerID string, cmd []string, output io.Writer) error {
-	exec, err := c.CreateExec(docker.CreateExecOptions{
-		AttachStdin:  false,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          false,
-		Cmd:          cmd,
-		Container:    containerID,
-	})
-	if err != nil {
-		return err
-	}
-
-	err = c.StartExec(exec.ID, docker.StartExecOptions{
-		OutputStream: output,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // DockerScratchPushStep creates a new image based on a scratch tarball and
@@ -891,7 +691,12 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 
 	// If user use Azure or AWS container registry we don't infer.
 	if opts.AzureClientSecret == "" && opts.AwsSecretKey == "" {
-		s.repository, opts = InferRegistry(s.repository, opts, s.options)
+		repository, registry, err := InferRegistryAndRepository(s.repository, opts.Registry, s.options)
+		if err != nil {
+			s.logger.Panic(err)
+		}
+		s.repository = repository
+		opts.Registry = registry
 	}
 
 	// Set user and password automatically if using wercker registry
@@ -904,25 +709,76 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) dockerauth.Check
 	return opts
 }
 
-// InferRegistry infers the registry from the repository. If no registry is found
-// we fallback to Docker Hub registry.
-func InferRegistry(repository string, opts dockerauth.CheckAccessOptions, pipelineOptions *core.PipelineOptions) (string, dockerauth.CheckAccessOptions) {
+//InferRegistryAndRepository infers the registry and repository to be used from input registry and repository.
+// 1. If no repository is specified, it is assumed that the user wants to push an image of current application
+//    for which  the build is running to wcr.io repository and therefore registry is inferred as
+//    https://test.wcr.io/v2 and repository as test.wcr.io/<application-owner>/<application-name>
+// 2. In case a repository is provided but no registry - registry is derived from the name of the domain (if any)
+//    from the registry - e.g. for a repository quay.io/<repo-owner>/<repo-name> - quay.io will be the registry host
+//    and https://quay.io/v2/ will be the registry url. In case the repository name does not contain a domain name -
+//    docker hub is assumed to be the registry and therefore any authorization with supplied username/password is carried
+//    out with docker hub.
+// 3. In case both repository and registry are provided -
+//    3(a) - In case registry provided points to a wrong url - we use registry inferred from the domain name(if any) prefixed
+//           to the repository. However in this case if no domain name is specified in repository - we return an error since
+//           user probably wanted to use this repository with a different registry and not docker hub and should be alerted
+//           that the registry url is invalid.In case registry url is valid - we evaluate scenarios 4(b) and 4(c)
+//    3(b) - In case no domain name is prefixed to the repository - we assume repository belongs to the registry specified
+//           and prefix domain name extracted from registry.
+//    3(c) - In case repository also contains a domain name - we check if domain name of registry and repository are same,
+//           we assume that user wanted to use the registry host as specified in repository and change the registry to point
+//           to domain name present in repository. If domain names in both registry and repository are same - no changes are
+//           made.
+func InferRegistryAndRepository(repository string, registry string, pipelineOptions *core.PipelineOptions) (inferredRepository string, inferredRegistry string, err error) {
+	_logger := util.RootLogger().WithFields(util.LogFields{"Logger": "Docker"})
 	if repository == "" {
-		repository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
+		inferredRepository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
+		inferredRegistry = pipelineOptions.WerckerContainerRegistry.String()
+		_logger.Infoln("No repository specified - using " + inferredRepository)
+		_logger.Infoln("username/password fields are ignored while using wcr.io registry, supplied authToken (if provided) will be used for authorization to wcr.io registry")
+		return inferredRepository, inferredRegistry, nil
 	}
 	// Docker repositories must be lowercase
-	repository = strings.ToLower(repository)
-
-	if opts.Registry == "" {
-		x, _ := reference.ParseNormalizedNamed(repository)
-		domain := reference.Domain(x)
-
-		if domain != "docker.io" {
-			reg := &url.URL{Scheme: "https", Host: domain, Path: "/v2"}
-			opts.Registry = reg.String() + "/"
-		}
+	inferredRepository = strings.ToLower(repository)
+	inferredRegistry = registry
+	x, _ := reference.ParseNormalizedNamed(inferredRepository)
+	domainFromRepository := reference.Domain(x)
+	registryInferredFromRepository := ""
+	if domainFromRepository != "docker.io" {
+		reg := &url.URL{Scheme: "https", Host: domainFromRepository, Path: "/v2"}
+		registryInferredFromRepository = reg.String() + "/"
 	}
-	return repository, opts
+
+	if len(strings.TrimSpace(inferredRegistry)) != 0 {
+		regsitryURLFromStepConfig, err := url.Parse(inferredRegistry)
+		if err != nil {
+			_logger.Errorln("Invalid registry url specified: ", err.Error)
+			if registryInferredFromRepository != "" {
+				_logger.Infoln("Using registry url inferred from repository: " + registryInferredFromRepository)
+				inferredRegistry = registryInferredFromRepository
+			} else {
+				_logger.Errorln("Please specify valid registry parameter.If you intended to use docker hub as registry, you may omit registry parameter")
+				return "", "", err
+			}
+
+		} else {
+			domainFromRegistryURL := regsitryURLFromStepConfig.Host
+			if len(strings.TrimSpace(domainFromRepository)) != 0 && domainFromRepository != "docker.io" {
+				if domainFromRegistryURL != domainFromRepository {
+					_logger.Infoln("Different registry hosts specified in repository: " + domainFromRepository + " and registry: " + domainFromRegistryURL)
+					inferredRegistry = registryInferredFromRepository
+					_logger.Infoln("Using registry inferred from repository: " + inferredRegistry)
+				}
+			} else {
+				inferredRepository = domainFromRegistryURL + "/" + inferredRepository
+				_logger.Infoln("Using repository inferred from registry: " + inferredRepository)
+			}
+
+		}
+	} else {
+		inferredRegistry = registryInferredFromRepository
+	}
+	return inferredRepository, inferredRegistry, nil
 }
 
 // InitEnv parses our data into our config
@@ -1088,17 +944,18 @@ func (s *DockerPushStep) tagAndPush(imageID string, e *core.NormalizedEmitter, c
 				if len(strings.TrimSpace(statusMessage.Error)) != 0 {
 					errorMessageToDisplay := statusMessage.Error
 					if statusMessage.ErrorDetail != nil {
-						jsonMessage, _ := json.Marshal(statusMessage.ErrorDetail)
-						errorMessageToDisplay = string(jsonMessage)
+						errorMessageToDisplay = fmt.Sprintf("Code: %s, Message: %s", statusMessage.ErrorDetail.Code, statusMessage.ErrorDetail.Message)
 					}
 					s.logger.Errorln("Failed to push:", errorMessageToDisplay)
 					return 1, errors.New(errorMessageToDisplay)
 				}
 				if statusMessage.Aux != nil && statusMessage.Aux.Tag == tag {
 					s.logger.Println("Pushed container:", s.repository, tag, ",Digest:", statusMessage.Aux.Digest)
+					e.Emit(core.Logs, &core.LogsArgs{
+						Logs: fmt.Sprintf("\nPushed %s:%s\n", s.repository, tag),
+					})
 					isContainerPushed = true
 				}
-
 			}
 			if !isContainerPushed {
 				s.logger.Errorln("Failed to push tag:", tag, "Please check log messages")

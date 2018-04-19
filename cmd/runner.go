@@ -129,7 +129,7 @@ func NewRunner(ctx context.Context, options *core.PipelineOptions, dockerOptions
 		getPipeline:   getPipeline,
 		logger:        logger,
 		emitter:       e,
-		formatter:     &util.Formatter{options.GlobalOptions.ShowColors},
+		formatter:     &util.Formatter{ShowColors: options.GlobalOptions.ShowColors},
 	}, nil
 }
 
@@ -465,7 +465,7 @@ func (p *Runner) StartFullPipeline(options *core.PipelineOptions) *util.Finisher
 // the entire "Setup Environment" step.
 func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, error) {
 	shared := &RunnerShared{}
-	f := &util.Formatter{p.options.GlobalOptions.ShowColors}
+	f := &util.Formatter{ShowColors: p.options.GlobalOptions.ShowColors}
 	timer := util.NewTimer()
 
 	sr := &StepResult{

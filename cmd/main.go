@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -37,6 +38,7 @@ import (
 	"github.com/wercker/wercker/api"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/docker"
+	"github.com/wercker/wercker/external"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
@@ -372,7 +374,89 @@ var (
 			},
 		},
 	}
+
+	runnerCommand = cli.Command{
+		Name:      "runner",
+		ShortName: "run",
+		Usage:     "manage external pipeline runners",
+		Subcommands: []cli.Command{
+			{
+				Name:  "start",
+				Usage: "start external runner(s)",
+				Action: func(c *cli.Context) {
+					params := external.NewDockerController()
+					err := setupExternalRunnerParams(c, params)
+					if err == nil {
+						params.RunDockerController(false)
+					}
+				},
+				Flags: ExternalRunnerStartFlags,
+			},
+			{
+				Name:  "stop",
+				Usage: "stop external runner(s)",
+				Action: func(c *cli.Context) {
+					params := external.NewDockerController()
+					err := setupExternalRunnerParams(c, params)
+					if err == nil {
+						params.ShutdownFlag = true
+						params.RunDockerController(true)
+					}
+				},
+				Flags: ExternalRunnerCommonFlags,
+			},
+			{
+				Name:  "status",
+				Usage: "display the status of started external runner(s)",
+				Action: func(c *cli.Context) {
+					params := external.NewDockerController()
+					err := setupExternalRunnerParams(c, params)
+					if err == nil {
+						params.RunDockerController(true)
+					}
+				},
+				Flags: ExternalRunnerCommonFlags,
+			},
+			{
+				Name:  "configure",
+				Usage: "perform setup configuration for external runner operation",
+				Action: func(c *cli.Context) {
+					log.Print("The configure runner action is not yet supported.")
+				},
+			},
+		},
+	}
 )
+
+// Setup parameters for external runners
+func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) error {
+	settings := util.NewCLISettings(c)
+	env := util.NewEnvironment(os.Environ()...)
+	opts, err := core.NewExternalRunnerOptions(settings, env)
+	if err != nil {
+		cliLogger.Errorln("Invalid options\n", err)
+		os.Exit(1)
+	}
+	params.InstanceName = opts.RunnerName
+	params.GroupName = opts.RunnerGroup
+	params.OrgList = opts.RunnerOrgs
+	params.Workflows = opts.Workflows
+	params.AppNames = opts.RunnerApps
+	params.StorePath = opts.StorePath
+	params.LoggerPath = opts.LoggerPath
+	params.RunnerCount = opts.NumRunners
+	params.BearerToken = opts.BearerToken
+	// Pickup global options that apply to runner assuming these are passed
+	// to the runner service
+	params.Debug = opts.GlobalOptions.Debug
+	params.Journal = opts.GlobalOptions.Journal
+	params.AllOption = opts.AllOption
+	params.PollFreq = opts.Polling
+	params.DockerEndpoint = opts.DockerEndpoint
+	params.Logger = cliLogger
+
+	return nil
+}
 
 func GetApp() *cli.App {
 	// logger.SetLevel(logger.DebugLevel)
@@ -401,6 +485,7 @@ func GetApp() *cli.App {
 		documentCommand(app),
 		dockerCommand,
 		stepCommand,
+		runnerCommand,
 	}
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {
@@ -929,7 +1014,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	if err != nil {
 		return nil, err
 	}
-	f := &util.Formatter{options.GlobalOptions.ShowColors}
+	f := &util.Formatter{ShowColors: options.GlobalOptions.ShowColors}
 
 	// Set up the runner
 	r, err := NewRunner(cmdCtx, options, dockerOptions, getter)

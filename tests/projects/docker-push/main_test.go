@@ -1,4 +1,4 @@
-//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
+//   Copyright © 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -11,20 +11,20 @@
 //   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
-
-package core
+package main
 
 import (
-	"github.com/fsouza/go-dockerclient"
-	"github.com/wercker/wercker/util"
-	"golang.org/x/net/context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
-// ServiceBox interface to services
-type ServiceBox interface {
-	Run(context.Context, *util.Environment) (*docker.Container, error)
-	Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error)
-	GetID() string
-	GetName() string
-	GetServiceAlias() string
+func TestHandleIndexReturnsWithStatusOK(t *testing.T) {
+	request, _ := http.NewRequest("GET", "/env/foo", nil)
+	response := httptest.NewRecorder()
+
+	envHandler(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
+	}
 }

@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -174,10 +174,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment) (*d
 		portsToBind = b.config.Ports
 	}
 
-	networkName := b.dockerOptions.NetworkName
-	if networkName == "" {
-		networkName = b.options.RunID
-	}
+	networkName, _ := b.GetDockerNetworkName()
 
 	hostConfig := &docker.HostConfig{
 		DNS:          b.dockerOptions.DNS,
@@ -215,11 +212,20 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment) (*d
 		conf.MemorySwap = swap
 	}
 
+	endpointConfig := &docker.EndpointConfig{
+		Aliases: []string{b.GetServiceAlias()},
+	}
+	endpointConfigMap := make(map[string]*docker.EndpointConfig)
+	endpointConfigMap[networkName] = endpointConfig
+
 	container, err := client.CreateContainer(
 		docker.CreateContainerOptions{
 			Name:       b.getContainerName(),
 			Config:     conf,
 			HostConfig: hostConfig,
+			NetworkingConfig: &docker.NetworkingConfig{
+				EndpointsConfig: endpointConfigMap,
+			},
 		})
 
 	if err != nil {
@@ -278,8 +284,11 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment) (*d
 	return container, nil
 }
 
-// service name
-func (b *InternalServiceBox) GetServiceName() string {
+// GetServiceAlias returns service alias for the service.
+func (b *InternalServiceBox) GetServiceAlias() string {
 	name := b.config.Name
+	if name == "" {
+		name = b.ShortName
+	}
 	return name
 }

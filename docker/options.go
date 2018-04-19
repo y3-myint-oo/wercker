@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ type Options struct {
 	KernelMemory      int64
 	CleanupImage      bool
 	NetworkName       string
-	RemoveNetwork     bool
 }
 
 func guessAndUpdateDockerOptions(opts *Options, e *util.Environment) {
@@ -48,7 +47,7 @@ func guessAndUpdateDockerOptions(opts *Options, e *util.Environment) {
 
 	logger := util.RootLogger().WithField("Logger", "docker")
 	// f := &util.Formatter{opts.GlobalOptions.ShowColors}
-	f := &util.Formatter{false}
+	f := &util.Formatter{ShowColors: false}
 
 	// Check the unix socket, default on linux
 	// This will fail instantly so don't bother with the goroutine
@@ -124,7 +123,6 @@ func NewOptions(c util.Settings, e *util.Environment) (*Options, error) {
 	dockerKernelMemory, _ := c.Int("docker-kernel-memory")
 	dockerCleanupImage, _ := c.Bool("docker-cleanup-image")
 	dockerNetworkName, _ := c.String("docker-network")
-	dockerRemoveNetwork, _ := c.Bool("docker-network-rm")
 
 	speculativeOptions := &Options{
 		Host:              dockerHost,
@@ -140,7 +138,6 @@ func NewOptions(c util.Settings, e *util.Environment) (*Options, error) {
 		KernelMemory:      int64(dockerKernelMemory) * 1024 * 1024,
 		CleanupImage:      dockerCleanupImage,
 		NetworkName:       dockerNetworkName,
-		RemoveNetwork:     dockerRemoveNetwork,
 	}
 
 	// We're going to try out a few settings and set DockerHost if
