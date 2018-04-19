@@ -172,11 +172,6 @@ func (s *DockerRunStep) Fetch() (string, error) {
 
 // Execute creates the container and starts the container.
 func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
-	networkName := s.dockerOptions.NetworkName
-	if networkName == "" {
-		networkName = s.options.RunID
-	}
-
 	boxConfig := &core.BoxConfig{
 		ID: s.Image,
 	}
@@ -185,6 +180,7 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 		s.logger.Errorln("Error in creating a box from boxConfig ", boxConfig)
 		return 1, err
 	}
+	networkName := dockerRunDockerBox.GetDockerNetworkName()
 	dockerRunDockerBox.Fetch(ctx, s.Env())
 
 	client, err := NewDockerClient(s.dockerOptions)
