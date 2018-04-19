@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ type Options struct {
 	MemorySwap        int64
 	KernelMemory      int64
 	CleanupImage      bool
+	NetworkName       string
 }
 
 func guessAndUpdateDockerOptions(opts *Options, e *util.Environment) {
@@ -121,6 +122,7 @@ func NewOptions(c util.Settings, e *util.Environment) (*Options, error) {
 	dockerMemorySwap, _ := c.Int("docker-memory-swap")
 	dockerKernelMemory, _ := c.Int("docker-kernel-memory")
 	dockerCleanupImage, _ := c.Bool("docker-cleanup-image")
+	dockerNetworkName, _ := c.String("docker-network")
 
 	speculativeOptions := &Options{
 		Host:              dockerHost,
@@ -135,6 +137,7 @@ func NewOptions(c util.Settings, e *util.Environment) (*Options, error) {
 		MemorySwap:        int64(dockerMemorySwap) * 1024 * 1024,
 		KernelMemory:      int64(dockerKernelMemory) * 1024 * 1024,
 		CleanupImage:      dockerCleanupImage,
+		NetworkName:       dockerNetworkName,
 	}
 
 	// We're going to try out a few settings and set DockerHost if
