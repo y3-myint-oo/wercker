@@ -37,8 +37,8 @@ func defaultHandler(res http.ResponseWriter, req *http.Request) {
 func main() {
 	http.HandleFunc("/", defaultHandler)
 	http.HandleFunc("/env/", envHandler)
-	err := http.ListenAndServe(":5000", nil)
+	err := http.ListenAndServe(":5001", nil)
 	if err != nil {
-		log.Fatal("Unable to listen on port 5000 : ", err)
+		log.Fatal("Unable to listen on port 5001 : ", err)
 	}
 }
