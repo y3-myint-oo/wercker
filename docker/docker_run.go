@@ -44,7 +44,6 @@ type DockerRunStep struct {
 	OriginalContainerName string
 	Image                 string
 	ContainerID           string
-	Repository            string
 	Auth                  dockerauth.CheckAccessOptions `yaml:",inline"`
 }
 
@@ -85,17 +84,20 @@ func NewDockerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions
 }
 
 // InitEnv parses our data into our config
-func (s *DockerRunStep) InitEnv(env *util.Environment) {
-	s.configure(env)
+func (s *DockerRunStep) InitEnv(env *util.Environment) error {
+	err := s.configure(env)
+	return err
 }
 
-func (s *DockerRunStep) configure(env *util.Environment) {
+func (s *DockerRunStep) configure(env *util.Environment) error {
 	if s.options.ExposePorts {
 		if ports, ok := s.data["ports"]; ok {
 			parts, err := shlex.Split(ports)
 			if err == nil {
 				s.PortBindings = portBindings(parts)
 				s.ExposedPorts = exposedPorts(parts)
+			} else {
+				return err
 			}
 		}
 	}
@@ -104,7 +106,12 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		s.WorkingDir = env.Interpolate(workingDir)
 	}
 
-	s.Image = getCorrectImageName(env, s)
+	image, err := getCorrectImageName(env, s)
+	if err != nil {
+		return err
+	} else {
+		s.Image = image
+	}
 
 	s.ContainerName = s.options.RunID + env.Interpolate(s.OriginalContainerName)
 
@@ -112,6 +119,8 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		parts, err := shlex.Split(cmd)
 		if err == nil {
 			s.Cmd = parts
+		} else {
+			return err
 		}
 	}
 
@@ -119,6 +128,8 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 		parts, err := shlex.Split(entryPoint)
 		if err == nil {
 			s.EntryPoint = parts
+		} else {
+			return err
 		}
 	}
 
@@ -131,29 +142,38 @@ func (s *DockerRunStep) configure(env *util.Environment) {
 				interpolatedEnv[i] = env.Interpolate(envVar)
 			}
 			s.env = interpolatedEnv
+		} else {
+			return err
 		}
 	}
 
 	if user, ok := s.data["user"]; ok {
 		s.User = env.Interpolate(user)
 	}
+	return nil
 }
 
-func getCorrectImageName(env *util.Environment, s *DockerRunStep) string {
+func getCorrectImageName(env *util.Environment, s *DockerRunStep) (string, error) {
 	i := env.Interpolate(s.data["image"])
+	if i == "" {
+		err := fmt.Errorf("\"image\" is a required field. Please provide an image.")
+		return "", err
+	}
 
 	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	// local image should exists with a prepend of build id.
 	image, err := client.InspectImage(s.options.RunID + i)
 	if err != nil {
-		return i
-	} else {
-		return image.ID
+		image, err = client.InspectImage(i)
+		if err != nil {
+			return "", err
+		}
 	}
+	return image.ID, nil
 }
 
 // NewBoxDockerRun gives a wrapper for a box.
