@@ -95,7 +95,7 @@ type Step interface {
 	// Actual methods
 	Fetch() (string, error)
 
-	InitEnv(*util.Environment)
+	InitEnv(*util.Environment) error
 	Execute(context.Context, *Session) (int, error)
 	CollectFile(string, string, string, io.Writer) error
 	CollectArtifact(string) (*Artifact, error)
@@ -491,7 +491,7 @@ func (s *ExternalStep) CollectArtifact(containerID string) (*Artifact, error) {
 }
 
 // InitEnv sets up the internal environment for the Step.
-func (s *ExternalStep) InitEnv(env *util.Environment) {
+func (s *ExternalStep) InitEnv(env *util.Environment) error {
 	a := [][]string{
 		[]string{"WERCKER_STEP_ROOT", s.GuestPath()},
 		[]string{"WERCKER_STEP_ID", s.safeID},
@@ -526,6 +526,8 @@ func (s *ExternalStep) InitEnv(env *util.Environment) {
 		key = strings.ToUpper(key)
 		s.Env().Add(key, value)
 	}
+
+	return nil
 }
 
 // CachedName returns a name suitable for caching

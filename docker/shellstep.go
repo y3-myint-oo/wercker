@@ -68,20 +68,23 @@ func NewShellStep(stepConfig *core.StepConfig, options *core.PipelineOptions, do
 }
 
 // InitEnv parses our data into our config
-func (s *ShellStep) InitEnv(env *util.Environment) {
+func (s *ShellStep) InitEnv(env *util.Environment) error {
 	if code, ok := s.data["code"]; ok {
 		s.Code = code
 	}
-	if cmd, ok := s.data["cmd"]; ok {
+	if cmd, ok := s.data["cmd"]; ok && cmd != "" {
 		parts, err := shlex.Split(cmd)
 		if err == nil {
 			s.Cmd = parts
+		} else {
+			return fmt.Errorf("%s is an invalid value for cmd, parsing error: %s", cmd, err.Error())
 		}
 	} else {
 		cmd, _ := shlex.Split(DefaultDockerCommand)
 		s.Cmd = cmd
 	}
 	s.env = env
+	return nil
 }
 
 // Fetch NOP
