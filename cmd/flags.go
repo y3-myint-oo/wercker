@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ var (
 		cli.IntFlag{Name: "docker-memory-reservation", Usage: "Set docker user memory soft limit in MB NOTIMPLEMENTED", Hidden: true},
 		cli.IntFlag{Name: "docker-kernel-memory", Usage: "Set docker kernel memory limit in MB NOTIMPLEMENTED", Hidden: true},
 		cli.BoolFlag{Name: "docker-cleanup-image", Usage: "Remove image from the Docker when finished pushing them", Hidden: true},
+		cli.StringFlag{Name: "docker-network", Value: "", Usage: "Docker network name.", Hidden: true},
 	}
 
 	// These flags control where we store local files
