@@ -51,7 +51,9 @@ type BoxDockerRun struct {
 	*DockerBox
 }
 
-// NewDockerRunStep is a special step for doing docker runs
+// NewDockerRunStep is a special step for doing docker runs. "image" is the required property for this step. It first checks if the input
+// "image" is build by docker-build and resided in docker-deaon. If not, then it uses the DockerBox logic to fetch the image and starts
+// a new container on that image. The new container is started on the Box network and cleaned up at the end of pipeline.
 func NewDockerRunStep(stepConfig *core.StepConfig, options *core.PipelineOptions, dockerOptions *Options) (*DockerRunStep, error) {
 	name := "docker-run"
 	displayName := "docker run"
@@ -153,6 +155,10 @@ func (s *DockerRunStep) configure(env *util.Environment) error {
 	return nil
 }
 
+// The most important point in this function is that the required image is not pulled at first but the pipeline run-id is appended to
+// the input image name and its existence is checked locally. If that fails only then the input image is pulled from its respective registry.
+// This is done like this because docker-run is usually run in integration with docker-build. And, docker-build image is present in the
+// docker-deamon by <BuildId><image> name.
 func getCorrectImageName(env *util.Environment, s *DockerRunStep) (string, error) {
 	i := env.Interpolate(s.data["image"])
 	if i == "" {
@@ -168,12 +174,10 @@ func getCorrectImageName(env *util.Environment, s *DockerRunStep) (string, error
 	// local image should exists with a prepend of build id.
 	image, err := client.InspectImage(s.options.RunID + i)
 	if err != nil {
-		image, err = client.InspectImage(i)
-		if err != nil {
-			return "", err
-		}
+		return i, nil
+	} else {
+		return image.ID, nil
 	}
-	return image.ID, nil
 }
 
 // NewBoxDockerRun gives a wrapper for a box.
