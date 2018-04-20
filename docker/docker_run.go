@@ -115,6 +115,7 @@ func (s *DockerRunStep) configure(env *util.Environment) error {
 		s.Image = image
 	}
 
+	s.OriginalContainerName = env.Interpolate(s.OriginalContainerName)
 	s.ContainerName = s.options.RunID + s.OriginalContainerName
 
 	if cmd, ok := s.data["cmd"]; ok {
