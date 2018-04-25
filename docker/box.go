@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -438,11 +438,11 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 
 	b.logger.Debugln("Docker Container:", container.ID)
 
+	err = client.StartContainer(container.ID, hostConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	client.StartContainer(container.ID, hostConfig)
 	b.container = container
 	return container, nil
 }
@@ -550,7 +550,12 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 
 	// If user use Azure or AWS container registry we don't infer.
 	if b.config.Auth.AzureClientSecret == "" && b.config.Auth.AwsSecretKey == "" {
-		repo, b.config.Auth = InferRegistry(repo, b.config.Auth, b.options)
+		repository, registry, err := InferRegistryAndRepository(repo, b.config.Auth.Registry, b.options)
+		if err != nil {
+			return nil, err
+		}
+		repo = repository
+		b.config.Auth.Registry = registry
 	}
 
 	if b.config.Auth.Registry == b.options.WerckerContainerRegistry.String() {

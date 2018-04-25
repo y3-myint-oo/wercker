@@ -3,6 +3,16 @@
 # This is a shell script to run a bunch of regression tests that require
 # running sentcli in a fully docker-enabled environment. They'll eventually
 # be moved into a golang test package.
+# 
+# These tests use the --docker-local parameter, which means that if they need an image
+# that is not already in the docker daemon these tests will fail with "image not found"
+# The function pullImages below pulls a list of specified images before running the tests. Update it if needed.
+#
+# To run the tests
+#
+#  cd $GOPATH//src/github.com/wercker/wercker
+#  ./test-all.sh
+#
 wercker=$PWD/wercker
 workingDir=$PWD/.werckertests
 testsDir=$PWD/tests/projects
@@ -14,6 +24,25 @@ if [ ! -e "$wercker" ]; then
   go build
 fi
 
+pullIfNeeded () {
+  ## check whether an image exists locally with the specified repository
+  ## TODO extend to allow a tag to be specified 
+  docker images | awk '{print $1}' | grep -q $1
+  if [ $? -ne 0 ]; then
+    echo pulling $1
+    docker pull $1
+  fi
+}
+
+# Since most tests run with the --docker-local parameter we need to make sure that the required base images are pulled into the daemon
+pullImages () {
+  pullIfNeeded "busybox"
+  pullIfNeeded "node"
+  pullIfNeeded "alpine"
+  pullIfNeeded "ubuntu"
+  pullIfNeeded "golang"
+  pullIfNeeded "postgres:9.6"
+}
 
 basicTest() {
   testName=$1
@@ -84,11 +113,17 @@ testScratchPush () {
 
 
 runTests() {
+
+  source $testsDir/docker-push/test.sh || return 1
+  source $testsDir/docker-build/test.sh || return 1
+  source $testsDir/docker-push-image/test.sh || return 1
+
   export X_TEST_SERVICE_VOL_PATH=$testsDir/test-service-vol
   basicTest "service volume"    build "$testsDir/service-volume" --docker-local --enable-volumes  || return 1
   grep -q "test-volume-file" "${workingDir}/service volume.log" || return 1
   basicTest "source-path"       build "$testsDir/source-path" --docker-local || return 1
-  basicTest "rm pipeline"       build "$testsDir/rm-pipeline" --docker-local --artifacts  || return 1
+  basicTest "rm pipeline --artifacts" build "$testsDir/rm-pipeline" --docker-local --artifacts  || return 1
+  basicTest "rm pipeline"       build "$testsDir/rm-pipeline" --docker-local || return 1
   basicTest "local services"    build "$testsDir/local-service/service-consumer" --docker-local || return 1
   basicTest "deploy"            deploy "$testsDir/deploy-no-targets" --docker-local || return 1
   basicTest "deploy target"     deploy "$testsDir/deploy-targets" --docker-local  --deploy-target test || return 1
@@ -161,5 +196,6 @@ runTests() {
   fi
 }
 
+pullImages
 runTests
 rm -rf "$workingDir"
