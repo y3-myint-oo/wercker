@@ -18,7 +18,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/docker/client"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
@@ -97,13 +96,13 @@ func (a *Artificer) Upload(artifact *core.Artifact) error {
 
 // DockerFileCollector impl of FileCollector
 type DockerFileCollector struct {
-	client      *client.Client
+	client      *OfficialDockerClient
 	containerID string
 	logger      *util.LogEntry
 }
 
 // NewDockerFileCollector constructor
-func NewDockerFileCollector(client *client.Client, containerID string) *DockerFileCollector {
+func NewDockerFileCollector(client *OfficialDockerClient, containerID string) *DockerFileCollector {
 	return &DockerFileCollector{
 		client:      client,
 		containerID: containerID,

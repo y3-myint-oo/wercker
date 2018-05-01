@@ -25,14 +25,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
 
 // DockerOrSkip checks for a docker container and skips the test
 // if one is not available
-func DockerOrSkip(ctx context.Context, t *testing.T) *client.Client {
+func DockerOrSkip(ctx context.Context, t *testing.T) *OfficialDockerClient {
 	if os.Getenv("SKIP_DOCKER_TEST") == "true" {
 		t.Skip("$SKIP_DOCKER_TEST=true, skipping test")
 		return nil
@@ -56,10 +55,10 @@ func MinimalDockerOptions() *Options {
 
 type ContainerRemover struct {
 	*container.ContainerCreateCreatedBody
-	client *client.Client
+	client *OfficialDockerClient
 }
 
-func TempBusybox(ctx context.Context, client *client.Client) (*ContainerRemover, error) {
+func TempBusybox(ctx context.Context, client *OfficialDockerClient) (*ContainerRemover, error) {
 	_, _, err := client.ImageInspectWithRaw(ctx, "alpine:3.1")
 	if err != nil {
 		readCloser, err := client.ImagePull(ctx, "alpine:3.1", types.ImagePullOptions{})
