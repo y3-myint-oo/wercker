@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/codegangsta/cli"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/docker"
 	"github.com/wercker/wercker/util"
@@ -89,7 +89,7 @@ func (b *DockerBuilder) getOptions(env *util.Environment, config *core.BoxConfig
 }
 
 // Build the image and commit it so we can use it as a service
-func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*dockerlocal.DockerBox, *docker.Image, error) {
+func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*dockerlocal.DockerBox, *types.ImageInspect, error) {
 	newOptions, err := b.getOptions(env, config)
 
 	if err != nil {
@@ -114,10 +114,10 @@ func (b *DockerBuilder) Build(ctx context.Context, env *util.Environment, config
 		return nil, nil, err
 	}
 
-	client, err := dockerlocal.NewDockerClient(&newDockerOptions)
-	image, err := client.InspectImage(box.Name)
+	client, err := dockerlocal.NewOfficialDockerClient(&newDockerOptions)
+	image, _, err := client.ImageInspectWithRaw(ctx, box.Name)
 	if err != nil {
 		return nil, nil, err
 	}
-	return box, image, nil
+	return box, &image, nil
 }

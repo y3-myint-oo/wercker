@@ -15,6 +15,7 @@
 package core
 
 import (
+	"github.com/docker/docker/api/types"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
@@ -34,7 +35,7 @@ type Box interface {
 	Commit(string, string, string, bool) (*docker.Image, error)
 	Restart() (*docker.Container, error)
 	AddService(ServiceBox)
-	Fetch(context.Context, *util.Environment) (*docker.Image, error)
+	Fetch(context.Context, *util.Environment) (*types.ImageInspect, error)
 	Run(context.Context, *util.Environment) (*docker.Container, error)
 	RecoverInteractive(string, Pipeline, Step) error
 }

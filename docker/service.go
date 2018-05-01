@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/docker/docker/api/types"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/wercker/wercker/core"
@@ -29,12 +30,12 @@ import (
 // Builder interface to create an image based on a service config
 // kinda needed so we can break a bunch of circular dependencies with cmd
 type Builder interface {
-	Build(context.Context, *util.Environment, *core.BoxConfig) (*DockerBox, *docker.Image, error)
+	Build(context.Context, *util.Environment, *core.BoxConfig) (*DockerBox, *types.ImageInspect, error)
 }
 
 type nilBuilder struct{}
 
-func (b *nilBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*DockerBox, *docker.Image, error) {
+func (b *nilBuilder) Build(ctx context.Context, env *util.Environment, config *core.BoxConfig) (*DockerBox, *types.ImageInspect, error) {
 	return nil, nil, nil
 }
 
@@ -68,7 +69,7 @@ func NewExternalServiceBox(boxConfig *core.BoxConfig, options *core.PipelineOpti
 
 // Fetch the image representation of an ExternalServiceBox
 // this means running the ExternalServiceBox and comitting the image
-func (s *ExternalServiceBox) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
+func (s *ExternalServiceBox) Fetch(ctx context.Context, env *util.Environment) (*types.ImageInspect, error) {
 	originalShortName := s.externalConfig.ID
 	box, image, err := s.builder.Build(ctx, env, s.externalConfig)
 	if err != nil {

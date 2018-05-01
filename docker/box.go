@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/docker/docker/api/types"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/wercker/wercker/auth"
@@ -35,23 +36,24 @@ import (
 
 // Box is our wrapper for Box operations
 type DockerBox struct {
-	Name            string
-	ShortName       string
-	networkDisabled bool
-	client          *DockerClient
-	services        []core.ServiceBox
-	options         *core.PipelineOptions
-	dockerOptions   *Options
-	container       *docker.Container
-	config          *core.BoxConfig
-	cmd             string
-	repository      string
-	tag             string
-	images          []*docker.Image
-	logger          *util.LogEntry
-	entrypoint      string
-	image           *docker.Image
-	volumes         []string
+	Name                 string
+	ShortName            string
+	networkDisabled      bool
+	fsouzaClient         *DockerClient
+	officialDockerClient *OfficialDockerClient
+	services             []core.ServiceBox
+	options              *core.PipelineOptions
+	dockerOptions        *Options
+	container            *docker.Container
+	config               *core.BoxConfig
+	cmd                  string
+	repository           string
+	tag                  string
+	images               []*docker.Image
+	logger               *util.LogEntry
+	entrypoint           string
+	image                *types.ImageInspect
+	volumes              []string
 }
 
 // NewDockerBox from a name and other references
@@ -98,24 +100,31 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 		"ShortName": shortName,
 	})
 
-	client, err := NewDockerClient(dockerOptions)
+	fsouzaClient, err := NewDockerClient(dockerOptions)
 	if err != nil {
 		return nil, err
 	}
+
+	officialDockerClient, err := NewOfficialDockerClient(dockerOptions)
+	if err != nil {
+		return nil, err
+	}
+
 	return &DockerBox{
-		Name:            name,
-		ShortName:       shortName,
-		client:          client,
-		config:          boxConfig,
-		options:         options,
-		dockerOptions:   dockerOptions,
-		repository:      repository,
-		tag:             tag,
-		networkDisabled: networkDisabled,
-		logger:          logger,
-		cmd:             cmd,
-		entrypoint:      entrypoint,
-		volumes:         []string{},
+		Name:                 name,
+		ShortName:            shortName,
+		fsouzaClient:         fsouzaClient,
+		officialDockerClient: officialDockerClient,
+		config:               boxConfig,
+		options:              options,
+		dockerOptions:        dockerOptions,
+		repository:           repository,
+		tag:                  tag,
+		networkDisabled:      networkDisabled,
+		logger:               logger,
+		cmd:                  cmd,
+		entrypoint:           entrypoint,
+		volumes:              []string{},
 	}, nil
 }
 
@@ -319,7 +328,7 @@ func exposedPortMaps(dockerHost string, published []string) ([]ExposedPortMap, e
 //RecoverInteractive restarts the box with a terminal attached
 func (b *DockerBox) RecoverInteractive(cwd string, pipeline core.Pipeline, step core.Step) error {
 	// TODO(termie): maybe move the container manipulation outside of here?
-	client := b.client
+	fsouzaClient := b.fsouzaClient
 	container, err := b.Restart()
 	if err != nil {
 		b.logger.Panicln("box restart failed")
@@ -335,7 +344,7 @@ func (b *DockerBox) RecoverInteractive(cwd string, pipeline core.Pipeline, step 
 	if err != nil {
 		return err
 	}
-	return client.AttachInteractive(container.ID, cmd, env)
+	return fsouzaClient.AttachInteractive(container.ID, cmd, env)
 }
 
 func (b *DockerBox) getContainerName() string {
@@ -351,7 +360,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 	b.logger.Debugln("Starting base box:", b.Name)
 
 	// TODO(termie): maybe move the container manipulation outside of here?
-	client := b.client
+	fsouzaClient := b.fsouzaClient
 
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
@@ -425,7 +434,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 	}
 
 	// Make and start the container
-	container, err := client.CreateContainer(
+	container, err := fsouzaClient.CreateContainer(
 		docker.CreateContainerOptions{
 			Name:       b.getContainerName(),
 			Config:     conf,
@@ -438,7 +447,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 
 	b.logger.Debugln("Docker Container:", container.ID)
 
-	err = client.StartContainer(container.ID, hostConfig)
+	err = fsouzaClient.StartContainer(container.ID, hostConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +470,7 @@ func (b *DockerBox) Clean() error {
 	}
 
 	// TODO(termie): maybe move the container manipulation outside of here?
-	client := b.client
+	fsouzaClient := b.fsouzaClient
 
 	for _, container := range containers {
 		opts := docker.RemoveContainerOptions{
@@ -473,7 +482,7 @@ func (b *DockerBox) Clean() error {
 			Force:         true,
 		}
 		b.logger.WithField("Container", container).Debugln("Removing container:", container)
-		err := client.RemoveContainer(opts)
+		err := fsouzaClient.RemoveContainer(opts)
 		if err != nil {
 			return err
 		}
@@ -482,7 +491,7 @@ func (b *DockerBox) Clean() error {
 	if !b.options.ShouldCommit {
 		for i := len(b.images) - 1; i >= 0; i-- {
 			b.logger.WithField("Image", b.images[i].ID).Debugln("Removing image:", b.images[i].ID)
-			client.RemoveImage(b.images[i].ID)
+			fsouzaClient.RemoveImage(b.images[i].ID)
 		}
 	}
 
@@ -492,8 +501,8 @@ func (b *DockerBox) Clean() error {
 // Restart stops and starts the box
 func (b *DockerBox) Restart() (*docker.Container, error) {
 	// TODO(termie): maybe move the container manipulation outside of here?
-	client := b.client
-	err := client.RestartContainer(b.container.ID, 1)
+	fsouzaClient := b.fsouzaClient
+	err := fsouzaClient.RestartContainer(b.container.ID, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -508,10 +517,10 @@ func (b *DockerBox) AddService(service core.ServiceBox) {
 // Stop the box and all its services
 func (b *DockerBox) Stop() {
 	// TODO(termie): maybe move the container manipulation outside of here?
-	client := b.client
+	fsouzaClient := b.fsouzaClient
 	for _, service := range b.services {
 		b.logger.Debugln("Stopping service", service.GetID())
-		err := client.StopContainer(service.GetID(), 1)
+		err := fsouzaClient.StopContainer(service.GetID(), 1)
 
 		if err != nil {
 			if _, ok := err.(*docker.ContainerNotRunning); ok {
@@ -523,7 +532,7 @@ func (b *DockerBox) Stop() {
 	}
 	if b.container != nil {
 		b.logger.Debugln("Stopping container", b.container.ID)
-		err := client.StopContainer(b.container.ID, 1)
+		err := fsouzaClient.StopContainer(b.container.ID, 1)
 
 		if err != nil {
 			if _, ok := err.(*docker.ContainerNotRunning); ok {
@@ -536,9 +545,10 @@ func (b *DockerBox) Stop() {
 }
 
 // Fetch an image (or update the local)
-func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.Image, error) {
+func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*types.ImageInspect, error) {
 	// TODO(termie): maybe move the container manipulation outside of here?
-	client := b.client
+	fsouzaClient := b.fsouzaClient
+	officialClient := b.officialDockerClient
 
 	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
@@ -572,12 +582,12 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	b.Name = fmt.Sprintf("%s:%s", b.repository, b.tag)
 	// Shortcut to speed up local dev
 	if b.dockerOptions.Local {
-		image, err := client.InspectImage(env.Interpolate(b.Name))
+		image, _, err := officialClient.ImageInspectWithRaw(ctx, env.Interpolate(b.Name))
 		if err != nil {
 			return nil, err
 		}
-		b.image = image
-		return image, nil
+		b.image = &image
+		return &image, nil
 	}
 
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
@@ -597,15 +607,15 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 		Username: authenticator.Username(),
 		Password: authenticator.Password(),
 	}
-	err = client.PullImage(options, authConfig)
+	err = fsouzaClient.PullImage(options, authConfig)
 	if err != nil {
 		return nil, err
 	}
-	image, err := client.InspectImage(env.Interpolate(b.Name))
+	image, _, err := officialClient.ImageInspectWithRaw(ctx, env.Interpolate(b.Name))
 	if err != nil {
 		return nil, err
 	}
-	b.image = image
+	b.image = &image
 
 	return nil, err
 }
@@ -618,7 +628,7 @@ func (b *DockerBox) Commit(name, tag, message string, cleanup bool) (*docker.Ima
 	}).Debugln("Commit container:", name, tag)
 
 	// TODO(termie): maybe move the container manipulation outside of here?
-	client := b.client
+	fsouzaClient := b.fsouzaClient
 
 	commitOptions := docker.CommitContainerOptions{
 		Container:  b.container.ID,
@@ -627,7 +637,7 @@ func (b *DockerBox) Commit(name, tag, message string, cleanup bool) (*docker.Ima
 		Message:    "Build completed",
 		Author:     "wercker",
 	}
-	image, err := client.CommitContainer(commitOptions)
+	image, err := fsouzaClient.CommitContainer(commitOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -656,7 +666,7 @@ func (b *DockerBox) ExportImage(options *ExportImageOptions) error {
 	}
 
 	// TODO(termie): maybe move the container manipulation outside of here?
-	client := b.client
+	fsouzaClient := b.fsouzaClient
 
-	return client.ExportImage(exportImageOptions)
+	return fsouzaClient.ExportImage(exportImageOptions)
 }
