@@ -257,18 +257,23 @@ var (
 		cli.StringFlag{Name: "group", Usage: "specify the group name for starting runner(s)"},
 	}
 
+	ExternalRunnerConfigureFlags = []cli.Flag{
+		cli.StringFlag{Name: "update", Usage: "automatically update local image from remote repository"},
+	}
+
 	ExternalRunnerStartFlags = []cli.Flag{
 		cli.StringFlag{Name: "name", Usage: "specify an instance name for runner(s)"},
 		cli.StringFlag{Name: "group", Usage: "specify the group name for runner(s)"},
 		cli.StringFlag{Name: "orgs", Usage: "comma separated list of organization names"},
 		cli.StringFlag{Name: "apps", Usage: "comma separated list of application names, format: org-name/app-name for each. "},
 		cli.StringFlag{Name: "workflows", Usage: "comma separated list of workflows, format: org-name/app-name/workflow-name for each."},
-		cli.StringFlag{Name: "storepath", Usage: "local file system path for storing runner output"},
+		cli.StringFlag{Name: "storepath", Usage: "local file system path for storing runner output", EnvVar: "WERCKER_RUNNER_STOREPATH"},
 		cli.StringFlag{Name: "logpath", Usage: "local file system path for storing log files"},
 		cli.IntFlag{Name: "runners", Value: 1, Usage: "number of runners to start, default is one"},
 		cli.IntFlag{Name: "poll-frequency", Value: 15, Usage: "number of seconds between runner polling for a job"},
 		cli.StringFlag{Name: "token", Usage: "bearer token for external runner", EnvVar: "WERCKER_RUNNER_TOKEN"},
 		cli.BoolFlag{Name: "all", Usage: "specify that all jobs allowed to the user are eligible for selection by this runner"},
+		cli.BoolFlag{Name: "nowait", Usage: "run the external runner(s) in the background, default is false"},
 	}
 )
 

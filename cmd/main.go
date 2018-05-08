@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -386,7 +385,7 @@ var (
 		Subcommands: []cli.Command{
 			{
 				Name:  "start",
-				Usage: "start external runner(s)",
+				Usage: "start external runner(s) - This feature is a paid option.",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
 					err := setupExternalRunnerParams(c, params)
@@ -398,7 +397,7 @@ var (
 			},
 			{
 				Name:  "stop",
-				Usage: "stop external runner(s)",
+				Usage: "stop external runner(s) - This feature is a paid option.",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
 					err := setupExternalRunnerParams(c, params)
@@ -411,7 +410,7 @@ var (
 			},
 			{
 				Name:  "status",
-				Usage: "display the status of started external runner(s)",
+				Usage: "display the status of started external runner(s) - This feature is a paid option.",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
 					err := setupExternalRunnerParams(c, params)
@@ -423,10 +422,15 @@ var (
 			},
 			{
 				Name:  "configure",
-				Usage: "perform setup configuration for external runner operation",
+				Usage: "setup Docker configuration for external runner operation - This feature is a paid option.",
 				Action: func(c *cli.Context) {
-					log.Print("The configure runner action is not yet supported.")
+					params := external.NewDockerController()
+					err := setupExternalRunnerParams(c, params)
+					if err == nil {
+						params.CheckRegistryImages()
+					}
 				},
+				Flags: ExternalRunnerConfigureFlags,
 			},
 		},
 	}
@@ -455,6 +459,7 @@ func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) er
 	params.Debug = opts.GlobalOptions.Debug
 	params.Journal = opts.GlobalOptions.Journal
 	params.AllOption = opts.AllOption
+	params.NoWait = opts.NoWait
 	params.PollFreq = opts.Polling
 	params.DockerEndpoint = opts.DockerEndpoint
 	params.Logger = cliLogger
