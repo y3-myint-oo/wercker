@@ -16,10 +16,14 @@ package dockerlocal
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"reflect"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/term"
+	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
 
@@ -33,11 +37,14 @@ const (
 // OfficialDockerClient is a wrapper for client.Client (which makes it easier to substitute a mock for testing)
 type OfficialDockerClient struct {
 	*client.Client
+	logger *util.LogEntry
 }
 
 // NewOfficialDockerClient uses the official docker client to create a Client struct
 // which can be used to perform operations against a docker server
 func NewOfficialDockerClient(options *Options) (*OfficialDockerClient, error) {
+	logger := util.RootLogger().WithField("Logger", "Docker")
+
 	var dockerClient *client.Client
 	var err error
 	if options.TLSVerify == "1" {
@@ -55,7 +62,26 @@ func NewOfficialDockerClient(options *Options) (*OfficialDockerClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &OfficialDockerClient{Client: dockerClient}, nil
+	return &OfficialDockerClient{Client: dockerClient, logger: logger}, nil
+}
+
+// ResizeTTY resizes the tty size of docker connection so output looks normal
+func (c *OfficialDockerClient) ResizeTTY(ctx context.Context, execID string) error {
+	ws, err := term.GetWinsize(os.Stdout.Fd())
+	if err != nil {
+		c.logger.Debugln("Error getting term size: %s", err)
+		return err
+	}
+	err = c.ContainerExecResize(ctx, execID, types.ResizeOptions{
+		Height: uint(ws.Height),
+		Width:  uint(ws.Width),
+	})
+
+	if err != nil {
+		c.logger.Debugln("Error resizing term: %s", err)
+		return err
+	}
+	return nil
 }
 
 // RequireDockerEndpoint attempts to connect to the specified docker daemon and returns an error if unsuccessful

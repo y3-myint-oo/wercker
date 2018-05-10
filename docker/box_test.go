@@ -17,7 +17,7 @@ package dockerlocal
 import (
 	"testing"
 
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/suite"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
@@ -75,10 +75,11 @@ func (s *BoxSuite) TestPortBindings() {
 		[]string{"8003/udp", "127.0.0.1", "8004"},
 	}
 
-	bindings := portBindings(published)
-	s.Equal(len(checkBindings), len(bindings))
+	bindingsMap, err := portBindings(published)
+	s.Nil(err)
+	s.Equal(len(checkBindings), len(bindingsMap))
 	for _, check := range checkBindings {
-		binding := bindings[docker.Port(check[0])]
+		binding := bindingsMap[nat.Port(check[0])]
 		s.Equal(check[1], binding[0].HostIP)
 		s.Equal(check[2], binding[0].HostPort)
 	}

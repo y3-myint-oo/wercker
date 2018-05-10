@@ -20,6 +20,9 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/go-connections/nat"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/wercker/wercker/core"
@@ -107,16 +110,16 @@ func (b *InternalServiceBox) getContainerName() string {
 }
 
 // Run executes the service
-func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, links []string) (*docker.Container, error) {
+func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, links []string) (string, error) {
 	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	f := &util.Formatter{}
 
-	client, err := NewDockerClient(b.dockerOptions)
+	officialDockerClient, err := NewOfficialDockerClient(b.dockerOptions)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Import the environment and command
@@ -130,7 +133,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 	if b.entrypoint != "" {
 		entrypoint, err = shlex.Split(b.entrypoint)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		cmdInfo = append(cmdInfo, entrypoint...)
 	} else {
@@ -141,7 +144,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 	if b.config.Cmd != "" {
 		cmd, err = shlex.Split(b.config.Cmd)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		cmdInfo = append(cmdInfo, cmd...)
 	} else {
@@ -175,9 +178,14 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		portsToBind = b.config.Ports
 	}
 
-	hostConfig := &docker.HostConfig{
+	portBindings, err := portBindings(portsToBind)
+	if err != nil {
+		return "", err
+	}
+
+	hostConfig := &container.HostConfig{
 		DNS:          b.dockerOptions.DNS,
-		PortBindings: portBindings(portsToBind),
+		PortBindings: portBindings,
 		Links:        links,
 	}
 
@@ -185,13 +193,20 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		hostConfig.Binds = binds
 	}
 
-	conf := &docker.Config{
+	var ports nat.PortSet
+	if b.options.ExposePorts {
+		ports, err = exposedPorts(b.config.Ports)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	config := &container.Config{
 		Image:           b.Name,
 		Cmd:             cmd,
 		Env:             myEnv,
-		ExposedPorts:    exposedPorts(b.config.Ports),
+		ExposedPorts:    ports,
 		NetworkDisabled: b.networkDisabled,
-		DNS:             b.dockerOptions.DNS,
 		Entrypoint:      entrypoint,
 	}
 
@@ -207,19 +222,17 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 			swap = 2 * mem
 		}
 
-		conf.Memory = mem
-		conf.MemorySwap = swap
+		hostConfig.Resources = container.Resources{
+			Memory:     mem,
+			MemorySwap: swap,
+		}
 	}
 
-	container, err := client.CreateContainer(
-		docker.CreateContainerOptions{
-			Name:       b.getContainerName(),
-			Config:     conf,
-			HostConfig: hostConfig,
-		})
+	networkingConfig := &network.NetworkingConfig{}
 
+	containerCreateCreatedBody, err := officialDockerClient.ContainerCreate(ctx, config, hostConfig, networkingConfig, b.getContainerName())
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	out := []string{}
@@ -234,15 +247,22 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		b.logger.Println(f.Info(fmt.Sprintf("Starting service %s", b.ShortName), strings.Join(out, " ")))
 	}
 
-	client.StartContainer(container.ID, hostConfig)
-	b.container = container
+	err = officialDockerClient.ContainerStart(ctx, containerCreateCreatedBody.ID, types.ContainerStartOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	fsouzaDockerClient, err := NewDockerClient(b.dockerOptions)
+	if err != nil {
+		return "", err
+	}
 
 	go func() {
-		status, err := client.WaitContainer(container.ID)
+		status, err := fsouzaDockerClient.WaitContainer(containerCreateCreatedBody.ID)
 		if err != nil {
 			b.logger.Errorln("Error waiting", err)
 		}
-		b.logger.Debugln("Service container finished with status code:", status, container.ID)
+		b.logger.Debugln("Service container finished with status code:", status, containerCreateCreatedBody.ID)
 
 		if status != 0 {
 			var errstream bytes.Buffer
@@ -250,14 +270,14 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 			// recv := make(chan string)
 			// outputStream := NewReceiver(recv)
 			opts := docker.LogsOptions{
-				Container:    container.ID,
+				Container:    containerCreateCreatedBody.ID,
 				Stdout:       true,
 				Stderr:       true,
 				ErrorStream:  &errstream,
 				OutputStream: &outstream,
 				RawTerminal:  false,
 			}
-			err = client.Logs(opts)
+			err = fsouzaDockerClient.Logs(opts)
 			if err != nil {
 				b.logger.Panicln(err)
 			}
@@ -272,5 +292,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		}
 	}()
 
-	return container, nil
+	b.containerID = containerCreateCreatedBody.ID
+	b.containerName = b.getContainerName()
+	return containerCreateCreatedBody.ID, nil
 }

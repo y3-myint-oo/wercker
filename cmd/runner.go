@@ -587,12 +587,12 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 
 	// Boot up our main container, it will run the services
-	container, err := box.Run(runnerCtx, pipeline.Env())
+	containerID, err := box.Run(runnerCtx, pipeline.Env())
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err
 	}
-	shared.containerID = container.ID
+	shared.containerID = containerID
 
 	// Register our signal handler to clean the box up
 	// NOTE(termie): we're expecting that this is going to be the last handler
@@ -616,7 +616,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 
 	p.logger.Debugln("Attaching session to base box")
 	// Start our session
-	sessionCtx, sess, err := p.GetSession(runnerCtx, container.ID)
+	sessionCtx, sess, err := p.GetSession(runnerCtx, containerID)
 	if err != nil {
 		sr.Message = err.Error()
 		return shared, err
@@ -690,7 +690,7 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 	if exit != 0 {
 		sr.ExitCode = exit
 		if p.options.AttachOnError {
-			shared.box.RecoverInteractive(
+			shared.box.RecoverInteractive(ctx,
 				p.options.SourcePath(),
 				shared.pipeline,
 				step,

@@ -16,14 +16,13 @@ package core
 
 import (
 	"github.com/docker/docker/api/types"
-	"github.com/fsouza/go-dockerclient"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 )
 
 // ServiceBox interface to services
 type ServiceBox interface {
-	Run(context.Context, *util.Environment, []string) (*docker.Container, error)
+	Run(context.Context, *util.Environment, []string) (string, error)
 	Fetch(ctx context.Context, env *util.Environment) (*types.ImageInspect, error)
 	Link() string
 	GetID() string

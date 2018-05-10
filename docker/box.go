@@ -23,6 +23,9 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/go-connections/nat"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/wercker/wercker/auth"
@@ -44,7 +47,8 @@ type DockerBox struct {
 	services             []core.ServiceBox
 	options              *core.PipelineOptions
 	dockerOptions        *Options
-	container            *docker.Container
+	containerID          string
+	containerName        string
 	config               *core.BoxConfig
 	cmd                  string
 	repository           string
@@ -144,7 +148,7 @@ func (b *DockerBox) Link() string {
 	if name == "" {
 		name = b.ShortName
 	}
-	return fmt.Sprintf("%s:%s", b.container.Name, name)
+	return fmt.Sprintf("%s:%s", b.containerName, name)
 }
 
 // GetName gets the box name
@@ -162,8 +166,8 @@ func (b *DockerBox) GetTag() string {
 
 // GetID gets the container ID or empty string if we don't have a container
 func (b *DockerBox) GetID() string {
-	if b.container != nil {
-		return b.container.ID
+	if b.containerID != "" {
+		return b.containerID
 	}
 	return ""
 }
@@ -240,13 +244,14 @@ func dockerEnv(boxEnv map[string]string, env *util.Environment) []string {
 	return s
 }
 
-func portBindings(published []string) map[docker.Port][]docker.PortBinding {
-	outer := make(map[docker.Port][]docker.PortBinding)
+func portBindings(published []string) (nat.PortMap, error) {
+	outer := make(nat.PortMap)
 	for _, portdef := range published {
 		var ip string
 		var hostPort string
 		var containerPort string
 
+		// split the supplied string into ip (if supplied), host port and container port (if different)
 		parts := strings.Split(portdef, ":")
 
 		switch {
@@ -261,36 +266,56 @@ func portBindings(published []string) map[docker.Port][]docker.PortBinding {
 			hostPort = parts[0]
 			containerPort = parts[0]
 		}
-		// Make sure we have a protocol in the container port
-		if !strings.Contains(containerPort, "/") {
-			containerPort = containerPort + "/tcp"
+
+		// split the container port into port number and prototol to construct a nat.Port
+		var containerPortNumber string
+		var containerPortProto string
+		containerPortParts := strings.Split(containerPort, "/")
+		switch {
+		case len(containerPortParts) == 1:
+			containerPortNumber = containerPortParts[0]
+			containerPortProto = "tcp"
+		case len(containerPortParts) == 2:
+			containerPortNumber = containerPortParts[0]
+			containerPortProto = containerPortParts[1]
+		default:
+			return nil, fmt.Errorf("Invalid container port specification: %s", containerPort)
+		}
+		natContainerPort, err := nat.NewPort(containerPortProto, containerPortNumber)
+		if err != nil {
+			return nil, err
 		}
 
+		// handle the host port to create a nat.PortBinding
+		var hostPortNumber string
 		if hostPort == "" {
-			hostPort = containerPort
+			hostPortNumber = containerPortNumber
+		} else {
+			// Just in case we have a /tcp in there
+			hostParts := strings.Split(hostPort, "/")
+			hostPortNumber = hostParts[0]
 		}
-
-		// Just in case we have a /tcp in there
-		hostParts := strings.Split(hostPort, "/")
-		hostPort = hostParts[0]
-		portBinding := docker.PortBinding{
-			HostPort: hostPort,
+		portBinding := nat.PortBinding{
+			HostPort: hostPortNumber,
 		}
 		if ip != "" {
 			portBinding.HostIP = ip
 		}
-		outer[docker.Port(containerPort)] = []docker.PortBinding{portBinding}
+		outer[natContainerPort] = []nat.PortBinding{portBinding}
 	}
-	return outer
+	return outer, nil
 }
 
-func exposedPorts(published []string) map[docker.Port]struct{} {
-	portBinds := portBindings(published)
-	exposed := make(map[docker.Port]struct{})
+func exposedPorts(published []string) (nat.PortSet, error) {
+	portBinds, err := portBindings(published)
+	if err != nil {
+		return nil, err
+	}
+	exposed := make(nat.PortSet)
 	for port := range portBinds {
 		exposed[port] = struct{}{}
 	}
-	return exposed
+	return exposed, nil
 }
 
 // ExposedPortMap contains port forwarding information
@@ -313,7 +338,12 @@ func exposedPortMaps(dockerHost string, published []string) ([]ExposedPortMap, e
 		}
 	}
 	portMap := []ExposedPortMap{}
-	for k, v := range portBindings(published) {
+	portBindings, err := portBindings(published)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range portBindings {
 		for _, port := range v {
 			p := ExposedPortMap{
 				ContainerPort: k.Port(),
@@ -326,10 +356,10 @@ func exposedPortMaps(dockerHost string, published []string) ([]ExposedPortMap, e
 }
 
 //RecoverInteractive restarts the box with a terminal attached
-func (b *DockerBox) RecoverInteractive(cwd string, pipeline core.Pipeline, step core.Step) error {
+func (b *DockerBox) RecoverInteractive(ctx context.Context, cwd string, pipeline core.Pipeline, step core.Step) error {
 	// TODO(termie): maybe move the container manipulation outside of here?
 	fsouzaClient := b.fsouzaClient
-	container, err := b.Restart()
+	containerID, err := b.Restart()
 	if err != nil {
 		b.logger.Panicln("box restart failed")
 		return err
@@ -344,7 +374,7 @@ func (b *DockerBox) RecoverInteractive(cwd string, pipeline core.Pipeline, step 
 	if err != nil {
 		return err
 	}
-	return fsouzaClient.AttachInteractive(container.ID, cmd, env)
+	return fsouzaClient.AttachInteractive(containerID, cmd, env)
 }
 
 func (b *DockerBox) getContainerName() string {
@@ -352,15 +382,15 @@ func (b *DockerBox) getContainerName() string {
 }
 
 // Run creates the container and runs it.
-func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Container, error) {
+func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (string, error) {
 	err := b.RunServices(ctx, env)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	b.logger.Debugln("Starting base box:", b.Name)
 
 	// TODO(termie): maybe move the container manipulation outside of here?
-	fsouzaClient := b.fsouzaClient
+	officialDockerClient := b.officialDockerClient
 
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
@@ -369,20 +399,23 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 	if b.entrypoint != "" {
 		entrypoint, err = shlex.Split(b.entrypoint)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	}
 
 	cmd, err := shlex.Split(b.cmd)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	var ports map[docker.Port]struct{}
+	var ports nat.PortSet
 	if len(b.options.PublishPorts) > 0 {
-		ports = exposedPorts(b.options.PublishPorts)
+		ports, err = exposedPorts(b.options.PublishPorts)
 	} else if b.options.ExposePorts {
-		ports = exposedPorts(b.config.Ports)
+		ports, err = exposedPorts(b.config.Ports)
+	}
+	if err != nil {
+		return "", err
 	}
 
 	binds, err := b.binds(env)
@@ -396,14 +429,19 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 		portsToBind = b.config.Ports
 	}
 
-	hostConfig := &docker.HostConfig{
+	portBindings, err := portBindings(portsToBind)
+	if err != nil {
+		return "", err
+	}
+
+	hostConfig := &container.HostConfig{
 		Binds:        binds,
 		Links:        b.links(),
-		PortBindings: portBindings(portsToBind),
+		PortBindings: portBindings,
 		DNS:          b.dockerOptions.DNS,
 	}
 
-	conf := &docker.Config{
+	config := &container.Config{
 		Image:           env.Interpolate(b.Name),
 		Tty:             false,
 		OpenStdin:       true,
@@ -414,10 +452,10 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 		AttachStderr:    true,
 		ExposedPorts:    ports,
 		NetworkDisabled: b.networkDisabled,
-		DNS:             b.dockerOptions.DNS,
 		Entrypoint:      entrypoint,
-		// Volumes: volumes,
 	}
+
+	networkingConfig := &network.NetworkingConfig{}
 
 	if b.dockerOptions.Memory != 0 {
 		mem := b.dockerOptions.Memory
@@ -428,39 +466,35 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 		if swap == 0 {
 			swap = 2 * mem
 		}
-
-		conf.Memory = mem
-		conf.MemorySwap = swap
+		hostConfig.Resources = container.Resources{
+			Memory:     mem,
+			MemorySwap: swap,
+		}
 	}
 
 	// Make and start the container
-	container, err := fsouzaClient.CreateContainer(
-		docker.CreateContainerOptions{
-			Name:       b.getContainerName(),
-			Config:     conf,
-			HostConfig: hostConfig,
-		})
-
+	containerCreateCreatedBody, err := officialDockerClient.ContainerCreate(ctx, config, hostConfig, networkingConfig, b.getContainerName())
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	b.logger.Debugln("Docker Container:", container.ID)
+	b.logger.Debugln("Docker Container:", containerCreateCreatedBody.ID)
 
-	err = fsouzaClient.StartContainer(container.ID, hostConfig)
+	err = officialDockerClient.ContainerStart(ctx, containerCreateCreatedBody.ID, types.ContainerStartOptions{})
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	b.container = container
-	return container, nil
+	b.containerID = containerCreateCreatedBody.ID
+	b.containerName = b.getContainerName()
+	return containerCreateCreatedBody.ID, nil
 }
 
 // Clean up the containers
 func (b *DockerBox) Clean() error {
 	containers := []string{}
-	if b.container != nil {
-		containers = append(containers, b.container.ID)
+	if b.containerID != "" {
+		containers = append(containers, b.containerID)
 	}
 
 	for _, service := range b.services {
@@ -499,14 +533,15 @@ func (b *DockerBox) Clean() error {
 }
 
 // Restart stops and starts the box
-func (b *DockerBox) Restart() (*docker.Container, error) {
+// returns the container ID
+func (b *DockerBox) Restart() (string, error) {
 	// TODO(termie): maybe move the container manipulation outside of here?
 	fsouzaClient := b.fsouzaClient
-	err := fsouzaClient.RestartContainer(b.container.ID, 1)
+	err := fsouzaClient.RestartContainer(b.containerID, 1)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return b.container, nil
+	return b.containerID, nil
 }
 
 // AddService needed by this Box
@@ -530,15 +565,15 @@ func (b *DockerBox) Stop() {
 			}
 		}
 	}
-	if b.container != nil {
-		b.logger.Debugln("Stopping container", b.container.ID)
-		err := fsouzaClient.StopContainer(b.container.ID, 1)
+	if b.containerID != "" {
+		b.logger.Debugln("Stopping container", b.containerID)
+		err := fsouzaClient.StopContainer(b.containerID, 1)
 
 		if err != nil {
 			if _, ok := err.(*docker.ContainerNotRunning); ok {
 				b.logger.Warnln("Box container has already stopped.")
 			} else {
-				b.logger.WithField("Error", err).Warnln("Wasn't able to stop box container", b.container.ID)
+				b.logger.WithField("Error", err).Warnln("Wasn't able to stop box container", b.containerID)
 			}
 		}
 	}
@@ -631,7 +666,7 @@ func (b *DockerBox) Commit(name, tag, message string, cleanup bool) (*docker.Ima
 	fsouzaClient := b.fsouzaClient
 
 	commitOptions := docker.CommitContainerOptions{
-		Container:  b.container.ID,
+		Container:  b.containerID,
 		Repository: name,
 		Tag:        tag,
 		Message:    "Build completed",

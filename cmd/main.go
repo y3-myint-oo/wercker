@@ -1368,12 +1368,12 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 
 	logger.Println(f.Info("Starting after-steps"))
 	// The container may have died, either way we'll have a fresh env
-	container, err := box.Restart()
+	containerID, err := box.Restart()
 	if err != nil {
 		logger.Panicln(err)
 	}
 
-	newSessCtx, newSess, err := r.GetSession(cmdCtx, container.ID)
+	newSessCtx, newSess, err := r.GetSession(cmdCtx, containerID)
 	if err != nil {
 		logger.Panicln(err)
 	}

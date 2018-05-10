@@ -33,9 +33,9 @@ type Box interface {
 	Clean() error
 	Stop()
 	Commit(string, string, string, bool) (*docker.Image, error)
-	Restart() (*docker.Container, error)
+	Restart() (string, error)
 	AddService(ServiceBox)
 	Fetch(context.Context, *util.Environment) (*types.ImageInspect, error)
-	Run(context.Context, *util.Environment) (*docker.Container, error)
-	RecoverInteractive(string, Pipeline, Step) error
+	Run(context.Context, *util.Environment) (string, error)
+	RecoverInteractive(context.Context, string, Pipeline, Step) error
 }
