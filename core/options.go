@@ -301,10 +301,9 @@ type PipelineOptions struct {
 	//               places by BasePipeline
 	HostEnv *util.Environment
 
-	RunID             string
-	DeployTarget      string
-	Pipeline          string
-	DockerNetworkName string
+	RunID        string
+	DeployTarget string
+	Pipeline     string
 
 	ApplicationID            string
 	ApplicationName          string

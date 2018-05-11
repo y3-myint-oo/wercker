@@ -101,7 +101,6 @@ type Step interface {
 	CollectArtifact(context.Context, string) (*Artifact, error)
 	// TODO(termie): don't think this needs to be universal
 	ReportPath(...string) string
-	Clean()
 }
 
 // BaseStepOptions are exported fields so that we can make a BaseStep from
@@ -188,10 +187,6 @@ func (s *BaseStep) Version() string {
 // Version getter
 func (s *BaseStep) Checkpoint() string {
 	return s.checkpoint
-}
-
-func (s *BaseStep) Clean() {
-
 }
 
 // ExternalStep is the holder of the Step methods.

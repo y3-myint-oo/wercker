@@ -119,6 +119,25 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 	}, nil
 }
 
+func (b *DockerBox) links() []string {
+	serviceLinks := []string{}
+
+	for _, service := range b.services {
+		serviceLinks = append(serviceLinks, service.Link())
+	}
+	b.logger.Debugln("Creating links:", serviceLinks)
+	return serviceLinks
+}
+
+// Link gives us the parameter to Docker to link to this box
+func (b *DockerBox) Link() string {
+	name := b.config.Name
+	if name == "" {
+		name = b.ShortName
+	}
+	return fmt.Sprintf("%s:%s", b.container.Name, name)
+}
+
 // GetName gets the box name
 func (b *DockerBox) GetName() string {
 	return b.Name
@@ -188,16 +207,18 @@ func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
 
 // RunServices runs the services associated with this box
 func (b *DockerBox) RunServices(ctx context.Context, env *util.Environment) error {
+	links := []string{}
 
 	// TODO(termie): terrible hack, sorry world
 	ctxWithServiceCount := context.WithValue(ctx, "ServiceCount", len(b.services))
 
 	for _, service := range b.services {
 		b.logger.Debugln("Startinq service:", service.GetName())
-		_, err := service.Run(ctxWithServiceCount, env)
+		_, err := service.Run(ctxWithServiceCount, env, links)
 		if err != nil {
 			return err
 		}
+		links = append(links, service.Link())
 	}
 	return nil
 }
@@ -323,15 +344,7 @@ func (b *DockerBox) getContainerName() string {
 
 // Run creates the container and runs it.
 func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Container, error) {
-	dockerNetworkName, err := b.GetDockerNetworkName()
-	if err != nil {
-		return nil, err
-	}
-	err = b.RunServices(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-	dockerEnvVar, err := b.prepareSvcDockerEnvVar(env)
+	err := b.RunServices(ctx, env)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +355,6 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
-	myEnv = append(myEnv, dockerEnvVar...)
 
 	var entrypoint []string
 	if b.entrypoint != "" {
@@ -377,9 +389,9 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 
 	hostConfig := &docker.HostConfig{
 		Binds:        binds,
+		Links:        b.links(),
 		PortBindings: portBindings(portsToBind),
 		DNS:          b.dockerOptions.DNS,
-		NetworkMode:  dockerNetworkName,
 	}
 
 	conf := &docker.Config{
@@ -437,7 +449,6 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (*docker.Con
 
 // Clean up the containers
 func (b *DockerBox) Clean() error {
-	defer b.CleanDockerNetwork()
 	containers := []string{}
 	if b.container != nil {
 		containers = append(containers, b.container.ID)
