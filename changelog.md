@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1226 (2018-05-11)
+
 - Reverted Cosmetic changes for docker file integration (#407)
 - Reverted Docker file integration, docker-networks, docker-run, docker-kill (#405)
 
