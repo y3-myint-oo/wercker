@@ -912,6 +912,7 @@ func NewWerckerDockerOptions(c util.Settings, e *util.Environment) (*WerckerDock
 type WerckerStepOptions struct {
 	*GlobalOptions
 	Owner   string
+	Private bool
 	StepDir string
 }
 
@@ -922,10 +923,12 @@ func NewWerckerStepOptions(c util.Settings, e *util.Environment) (*WerckerStepOp
 	}
 
 	owner, _ := c.String("owner")
+	private, _ := c.Bool("private")
 
 	return &WerckerStepOptions{
 		GlobalOptions: globalOpts,
 		Owner:         owner,
+		Private:       private,
 	}, nil
 }
 
