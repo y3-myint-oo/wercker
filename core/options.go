@@ -301,9 +301,10 @@ type PipelineOptions struct {
 	//               places by BasePipeline
 	HostEnv *util.Environment
 
-	RunID        string
-	DeployTarget string
-	Pipeline     string
+	RunID             string
+	DeployTarget      string
+	Pipeline          string
+	DockerNetworkName string
 
 	ApplicationID            string
 	ApplicationName          string
@@ -944,6 +945,8 @@ type WerckerRunnerOptions struct {
 	NumRunners     int
 	Polling        int
 	AllOption      bool
+	NoWait         bool
+	Update         bool
 }
 
 // NewExternalRunnerOptions -
@@ -964,10 +967,17 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 	pfreq, _ := c.Int("poll-frequency")
 	isall, _ := c.Bool("all")
 	dhost, _ := c.String("docker-host")
+	nwait, _ := c.Bool("nowait")
+	updat, _ := c.Bool("update")
 
 	if dhost == "" {
 		dhost = "unix:///var/run/docker.sock"
 	}
+
+	if spath == "" {
+		spath = "/tmp/wercker"
+	}
+	os.MkdirAll(spath, 0776)
 
 	return &WerckerRunnerOptions{
 		GlobalOptions:  globalOpts,
@@ -982,6 +992,8 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 		NumRunners:     norun,
 		Polling:        pfreq,
 		AllOption:      isall,
+		NoWait:         nwait,
 		DockerEndpoint: dhost,
+		Update:         updat,
 	}, nil
 }

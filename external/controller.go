@@ -3,8 +3,12 @@
 package external
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
-	"os"
+	"io"
+	"log"
+	os "os"
 	"os/exec"
 	"strings"
 	"time"
@@ -12,6 +16,27 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/wercker/wercker/util"
 )
+
+// Used to unmarshal Docker json log
+type logInfo struct {
+	Time           string
+	Level          string
+	Msg            string
+	Source         string
+	JobId          string
+	RunID          string
+	AgentID        string
+	ProjectID      string
+	ProjectOwnerID string
+}
+
+// Detail for each external-runner container that has been created
+// and started
+type runnerContainer struct {
+	containerName   string
+	containerID     string
+	containerStatus string
+}
 
 // RunnerParams are the parameters that drive the control of Docker
 // containers where the external runner executes. This structure is
@@ -32,18 +57,20 @@ type RunnerParams struct {
 	Debug          bool   // debug enabled
 	Journal        bool   // journal logging
 	AllOption      bool   // --all option
+	NoWait         bool   // --nowait options
 	PollFreq       int    // Polling frequency
 	DockerEndpoint string // docker enndpoint
 	// following values are set during processing
-	Basename string // base name for container creation
-	Logger   *util.LogEntry
-	client   *docker.Client
+	Basename   string // base name for container creation
+	Logger     *util.LogEntry
+	client     *docker.Client
+	containers []*runnerContainer
 }
 
 // NewDockerController -
 func NewDockerController() *RunnerParams {
 	return &RunnerParams{
-		ImageName: "oracle/wercker/runner:latest",
+		ImageName: "wercker-runner:latest",
 	}
 }
 
@@ -140,7 +167,12 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 	}
 
 	cp.startTheRunners()
-	return
+	message := fmt.Sprintf("Output is written to the %s directory", cp.StorePath)
+	cp.Logger.Info(message)
+
+	if !cp.NoWait {
+		cp.waitForExternalRunners()
+	}
 }
 
 // Starting runner(s).  Initiate a container to run the external runner for as many times as
@@ -151,7 +183,7 @@ func (cp *RunnerParams) startTheRunners() {
 		// there.
 		token := os.Getenv("WERCKER_RUNNER_TOKEN")
 		if token == "" {
-			cp.Logger.Print("Unable to start runner(s) because runner bearer token was not supplied.")
+			cp.Logger.Fatal("Unable to start runner(s) because runner bearer token was not supplied.")
 			return
 		}
 		cp.BearerToken = token
@@ -224,10 +256,10 @@ func (cp *RunnerParams) startTheContainer(name string, cmd []string) error {
 	volumes = append(volumes, "/var/lib/wercker:/var/lib/wercker:rw")
 	volumes = append(volumes, "/var/run/docker.sock:/var/run/docker.sock")
 	if cp.LoggerPath != "" {
-		volumes = append(volumes, fmt.Sprintf("%s:/runlogs:rw", cp.LoggerPath))
+		volumes = append(volumes, fmt.Sprintf("%s:%s:rw", cp.LoggerPath, cp.LoggerPath))
 	}
 	if cp.StorePath != "" {
-		volumes = append(volumes, fmt.Sprintf("%s:/runstore:rw", cp.StorePath))
+		volumes = append(volumes, fmt.Sprintf("%s:%s:rw", cp.StorePath, cp.StorePath))
 	}
 
 	// This is a super Kludge until go-dockerclient is updated to support mounts.
@@ -259,6 +291,25 @@ func (cp *RunnerParams) startTheContainer(name string, cmd []string) error {
 
 	message := fmt.Sprintf("External runner %s has started.", name)
 	cp.Logger.Print(message)
+
+	// Remember the container
+	// Wait a second because the docker api doesn't set the container id immediately
+	time.Sleep(time.Second)
+	theDockerContainer, err := cp.client.InspectContainer(name)
+	if err != nil {
+		cp.Logger.Fatal(err)
+	}
+	for theDockerContainer == nil {
+	}
+
+	newContainer := &runnerContainer{
+		containerName:   name,
+		containerID:     theDockerContainer.ID,
+		containerStatus: theDockerContainer.State.Status,
+	}
+
+	cp.containers = append(cp.containers, newContainer)
+
 	return nil
 }
 
@@ -278,7 +329,7 @@ func runDocker(args []string) error {
 // container is killed, then waited for it to exit. Then delete the container.
 func (cp *RunnerParams) shutdownRunners(runners []*docker.Container) {
 	if len(runners) == 0 {
-		cp.Logger.Print("There are no external runners to terminate")
+		cp.Logger.Fatal("There are no external runners to terminate")
 		return
 	}
 
@@ -333,4 +384,128 @@ func (cp *RunnerParams) shutdownRunners(runners []*docker.Container) {
 // Remove the slash from the beginning of the name
 func stripSlashFromName(name string) string {
 	return strings.TrimPrefix(name, "/")
+}
+
+// Called to wait for all external runners to terminate. While waiting, the logs are accessed and
+// either dumped to stdout or written to a specified log file location. If the Wercker command is
+// cancelled, whatever runners that are active will continue running.
+func (cp *RunnerParams) waitForExternalRunners() {
+
+	// Start the loggers
+	for _, p := range cp.containers {
+		go cp.logFromContainer(p)
+	}
+
+	// Wait until all containers have exited.
+	for len(cp.containers) > 0 {
+
+		// Wait an arbitrary amount of time.
+		time.Sleep(5 * time.Second)
+
+		for i, rc := range cp.containers {
+
+			// Clear out containers that have exited. Make sure they get
+			// removed from our list and from docker.
+			dockerContainer, err := cp.client.InspectContainer(rc.containerID)
+			if err != nil {
+				cp.containers = append(cp.containers[:i], cp.containers[i+1:]...)
+				break
+			}
+			status := dockerContainer.State.Status
+			if status == "exited" {
+				opts := docker.RemoveContainerOptions{
+					ID: dockerContainer.ID,
+				}
+				cp.client.RemoveContainer(opts)
+				message := fmt.Sprintf("External runner %s has been stopped.", rc.containerName)
+				cp.Logger.Print(message)
+				cp.containers = append(cp.containers[:i], cp.containers[i+1:]...)
+				break
+			}
+		}
+	}
+}
+
+// Get the log stream for this container and output to either console (defailt) or
+// specified logger output path.
+func (cp *RunnerParams) logFromContainer(rc *runnerContainer) {
+
+	if cp.LoggerPath != "" {
+		os.MkdirAll(cp.LoggerPath, 0666)
+	}
+
+	pr, pw := io.Pipe()
+
+	go func() {
+		// Read-side of pipe. Get log entries and output to either stdout or
+		// append to a log file.
+		rd := bufio.NewReader(pr)
+		for {
+			str, err := rd.ReadString('\n')
+			if err != nil {
+				log.Print(err)
+				return
+			}
+
+			// Do any necessary formatting to make str conform to pretty output
+			str = strings.TrimSuffix(str, "\n")
+
+			if strings.HasPrefix(str, "{") && strings.HasSuffix(str, "}") {
+				// json output so deal appropriately
+				ls := logInfo{}
+				err = json.Unmarshal([]byte(str), &ls)
+				if err == nil {
+					str1 := fmt.Sprintf("time=%s level=%s msg=%s", ls.Time, ls.Level, ls.Msg)
+					if ls.AgentID != "" {
+						str1 = fmt.Sprintf("%s AgentID=%s", str1, ls.AgentID)
+					}
+					if ls.JobId != "" {
+						str1 = fmt.Sprintf("%s JobId=%s", str1, ls.JobId)
+					}
+					if ls.RunID != "" {
+						str1 = fmt.Sprintf("%s RunID=%s", str1, ls.RunID)
+					}
+					if ls.ProjectID != "" {
+						str1 = fmt.Sprintf("%s ProjectID=%s", str1, ls.ProjectID)
+					}
+					if ls.ProjectOwnerID != "" {
+						str1 = fmt.Sprintf("%s ProjectOwnerID=%s", str1, ls.ProjectOwnerID)
+					}
+					if ls.Source != "" {
+						str1 = fmt.Sprintf("%s Source=%s", str1, ls.Source)
+					}
+					str = str1
+				}
+			}
+
+			if cp.LoggerPath != "" {
+				filename := fmt.Sprintf("%s/%s.log", cp.LoggerPath, rc.containerName)
+				f, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+				if err == nil {
+					f.WriteString(str)
+					f.WriteString("\n")
+					f.Close()
+				}
+				continue
+			}
+			// No output path for logger so just write to stdout
+			outline := fmt.Sprintf("%s: %s", rc.containerName, str)
+			cp.Logger.Printf(outline)
+		}
+	}()
+
+	// Setup options to call logger. Follow is set to true so Docker will send
+	// log output continuously by writing into a pipe.
+	opts := docker.LogsOptions{
+		Container:    rc.containerID,
+		OutputStream: pw,
+		ErrorStream:  pw,
+		Stdout:       true,
+		Stderr:       true,
+		Follow:       true,
+	}
+	err := cp.client.Logs(opts)
+	if err != nil {
+		log.Print(err)
+	}
 }

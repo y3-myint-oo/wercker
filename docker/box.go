@@ -132,25 +132,6 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 	}, nil
 }
 
-func (b *DockerBox) links() []string {
-	serviceLinks := []string{}
-
-	for _, service := range b.services {
-		serviceLinks = append(serviceLinks, service.Link())
-	}
-	b.logger.Debugln("Creating links:", serviceLinks)
-	return serviceLinks
-}
-
-// Link gives us the parameter to Docker to link to this box
-func (b *DockerBox) Link() string {
-	name := b.config.Name
-	if name == "" {
-		name = b.ShortName
-	}
-	return fmt.Sprintf("%s:%s", b.containerName, name)
-}
-
 // GetName gets the box name
 func (b *DockerBox) GetName() string {
 	return b.Name
@@ -220,18 +201,16 @@ func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
 
 // RunServices runs the services associated with this box
 func (b *DockerBox) RunServices(ctx context.Context, env *util.Environment) error {
-	links := []string{}
 
 	// TODO(termie): terrible hack, sorry world
 	ctxWithServiceCount := context.WithValue(ctx, "ServiceCount", len(b.services))
 
 	for _, service := range b.services {
 		b.logger.Debugln("Startinq service:", service.GetName())
-		_, err := service.Run(ctxWithServiceCount, env, links)
+		_, err := service.Run(ctxWithServiceCount, env)
 		if err != nil {
 			return err
 		}
-		links = append(links, service.Link())
 	}
 	return nil
 }
@@ -306,6 +285,50 @@ func portBindings(published []string) (nat.PortMap, error) {
 	return outer, nil
 }
 
+func portBindingsOld(published []string) map[docker.Port][]docker.PortBinding {
+	outer := make(map[docker.Port][]docker.PortBinding)
+	for _, portdef := range published {
+		var ip string
+		var hostPort string
+		var containerPort string
+
+		parts := strings.Split(portdef, ":")
+
+		switch {
+		case len(parts) == 3:
+			ip = parts[0]
+			hostPort = parts[1]
+			containerPort = parts[2]
+		case len(parts) == 2:
+			hostPort = parts[0]
+			containerPort = parts[1]
+		case len(parts) == 1:
+			hostPort = parts[0]
+			containerPort = parts[0]
+		}
+		// Make sure we have a protocol in the container port
+		if !strings.Contains(containerPort, "/") {
+			containerPort = containerPort + "/tcp"
+		}
+
+		if hostPort == "" {
+			hostPort = containerPort
+		}
+
+		// Just in case we have a /tcp in there
+		hostParts := strings.Split(hostPort, "/")
+		hostPort = hostParts[0]
+		portBinding := docker.PortBinding{
+			HostPort: hostPort,
+		}
+		if ip != "" {
+			portBinding.HostIP = ip
+		}
+		outer[docker.Port(containerPort)] = []docker.PortBinding{portBinding}
+	}
+	return outer
+}
+
 func exposedPorts(published []string) (nat.PortSet, error) {
 	portBinds, err := portBindings(published)
 	if err != nil {
@@ -316,6 +339,15 @@ func exposedPorts(published []string) (nat.PortSet, error) {
 		exposed[port] = struct{}{}
 	}
 	return exposed, nil
+}
+
+func exposedPortsOld(published []string) map[docker.Port]struct{} {
+	portBinds := portBindingsOld(published)
+	exposed := make(map[docker.Port]struct{})
+	for port := range portBinds {
+		exposed[port] = struct{}{}
+	}
+	return exposed
 }
 
 // ExposedPortMap contains port forwarding information
@@ -383,7 +415,16 @@ func (b *DockerBox) getContainerName() string {
 
 // Run creates the container and runs it.
 func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (string, error) {
-	err := b.RunServices(ctx, env)
+
+	dockerNetworkName, err := b.GetDockerNetworkName()
+	if err != nil {
+		return "", err
+	}
+	err = b.RunServices(ctx, env)
+	if err != nil {
+		return "", err
+	}
+	dockerEnvVar, err := b.prepareSvcDockerEnvVar(env)
 	if err != nil {
 		return "", err
 	}
@@ -394,6 +435,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (string, err
 
 	// Import the environment
 	myEnv := dockerEnv(b.config.Env, env)
+	myEnv = append(myEnv, dockerEnvVar...)
 
 	var entrypoint []string
 	if b.entrypoint != "" {
@@ -436,9 +478,9 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (string, err
 
 	hostConfig := &container.HostConfig{
 		Binds:        binds,
-		Links:        b.links(),
 		PortBindings: portBindings,
 		DNS:          b.dockerOptions.DNS,
+		NetworkMode:  container.NetworkMode(dockerNetworkName),
 	}
 
 	config := &container.Config{
@@ -492,6 +534,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment) (string, err
 
 // Clean up the containers
 func (b *DockerBox) Clean() error {
+	defer b.CleanDockerNetwork()
 	containers := []string{}
 	if b.containerID != "" {
 		containers = append(containers, b.containerID)

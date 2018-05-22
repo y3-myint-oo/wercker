@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016,2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import (
 
 // ServiceBox interface to services
 type ServiceBox interface {
-	Run(context.Context, *util.Environment, []string) (string, error)
+	Run(context.Context, *util.Environment) (string, error)
 	Fetch(ctx context.Context, env *util.Environment) (*types.ImageInspect, error)
-	Link() string
 	GetID() string
 	GetName() string
+	GetServiceAlias() string
 }

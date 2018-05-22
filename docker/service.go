@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -110,7 +110,7 @@ func (b *InternalServiceBox) getContainerName() string {
 }
 
 // Run executes the service
-func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, links []string) (string, error) {
+func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment) (string, error) {
 	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
 		return "", err
@@ -183,10 +183,17 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		return "", err
 	}
 
+	networkName, err := b.GetDockerNetworkName()
+	if err != nil {
+		return "", err
+	}
+
 	hostConfig := &container.HostConfig{
 		DNS:          b.dockerOptions.DNS,
 		PortBindings: portBindings,
-		Links:        links,
+		//Links:        links,
+		//NetworkMode:  networkName,
+		//NetworkMode: container.NetworkMode(),
 	}
 
 	if len(binds) > 0 {
@@ -228,7 +235,16 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 		}
 	}
 
-	networkingConfig := &network.NetworkingConfig{}
+	endpointSettings := &network.EndpointSettings{
+		Aliases: []string{b.GetServiceAlias()},
+	}
+
+	endpointsConfig := make(map[string]*network.EndpointSettings)
+	endpointsConfig[networkName] = endpointSettings
+
+	networkingConfig := &network.NetworkingConfig{
+		EndpointsConfig: endpointsConfig,
+	}
 
 	containerCreateCreatedBody, err := officialDockerClient.ContainerCreate(ctx, config, hostConfig, networkingConfig, b.getContainerName())
 	if err != nil {
@@ -295,4 +311,13 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, lin
 	b.containerID = containerCreateCreatedBody.ID
 	b.containerName = b.getContainerName()
 	return containerCreateCreatedBody.ID, nil
+}
+
+// GetServiceAlias returns service alias for the service.
+func (b *InternalServiceBox) GetServiceAlias() string {
+	name := b.config.Name
+	if name == "" {
+		name = b.ShortName
+	}
+	return name
 }
