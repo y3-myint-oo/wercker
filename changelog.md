@@ -1,5 +1,7 @@
 ## unreleased
 
+- Docker file integration (#415)
+
 ## v1.0.1230 (2018-05-15)
 
 - Support for publishing private steps (#409)
