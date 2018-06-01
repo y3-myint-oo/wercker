@@ -53,12 +53,10 @@ func (s *PushSuite) TestEmptyPush() {
 			AuthToken: "su69persec420uret0k3n",
 		},
 	}
-	step, _ := NewDockerPushStep(config, options, nil)
-	step.InitEnv(nil)
-	// repositoryName := step.authenticator.Repository(step.repository)
-	// s.Equal("wcr.io/wercker/myproject", repositoryName)
-	// tags := step.buildTags()
-	// s.Equal([]string{"latest", "master-s4k2r0d6a9b"}, tags)
+	step, err := NewDockerPushStep(config, options, nil)
+	err = step.InitEnv(nil)
+	s.Equal("Repository is not specified", err.Error())
+	s.Empty(step.repository);
 }
 
 func (s *PushSuite) TestInferRegistryAndRepository() {
