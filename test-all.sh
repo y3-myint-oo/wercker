@@ -117,6 +117,7 @@ testScratchPush () {
 runTests() {
 
   source $testsDir/docker-push/test.sh || return 1
+  source $testsDir/docker-push-ocir/test.sh || return 1
   source $testsDir/docker-build/test.sh || return 1
   source $testsDir/docker-push-image/test.sh || return 1
   source $testsDir/docker-networks/test.sh || return 1

@@ -649,9 +649,7 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) (dockerauth.Chec
 }
 
 //InferRegistryAndRepository infers the registry and repository to be used from input registry and repository.
-// 1. If no repository is specified, it is assumed that the user wants to push an image of current application
-//    for which  the build is running to wcr.io repository and therefore registry is inferred as
-//    https://wcr.io/v2 and repository as wcr.io/<application-owner>/<application-name>
+// 1. If no repository is specified, user will get an error message "Repository is not specified".
 // 2. In case a repository is provided but no registry - registry is derived from the name of the domain (if any)
 //    from the registry - e.g. for a repository quay.io/<repo-owner>/<repo-name> - quay.io will be the registry host
 //    and https://quay.io/v2/ will be the registry url. In case the repository name does not contain a domain name -
@@ -671,12 +669,9 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) (dockerauth.Chec
 func InferRegistryAndRepository(repository string, registry string, pipelineOptions *core.PipelineOptions) (inferredRepository string, inferredRegistry string, err error) {
 	_logger := util.RootLogger().WithFields(util.LogFields{"Logger": "Docker"})
 	if repository == "" {
-		inferredRepository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
-		inferredRegistry = pipelineOptions.WerckerContainerRegistry.String()
-		_logger.Infoln("No repository specified - using " + inferredRepository)
-		_logger.Infoln("username/password fields are ignored while using wcr.io registry, supplied authToken (if provided) will be used for authorization to wcr.io registry")
-		return inferredRepository, inferredRegistry, nil
+		return "", "", fmt.Errorf("Repository is not specified")
 	}
+
 	// Docker repositories must be lowercase
 	inferredRepository = strings.ToLower(repository)
 	inferredRegistry = registry
