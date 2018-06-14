@@ -1,7 +1,8 @@
 ## unreleased
 
-## v1.0.1244 (2018-05-29)
+- Changes to access RDD API Service and inject RDD in build pipelines (#421)
 
+## v1.0.1244 (2018-05-29)
 - Changes for WRKR-347 Allow switching between app/dev sites (#419)
 
 ## v1.0.1238 (2018-05-23)
