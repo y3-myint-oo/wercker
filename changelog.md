@@ -1,5 +1,6 @@
 ## unreleased
 
+## v1.0.1260 (2018-06-14)
 - Changes to access RDD API Service and inject RDD in build pipelines (#421)
 
 ## v1.0.1244 (2018-05-29)
