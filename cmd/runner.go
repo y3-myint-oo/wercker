@@ -728,7 +728,9 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 		p.logger.Debugln(" ", pair[0], pair[1])
 	}
 
-	exit, err := step.Execute(shared.sessionCtx, shared.sess)
+	// we need to keep this err for a while, so giving it a unique name to prevent
+	// accidentally overwriting it
+	exit, execErr := step.Execute(shared.sessionCtx, shared.sess)
 	if exit != 0 {
 		sr.ExitCode = exit
 		if p.options.AttachOnError {
@@ -738,7 +740,7 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 				step,
 			)
 		}
-	} else if err == nil {
+	} else if execErr == nil {
 		sr.Success = true
 		sr.ExitCode = 0
 	}
@@ -752,14 +754,6 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 		}
 	}
 	sr.Message = message.String()
-
-	// This is the error from the step.Execute above
-	if err != nil {
-		if sr.Message == "" {
-			sr.Message = err.Error()
-		}
-		return sr, err
-	}
 
 	// Grab artifacts if we want them
 	if p.options.ShouldArtifacts {
@@ -776,6 +770,14 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 			}
 		}
 		sr.Artifact = artifact
+	}
+
+	// This is the error from the step.Execute above
+	if execErr != nil {
+		if sr.Message == "" {
+			sr.Message = execErr.Error()
+		}
+		return sr, execErr
 	}
 
 	if !sr.Success {
