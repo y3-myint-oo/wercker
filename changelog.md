@@ -1,6 +1,6 @@
 ## unreleased
 
-## v1.0.1262 (2015-06-18)
+## v1.0.1264 (2015-06-18)
 
 - Collect report artifacts from a step even if it failed (#428)
 
