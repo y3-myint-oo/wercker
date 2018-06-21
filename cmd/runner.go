@@ -556,7 +556,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 			rddURI = p.dockerOptions.Host
 		}
 	}
-	pipeline.InitEnv(p.options.HostEnv)
+	pipeline.InitEnv(runnerCtx, p.options.HostEnv)
 	shared.pipeline = pipeline
 
 	// Fetch the box
@@ -717,7 +717,7 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 		}
 	}
 
-	err := step.InitEnv(shared.pipeline.Env())
+	err := step.InitEnv(ctx, shared.pipeline.Env())
 	if err != nil {
 		sr.Message = err.Error()
 		return sr, fmt.Errorf("Step initEnv failed with error message: %s", err.Error())

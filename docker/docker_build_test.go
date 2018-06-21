@@ -86,7 +86,7 @@ func testBuild(ctx context.Context, t *testing.T, filesToTar filesToTar) (int, e
 	guessAndUpdateDockerOptions(ctx, dockerOptions, env)
 	step, _ := NewDockerBuildStep(stepConfig, pipelineOptions, dockerOptions)
 
-	step.InitEnv(env)
+	step.InitEnv(ctx, env)
 
 	// Create a tarfile for sending to the docker ImageBuild command
 	tarfileName := "docker_build_test_data.tar"

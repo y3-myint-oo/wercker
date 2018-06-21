@@ -566,7 +566,7 @@ func (s *DockerPushStep) configure(env *util.Environment) error {
 	return nil
 }
 
-func (s *DockerPushStep) buildAutherOpts(env *util.Environment) (dockerauth.CheckAccessOptions, error) {
+func (s *DockerPushStep) buildAutherOpts(ctx context.Context, env *util.Environment) (dockerauth.CheckAccessOptions, error) {
 	opts := dockerauth.CheckAccessOptions{}
 	if username, ok := s.data["username"]; ok {
 		opts.Username = env.Interpolate(username)
@@ -630,7 +630,7 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) (dockerauth.Chec
 
 	// If user use Azure or AWS container registry we don't infer.
 	if opts.AzureClientSecret == "" && opts.AwsSecretKey == "" {
-		repository, registry, err := InferRegistryAndRepository(s.repository, opts.Registry, s.options)
+		repository, registry, err := InferRegistryAndRepository(ctx, s.repository, opts.Registry, s.options)
 		if err != nil {
 			return dockerauth.CheckAccessOptions{}, err
 		}
@@ -648,10 +648,15 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) (dockerauth.Chec
 	return opts, nil
 }
 
+// log logs the specified message using the specified emitter
+func emit(e *core.NormalizedEmitter, message string) {
+	e.Emit(core.Logs, &core.LogsArgs{
+		Logs: message,
+	})
+}
+
 //InferRegistryAndRepository infers the registry and repository to be used from input registry and repository.
-// 1. If no repository is specified, it is assumed that the user wants to push an image of current application
-//    for which  the build is running to wcr.io repository and therefore registry is inferred as
-//    https://wcr.io/v2 and repository as wcr.io/<application-owner>/<application-name>
+// 1. If no repository is specified then an error "Repository not specified" will be returned.
 // 2. In case a repository is provided but no registry - registry is derived from the name of the domain (if any)
 //    from the registry - e.g. for a repository quay.io/<repo-owner>/<repo-name> - quay.io will be the registry host
 //    and https://quay.io/v2/ will be the registry url. In case the repository name does not contain a domain name -
@@ -668,14 +673,13 @@ func (s *DockerPushStep) buildAutherOpts(env *util.Environment) (dockerauth.Chec
 //           we assume that user wanted to use the registry host as specified in repository and change the registry to point
 //           to domain name present in repository. If domain names in both registry and repository are same - no changes are
 //           made.
-func InferRegistryAndRepository(repository string, registry string, pipelineOptions *core.PipelineOptions) (inferredRepository string, inferredRegistry string, err error) {
-	_logger := util.RootLogger().WithFields(util.LogFields{"Logger": "Docker"})
+func InferRegistryAndRepository(ctx context.Context, repository string, registry string, pipelineOptions *core.PipelineOptions) (inferredRepository string, inferredRegistry string, err error) {
+	e, err := core.EmitterFromContext(ctx)
+	if err != nil {
+		return "", "", err
+	}
 	if repository == "" {
-		inferredRepository = pipelineOptions.WerckerContainerRegistry.Host + "/" + pipelineOptions.ApplicationOwnerName + "/" + pipelineOptions.ApplicationName
-		inferredRegistry = pipelineOptions.WerckerContainerRegistry.String()
-		_logger.Infoln("No repository specified - using " + inferredRepository)
-		_logger.Infoln("username/password fields are ignored while using wcr.io registry, supplied authToken (if provided) will be used for authorization to wcr.io registry")
-		return inferredRepository, inferredRegistry, nil
+		return "", "", fmt.Errorf("Repository not specified")
 	}
 	// Docker repositories must be lowercase
 	inferredRepository = strings.ToLower(repository)
@@ -694,12 +698,12 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 	if len(strings.TrimSpace(inferredRegistry)) != 0 {
 		registryURLFromStepConfig, err := url.ParseRequestURI(inferredRegistry)
 		if err != nil {
-			_logger.Errorln("Invalid registry url specified: ", err.Error)
+			emit(e, fmt.Sprintf("Invalid registry url specified: %s\n", err.Error()))
 			if registryInferredFromRepository != "" {
-				_logger.Infoln("Using registry url inferred from repository: " + registryInferredFromRepository)
+				emit(e, fmt.Sprintf("Using registry url inferred from repository: %s\n"+registryInferredFromRepository))
 				inferredRegistry = registryInferredFromRepository
 			} else {
-				_logger.Errorln("Please specify valid registry parameter.If you intended to use docker hub as registry, you may omit registry parameter")
+				emit(e, "Please specify valid registry parameter.If you intended to use docker hub as registry, you may omit registry parameter")
 				return "", "", fmt.Errorf("%s is not a valid registry URL, error: %s", inferredRegistry, err.Error())
 			}
 
@@ -707,13 +711,13 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 			domainFromRegistryURL := registryURLFromStepConfig.Host
 			if len(strings.TrimSpace(domainFromRepository)) != 0 && domainFromRepository != "docker.io" {
 				if domainFromRegistryURL != domainFromRepository {
-					_logger.Infoln("Different registry hosts specified in repository: " + domainFromRepository + " and registry: " + domainFromRegistryURL)
+					emit(e, "Different registry hosts specified in repository: "+domainFromRepository+" and registry: "+domainFromRegistryURL)
 					inferredRegistry = registryInferredFromRepository
-					_logger.Infoln("Using registry inferred from repository: " + inferredRegistry)
+					emit(e, "Using registry inferred from repository: "+inferredRegistry)
 				}
 			} else {
 				inferredRepository = domainFromRegistryURL + "/" + inferredRepository
-				_logger.Infoln("Using repository inferred from registry: " + inferredRepository)
+				emit(e, "Using repository inferred from registry: "+inferredRepository)
 			}
 
 		}
@@ -724,12 +728,12 @@ func InferRegistryAndRepository(repository string, registry string, pipelineOpti
 }
 
 // InitEnv parses our data into our config
-func (s *DockerPushStep) InitEnv(env *util.Environment) error {
+func (s *DockerPushStep) InitEnv(ctx context.Context, env *util.Environment) error {
 	err := s.configure(env)
 	if err != nil {
 		return err
 	}
-	opts, err := s.buildAutherOpts(env)
+	opts, err := s.buildAutherOpts(ctx, env)
 	if err != nil {
 		return err
 	}
