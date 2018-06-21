@@ -2,6 +2,7 @@
 
 - docker-push no longer defaults to wcr.io, and displays info messages in certain cases (#423)
 - docker-build bugfix: if the dockerfile build fails then the error is displayed and the step fails (#424)
+- Add retry mechanism to RDD verify method (#434)
 
 ## v1.0.1264 (2015-06-18)
 
