@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+//   Copyright © 2016, 2018, Oracle and/or its affiliates.  All rights reserved.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -80,7 +80,29 @@ func (e *Environment) Get(key string) string {
 func (e *Environment) Export() []string {
 	s := []string{}
 	for _, key := range e.Order {
-		s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
+		value := e.Map[key]
+		if strings.Contains(value, "$") {
+			data := strings.Split(value, "$")
+			for i := 1; i < len(data); i++ {
+				if _, ok := e.Map[data[i]]; ok {
+					data[i] = "$" + data[i]
+				} else {
+					if strings.HasPrefix(data[i], "{") && strings.Contains(data[i], "}") {
+						if _, ok := e.Map[(data[i])[1:strings.Index(data[i], "}")]]; ok {
+							data[i] = "$" + data[i]
+						} else {
+							data[i] = "\\$" + data[i]
+						}
+					} else {
+						data[i] = "\\$" + data[i]
+					}
+				}
+			}
+			value = strings.Join(data, "")
+			s = append(s, fmt.Sprintf(`export %s=%s`, key, value))
+		} else {
+			s = append(s, fmt.Sprintf(`export %s=%q`, key, value))
+		}
 	}
 	return s
 }
