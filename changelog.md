@@ -1,8 +1,5 @@
 ## unreleased
 
-## v1.0.1268 (2018-06-22)
-- escape dollar sign(#420)
-
 ## v1.0.1267 (2018-06-21)
 
 - docker-push no longer defaults to wcr.io, and displays info messages in certain cases (#423)
