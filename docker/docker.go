@@ -303,15 +303,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return 1, err
 	}
 
-	// Check the auth
-	if !s.dockerOptions.Local {
-		check, err := s.authenticator.CheckAccess(s.repository, auth.Push)
-		if !check || err != nil {
-			s.logger.Errorln("Not allowed to interact with this repository:", s.repository)
-			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
-		}
-	}
-
 	s.repository = s.authenticator.Repository(s.repository)
 	s.logger.WithFields(util.LogFields{
 		"Repository": s.repository,
@@ -778,16 +769,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 
 	s.tags = s.buildTags()
 
-	if !s.dockerOptions.Local {
-		check, err := s.authenticator.CheckAccess(s.repository, auth.Push)
-		if err != nil {
-			s.logger.Errorln("Error interacting with this repository:", s.repository, err)
-			return -1, fmt.Errorf("Error interacting with this repository: %s %v", s.repository, err)
-		}
-		if !check {
-			return -1, fmt.Errorf("Not allowed to interact with this repository: %s", s.repository)
-		}
-	}
 	s.repository = s.authenticator.Repository(s.repository)
 	s.logger.Debugln("Init env:", s.data)
 
