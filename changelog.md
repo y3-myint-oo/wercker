@@ -1,5 +1,10 @@
 ## unreleased
 
+## v1.0.1271 (2018-06-25)
+
+- honor proxy environment variables, if set (#440)
+- do not manually check for write access to remote docker repository, since docker does it anyway (#436)
+
 ## v1.0.1267 (2018-06-21)
 
 - docker-push no longer defaults to wcr.io, and displays info messages in certain cases (#423)
