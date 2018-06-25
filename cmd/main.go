@@ -54,6 +54,7 @@ var (
 			envfile := c.GlobalString("environment")
 			env := util.NewEnvironment(os.Environ()...)
 			env.LoadFile(envfile)
+			env.PassThruProxyConfig()
 
 			settings := util.NewCLISettings(c)
 			opts, err := core.NewBuildOptions(settings, env)
@@ -83,6 +84,7 @@ var (
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
 			env.LoadFile(envfile)
+			env.PassThruProxyConfig()
 			opts, err := core.NewDevOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
@@ -111,6 +113,7 @@ var (
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
 			env.LoadFile(envfile)
+			env.PassThruProxyConfig()
 			opts, err := core.NewCheckConfigOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)
@@ -139,6 +142,7 @@ var (
 			settings := util.NewCLISettings(c)
 			env := util.NewEnvironment(os.Environ()...)
 			env.LoadFile(envfile)
+			env.PassThruProxyConfig()
 			opts, err := core.NewDeployOptions(settings, env)
 			if err != nil {
 				cliLogger.Errorln("Invalid options\n", err)

@@ -33,6 +33,65 @@ func TestEnvironmentSuite(t *testing.T) {
 	suite.Run(t, suiteTester)
 }
 
+func (s *EnvironmentSuite) TestAddIfMissing() {
+	env := NewEnvironment()
+	env.AddIfMissing("foo", "bar")
+
+	s.Equal(0, len(env.GetPassthru().Ordered()))
+	s.Equal(0, len(env.GetHiddenPassthru().Ordered()))
+	s.Equal(1, len(env.Ordered()))
+	s.Equal("bar", env.Get("foo"))
+}
+
+func (s *EnvironmentSuite) TestAddIfMissingDoesNotClobber() {
+	env := NewEnvironment("existing=original")
+	env.AddIfMissing("existing", "overridden")
+
+	s.Equal(0, len(env.GetPassthru().Ordered()))
+	s.Equal(0, len(env.GetHiddenPassthru().Ordered()))
+	s.Equal(1, len(env.Ordered()))
+	s.Equal("original", env.Get("existing"))
+}
+
+func (s *EnvironmentSuite) TestPassThruProxyConfig() {
+	env := NewEnvironment("http_proxy=proxy", "https_proxy=proxy", "no_proxy=noproxy", "HTTP_PROXY=proxy", "HTTPS_PROXY=proxy", "NO_PROXY=noproxy")
+	env.PassThruProxyConfig()
+
+	s.Equal(6, len(env.GetPassthru().Ordered()))
+	s.Equal(0, len(env.GetHiddenPassthru().Ordered()))
+	s.Equal(12, len(env.Ordered()))
+	s.Equal("proxy", env.Get("http_proxy"))
+	s.Equal("proxy", env.Get("https_proxy"))
+	s.Equal("noproxy", env.Get("no_proxy"))
+	s.Equal("proxy", env.Get("HTTP_PROXY"))
+	s.Equal("proxy", env.Get("HTTPS_PROXY"))
+	s.Equal("noproxy", env.Get("NO_PROXY"))
+}
+
+func (s *EnvironmentSuite) TestPassThruProxyConfigDoesNotClobber() {
+	env := NewEnvironment("http_proxy=proxy", "https_proxy=proxy", "no_proxy=noproxy", "HTTP_PROXY=proxy", "HTTPS_PROXY=proxy", "NO_PROXY=noproxy",
+		"X_http_proxy=xproxy", "X_https_proxy=xproxy", "X_no_proxy=xnoproxy", "X_HTTP_PROXY=xproxy", "X_HTTPS_PROXY=xproxy", "X_NO_PROXY=xnoproxy")
+	env.PassThruProxyConfig()
+
+	s.Equal(6, len(env.GetPassthru().Ordered()))
+	s.Equal(0, len(env.GetHiddenPassthru().Ordered()))
+	s.Equal(12, len(env.Ordered()))
+
+	s.Equal("proxy", env.Get("http_proxy"))
+	s.Equal("proxy", env.Get("https_proxy"))
+	s.Equal("noproxy", env.Get("no_proxy"))
+	s.Equal("proxy", env.Get("HTTP_PROXY"))
+	s.Equal("proxy", env.Get("HTTPS_PROXY"))
+	s.Equal("noproxy", env.Get("NO_PROXY"))
+
+	s.Equal("xproxy", env.Get("X_http_proxy"))
+	s.Equal("xproxy", env.Get("X_https_proxy"))
+	s.Equal("xnoproxy", env.Get("X_no_proxy"))
+	s.Equal("xproxy", env.Get("X_HTTP_PROXY"))
+	s.Equal("xproxy", env.Get("X_HTTPS_PROXY"))
+	s.Equal("xnoproxy", env.Get("X_NO_PROXY"))
+}
+
 func (s *EnvironmentSuite) TestPassthru() {
 	env := NewEnvironment("X_PUBLIC=foo", "XXX_PRIVATE=bar", "NOT=included")
 	s.Equal(1, len(env.GetPassthru().Ordered()))

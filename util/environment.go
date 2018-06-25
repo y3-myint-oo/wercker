@@ -66,6 +66,29 @@ func (e *Environment) Add(key, value string) {
 	e.Map[key] = value
 }
 
+// Add an individual record.
+func (e *Environment) AddIfMissing(key, value string) {
+	if e.Map == nil {
+		e.Add(key, value)
+	} else if _, ok := e.Map[key]; !ok {
+		e.Add(key, value)
+	}
+}
+
+// Add proxy configuration as public
+func (e *Environment) PassThruProxyConfig() {
+	if e.Map == nil {
+		return
+	}
+
+	for _, key := range proxyEnv {
+		value, ok := e.Map[key]
+		if ok {
+		    e.AddIfMissing(fmt.Sprintf("%s%s", public, key), value)
+		}
+	}
+}
+
 // Get an individual record.
 func (e *Environment) Get(key string) string {
 	if e.Map != nil {
@@ -105,6 +128,15 @@ func (e *Environment) Interpolate(s string) string {
 var mirroredEnv = [...]string{
 	"WERCKER_STARTED_BY",
 	"WERCKER_MAIN_PIPELINE_STARTED",
+}
+
+var proxyEnv = [...]string{
+	"http_proxy",
+	"https_proxy",
+	"no_proxy",
+	"HTTP_PROXY",
+	"HTTPS_PROXY",
+	"NO_PROXY",
 }
 
 // Collect passthru variables from the project
