@@ -1,5 +1,7 @@
 ## unreleased
 
+- send auth token with steps request to allow access to private steps (#445)
+
 ## v1.0.1271 (2018-06-25)
 
 - honor proxy environment variables, if set (#440)

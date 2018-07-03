@@ -12,17 +12,21 @@ import (
 type StepRegistry interface {
 	// GetStepVersion retrieves a step from the registry
 	GetStepVersion(owner, name, version string) (*APIStepVersion, error)
+	// GetTarball retrieves a step tarball from the registry
+	GetTarball(tarballURL string) (*http.Response, error)
 }
 
 // WerckerStepRegistry implements the StepRegistry interface to handle
 type WerckerStepRegistry struct {
 	baseURL string
+	authToken string
 }
 
 // NewWerckerStepRegistry creates a new instance of NewWerckerStepRegistry
-func NewWerckerStepRegistry(baseURL string) StepRegistry {
+func NewWerckerStepRegistry(baseURL, authToken string) StepRegistry {
 	return &WerckerStepRegistry{
 		baseURL: baseURL,
+		authToken: authToken,
 	}
 }
 
@@ -30,7 +34,7 @@ func NewWerckerStepRegistry(baseURL string) StepRegistry {
 func (r *WerckerStepRegistry) GetStepVersion(owner, name, version string) (*APIStepVersion, error) {
 	url := fmt.Sprintf("%s/api/steps/%s/%s/%s", r.baseURL, owner, name, version)
 
-	resp, err := util.Get(url)
+	resp, err := util.Get(url, r.authToken)
 	if err != nil {
 		return nil, err
 	}
@@ -61,4 +65,8 @@ func (r *WerckerStepRegistry) GetStepVersion(owner, name, version string) (*APIS
 		TarballURL:  stepVersion.Step.TarballURL,
 		Version:     stepVersion.Step.Version.Number,
 	}, nil
+}
+
+func (r *WerckerStepRegistry) GetTarball(tarballURL string) (*http.Response, error) {
+	return util.Get(tarballURL, r.authToken)
 }

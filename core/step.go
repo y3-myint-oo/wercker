@@ -356,20 +356,22 @@ func (s *ExternalStep) Fetch() (string, error) {
 
 	if !stepExists {
 		// If we don't have a url already
+
+		var client api.StepRegistry
+		// TODO(termie): probably don't need these in global options?
+		if s.options.GlobalOptions.StepRegistryURL == "" {
+			apiOptions := api.APIOptions{
+				BaseURL: s.options.GlobalOptions.BaseURL,
+			}
+			// NOTE(kokaz): this client doesn't contain any auth token
+			client = api.NewAPIClient(&apiOptions)
+		} else {
+			client = api.NewWerckerStepRegistry(s.options.GlobalOptions.StepRegistryURL, s.options.GlobalOptions.AuthToken)
+		}
+
 		if s.url == "" {
 			// Grab the info about the step from the api
 
-			// TODO(termie): probably don't need these in global options?
-			var client api.StepRegistry
-			if s.options.GlobalOptions.StepRegistryURL == "" {
-				apiOptions := api.APIOptions{
-					BaseURL: s.options.GlobalOptions.BaseURL,
-				}
-				// NOTE(kokaz): this client doesn't contain any auth token
-				client = api.NewAPIClient(&apiOptions)
-			} else {
-				client = api.NewWerckerStepRegistry(s.options.GlobalOptions.StepRegistryURL)
-			}
 			stepInfo, err := client.GetStepVersion(s.Owner(), s.Name(), s.Version())
 			if err != nil {
 				if apiErr, ok := err.(*api.APIError); ok && apiErr.StatusCode == 404 {
@@ -398,7 +400,7 @@ func (s *ExternalStep) Fetch() (string, error) {
 			}
 		} else {
 			// Grab the tarball and util.Untargzip it
-			resp, err := util.Get(s.url)
+			resp, err := client.GetTarball(s.url)
 			if err != nil {
 				return "", err
 			}

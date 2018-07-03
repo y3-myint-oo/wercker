@@ -62,12 +62,21 @@ func Exists(path string) (bool, error) {
 
 // Get tries to make a GET request to url. It will retry, upto 3 times, when
 // the response is http statuscode 5xx.
-func Get(url string) (*http.Response, error) {
-	return get(url, 1)
+func Get(url, authToken string) (*http.Response, error) {
+	return get(url, authToken, 1)
 }
 
-func get(url string, try int) (*http.Response, error) {
-	resp, err := http.Get(url)
+func get(url, authToken string, try int) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if authToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +87,7 @@ func get(url string, try int) (*http.Response, error) {
 
 	if shouldRetry(try, resp) {
 		time.Sleep(time.Duration(try*200) * time.Millisecond)
-		return get(url, try+1)
+		return get(url, authToken, try+1)
 	}
 
 	return resp, fmt.Errorf("Bad status code while fetching: %s (%d)", url, resp.StatusCode)

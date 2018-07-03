@@ -271,9 +271,7 @@ func (c *APIClient) addAuthToken(req *http.Request) {
 	authToken := c.options.AuthToken
 
 	if authToken != "" {
-		q := req.URL.Query()
-		q.Set("token", authToken)
-		req.URL.RawQuery = q.Encode()
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
 	}
 }
 
@@ -339,4 +337,8 @@ generic:
 		Message:    message,
 		StatusCode: res.StatusCode,
 	}
+}
+
+func (c *APIClient) GetTarball(tarballURL string) (*http.Response, error) {
+	return util.Get(tarballURL, "")
 }

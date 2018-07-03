@@ -35,6 +35,7 @@ import (
 
 var (
 	DEFAULT_BASE_URL = "https://app.wercker.com"
+	DEFAULT_STEP_REGISTRY = "https://steps.wercker.com"
 )
 
 // GlobalOptions applicable to everything
