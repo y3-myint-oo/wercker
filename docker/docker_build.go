@@ -225,6 +225,13 @@ func (s *DockerBuildStep) buildImage(ctx context.Context, sess *core.Session, ta
 
 	s.logger.Debugln("Build image")
 
+	// Note: This is a little hack; if a network was not passed through a flag,
+	//       then s.options.DockerNetworkName will contain the generated name.
+	networkName := s.dockerOptions.NetworkName
+	if networkName == "" {
+		networkName = s.options.DockerNetworkName
+	}
+
 	officialBuildOpts := types.ImageBuildOptions{
 		Dockerfile:     s.dockerfile,
 		Tags:           []string{s.tag},
@@ -237,6 +244,7 @@ func (s *DockerBuildStep) buildImage(ctx context.Context, sess *core.Session, ta
 		Squash:         s.squash,
 		PullParent:     !s.dockerOptions.Local, // always pull images unless docker-local is specified
 		NoCache:        s.nocache,
+		NetworkMode:    networkName,
 	}
 
 	imageBuildResponse, err := officialClient.ImageBuild(ctx, tarReader, officialBuildOpts)

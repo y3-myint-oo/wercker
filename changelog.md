@@ -1,31 +1,35 @@
 ## unreleased
 
-- send auth token with steps request to allow access to private steps (#445)
+- Send auth token with steps request to allow access to private steps (#445)
+- Execute docker-build in the same network as the normal build (#446)
 
 ## v1.0.1271 (2018-06-25)
 
-- honor proxy environment variables, if set (#440)
-- do not manually check for write access to remote docker repository, since docker does it anyway (#436)
+- Honor proxy environment variables, if set (#440)
+- Do not manually check for write access to remote docker repository, since docker does it anyway (#436)
 
 ## v1.0.1267 (2018-06-21)
 
 - docker-push no longer defaults to wcr.io, and displays info messages in certain cases (#423)
 - docker-build bugfix: if the dockerfile build fails then the error is displayed and the step fails (#424)
 - Add retry mechanism to RDD verify method (#434)
-- Fix wercker --help for subcommands(#432)
+- Fix wercker --help for subcommands (#432)
 
 ## v1.0.1264 (2018-06-18)
 
 - Collect report artifacts from a step even if it failed (#428)
 
 ## v1.0.1260 (2018-06-14)
+
 - Changes to access RDD API Service and inject RDD in build pipelines (#421)
 - Fix wercker --help (#426)
 
 ## v1.0.1244 (2018-05-29)
+
 - Changes for WRKR-347 Allow switching between app/dev sites (#419)
 
 ## v1.0.1238 (2018-05-23)
+
 - Wercker runner config (#417)
 - Docker file integration (#415)
 
