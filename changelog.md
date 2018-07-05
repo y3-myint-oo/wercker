@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1281 (2018-07-05)
+
 - Send auth token with steps request to allow access to private steps (#445)
 - Execute docker-build in the same network as the normal build (#446)
 
