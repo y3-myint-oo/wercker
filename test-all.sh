@@ -76,25 +76,6 @@ basicTestFail() {
   return 0
 }
 
-testDirectMount() {
-  echo -n "testing direct-mount..."
-  testDir=$testsDir/direct-mount
-  testFile=${testDir}/testfile
-  > "$testFile"
-  echo "hello" > "$testFile"
-  logFile="${workingDir}/direct-mount.log"
-  $wercker build "$testDir" --direct-mount --docker-local --working-dir "$workingDir" &> "$logFile"
-  contents=$(cat "$testFile")
-  if [ "$contents" == 'world' ]
-      then echo "passed"
-      return 0
-  else
-      echo 'failed'
-      cat "$logFile"
-      return 1
-  fi
-}
-
 testScratchPush () {
   echo -n "testing scratch-n-push.."
   testDir=$testsDir/scratch-n-push
@@ -115,7 +96,10 @@ testScratchPush () {
 
 
 runTests() {
-
+  source $testsDir/rdd/test.sh || return 1
+  source $testsDir/rdd-volumes/test.sh || return 1
+  source $testsDir/enable-volumes/test.sh || return 1
+  source $testsDir/direct-mount-test/test.sh || return 1
   source $testsDir/docker-push/test.sh || return 1
   source $testsDir/docker-build/test.sh || return 1
   source $testsDir/docker-push-image/test.sh || return 1
@@ -124,8 +108,6 @@ runTests() {
 
   export X_TEST_SERVICE_VOL_PATH=$testsDir/test-service-vol
   basicTest "docker run" build "$testsDir/docker-run" --docker-local || return 1
-  basicTest "service volume"    build "$testsDir/service-volume" --docker-local --enable-volumes  || return 1
-  grep -q "test-volume-file" "${workingDir}/service volume.log" || return 1
   basicTest "source-path"       build "$testsDir/source-path" --docker-local || return 1
   basicTest "rm pipeline --artifacts" build "$testsDir/rm-pipeline" --docker-local --artifacts  || return 1
   basicTest "rm pipeline"       build "$testsDir/rm-pipeline" --docker-local || return 1
@@ -158,7 +140,6 @@ runTests() {
 
   basicTest "multiple services with the same image" build "$testsDir/multidb" || return 1
 
-  testDirectMount || return 1
   testScratchPush || return 1
 
   # test runs locally but not in wercker build container

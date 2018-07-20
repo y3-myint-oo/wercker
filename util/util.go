@@ -245,7 +245,9 @@ func Untar(dst string, r io.Reader) error {
 	}
 }
 
-// TarPath makes a tarball out of a directory
+// TarPath makes a tarfile out of a directory
+// The contents of the "root" directory will be placed at the top level in the tarfile.
+// Directory names are not written to the tarfile.
 func TarPath(writer io.Writer, root string) error {
 	tw := tar.NewWriter(writer)
 	defer tw.Close()
@@ -275,6 +277,73 @@ func TarPath(writer io.Writer, root string) error {
 		if err != nil {
 			return err
 		}
+		_, err = io.Copy(tw, fr)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	err := filepath.Walk(root, walkFn)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// TarPathWithRoot makes a tarfile from the files under "root".
+// A directory named "tarRoot" will be created at the top level
+// in the tarball, with the files under "root" placed under it.
+// Directory names are written to the tarfile (including empty directories).
+// Symbolic links are ignored (walk doesn't follow symbolic links anyway).
+func TarPathWithRoot(writer io.Writer, root string, tarRoot string) error {
+	tw := tar.NewWriter(writer)
+	defer tw.Close()
+
+	walkFn := func(currentPath string, info os.FileInfo, err error) error {
+
+		var newPath string
+		if len(currentPath) > len(root) {
+			newPath = currentPath[len(root)+1:]
+		}
+		if tarRoot != "" {
+			newPath = path.Join(tarRoot, newPath)
+		}
+		if len(newPath) == 0 {
+			return nil
+		}
+
+		var link = ""
+		if info.Mode()&os.ModeSymlink == os.ModeSymlink {
+			link, err = os.Readlink(currentPath)
+			if err != nil {
+				return err
+			}
+		}
+
+		hdr, err := tar.FileInfoHeader(info, link)
+		if err != nil {
+			return err
+		}
+		hdr.Uid = 0
+		hdr.Gid = 0
+		hdr.Name = newPath
+		err = tw.WriteHeader(hdr)
+		if err != nil {
+			return err
+		}
+
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+
+		// File
+		fr, err := os.Open(currentPath)
+		if err != nil {
+			return err
+		}
+		defer fr.Close()
+
 		_, err = io.Copy(tw, fr)
 		if err != nil {
 			return err

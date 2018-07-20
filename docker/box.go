@@ -15,15 +15,19 @@
 package dockerlocal
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/docker/docker/api/types"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/wercker/wercker/auth"
@@ -143,7 +147,9 @@ func (b *DockerBox) GetID() string {
 	return ""
 }
 
-func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
+// mounts returns the binds necessary to mount the directories under HostPath (which is a pipeline option).
+// This is only valid when the CLI is running on the same machine as the daemon.
+func (b *DockerBox) mounts(env *util.Environment) ([]string, error) {
 	binds := []string{}
 	// Make our list of binds for the Docker attach
 	// NOTE(termie): we don't appear to need the "volumes" stuff, leaving
@@ -166,27 +172,88 @@ func (b *DockerBox) binds(env *util.Environment) ([]string, error) {
 			// volumes[b.options.MntPath(entry.Name())] = struct{}{}
 		}
 	}
+	return binds, nil
+}
 
-	if b.options.EnableVolumes {
-		vols := util.SplitSpaceOrComma(b.config.Volumes)
-		var interpolatedVols []string
-		for _, vol := range vols {
-			if strings.Contains(vol, ":") {
-				pair := strings.SplitN(vol, ":", 2)
-				interpolatedVols = append(interpolatedVols, env.Interpolate(pair[0]))
-				interpolatedVols = append(interpolatedVols, env.Interpolate(pair[1]))
-			} else {
-				interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
-				interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
-			}
+// vols returns the binds necessary to mount the volumes defined in Volumes (which is a pipeline option)
+func (b *DockerBox) vols(env *util.Environment) ([]string, error) {
+	binds := []string{}
+
+	vols := util.SplitSpaceOrComma(b.config.Volumes)
+	var interpolatedVols []string
+	for _, vol := range vols {
+		if strings.Contains(vol, ":") {
+			pair := strings.SplitN(vol, ":", 2)
+			interpolatedVols = append(interpolatedVols, env.Interpolate(pair[0]))
+			interpolatedVols = append(interpolatedVols, env.Interpolate(pair[1]))
+		} else {
+			interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
+			interpolatedVols = append(interpolatedVols, env.Interpolate(vol))
 		}
-		b.volumes = interpolatedVols
-		for i := 0; i < len(b.volumes); i += 2 {
-			binds = append(binds, fmt.Sprintf("%s:%s:rw", b.volumes[i], b.volumes[i+1]))
+	}
+	b.volumes = interpolatedVols
+	for i := 0; i < len(b.volumes); i += 2 {
+		binds = append(binds, fmt.Sprintf("%s:%s:rw", b.volumes[i], b.volumes[i+1]))
+	}
+	return binds, nil
+}
+
+// copyStepsToContainer copies the directories under HostPath (which is a pipeline option) to the pipeline container.
+// This is equivalent to calling mounts() to mount the same directories, and must be used when the daemon is remote and binds are not possible.
+func (b *DockerBox) copyStepsToContainer(ctx context.Context, env *util.Environment, containerID string) error {
+	client, err := NewOfficialDockerClient(b.dockerOptions)
+	if err != nil {
+		return err
+	}
+
+	entries, err := ioutil.ReadDir(b.options.HostPath())
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Mode()&os.ModeSymlink == os.ModeSymlink {
+
+			sourceDirName := b.options.HostPath(entry.Name())
+			sourceDirName = strings.TrimRight(sourceDirName, "/")
+			destDirName := b.options.MntPath("")
+
+			// if the path is a symlink then follow it before calling TarPathWithRoot (since TarPathWithRoot ignores symlinks)
+			if entry.Mode()&os.ModeSymlink == os.ModeSymlink {
+				sourceDirName, err = filepath.EvalSymlinks(sourceDirName)
+				if err != nil {
+					return err
+				}
+			}
+
+			// create a tarball
+			tarfileName := path.Join(b.options.HostPath(), entry.Name()+".tar")
+			fw, err := os.Create(tarfileName)
+			if err != nil {
+				return err
+			}
+			defer fw.Close()
+
+			// the root of the tarball will the name of the current directory (before any link resolution)
+			tarRoot := entry.Name()
+
+			err = util.TarPathWithRoot(fw, sourceDirName, tarRoot)
+
+			if err != nil {
+				return err
+			}
+			// now create a reader on the tarball
+			tarFile, err := os.Open(tarfileName)
+			tarReader := bufio.NewReader(tarFile)
+
+			// copy the tarball to the container, where it will be untarred in the specified location
+			err = client.CopyToContainer(ctx, containerID, destDirName, tarReader, types.CopyToContainerOptions{})
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	return binds, nil
+	return nil
 }
 
 // RunServices runs the services associated with this box
@@ -332,14 +399,19 @@ func (b *DockerBox) getContainerName() string {
 }
 
 // Run creates the container and runs it.
+// If the pipeline has requested direct docker daemon access then rddURI will be set to the daemon URI that we will give the pipeline access to.
 func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI string) (*docker.Container, error) {
 	dockerNetworkName, err := b.GetDockerNetworkName()
 	if err != nil {
 		return nil, err
 	}
+
 	if rddURI != "" {
+		// The pipeline has requested direct docker daemon access
+		env.Add("DOCKER_NETWORK_NAME", dockerNetworkName)
 		env.Add("DOCKER_HOST", rddURI)
 		if strings.HasPrefix(rddURI, "unix://") {
+			// rddURI is a socket: make it available to the pipeline container
 			dockerSocket := strings.TrimPrefix(rddURI, "unix://")
 			b.config.Volumes = fmt.Sprintf("%s,%s:%s", b.config.Volumes, dockerSocket, dockerSocket)
 			b.options.EnableVolumes = true
@@ -378,7 +450,26 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 		ports = exposedPorts(b.config.Ports)
 	}
 
-	binds, err := b.binds(env)
+	binds := []string{}
+	stepsMounted := false
+	if rddURI == "" || b.dockerOptions.RddServiceURI == "" {
+		// We haven't specified direct docker access or we're running CLI locally, so CLI is running on same host as daemon
+		// Obtain the binds necessary to mount the step directories under HostPath (which is a pipeline option).
+		extraBinds, err := b.mounts(env)
+		if err != nil {
+			return nil, err
+		}
+		binds = append(binds, extraBinds...)
+		stepsMounted = true
+	}
+	if b.options.EnableVolumes {
+		// Obtain the binds necessary to mount the volumes defined in Volumes (which is a pipeline option).
+		volBinds, err := b.vols(env)
+		if err != nil {
+			return nil, err
+		}
+		binds = append(binds, volBinds...)
+	}
 
 	portsToBind := []string{""}
 
@@ -445,6 +536,13 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 		return nil, err
 	}
 
+	if !stepsMounted {
+		// We didn't mount the step directories so we need to copy them to the container
+		err = b.copyStepsToContainer(ctx, env, container.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	b.container = container
 	return container, nil
 }

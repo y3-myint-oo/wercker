@@ -1,5 +1,9 @@
 ## unreleased
 
+## v1.0.1296 (2018-07-20)
+
+- Add support for direct docker daemon access
+
 ## v1.0.1281 (2018-07-05)
 
 - Send auth token with steps request to allow access to private steps (#445)

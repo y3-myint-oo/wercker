@@ -522,19 +522,15 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	shared.config = rawConfig
 	sr.WerckerYamlContents = stringConfig
 
-	// Init the pipeline
-	pipeline, err := p.GetPipeline(rawConfig)
-	if err != nil {
-		sr.Message = err.Error()
-		return shared, err
-	}
-	//If yaml file contains "docker:true" - configure a Remote Docker Daemon for the build
-	//by accessing Remote Docker Daemon API Service
+	// If the pipeline has requested direct docker daemon access then rddURI will be set to the daemon URI that we will give the pipeline access to
 	rddURI := ""
-	if pipeline.Docker() {
+
+	if rawConfig.PipelinesMap[p.options.Pipeline].Docker {
+		// pipeline specifies "docker:true" which means it requires direct access to a docker daemon
 		if p.dockerOptions.RddServiceURI != "" {
+			// a Remote Docker Daemon API Service is available (i.e. we're not running locally) so use it to provision a daemon
 			p.emitter.Emit(core.Logs, &core.LogsArgs{
-				Logs: "Setting up Remote Docker environment..",
+				Logs: "Setting up Remote Docker environment...\n",
 			})
 			rddImpl, err := rdd.New(p.dockerOptions.RddServiceURI, p.dockerOptions.RddProvisionTimeout, p.options.RunID)
 			if err != nil {
@@ -552,10 +548,30 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 				return shared, err
 			}
 			p.rdd = rddImpl
+
+			// Configure the pipeline to run in the remote docker daemon (overriding whatever it would use otherwise).
+			p.dockerOptions.Host = rddURI
 		} else {
+			// We're running locally. No need to override the docker daemon that it would use.
+
+			// Give the pipeline access to the local docker daemon.
 			rddURI = p.dockerOptions.Host
 		}
 	}
+
+	// Do some sanity checks before starting
+	err = dockerlocal.RequireDockerEndpoint(runnerCtx, p.dockerOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	// Init the pipeline
+	pipeline, err := p.GetPipeline(rawConfig)
+	if err != nil {
+		sr.Message = err.Error()
+		return shared, err
+	}
+
 	pipeline.InitEnv(runnerCtx, p.options.HostEnv)
 	shared.pipeline = pipeline
 

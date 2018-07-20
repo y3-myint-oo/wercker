@@ -1054,12 +1054,6 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	// Debug information
 	DumpOptions(options)
 
-	// Do some sanity checks before starting
-	err = dockerlocal.RequireDockerEndpoint(cmdCtx, dockerOptions)
-	if err != nil {
-		return nil, soft.Exit(err)
-	}
-
 	// Make sure that "include-file" is read from the config file before copying code
 	r.GetConfig()
 
