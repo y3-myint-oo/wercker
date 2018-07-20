@@ -2,7 +2,7 @@
 
 ## v1.0.1296 (2018-07-20)
 
-- Add support for direct docker daemon access
+- Add support for direct docker daemon access (#442)
 
 ## v1.0.1281 (2018-07-05)
 
