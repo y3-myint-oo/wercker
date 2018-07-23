@@ -181,6 +181,19 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 		}
 	}
 
+	// Validate the group name. If omitted entirely then default to the base name. When present
+	// check for an org specification and disallow spps/workspaces parameters. A simple group name
+	// without the organization is passed along and does not invoke server-side filtering.
+	if cp.GroupName == "" {
+		cp.GroupName = cp.Basename
+	} else {
+		if strings.IndexByte(cp.GroupName, '@') != -1 {
+			if cp.AppNames != "" || cp.Workflows != "" || cp.OrgList != "" || cp.AllOption {
+				cp.Logger.Fatal("--all, --orgs, --apps or --workflows not allowed with groupname@organization")
+			}
+		}
+	}
+
 	cp.startTheRunners()
 	if cp.StorePath != "" {
 		message := fmt.Sprintf("Output is written to the %s directory", cp.StorePath)
