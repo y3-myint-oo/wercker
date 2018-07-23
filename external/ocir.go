@@ -67,8 +67,10 @@ func (cp *RunnerParams) getRemoteImage() (*LatestImage, error) {
 		return nil, err
 	}
 
-	var latestImageName string
+	latestImageName := ""
 	var latestImageTime time.Time
+	latestImageDigest := ""
+
 	// I hope this never changes...
 	basis := "iad.ocir.io/odx-pipelines/wercker/wercker-runner"
 
@@ -88,12 +90,51 @@ func (cp *RunnerParams) getRemoteImage() (*LatestImage, error) {
 				continue
 			}
 
+			if cp.Debug {
+				message := fmt.Sprintf("Repos: %s --> %s", tm, imageItem.Tag)
+				cp.Logger.Debugln(message)
+			}
+
+			// For production only ignore any tag that isn't latest or master
+			if cp.ProdType {
+				if imageItem.Tag != "latest" && !strings.HasPrefix(imageItem.Tag, "master") {
+					continue
+				}
+			}
+
+			// Match the digest from latest with the proper master entry. That will be the
+			// image name returned to the caller.
+			if cp.ProdType {
+				if imageItem.Tag == "latest" {
+					latestImageDigest = imageItem.Digest
+					cp.Logger.Debugln("Remote latest digest is " + imageItem.Digest)
+					continue
+				} else {
+					// Compare the digest to the latest, when the same we have the image name with commit-id
+					// for whatever was tagged as latest.
+					if imageItem.Digest == latestImageDigest {
+						latestImageTime = tm
+						latestImageName = fmt.Sprintf("%s:%s", basis, imageItem.Tag)
+						if cp.Debug {
+							message := fmt.Sprintf("Selecting %s as doopleganger for discovered latest tag", latestImageName)
+							cp.Logger.Debugln(message)
+						}
+						break
+					}
+				}
+			}
+
 			if tm.After(latestImageTime) {
 				latestImageTime = tm
 				latestImageName = fmt.Sprintf("%s:%s", basis, imageItem.Tag)
 			}
 		}
 	}
+
+	if latestImageName == "" {
+		return nil, fmt.Errorf("no runner image exists in the remote repository")
+	}
+
 	return &LatestImage{
 		ImageName: latestImageName,
 		Created:   latestImageTime,
@@ -151,10 +192,10 @@ func (cp *RunnerParams) pullNewerImage(imageName string) error {
 	err := cp.client.PullImage(opts, auth)
 
 	if err != nil {
-		message := fmt.Sprintf("Failed to update external runner image: %s", err)
+		message := fmt.Sprintf("Failed to update runner image: %s", err)
 		cp.Logger.Error(message)
 	} else {
-		message := fmt.Sprintf("Pulled newer external runner Docker image")
+		message := fmt.Sprintf("Pulled newer runner Docker image")
 		cp.Logger.Infoln(message)
 		message = fmt.Sprintf("Image: %s", imageName)
 		cp.Logger.Infoln(message)

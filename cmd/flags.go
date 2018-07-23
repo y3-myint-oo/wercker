@@ -59,7 +59,7 @@ var (
 	// These flags control where we store local files
 	LocalPathFlags = []cli.Flag{
 		cli.StringFlag{Name: "working-dir", Value: "./.wercker", Usage: "Path where we store working files.", EnvVar: "WERCKER_WORKING_DIR"},
-		cli.StringFlag{Name: "local-file-store", Usage: "Path where external runner stores pipeline files", Hidden: true},
+		cli.StringFlag{Name: "local-file-store", Usage: "Path where runner stores pipeline files", Hidden: true},
 	}
 
 	// These flags control paths on the guest and probably shouldn't change
@@ -263,9 +263,17 @@ var (
 	}
 	ExternalRunnerConfigureFlagSet = [][]cli.Flag{
 		ExternalRunnerConfigureFlags,
+		ExternalRunnerInternalFlags,
 	}
 	ExternalRunnerStartFlagSet = [][]cli.Flag{
+		ExternalRunnerCommonFlags,
 		ExternalRunnerStartFlags,
+		ExternalRunnerInternalFlags,
+	}
+
+	ExternalRunnerInternalFlags = []cli.Flag{
+		cli.StringFlag{Name: "image-name", Usage: "docker image override for development purposes", Hidden: true},
+		cli.StringFlag{Name: "using", Value: "prod", Usage: "set to prod or dev to select Wercker site", Hidden: true},
 	}
 
 	ExternalRunnerCommonFlags = []cli.Flag{
@@ -274,12 +282,10 @@ var (
 	}
 
 	ExternalRunnerConfigureFlags = []cli.Flag{
-		cli.BoolFlag{Name: "pull", Usage: "pull latest external runner image from the remote repository"},
+		cli.BoolFlag{Name: "pull", Usage: "pull latest runner image from the remote repository"},
 	}
 
 	ExternalRunnerStartFlags = []cli.Flag{
-		cli.StringFlag{Name: "name", Usage: "specify an instance name for runner(s)"},
-		cli.StringFlag{Name: "group", Usage: "specify the group name for runner(s)"},
 		cli.StringFlag{Name: "orgs", Usage: "comma separated list of organization names"},
 		cli.StringFlag{Name: "apps", Usage: "comma separated list of application names, format: org-name/app-name for each. "},
 		cli.StringFlag{Name: "workflows", Usage: "comma separated list of workflows, format: org-name/app-name/workflow-name for each."},
@@ -287,9 +293,9 @@ var (
 		cli.StringFlag{Name: "logpath", Usage: "local file system path for storing log files"},
 		cli.IntFlag{Name: "runners", Value: 1, Usage: "number of runners to start, default is one"},
 		cli.IntFlag{Name: "poll-frequency", Value: 5, Usage: "number of seconds between runner polling for a job"},
-		cli.StringFlag{Name: "token", Usage: "bearer token for external runner", EnvVar: "WERCKER_RUNNER_TOKEN"},
+		cli.StringFlag{Name: "token", Usage: "bearer token for runner", EnvVar: "WERCKER_RUNNER_TOKEN"},
 		cli.BoolFlag{Name: "all", Usage: "specify that all jobs allowed to the user are eligible for selection by this runner"},
-		cli.BoolFlag{Name: "nowait", Usage: "run the external runner(s) in the background, default is false"},
+		cli.BoolFlag{Name: "nowait", Usage: "start the runner(s) in the background, default is false"},
 	}
 )
 

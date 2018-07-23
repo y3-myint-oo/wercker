@@ -954,6 +954,7 @@ type WerckerRunnerOptions struct {
 	LoggerPath     string
 	BearerToken    string
 	DockerEndpoint string
+	ImageName      string
 	NumRunners     int
 	Polling        int
 	AllOption      bool
@@ -982,10 +983,11 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 	dhost, _ := c.String("docker-host")
 	nwait, _ := c.Bool("nowait")
 	pulls, _ := c.Bool("pull")
+	image, _ := c.String("image-name")
 
 	prod := false
-	erBaseURL, _ := c.String("base-url")
-	if erBaseURL != "" && erBaseURL == DEFAULT_BASE_URL {
+	site, _ := c.String("using")
+	if site == "prod" {
 		prod = true
 	}
 
@@ -1016,5 +1018,6 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 		DockerEndpoint: dhost,
 		PullRemote:     pulls,
 		Production:     prod,
+		ImageName:      image,
 	}, nil
 }

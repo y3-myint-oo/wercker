@@ -384,11 +384,11 @@ var (
 	runnerCommand = cli.Command{
 		Name:      "runner",
 		ShortName: "run",
-		Usage:     "manage external pipeline runners",
+		Usage:     "unmanaged pipeline runners",
 		Subcommands: []cli.Command{
 			{
 				Name:  "start",
-				Usage: "start external runner(s) - This feature is a paid option.",
+				Usage: "start runner(s)",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
 					err := setupExternalRunnerParams(c, params)
@@ -396,11 +396,11 @@ var (
 						params.RunDockerController(false)
 					}
 				},
-				Flags: FlagsFor(ExternalRunnerStartFlagSet, GlobalFlagSet),
+				Flags: FlagsFor(ExternalRunnerStartFlagSet),
 			},
 			{
 				Name:  "stop",
-				Usage: "stop external runner(s) - This feature is a paid option.",
+				Usage: "stop runner(s)",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
 					err := setupExternalRunnerParams(c, params)
@@ -413,7 +413,7 @@ var (
 			},
 			{
 				Name:  "status",
-				Usage: "display the status of started external runner(s) - This feature is a paid option.",
+				Usage: "display the status of started runner(s)",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
 					err := setupExternalRunnerParams(c, params)
@@ -425,7 +425,7 @@ var (
 			},
 			{
 				Name:  "configure",
-				Usage: "setup Docker configuration for external runner operation - This feature is a paid option.",
+				Usage: "setup Docker configuration for runner operation: getting the runner image",
 				Action: func(c *cli.Context) {
 					params := external.NewDockerController()
 					err := setupExternalRunnerParams(c, params)
@@ -433,7 +433,7 @@ var (
 						params.CheckRegistryImages()
 					}
 				},
-				Flags: ExternalRunnerConfigureFlags,
+				Flags: FlagsFor(ExternalRunnerConfigureFlagSet),
 			},
 		},
 	}
@@ -468,6 +468,7 @@ func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) er
 	params.DockerEndpoint = opts.DockerEndpoint
 	params.Logger = cliLogger
 	params.ProdType = opts.Production
+	params.ImageName = opts.ImageName
 
 	return nil
 }

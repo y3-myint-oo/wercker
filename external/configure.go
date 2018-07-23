@@ -24,6 +24,15 @@ func (cp *RunnerParams) getDockerClient() error {
 
 // Describe the local image and return the Image structure
 func (cp *RunnerParams) getLocalImage() (*docker.Image, error) {
+	// Handle image override when development and an overriding image name supplied.
+	if !cp.ProdType && cp.OverrideImage != "" {
+		cp.ImageName = cp.OverrideImage
+		image, err := cp.client.InspectImage(cp.ImageName)
+		if err != nil {
+			return nil, err
+		}
+		return image, err
+	}
 
 	opts := docker.ListImagesOptions{
 		All: true,
@@ -40,21 +49,60 @@ func (cp *RunnerParams) getLocalImage() (*docker.Image, error) {
 	// in the tail end of the tag. When more than one instance is found then take the
 	// most recent image.
 
+	taggedLatest := "" // To remember a latest image
+	latestMaster := "" // To remember latest master.
 	var imageName string
 	var latest int64 = 0
 	for _, image := range images {
 		for _, slice := range image.RepoTags {
-			if strings.Contains(slice, "wercker/wercker-runner:") {
-				if latest < image.Created {
-					latest = image.Created
-					imageName = slice
-					break
+			if !strings.Contains(slice, "wercker/wercker-runner:") {
+				continue
+			}
+
+			if cp.Debug {
+				tokens := strings.Split(slice, ":")
+				ima, err := cp.client.InspectImage(slice)
+				if err == nil {
+					message := fmt.Sprintf("Local: %s --> %s", ima.Created, tokens[1])
+					cp.Logger.Debugln(message)
+				}
+			}
+
+			if cp.ProdType && strings.HasSuffix(slice, ":latest") {
+				// Remember latest present for production
+				taggedLatest = slice
+			}
+
+			if latest < image.Created {
+				latest = image.Created
+				imageName = slice
+				// Remember latest from master branch
+				if strings.Contains(slice, ":master") {
+					latestMaster = slice
 				}
 			}
 		}
 	}
+	// Nothing was found.
 	if imageName == "" {
 		return nil, nil
+	}
+
+	// Decide what image is to be used according to development or production.
+	if cp.ProdType {
+		// Production must be either latest or the most recent master
+		if taggedLatest != "" {
+			// When tagged as latest foind then use it.
+			imageName = taggedLatest
+		} else {
+			if latestMaster != "" {
+				// Using latest master branch
+				imageName = latestMaster
+			} else {
+				// Nothing there for production.
+				return nil, nil
+			}
+		}
 	}
 	cp.ImageName = imageName
 
@@ -71,6 +119,8 @@ func (cp *RunnerParams) getLocalImage() (*docker.Image, error) {
 // If local is older than remote then give user the option to download the remote
 // If neither exists then fail immediately
 func (cp *RunnerParams) CheckRegistryImages() error {
+
+	cp.Logger.Debug("Running with ProdType: ", cp.ProdType)
 
 	err := cp.getDockerClient()
 	if err != nil {
@@ -105,10 +155,10 @@ func (cp *RunnerParams) CheckRegistryImages() error {
 			if cp.PullRemote {
 				return cp.pullNewerImage(remoteImage.ImageName)
 			} else {
-				message := "There is a newer external runner image available from Oracle."
+				message := "There is a newer runner image available from Oracle"
 				cp.Logger.Info(message)
-				cp.Logger.Info(fmt.Sprintf("Image: %s, created: %s",
-					remoteImage.ImageName, remoteImage.Created))
+				cp.Logger.Info(fmt.Sprintf("Image: %s", remoteImage.ImageName))
+				cp.Logger.Info(fmt.Sprintf("Created: %s", remoteImage.Created))
 				cp.Logger.Infoln("Execute \"wercker runner configure --pull\" to update your system.")
 				return nil
 			}
@@ -116,12 +166,13 @@ func (cp *RunnerParams) CheckRegistryImages() error {
 	}
 
 	if localImage == nil {
-		cp.Logger.Infoln("No Docker external runner image exists in the local repository.")
+		cp.Logger.Infoln("No Docker runner image exists in the local repository.")
 		cp.Logger.Fatal("Execute \"wercker runner configure --pull\" to pull the required image.")
 	} else {
-		message := "Local Docker repository external runner image is up-to-date."
+		message := "Local Docker repository runner image is up-to-date."
 		cp.Logger.Infoln(message)
-		cp.Logger.Infoln(fmt.Sprintf("Image: %s, created: %s", cp.ImageName, localImage.Created))
+		cp.Logger.Infoln(fmt.Sprintf("Image: %s", cp.ImageName))
+		cp.Logger.Infoln(fmt.Sprintf("Created: %s", localImage.Created))
 	}
 	return nil
 }

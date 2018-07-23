@@ -62,17 +62,18 @@ type RunnerParams struct {
 	PollFreq       int    // Polling frequency
 	DockerEndpoint string // docker enndpoint
 	// following values are set during processing
-	Basename   string // base name for container creation
-	Logger     *util.LogEntry
-	client     *docker.Client
-	containers []*runnerContainer
-	ProdType   bool // Set to true for production
+	Basename      string // base name for container creation
+	Logger        *util.LogEntry
+	client        *docker.Client
+	containers    []*runnerContainer
+	ProdType      bool // Set to true for production
+	OverrideImage string
 }
 
 // NewDockerController -
 func NewDockerController() *RunnerParams {
 	return &RunnerParams{
-		ImageName: "wercker-runner:latest",
+		ImageName: "iad.ocir.io/odx-pipelines/wercker/wercker-runner:latest",
 		ProdType:  false,
 	}
 }
@@ -104,11 +105,11 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 	// for a newer version from the remote repository.
 	image, err := cp.getLocalImage()
 	if err != nil {
-		cp.Logger.Fatal(fmt.Sprintf("unable to access external runner Docker image: %s", err))
+		cp.Logger.Fatal(fmt.Sprintf("unable to access runner Docker image: %s", err))
 		return
 	}
 	if image == nil {
-		cp.Logger.Fatal("No external runner image exists in your local Docker repository. Use wercker runner configure command.")
+		cp.Logger.Fatal("No runner image exists in your local Docker repository. Use wercker runner configure command.")
 		return
 	}
 
@@ -146,7 +147,7 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 				cname := stripSlashFromName(dockerContainer.Name)
 				stats := dockerContainer.State.Status
 				if stats != "running" {
-					detail := fmt.Sprintf("Inactive external runner container %s is being removed.", cname)
+					detail := fmt.Sprintf("Inactive runner container %s is being removed.", cname)
 					cp.Logger.Print(detail)
 					opts := docker.RemoveContainerOptions{
 						ID: dockerContainer.ID,
@@ -154,18 +155,18 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 					cp.client.RemoveContainer(opts)
 					continue
 				}
-				detail := fmt.Sprintf("External runner container: %s is active, status=%s", cname, stats)
+				detail := fmt.Sprintf("Runner container: %s is active, status=%s", cname, stats)
 				cp.Logger.Print(detail)
 			}
 			return
 		}
-		cp.Logger.Print("There are no external runners active.")
+		cp.Logger.Print("There are no runners active.")
 		return
 	}
 
 	// OK, we want to start something.
 	if len(runners) > 0 {
-		detail := fmt.Sprintf("External runner(s) for %s already started.", cp.Basename)
+		detail := fmt.Sprintf("Runner(s) for %s already started.", cp.Basename)
 		cp.Logger.Print(detail)
 		return
 	}
@@ -200,6 +201,8 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 		cp.Logger.Info(message)
 	}
 
+	cp.Logger.Debug("Running with ProdType: ", cp.ProdType)
+
 	if !cp.NoWait {
 		// Foreground processing. The Wercker command continues to run while
 		// there are runner containers active.
@@ -209,7 +212,7 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 		// written because the Wecker command is ending and we cannot spawn
 		// loggers to output the logs from the containers. Log information must
 		// be obtained using the docker log command.
-		cp.Logger.Info("Use the Wercker runner stop command with the same name to terminate the started external runners.")
+		cp.Logger.Info("Use the Wercker runner stop command with the same name to terminate the started runner(s).")
 	}
 }
 
@@ -373,7 +376,7 @@ func (cp *RunnerParams) startTheContainer(name string, cmd []string) error {
 		return err
 	}
 
-	message := fmt.Sprintf("External runner %s has started.", name)
+	message := fmt.Sprintf("Runner %s has started.", name)
 	cp.Logger.Print(message)
 	cp.Logger.Debug(fmt.Sprintf("Docker image: %s", cp.ImageName))
 
@@ -414,7 +417,7 @@ func runDocker(args []string) error {
 // container is killed, then waited for it to exit. Then delete the container.
 func (cp *RunnerParams) shutdownRunners(runners []*docker.Container) {
 	if len(runners) == 0 {
-		cp.Logger.Fatal("There are no external runners to terminate")
+		cp.Logger.Fatal("There are no runners to terminate")
 		return
 	}
 
@@ -425,7 +428,7 @@ func (cp *RunnerParams) shutdownRunners(runners []*docker.Container) {
 		stats := dockerContainer.State.Status
 		// If container is not in a running state then remove it
 		if stats != "running" {
-			detail := fmt.Sprintf("Inactive external runner container %s is removed.", containerName)
+			detail := fmt.Sprintf("Inactive runner container %s is removed.", containerName)
 			cp.Logger.Print(detail)
 			opts := docker.RemoveContainerOptions{
 				ID: dockerContainer.ID,
@@ -456,13 +459,13 @@ func (cp *RunnerParams) shutdownRunners(runners []*docker.Container) {
 					ID: container.ID,
 				}
 				cp.client.RemoveContainer(opts)
-				message := fmt.Sprintf("External runner %s has terminated.", containerName)
+				message := fmt.Sprintf("Runner %s has terminated.", containerName)
 				cp.Logger.Print(message)
 				break
 			}
 		}
 	}
-	var finalMessage = fmt.Sprintf("External runner(s) for %s stopped.", cp.Basename)
+	var finalMessage = fmt.Sprintf("Runner(s) for %s stopped.", cp.Basename)
 	cp.Logger.Print(finalMessage)
 }
 
@@ -485,7 +488,7 @@ func (cp *RunnerParams) waitForExternalRunners() {
 	runnerCleanupHandler := &util.SignalHandler{
 		ID: "runner-cleanup",
 		F: func() bool {
-			cp.Logger.Warnln("Interrupt detected, cleaning up external runner containers and shutting down")
+			cp.Logger.Warnln("Interrupt detected, cleaning up runner containers and shutting down")
 
 			// Kill each container and gracefully terminate
 			for _, p := range cp.containers {
@@ -521,7 +524,7 @@ func (cp *RunnerParams) waitForExternalRunners() {
 					ID: dockerContainer.ID,
 				}
 				cp.client.RemoveContainer(opts)
-				message := fmt.Sprintf("External runner %s has been stopped.", rc.containerName)
+				message := fmt.Sprintf("Runner %s has been stopped.", rc.containerName)
 				cp.Logger.Print(message)
 				cp.containers = append(cp.containers[:i], cp.containers[i+1:]...)
 				break
