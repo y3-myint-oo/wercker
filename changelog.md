@@ -1,5 +1,12 @@
 ## unreleased
 
+- Remove external from runner messages
+- Support server side configuration group name <name@group-name>
+- Fix runner help to only show related options
+- Add --using=prod|dev to switch between app/dev servers
+- Update runner configure to get latest runner image when production. 
+- Add runner image override for development use
+
 ## v1.0.1296 (2018-07-20)
 
 - Add support for direct docker daemon access (#442)
