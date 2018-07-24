@@ -30,6 +30,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
+	"github.com/pkg/errors"
 	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
@@ -107,7 +108,8 @@ func NewDockerBox(boxConfig *core.BoxConfig, options *core.PipelineOptions, dock
 
 	client, err := NewDockerClient(dockerOptions)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "NewDockerClient failed for %s",
+			dockerOptions.Host)
 	}
 	return &DockerBox{
 		Name:            name,
@@ -157,7 +159,7 @@ func (b *DockerBox) mounts(env *util.Environment) ([]string, error) {
 	// volumes := make(map[string]struct{})
 	entries, err := ioutil.ReadDir(b.options.HostPath())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "ReadDir failed for %s", b.options.HostPath())
 	}
 	for _, entry := range entries {
 		if entry.IsDir() || entry.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -203,12 +205,12 @@ func (b *DockerBox) vols(env *util.Environment) ([]string, error) {
 func (b *DockerBox) copyStepsToContainer(ctx context.Context, env *util.Environment, containerID string) error {
 	client, err := NewOfficialDockerClient(b.dockerOptions)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "NewDockerClient failed for %s", b.Name)
 	}
 
 	entries, err := ioutil.ReadDir(b.options.HostPath())
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "copySteps ReadDir failed for %s", b.options.HostPath())
 	}
 	for _, entry := range entries {
 		if entry.IsDir() || entry.Mode()&os.ModeSymlink == os.ModeSymlink {
@@ -221,7 +223,7 @@ func (b *DockerBox) copyStepsToContainer(ctx context.Context, env *util.Environm
 			if entry.Mode()&os.ModeSymlink == os.ModeSymlink {
 				sourceDirName, err = filepath.EvalSymlinks(sourceDirName)
 				if err != nil {
-					return err
+					return errors.Wrapf(err, "could not evaluate sym links for %s", sourceDirName)
 				}
 			}
 
@@ -229,7 +231,7 @@ func (b *DockerBox) copyStepsToContainer(ctx context.Context, env *util.Environm
 			tarfileName := path.Join(b.options.HostPath(), entry.Name()+".tar")
 			fw, err := os.Create(tarfileName)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "could not create tarball %s", tarfileName)
 			}
 			defer fw.Close()
 
@@ -239,7 +241,8 @@ func (b *DockerBox) copyStepsToContainer(ctx context.Context, env *util.Environm
 			err = util.TarPathWithRoot(fw, sourceDirName, tarRoot)
 
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "tar failed for %s at root %s",
+					sourceDirName, tarRoot)
 			}
 			// now create a reader on the tarball
 			tarFile, err := os.Open(tarfileName)
@@ -248,7 +251,8 @@ func (b *DockerBox) copyStepsToContainer(ctx context.Context, env *util.Environm
 			// copy the tarball to the container, where it will be untarred in the specified location
 			err = client.CopyToContainer(ctx, containerID, destDirName, tarReader, types.CopyToContainerOptions{})
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "copy to container failed for %s to directory %s",
+					containerID, destDirName)
 			}
 		}
 	}
@@ -266,11 +270,12 @@ func (b *DockerBox) RunServices(ctx context.Context, env *util.Environment) erro
 		b.logger.Debugln("Startinq service:", service.GetName())
 		_, err := service.Run(ctxWithServiceCount, env, linkedEnvVars)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "run of service %s failed", service.GetName())
 		}
 		svcEnvVar, err := b.prepareSvcDockerEnvVar(service, env, linkedEnvVars)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "service environment prepare failed on %s",
+				service.GetName())
 		}
 		linkedEnvVars = append(linkedEnvVars, svcEnvVar...)
 	}
@@ -351,7 +356,7 @@ func exposedPortMaps(dockerHost string, published []string) ([]ExposedPortMap, e
 	if dockerHost != "" {
 		docker, err := url.Parse(dockerHost)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "parsing host failed %s", dockerHost)
 		}
 		if docker.Scheme == "unix" {
 			dockerHost = "localhost"
@@ -379,7 +384,7 @@ func (b *DockerBox) RecoverInteractive(cwd string, pipeline core.Pipeline, step 
 	container, err := b.Restart()
 	if err != nil {
 		b.logger.Panicln("box restart failed")
-		return err
+		return errors.Wrap(err, "box restart failed")
 	}
 
 	env := []string{}
@@ -389,7 +394,7 @@ func (b *DockerBox) RecoverInteractive(cwd string, pipeline core.Pipeline, step 
 	env = append(env, fmt.Sprintf("cd %s", cwd))
 	cmd, err := shlex.Split(b.cmd)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "recovery split failure %s", b.cmd)
 	}
 	return client.AttachInteractive(container.ID, cmd, env)
 }
@@ -403,7 +408,7 @@ func (b *DockerBox) getContainerName() string {
 func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI string) (*docker.Container, error) {
 	dockerNetworkName, err := b.GetDockerNetworkName()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "get of docker network name failed")
 	}
 
 	if rddURI != "" {
@@ -419,7 +424,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 	}
 	err = b.RunServices(ctx, env)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "running services failed")
 	}
 	b.logger.Debugln("Starting base box:", b.Name)
 
@@ -434,13 +439,13 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 	if b.entrypoint != "" {
 		entrypoint, err = shlex.Split(b.entrypoint)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "docker run split failed %s", b.entrypoint)
 		}
 	}
 
 	cmd, err := shlex.Split(b.cmd)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "docker run cmd split failed %s", b.cmd)
 	}
 
 	var ports map[docker.Port]struct{}
@@ -457,7 +462,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 		// Obtain the binds necessary to mount the step directories under HostPath (which is a pipeline option).
 		extraBinds, err := b.mounts(env)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "docker run mounts failed")
 		}
 		binds = append(binds, extraBinds...)
 		stepsMounted = true
@@ -466,7 +471,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 		// Obtain the binds necessary to mount the volumes defined in Volumes (which is a pipeline option).
 		volBinds, err := b.vols(env)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "docker run vols failed")
 		}
 		binds = append(binds, volBinds...)
 	}
@@ -526,21 +531,24 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 		})
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to create docker container %s",
+			b.getContainerName())
 	}
 
 	b.logger.Debugln("Docker Container:", container.ID)
 
 	err = client.StartContainer(container.ID, hostConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to start docker container %s/%s",
+			b.getContainerName(), container.ID)
 	}
 
 	if !stepsMounted {
 		// We didn't mount the step directories so we need to copy them to the container
 		err = b.copyStepsToContainer(ctx, env, container.ID)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "failed to copy steps to container %s/%s",
+				b.getContainerName(), container.ID)
 		}
 	}
 	b.container = container
@@ -576,7 +584,7 @@ func (b *DockerBox) Clean() error {
 		b.logger.WithField("Container", container).Debugln("Removing container:", container)
 		err := client.RemoveContainer(opts)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to remove container %s", container)
 		}
 	}
 
@@ -596,7 +604,7 @@ func (b *DockerBox) Restart() (*docker.Container, error) {
 	client := b.client
 	err := client.RestartContainer(b.container.ID, 1)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to restart container %s", b.container.ID)
 	}
 	return b.container, nil
 }
@@ -643,7 +651,7 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 
 	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "emitter from context failed to fetch")
 	}
 	repo := env.Interpolate(b.repository)
 
@@ -653,7 +661,7 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if b.config.Auth.AzureClientSecret == "" && b.config.Auth.AwsSecretKey == "" {
 		repository, registry, err := InferRegistryAndRepository(ctx, repo, b.config.Auth.Registry, b.options)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "infering registry in fetch failed")
 		}
 		repo = repository
 		b.config.Auth.Registry = registry
@@ -666,7 +674,7 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 
 	authenticator, err := dockerauth.GetRegistryAuthenticator(b.config.Auth)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "fetch could not find authenticator")
 	}
 
 	b.repository = authenticator.Repository(repo)
@@ -675,7 +683,7 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	if b.dockerOptions.Local {
 		image, err := client.InspectImage(env.Interpolate(b.Name))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "fetch failed to inspect image %s", b.Name)
 		}
 		b.image = image
 		return image, nil
@@ -700,11 +708,11 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	}
 	err = client.PullImage(options, authConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "fetch failed to pull image")
 	}
 	image, err := client.InspectImage(env.Interpolate(b.Name))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "fetch could not inspect %s", b.Name)
 	}
 	b.image = image
 
@@ -730,7 +738,7 @@ func (b *DockerBox) Commit(name, tag, message string, cleanup bool) (*docker.Ima
 	}
 	image, err := client.CommitContainer(commitOptions)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "docker commit failure for %s", b.container.ID)
 	}
 
 	if cleanup {

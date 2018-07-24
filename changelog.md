@@ -1,5 +1,6 @@
 ## unreleased
 
+- Wrap error messages for docker failure triage (pull 454)
 - Remove external from runner messages
 - Support server side configuration group name <name@group-name>
 - Fix runner help to only show related options
