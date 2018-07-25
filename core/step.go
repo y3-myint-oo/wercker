@@ -415,9 +415,32 @@ func (s *ExternalStep) Fetch() (string, error) {
 
 	hostStepPath := s.HostPath()
 
-	err = shutil.CopyTree(stepPath, hostStepPath, nil)
+	ignore := func(src string, entries []os.FileInfo) []string {
+		var ignored = []string{}
+		workingdirAbspath, _ := filepath.Abs(s.options.WorkingDir)
+		for _, entry := range entries {
+			abspath, _ := filepath.Abs(fmt.Sprintf("%s/%s", src, entry.Name()))
+			if strings.HasPrefix(abspath, workingdirAbspath) {
+				ignored = append(ignored, entry.Name())
+			}
+		}
+		s.logger.Println(fmt.Sprintf("ignored = %v", ignored))
+		return ignored
+	}
+
+	stepPathFileInfo, err := os.Lstat(stepPath)
+	if stepPathFileInfo.Mode() & os.ModeSymlink != 0 {
+	    stepPath, err = os.Readlink(stepPath)
+	    if err != nil {
+			return "", err
+		}
+	}
+	err = shutil.CopyTree(stepPath, hostStepPath, &shutil.CopyTreeOptions{Symlinks:false,
+                               Ignore:ignore,
+                               CopyFunction:shutil.Copy,
+                               IgnoreDanglingSymlinks:false})
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	// Now that we have the code, load any step config we might find
