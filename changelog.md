@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1301 (2018-07-25)
+
 - Wrap error messages for docker failure triage (pull 454)
 - Remove external from runner messages
 - Support server side configuration group name <name@group-name>
