@@ -17,6 +17,7 @@ package dockerlocal
 import (
 	"archive/tar"
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -27,6 +28,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
+	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
@@ -47,6 +49,7 @@ type DockerBuildStep struct {
 	buildargs     map[string]*string
 	labels        map[string]string
 	nocache       bool
+	authConfigs   map[string]types.AuthConfig
 }
 
 // NewDockerBuildStep is a special step for doing docker builds
@@ -79,7 +82,7 @@ func NewDockerBuildStep(stepConfig *core.StepConfig, options *core.PipelineOptio
 	}, nil
 }
 
-func (s *DockerBuildStep) configure(env *util.Environment) {
+func (s *DockerBuildStep) configure(env *util.Environment) error {
 	if imagename, ok := s.data["image-name"]; ok {
 		// note that Execute() fails the step (naming the image-name property) if this is not set
 		// we don't let the user specify the tag directly, but prepend it with the build ID
@@ -150,11 +153,37 @@ func (s *DockerBuildStep) configure(env *util.Environment) {
 		}
 	}
 
+	if registryAuthConfig, ok := s.data["registry-auth-config"]; ok {
+		in := []byte(registryAuthConfig)
+		var raw map[string]types.AuthConfig
+		err := json.Unmarshal(in, &raw)
+		if err != nil {
+			return err
+		}
+		authConfigs := make(map[string]types.AuthConfig)
+		for key, value := range raw {
+			registry := dockerauth.NormalizeRegistry(env.Interpolate(key))
+			if registry != "" {
+				if value.Username != "" && value.Password != "" {
+					authConfig := types.AuthConfig{
+						Username: env.Interpolate(value.Username),
+						Password: env.Interpolate(value.Password),
+					}
+					authConfigs[registry] = authConfig
+				}
+			}
+		}
+		s.authConfigs = authConfigs
+	}
+	return nil
 }
 
 // InitEnv parses our data into our config
 func (s *DockerBuildStep) InitEnv(ctx context.Context, env *util.Environment) error {
-	s.configure(env)
+	err := s.configure(env)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -245,6 +274,7 @@ func (s *DockerBuildStep) buildImage(ctx context.Context, sess *core.Session, ta
 		PullParent:     !s.dockerOptions.Local, // always pull images unless docker-local is specified
 		NoCache:        s.nocache,
 		NetworkMode:    networkName,
+		AuthConfigs:    s.authConfigs,
 	}
 
 	imageBuildResponse, err := officialClient.ImageBuild(ctx, tarReader, officialBuildOpts)
