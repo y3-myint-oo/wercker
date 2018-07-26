@@ -69,9 +69,9 @@ func testBuild(ctx context.Context, t *testing.T, filesToTar filesToTar) (int, e
 	stepConfig := &core.StepConfig{
 		ID: "internal/docker-build",
 		Data: map[string]string{
-			"dockerfile":           "Dockerfile",
-			"image-name":           "my-image-name",
-			"registry-auth-config": "{\"https://index.docker.io/v1\": {\"Username\": \"wercker\", \"Password\": \"password\"}}",
+			"dockerfile": "Dockerfile",
+			"image-name": "my-image-name",
+			//"registry-auth-config": "{\"https://index.docker.io/v1\": {\"Username\": \"wercker\", \"Password\": \"password\"}}",
 		},
 	}
 
@@ -89,11 +89,11 @@ func testBuild(ctx context.Context, t *testing.T, filesToTar filesToTar) (int, e
 
 	step.InitEnv(ctx, env)
 
-	for key, value := range step.authConfigs {
-		require.Equal(t, key, "https://index.docker.io/v1")
-		require.Equal(t, value.Username, "wercker")
-		require.Equal(t, value.Password, "password")
-	}
+	// for key, value := range step.authConfigs {
+	// 	require.Equal(t, key, "https://index.docker.io/v1")
+	// 	require.Equal(t, value.Username, "wercker")
+	// 	require.Equal(t, value.Password, "password")
+	// }
 
 	// Create a tarfile for sending to the docker ImageBuild command
 	tarfileName := "docker_build_test_data.tar"
