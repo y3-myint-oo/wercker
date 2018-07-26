@@ -44,7 +44,7 @@ type DockerRunStep struct {
 	OriginalContainerName string
 	Image                 string
 	ContainerID           string
-	Auth                  dockerauth.CheckAccessOptions `yaml:",inline"`
+	auth                  dockerauth.CheckAccessOptions `yaml:",inline"`
 }
 
 type BoxDockerRun struct {
@@ -150,6 +150,18 @@ func (s *DockerRunStep) configure(env *util.Environment) error {
 	if user, ok := s.data["user"]; ok {
 		s.User = env.Interpolate(user)
 	}
+
+	opts := dockerauth.CheckAccessOptions{}
+	if username, ok := s.data["username"]; ok {
+		opts.Username = env.Interpolate(username)
+	}
+	if password, ok := s.data["password"]; ok {
+		opts.Password = env.Interpolate(password)
+	}
+	if registry, ok := s.data["registry"]; ok {
+		opts.Registry = dockerauth.NormalizeRegistry(env.Interpolate(registry))
+	}
+	s.auth = opts
 	return nil
 }
 
@@ -195,7 +207,8 @@ func (s *DockerRunStep) Fetch() (string, error) {
 // Execute creates the container and starts the container.
 func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
 	boxConfig := &core.BoxConfig{
-		ID: s.Image,
+		ID:   s.Image,
+		Auth: s.auth,
 	}
 	dockerRunDockerBox, err := NewBoxDockerRun(boxConfig, s.options, s.dockerOptions)
 	if err != nil {

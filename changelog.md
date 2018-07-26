@@ -3,6 +3,7 @@
 ## v1.0.1302 (2018-07-26)
 
 - Authentication added for docker build (#449)
+- Authentication added for internal/docker-run step (#451)
 
 ## v1.0.1301 (2018-07-25)
 
