@@ -1,10 +1,9 @@
 ## unreleased
 
-- Fix panic when no docker daemon is running (#457)
-- Remove unused journal logging (#431)
-
 ## v1.0.1302 (2018-07-26)
 
+- Fix panic when no docker daemon is running (#457)
+- Remove unused journal logging (#431)
 - Authentication added for docker build (#449)
 - Authentication added for internal/docker-run step (#451)
 
