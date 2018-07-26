@@ -1079,7 +1079,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	logger.Println(f.Info("Running step", "setup environment"))
 	timer.Reset()
 	shared, err := r.SetupEnvironment(cmdCtx)
-	if shared.box != nil {
+	if shared != nil && shared.box != nil {
 		if options.ShouldRemove {
 			defer shared.box.Clean()
 		}
