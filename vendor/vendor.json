@@ -529,12 +529,6 @@
 			"revisionTime": "2017-08-23T03:51:30Z"
 		},
 		{
-			"checksumSHA1": "d50/+u/LFlXvEV10HiEoXB9OsGg=",
-			"path": "github.com/coreos/go-systemd/journal",
-			"revision": "7b2428fec40033549c68f54e26e89e7ca9a9ce31",
-			"revisionTime": "2016-02-02T21:14:25Z"
-		},
-		{
 			"checksumSHA1": "0y5phFHOrFHf/2w+q/E4FZHQXVI=",
 			"path": "github.com/davecgh/go-spew/spew",
 			"revision": "adab96458c51a58dc1783b3335dcce5461522e75",
@@ -2129,12 +2123,6 @@
 			"path": "github.com/wercker/docker-reg-client/registry",
 			"revision": "290be6ffcbe21d8097a4124bb630bbf4a52d9e7e",
 			"revisionTime": "2016-04-26T21:06:27Z"
-		},
-		{
-			"checksumSHA1": "pfJwfPWta8ntozOSzfH/sKfhZw8=",
-			"path": "github.com/wercker/journalhook",
-			"revision": "158dbb9fcbfcc3386437e516bc71b58690606e91",
-			"revisionTime": "2017-07-17T18:23:50Z"
 		},
 		{
 			"checksumSHA1": "jtXdKs1ERw05BWF1scVY+9DmmII=",

@@ -43,7 +43,6 @@ type GlobalOptions struct {
 	BaseURL         string
 	StepRegistryURL string
 	Debug           bool
-	Journal         bool
 	Verbose         bool
 	ShowColors      bool
 
@@ -80,7 +79,6 @@ func NewGlobalOptions(c util.Settings, e *util.Environment) (*GlobalOptions, err
 	stepsRegistryURL, _ := c.GlobalString("steps-registry")
 	baseURL = strings.TrimRight(baseURL, "/")
 	debug, _ := c.GlobalBool("debug")
-	journal, _ := c.GlobalBool("journal")
 	verbose, _ := c.GlobalBool("verbose")
 	// TODO(termie): switch negative flag
 	showColors, _ := c.GlobalBool("no-colors")
@@ -102,7 +100,6 @@ func NewGlobalOptions(c util.Settings, e *util.Environment) (*GlobalOptions, err
 		BaseURL:         baseURL,
 		StepRegistryURL: stepsRegistryURL,
 		Debug:           debug,
-		Journal:         journal,
 		Verbose:         verbose,
 		ShowColors:      showColors,
 

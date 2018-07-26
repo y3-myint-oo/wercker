@@ -54,8 +54,6 @@ GLOBAL OPTIONS
   Wercker output will not use colors (does not apply to step output).
 --debug::
   Print additional debug information.
---journal::
-  Send logs to systemd-journald. Suppresses stdout logging.
 --wercker-endpoint::
   Deprecated.
 --base-url::

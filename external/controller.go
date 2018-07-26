@@ -55,7 +55,6 @@ type RunnerParams struct {
 	RunnerCount    int    // Number of runner containers
 	ShutdownFlag   bool   // Shutdown if true
 	Debug          bool   // debug enabled
-	Journal        bool   // journal logging
 	AllOption      bool   // --all option
 	NoWait         bool   // --nowait options
 	PullRemote     bool   // --pull option
@@ -279,9 +278,6 @@ func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 	if cp.Debug == true {
 		cmd = append(cmd, "-d")
 		cmd = append(cmd, "--showlogs")
-	}
-	if cp.Journal == true {
-		cmd = append(cmd, "--journal")
 	}
 	if cp.AllOption == true {
 		cmd = append(cmd, "--runner-all")

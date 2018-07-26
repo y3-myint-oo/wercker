@@ -116,7 +116,7 @@ var (
 		cli.BoolFlag{Name: "verbose", Usage: "Print more information."},
 		cli.BoolFlag{Name: "no-colors", Usage: "Wercker output will not use colors (does not apply to step output)."},
 		cli.BoolFlag{Name: "debug", Usage: "Print additional debug information."},
-		cli.BoolFlag{Name: "journal", Usage: "Send logs to systemd-journald. Suppresses stdout logging."},
+		cli.BoolFlag{Name: "journal", Usage: "Not used anymore", Hidden: true},
 	}
 
 	// These flags are advanced dev settings

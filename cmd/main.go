@@ -32,7 +32,6 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/mreiferson/go-snappystream"
-	"github.com/wercker/journalhook"
 	"github.com/wercker/wercker/api"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/docker"
@@ -461,7 +460,6 @@ func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) er
 	// to the runner service
 	params.PullRemote = opts.PullRemote
 	params.Debug = opts.GlobalOptions.Debug
-	params.Journal = opts.GlobalOptions.Journal
 	params.AllOption = opts.AllOption
 	params.NoWait = opts.NoWait
 	params.PollFreq = opts.Polling
@@ -509,10 +507,6 @@ func GetApp() *cli.App {
 		} else {
 			util.RootLogger().Formatter = &util.TerseFormatter{}
 			util.RootLogger().SetLevel("info")
-		}
-		if ctx.GlobalBool("journal") {
-			util.RootLogger().Hooks.Add(&journalhook.JournalHook{})
-			util.RootLogger().Out = ioutil.Discard
 		}
 		// Register the global signal handler
 		util.GlobalSigint().Register(os.Interrupt)
