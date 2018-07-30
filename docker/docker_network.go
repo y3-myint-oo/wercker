@@ -81,6 +81,7 @@ func (b *DockerBox) CleanDockerNetwork() error {
 				b.logger.Errorln("Error while removing docker network", err)
 				return err
 			}
+			b.options.DockerNetworkName = ""
 		} else {
 			b.logger.Debugln("Network does not exist")
 		}
