@@ -4,6 +4,7 @@
 
 - Clean the docker box option when cleaning the network (#462)
 - RDD Cleanup for errors/aborts (#461)
+- Introduced access control for RDD (#463) 
 
 ## v1.0.1302 (2018-07-26)
 
