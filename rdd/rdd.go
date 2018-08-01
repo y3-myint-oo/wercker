@@ -45,6 +45,7 @@ type RDD struct {
 	runID               string
 	rddClient           rddpb.RddClient
 	rddDetails          *rddDetails
+	rddDeprovRequested  bool
 }
 
 type rddDetails struct {
@@ -97,6 +98,8 @@ func (rdd *RDD) Provision(ctx context.Context) (string, error) {
 		return "", cli.NewExitError(errMsg, 1)
 	}
 
+	rdd.rddDetails = &rddDetails{rddProvisionRequestID: rddResponseID}
+
 	if rdd.rddProvisionTimeout <= 0*time.Second {
 		log.Warningf("Invalid timeout value from input rdd-provision-timeout of %s, Default value of 300s will be used.", rdd.rddProvisionTimeout.String())
 		rdd.rddProvisionTimeout = 300 * time.Second
@@ -113,6 +116,9 @@ func (rdd *RDD) Provision(ctx context.Context) (string, error) {
 			return "", cli.NewExitError(errMsg, 1)
 
 		case <-tick:
+			if rdd.rddDeprovRequested {
+				return "", fmt.Errorf("Remote Docker Daemon deprovisioning requested before provision was complete for runID: %s", rdd.runID)
+			}
 			rddStatusRequest := &rddpb.RDDStatusRequest{Id: rddResponseID}
 			rddStatusResponse, err := rdd.rddClient.GetStatus(ctx, rddStatusRequest)
 			if err != nil {
@@ -133,11 +139,12 @@ func (rdd *RDD) Provision(ctx context.Context) (string, error) {
 					log.Error(errMsg)
 					return "", cli.NewExitError(errMsg, 1)
 				}
-				rdd.rddDetails = &rddDetails{rddProvisionRequestID: rddResponseID, rddURI: rddURI}
-				err := verify(ctx, rdd.rddDetails)
+				err := rdd.verify(ctx, rddURI)
 				if err != nil {
+					rdd.Deprovision()
 					return "", err
 				}
+				rdd.rddDetails.rddURI = rddURI
 				return rddURI, nil
 
 			}
@@ -149,21 +156,36 @@ func (rdd *RDD) Provision(ctx context.Context) (string, error) {
 
 //Deprovision - Deprovisions a RDD previously provisioned for a build
 func (rdd *RDD) Deprovision() {
+	if rdd.rddDeprovRequested {
+		log.Warnf("RDD Deprovisioning already requested for runID: %s", rdd.runID)
+		return
+	}
+	rdd.rddDeprovRequested = true
+	if rdd.rddDetails == nil || rdd.rddDetails.rddProvisionRequestID == "" {
+		log.Debug("No RDD to deprovision")
+		return
+	}
+	log.Infof("Deprovisioning RDD for runID: %s", rdd.runID)
 	rddDeProvRequest := &rddpb.RDDDeprovisionRequest{Id: rdd.rddDetails.rddProvisionRequestID}
 	_, err := rdd.rddClient.Deprovision(context.TODO(), rddDeProvRequest)
 	if err != nil {
 		errMsg := fmt.Sprintf("Error invoking Deprovision() from rdd service at %s for runID %s, Error: %s. Ignoring", rdd.rddServiceEndpoint, rdd.runID, err.Error())
 		log.Warning(errMsg)
+		return
 	}
+	log.Infof("Finished deprovisioning RDD for runID: %s", rdd.runID)
 }
 
 // verify the RDD url by connecting to it and retrieving its version
-func verify(ctx context.Context, rddDetails *rddDetails) error {
+func (rdd *RDD) verify(ctx context.Context, rddURI string) error {
+	log.Debugf("Verifying RDD at %s", rddURI)
 	maxRetries := 5
 	try := 0
-	rddURI := rddDetails.rddURI
 
 	for try < maxRetries {
+		if rdd.rddDeprovRequested {
+			return fmt.Errorf("Remote Docker Daemon deprovisioning requested before verification was complete for runID: %s", rdd.runID)
+		}
 		try++
 
 		dockerClient, err := client.NewClientWithOpts(client.WithHost(rddURI))

@@ -464,6 +464,10 @@ func (p *Runner) StartBuild(options *core.PipelineOptions) *util.Finisher {
 // StartFullPipeline emits a FullPipelineFinished when the Finisher is called.
 func (p *Runner) StartFullPipeline(options *core.PipelineOptions) *util.Finisher {
 	return util.NewFinisher(func(result interface{}) {
+		//Deprovision any Remote Docker Daemon configured for this build
+		if p.rdd != nil {
+			p.rdd.Deprovision()
+		}
 		r, ok := result.(*core.FullPipelineFinishedArgs)
 		if !ok {
 			return
@@ -537,12 +541,25 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 				sr.Message = err.Error()
 				return shared, err
 			}
+
+			rddCleanupHandler := &util.SignalHandler{
+				ID: "rdd-cleanup",
+				F: func() bool {
+					rddImpl.Deprovision()
+					return true
+				},
+			}
+			util.GlobalSigint().Add(rddCleanupHandler)
+			util.GlobalSigterm().Add(rddCleanupHandler)
+
 			rddURI, err = rddImpl.Provision(runnerCtx)
 			if err != nil {
+				rddImpl.Deprovision()
 				sr.Message = err.Error()
 				return shared, err
 			}
 			if rddURI == "" {
+				rddImpl.Deprovision()
 				err = fmt.Errorf("Unable to provision RDD for runID %s ", p.options.RunID)
 				sr.Message = err.Error()
 				return shared, err
@@ -661,6 +678,9 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		ID: "box-cleanup",
 		F: func() bool {
 			p.logger.Errorln("Interrupt detected, cleaning up containers and shutting down")
+			if p.rdd != nil {
+				p.rdd.Deprovision()
+			}
 			box.Stop()
 			if p.options.ShouldRemove {
 				box.Clean()
