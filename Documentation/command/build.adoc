@@ -147,4 +147,6 @@ OPTIONS
   Timeout for Remote Docker Daemon provisioning from Remote Docker Daemon API Service
   Default;;
     300s
+--allow-rdd::
+  Access control flag for remote docker deamon run.
   

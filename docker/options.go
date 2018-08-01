@@ -41,6 +41,7 @@ type Options struct {
 	NetworkName         string
 	RddServiceURI       string
 	RddProvisionTimeout time.Duration
+	AllowRDD            bool
 }
 
 func guessAndUpdateDockerOptions(ctx context.Context, opts *Options, e *util.Environment) {
@@ -128,6 +129,7 @@ func NewOptions(ctx context.Context, c util.Settings, e *util.Environment) (*Opt
 	dockerNetworkName, _ := c.String("docker-network")
 	rddServiceURI, _ := c.String("rdd-service-uri")
 	rddProvisionTimeout, _ := c.Duration("rdd-provision-timeout")
+	allowRDD, _ := c.Bool("allow-rdd")
 
 	speculativeOptions := &Options{
 		Host:                dockerHost,
@@ -145,6 +147,7 @@ func NewOptions(ctx context.Context, c util.Settings, e *util.Environment) (*Opt
 		NetworkName:         dockerNetworkName,
 		RddServiceURI:       rddServiceURI,
 		RddProvisionTimeout: rddProvisionTimeout,
+		AllowRDD:            allowRDD,
 	}
 
 	// We're going to try out a few settings and set DockerHost if

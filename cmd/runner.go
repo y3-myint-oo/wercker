@@ -532,6 +532,13 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	if rawConfig.PipelinesMap[p.options.Pipeline].Docker {
 		// pipeline specifies "docker:true" which means it requires direct access to a docker daemon
 		if p.dockerOptions.RddServiceURI != "" {
+			if !p.dockerOptions.AllowRDD {
+				p.emitter.Emit(core.Logs, &core.LogsArgs{
+					Logs: "User doesn't have Remote docker deamon access rights.",
+				})
+				return shared, fmt.Errorf("User doesn't have Remote docker deamon access rights.")
+			}
+
 			// a Remote Docker Daemon API Service is available (i.e. we're not running locally) so use it to provision a daemon
 			p.emitter.Emit(core.Logs, &core.LogsArgs{
 				Logs: "Setting up Remote Docker environment...\n",

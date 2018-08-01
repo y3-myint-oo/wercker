@@ -54,6 +54,7 @@ var (
 		cli.StringFlag{Name: "docker-network", Value: "", Usage: "Docker network name.", Hidden: true},
 		cli.StringFlag{Name: "rdd-service-uri", Value: "", Usage: "Rempte Docker Daemon API Service endpoint", Hidden: true},
 		cli.DurationFlag{Name: "rdd-provision-timeout", Value: 300 * time.Second, Usage: "Timeout for Remote Docker Daemon provisioning from Remote Docker Daemon API Service", Hidden: true},
+		cli.BoolFlag{Name: "allow-rdd", Usage: "Access control flag for Remote Docker Deamon run", Hidden: true},
 	}
 
 	// These flags control where we store local files
