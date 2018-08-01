@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1308 (2018-08-01)
+
 - Clean the docker box option when cleaning the network (#462)
 - RDD Cleanup for errors/aborts (#461)
 
