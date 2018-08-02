@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1309 (2018-08-02)
+
 - Better error message when failing to create docker conatainer (#469)
 
 ## v1.0.1308 (2018-08-01)
