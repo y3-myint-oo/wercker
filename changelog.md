@@ -1,5 +1,7 @@
 ## unreleased
 
+- Better error message when failing to create docker conatainer (#469)
+
 ## v1.0.1308 (2018-08-01)
 
 - Clean the docker box option when cleaning the network (#462)

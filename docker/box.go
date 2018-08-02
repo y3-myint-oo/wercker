@@ -531,8 +531,9 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 		})
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create docker container %s",
-			b.getContainerName())
+		return nil, errors.Wrapf(err,
+			"failed to create docker container %s from image %s:%s",
+			b.getContainerName(), b.ShortName, b.tag)
 	}
 
 	b.logger.Debugln("Docker Container:", container.ID)
