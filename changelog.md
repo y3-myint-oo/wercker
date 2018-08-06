@@ -1,6 +1,6 @@
 ## unreleased
 
-## 1.0.1313  (2018-08-06)
+## v1.0.1313  (2018-08-06)
 
 - internal/docker-run should fail pileline if image does not exist (#468)
 
