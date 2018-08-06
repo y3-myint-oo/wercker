@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/pkg/errors"
 	"github.com/wercker/wercker/auth"
@@ -709,11 +709,11 @@ func (b *DockerBox) Fetch(ctx context.Context, env *util.Environment) (*docker.I
 	}
 	err = client.PullImage(options, authConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetch failed to pull image")
+		return nil, errors.Wrapf(err, "fetch failed to pull image %s", b.ShortName)
 	}
 	image, err := client.InspectImage(env.Interpolate(b.Name))
 	if err != nil {
-		return nil, errors.Wrapf(err, "fetch could not inspect %s", b.Name)
+		return nil, errors.Wrapf(err, "fetch could not inspect %s", b.ShortName)
 	}
 	b.image = image
 

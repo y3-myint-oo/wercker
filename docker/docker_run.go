@@ -17,6 +17,7 @@ package dockerlocal
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
@@ -181,12 +182,13 @@ func getCorrectImageName(env *util.Environment, s *DockerRunStep) (string, error
 		return "", err
 	}
 
-	// local image should exists with a prepend of build id.
-	image, err := client.InspectImage(s.options.RunID + i)
+	// Determine whether the specified image-name corresponds to an image created by a prior docker-build step (in which case image-name will be pre-pended by the build id).
+	localImageName := s.options.RunID + i
+	_, err = client.InspectImage(localImageName)
 	if err != nil {
 		return i, nil
 	}
-	return image.ID, nil
+	return localImageName, nil
 
 }
 
@@ -206,6 +208,7 @@ func (s *DockerRunStep) Fetch() (string, error) {
 
 // Execute creates the container and starts the container.
 func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
+
 	boxConfig := &core.BoxConfig{
 		ID:   s.Image,
 		Auth: s.auth,
@@ -215,12 +218,19 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 		s.logger.Errorln("Error in creating a box from boxConfig ", boxConfig)
 		return 1, err
 	}
+
+	// Pull the image from the registry unless it was created by a prior docker-build step.
+	if !strings.HasPrefix(s.Image, s.options.RunID) {
+		_, err = dockerRunDockerBox.Fetch(ctx, s.Env())
+		if err != nil {
+			return 1, err
+		}
+	}
+
 	networkName, err := dockerRunDockerBox.GetDockerNetworkName()
 	if err != nil {
 		return 1, err
 	}
-
-	dockerRunDockerBox.Fetch(ctx, s.Env())
 
 	client, err := NewDockerClient(s.dockerOptions)
 	if err != nil {

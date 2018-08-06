@@ -1,5 +1,9 @@
 ## unreleased
 
+## 1.0.1313  (2018-08-06)
+
+- internal/docker-run should fail pileline if image does not exist (#468)
+
 ## v1.0.1309 (2018-08-02)
 
 - Better error message when failing to create docker conatainer (#469)
