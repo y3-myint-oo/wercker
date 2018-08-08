@@ -1,5 +1,9 @@
 ## unreleased
 
+## v1.0.1315 (2018-08-08)
+
+- Do not crash if the requested pipeline is not defined in the yaml file (#473)
+
 ## v1.0.1313  (2018-08-06)
 
 - internal/docker-run should fail pileline if image does not exist (#468)
