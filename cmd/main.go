@@ -436,6 +436,48 @@ var (
 			},
 		},
 	}
+
+	workflowCommand = cli.Command{
+		Name:      "workflow",
+		ShortName: "w",
+		Usage:     "run workflows locally (experimental)",
+		Action: func(c *cli.Context) {
+			ctx := context.Background()
+			envfile := c.GlobalString("environment")
+			env := util.NewEnvironment(os.Environ()...)
+			env.LoadFile(envfile)
+			env.PassThruProxyConfig()
+
+			// We do not want `target` to be set by NewCLISettings()
+			// because it will conflict with the workflow name.
+			settings := util.NewCLISettings(c)
+			settings.CheapSettings = util.NewCheapSettings(map[string]interface{}{})
+
+			opts, err := core.NewWorkflowOptions(settings, env)
+			if err != nil {
+				cliLogger.Errorln("Invalid options\n", err)
+				os.Exit(1)
+			}
+
+			opts.WorkflowName = c.Args().Get(0)
+			if opts.WorkflowName == "" {
+				cliLogger.Errorln("Missing workflow name to run")
+				os.Exit(1)
+			}
+
+			dockerOptions, err := dockerlocal.NewOptions(ctx, settings, env)
+			if err != nil {
+				cliLogger.Errorln("Invalid Docker options\n", err)
+				os.Exit(1)
+			}
+
+			err = cmdWorkflow(ctx, opts, dockerOptions)
+			if err != nil {
+				cliLogger.Fatalf("Unable to run workflow: %s", err)
+			}
+		},
+		Flags: FlagsFor(WorkflowFlagSet, WerckerInternalFlagSet),
+	}
 )
 
 // Setup parameters for external runners
@@ -499,6 +541,7 @@ func GetApp() *cli.App {
 		dockerCommand,
 		stepCommand,
 		runnerCommand,
+		workflowCommand,
 	}
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {
@@ -1053,7 +1096,7 @@ func executePipeline(cmdCtx context.Context, options *core.PipelineOptions, dock
 	r.GetConfig()
 
 	// Start copying code
-	logger.Println(f.Info("Executing pipeline"))
+	logger.Println(f.Info("Executing pipeline", options.Pipeline))
 	timer.Reset()
 	_, err = r.EnsureCode()
 	if err != nil {

@@ -247,6 +247,34 @@ func (r *RawPipelineConfig) UnmarshalYAML(unmarshal func(interface{}) error) err
 	return nil
 }
 
+// WorkflowPipelineConfig is the data type for a pipeline in workflow.
+type WorkflowPipelineConfig struct {
+	Name             string   `yaml:"name"`
+	PipelineName     string   `yaml:"pipelineName"`
+	Requires         []string `yaml:"requires"`
+	ArtifactPipeline string   `yaml:"artifactPipeline"`
+}
+
+// GetYAMLPipelineName returns name of the pipeline to run.
+//
+// The need for two parameters, `name` and `pipelineName`, comes from
+// the fact that it should possible to use the same pipeline under
+// the different names in the same workflow (e.g. `deploy-staging` and
+// `deploy-production` with the actual `deploy` pipeline).
+func (wpc *WorkflowPipelineConfig) GetYAMLPipelineName() string {
+	if wpc.PipelineName != "" {
+		return wpc.PipelineName
+	}
+
+	return wpc.Name
+}
+
+// WorkflowConfig is the data type for a workflow in yml file.
+type WorkflowConfig struct {
+	Name      string                   `yaml:"name"`
+	Pipelines []WorkflowPipelineConfig `yaml:"pipelines"`
+}
+
 // Config is the data type for wercker.yml
 type Config struct {
 	Box               *RawBoxConfig   `yaml:"box"`
@@ -256,6 +284,18 @@ type Config struct {
 	SourceDir         string          `yaml:"source-dir"`
 	IgnoreFile        string          `yaml:"ignore-file"`
 	PipelinesMap      map[string]*RawPipelineConfig
+	Workflows         []*WorkflowConfig `yaml:"workflows"`
+}
+
+// GetWorkflow returns the workflow by name.
+func (c *Config) GetWorkflow(name string) *WorkflowConfig {
+	for _, w := range c.Workflows {
+		if w.Name == name {
+			return w
+		}
+	}
+
+	return nil
 }
 
 // RawConfig is the unwrapper for Config
@@ -269,6 +309,7 @@ var configReservedWords = map[string]struct{}{
 	"no-response-timeout": struct{}{},
 	"services":            struct{}{},
 	"source-dir":          struct{}{},
+	"workflows":           struct{}{},
 }
 
 // UnmarshalYAML in this case is a little involved due to the myriad shapes our

@@ -1,5 +1,7 @@
 ## unreleased
 
+- Experimental support for running workflows in yml locally (#471)
+
 ## v1.0.1315 (2018-08-08)
 
 - Do not crash if the requested pipeline is not defined in the yaml file (#473)

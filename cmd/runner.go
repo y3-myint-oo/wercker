@@ -221,12 +221,25 @@ func (p *Runner) EnsureCode() (string, error) {
 
 		copyOpts := &shutil.CopyTreeOptions{Ignore: ignoreFunc, CopyFunction: shutil.Copy, Symlinks: true}
 		os.Rename(projectDir, fmt.Sprintf("%s-%s", projectDir, uuid.NewRandom().String()))
-		p.logger.Printf(p.formatter.Info(copyingMessage, projectDir))
 
-		err = shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
-		if err != nil {
-			return projectDir, err
+		if len(p.options.ProjectPathsByPipeline) == 0 {
+			p.logger.Printf(p.formatter.Info(copyingMessage, projectDir))
+			err = shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
+			if err != nil {
+				return projectDir, err
+			}
+		} else {
+			for pipelineName, pipelineOutputPath := range p.options.ProjectPathsByPipeline {
+				pipelineProjectDir := path.Join(projectDir, pipelineName)
+
+				p.logger.Printf(p.formatter.Info(copyingMessage, pipelineProjectDir))
+				err = shutil.CopyTree(pipelineOutputPath, pipelineProjectDir, copyOpts)
+				if err != nil {
+					return projectDir, err
+				}
+			}
 		}
+
 	}
 	return projectDir, nil
 }

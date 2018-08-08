@@ -34,7 +34,7 @@ import (
 )
 
 var (
-	DEFAULT_BASE_URL = "https://app.wercker.com"
+	DEFAULT_BASE_URL      = "https://app.wercker.com"
 	DEFAULT_STEP_REGISTRY = "https://steps.wercker.com"
 )
 
@@ -336,6 +336,9 @@ type PipelineOptions struct {
 	ProjectID   string
 	ProjectURL  string
 	ProjectPath string
+
+	// Used when running workflows with fan-in locally.
+	ProjectPathsByPipeline map[string]string
 
 	CommandTimeout    int
 	NoResponseTimeout int
@@ -1016,5 +1019,24 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 		PullRemote:     pulls,
 		Production:     prod,
 		ImageName:      image,
+	}, nil
+}
+
+// WorkflowOptions currently uses PipelineOptions
+// along with its contructor for simplicity.
+type WorkflowOptions struct {
+	PipelineOptions PipelineOptions
+	WorkflowName    string
+}
+
+// NewWorkflowOptions is a contructor for WorkflowOptions.
+func NewWorkflowOptions(c util.Settings, e *util.Environment) (*WorkflowOptions, error) {
+	pipelineOpts, err := NewPipelineOptions(c, e)
+	if err != nil {
+		return nil, err
+	}
+
+	return &WorkflowOptions{
+		PipelineOptions: *pipelineOpts,
 	}, nil
 }

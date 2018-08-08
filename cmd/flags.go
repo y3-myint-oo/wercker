@@ -249,6 +249,12 @@ var (
 		ConfigFlags,
 	}
 
+	WorkflowFlagSet = [][]cli.Flag{
+		LocalPathFlags,
+		DockerFlags,
+		ConfigFlags,
+	}
+
 	WerckerInternalFlagSet = [][]cli.Flag{
 		InternalPathFlags,
 		ReporterFlags,
