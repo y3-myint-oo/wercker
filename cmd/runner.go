@@ -526,6 +526,14 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	shared.config = rawConfig
 	sr.WerckerYamlContents = stringConfig
 
+	// Check that the requested pipeline is defined in the yaml file.
+	if _, ok := rawConfig.PipelinesMap[p.options.Pipeline]; !ok {
+		err := fmt.Errorf("No pipeline named %s", p.options.Pipeline)
+		sr.Message = err.Error()
+		return shared, err
+
+	}
+
 	// If the pipeline has requested direct docker daemon access then rddURI will be set to the daemon URI that we will give the pipeline access to
 	rddURI := ""
 
