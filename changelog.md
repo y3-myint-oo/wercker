@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1316 (2018-08-09)
+
 - Experimental support for running workflows in yml locally (#471)
 
 ## v1.0.1315 (2018-08-08)
