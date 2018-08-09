@@ -141,6 +141,12 @@ func (s *EnvironmentSuite) TestExport() {
 	s.Equal(env.Export(), expected)
 }
 
+func (s *EnvironmentSuite) TestExportHidden() {
+	env := NewEnvironment("PUBLIC=foo$12", "PRIVATE=zed#23$67^ac_M.c-k>yx")
+	expected := []string{`export PUBLIC='"foo$12"'`, `export PRIVATE='"zed#23$67^ac_M.c-k>yx"'`}
+	s.Equal(expected, env.ExportHidden())
+}
+
 func (s *EnvironmentSuite) TestLoadFile() {
 	env := NewEnvironment("PUBLIC=foo")
 	expected := [][]string{

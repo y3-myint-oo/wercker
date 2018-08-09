@@ -244,7 +244,7 @@ func (p *BasePipeline) ExportEnvironment(sessionCtx context.Context, sess *Sessi
 	// Export the hidden variables separately
 	sess.HideLogs()
 	defer sess.ShowLogs()
-	exit, _, err = sess.SendChecked(sessionCtx, p.Env().Hidden.Export()...)
+	exit, _, err = sess.SendChecked(sessionCtx, p.Env().Hidden.ExportHidden()...)
 	if err != nil {
 		return err
 	}
