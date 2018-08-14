@@ -215,7 +215,7 @@ func (p *Runner) EnsureCode() (string, error) {
 		}
 
 		// This is a hack to get rid of complaint that builds folder does not exist.
-		if p.options.LocalFileStore != "" {
+		if p.options.LocalFileStore != "" || p.options.ShouldStoreOCI {
 			os.MkdirAll(fmt.Sprintf("%s/builds", p.options.WorkingDir), 0700)
 		}
 
@@ -826,7 +826,7 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 			return sr, err
 		}
 
-		if artifact != nil && p.options.ShouldStoreS3 {
+		if artifact != nil && p.options.ShouldStore {
 			artificer := dockerlocal.NewArtificer(p.options, p.dockerOptions)
 			err = artificer.Upload(artifact)
 			if err != nil {

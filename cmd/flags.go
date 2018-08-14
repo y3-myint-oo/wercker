@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/wercker/wercker/core"
-	cli "gopkg.in/urfave/cli.v1"
+	"gopkg.in/urfave/cli.v1"
 )
 
 // Flags for setting these options from the CLI
@@ -109,6 +109,9 @@ var (
 			(~/.aws/config, AWS_SECRET_ACCESS_KEY, etc), or from the --aws-secret-key and
 			--aws-access-key flags. It will upload to a bucket defined by --s3-bucket in
 			the region named by --aws-region`},
+		cli.BoolFlag{Name: "store-oci",
+			Usage: `Store artifacts and containers in OCI object store.
+			This requires access to OCI credentials`},
 	}
 
 	// These flags affect our local execution environment
@@ -171,6 +174,18 @@ var (
 		cli.StringFlag{Name: "aws-region", Value: "us-east-1", Usage: "AWS region to use for artifact storage."},
 	}
 
+	// OCI bits
+	OCIFlags = []cli.Flag{
+		cli.StringFlag{Name: core.OCI_TENANCY_OCID, Usage: "Unique identifier for OCI tenancy.", EnvVar: "WERCKER_OCI_TENANCY_OCID"},
+		cli.StringFlag{Name: core.OCI_USER_OCID, Usage: "Unique identifier for OCI user.", EnvVar: "WERCKER_OCI_USER_OCID"},
+		cli.StringFlag{Name: core.OCI_REGION, Usage: "Name of OCI regsion.", EnvVar: "WERCKER_OCI_REGION"},
+		cli.StringFlag{Name: core.OCI_PRIVATE_KEY_PATH, Usage: "Path to private key.", EnvVar: "WERCKER_OCI_PRIVATE_KEY_PATH"},
+		cli.StringFlag{Name: core.OCI_PRIVATE_KEY_PASSPHRASE, Usage: "Optional passphrase.", EnvVar: "WERCKER_OCI_PRIVATE_KEY_PASSPHRASE"},
+		cli.StringFlag{Name: core.OCI_FINGERPRINT, Usage: "Fingerprint of the public key.", EnvVar: "WERCKER_OCI_FINGERPRINT"},
+		cli.StringFlag{Name: core.OCI_BUCKET, Value: "wercker-development", Usage: "Bucket for artifact storage."},
+		cli.StringFlag{Name: core.OCI_NAMESPACE, Usage: "OCI object store namespace."},
+	}
+
 	// Wercker Reporter settings
 	ReporterFlags = []cli.Flag{
 		cli.BoolFlag{Name: "report", Usage: "Report logs back to wercker (requires build-id, wercker-host, wercker-token).", Hidden: true},
@@ -194,7 +209,7 @@ var (
 	}
 
 	PullFlagSet = [][]cli.Flag{
-		[]cli.Flag{
+		{
 			cli.StringFlag{Name: "branch", Value: "", Usage: "Filter on this branch."},
 			cli.StringFlag{Name: "result", Value: "", Usage: "Filter on this result (passed or failed)."},
 			cli.StringFlag{Name: "output", Value: "./repository.tar", Usage: "Path to repository."},
@@ -222,6 +237,7 @@ var (
 		RegistryFlags,
 		ArtifactFlags,
 		AWSFlags,
+		OCIFlags,
 		ConfigFlags,
 	}
 
@@ -234,6 +250,7 @@ var (
 		RegistryFlags,
 		ArtifactFlags,
 		AWSFlags,
+		OCIFlags,
 		ConfigFlags,
 	}
 
@@ -246,6 +263,7 @@ var (
 		RegistryFlags,
 		ArtifactFlags,
 		AWSFlags,
+		OCIFlags,
 		ConfigFlags,
 	}
 
@@ -308,7 +326,7 @@ var (
 )
 
 func FlagsFor(flagSets ...[][]cli.Flag) []cli.Flag {
-	all := []cli.Flag{}
+	var all []cli.Flag
 	for _, flagSet := range flagSets {
 		for _, x := range flagSet {
 			all = append(all, x...)

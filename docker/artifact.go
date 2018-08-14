@@ -44,8 +44,12 @@ func NewArtificer(options *core.PipelineOptions, dockerOptions *Options) *Artifi
 			store = core.NewFileStore(options, options.GlobalOptions.LocalFileStore)
 			logger.Debug("Activating local-file-store")
 		} else {
+			logger.Debug("Activating s3-store")
 			store = core.NewS3Store(options.AWSOptions)
 		}
+	} else if options.ShouldStoreOCI {
+		logger.Debug("Activating oci-store")
+		store = core.NewObjectStore(options.OCIOptions)
 	}
 
 	return &Artificer{
@@ -88,7 +92,7 @@ func (a *Artificer) Collect(ctx context.Context, artifact *core.Artifact) (*core
 	return artifact, nil
 }
 
-// Upload an artifact to S3
+// Upload an artifact
 func (a *Artificer) Upload(artifact *core.Artifact) error {
 	return a.store.StoreFromFile(&core.StoreFromFileArgs{
 		Path:        artifact.HostTarPath,

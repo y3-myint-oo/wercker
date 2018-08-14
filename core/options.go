@@ -137,6 +137,56 @@ func NewAWSOptions(c util.Settings, e *util.Environment, globalOpts *GlobalOptio
 	}, nil
 }
 
+// OCI flags
+const OCI_TENANCY_OCID = "oci-tenancy-ocid"
+const OCI_USER_OCID = "oci-user-ocid"
+const OCI_REGION = "oci-region"
+const OCI_PRIVATE_KEY_PATH = "oci-private-kay-path"
+const OCI_PRIVATE_KEY_PASSPHRASE = "oci-private-key-passphrase"
+const OCI_FINGERPRINT = "oci-fingerprint"
+const OCI_BUCKET = "oci-bucket"
+const OCI_NAMESPACE = "oci-namespace"
+
+// OCIOptions for OCI Object Store
+type OCIOptions struct {
+	*GlobalOptions
+	TenancyOCID          string
+	UserOCID             string
+	Region               string
+	PrivateKeyPath       string
+	PrivateKeyPassphrase string
+	Fingerprint          string
+	Namespace            string
+	Bucket               string
+	ObjectName           string
+	LocalPath            string
+	TarBX                bool
+}
+
+// NewOCIOptions constructor
+func NewOCIOptions(c util.Settings, e *util.Environment, globalOpts *GlobalOptions) (*OCIOptions, error) {
+	tenancyOCID, _ := c.String(OCI_TENANCY_OCID)
+	userOCID, _ := c.String(OCI_USER_OCID)
+	region, _ := c.String(OCI_REGION)
+	keyPath, _ := c.String(OCI_PRIVATE_KEY_PATH)
+	passPhrase, _ := c.String(OCI_PRIVATE_KEY_PASSPHRASE)
+	fingerprint, _ := c.String(OCI_FINGERPRINT)
+	bucket, _ := c.String(OCI_BUCKET)
+	namespace, _ := c.String(OCI_NAMESPACE)
+
+	return &OCIOptions{
+		GlobalOptions:        globalOpts,
+		TenancyOCID:          tenancyOCID,
+		UserOCID:             userOCID,
+		Region:               region,
+		PrivateKeyPath:       keyPath,
+		PrivateKeyPassphrase: passPhrase,
+		Fingerprint:          fingerprint,
+		Bucket:               bucket,
+		Namespace:            namespace,
+	}, nil
+}
+
 // GitOptions for the users, mostly
 type GitOptions struct {
 	*GlobalOptions
@@ -299,6 +349,7 @@ func werckerContainerRegistry(c util.Settings) (*url.URL, error) {
 type PipelineOptions struct {
 	*GlobalOptions
 	*AWSOptions
+	*OCIOptions
 	// *DockerOptions
 	*GitOptions
 	*ReporterOptions
@@ -319,11 +370,15 @@ type PipelineOptions struct {
 
 	WerckerContainerRegistry *url.URL
 
-	ShouldCommit  bool
-	Repository    string
-	Tag           string
-	Message       string
-	ShouldStoreS3 bool
+	ShouldCommit   bool
+	Repository     string
+	Tag            string
+	Message        string
+	ShouldStoreS3  bool
+	ShouldStoreOCI bool
+
+	// will be true if either ShouldStoreS3 or ShouldStoreOCI it true
+	ShouldStore bool
 
 	WorkingDir string
 
@@ -488,6 +543,11 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		return nil, err
 	}
 
+	ociOpts, err := NewOCIOptions(c, e, globalOpts)
+	if err != nil {
+		return nil, err
+	}
+
 	gitOpts, err := NewGitOptions(c, e, globalOpts)
 	if err != nil {
 		return nil, err
@@ -525,6 +585,8 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	tag := guessTag(c, e)
 	message := guessMessage(c, e)
 	shouldStoreS3, _ := c.Bool("store-s3")
+	shouldStoreOCI, _ := c.Bool("store-oci")
+	shouldStore := shouldStoreS3 || shouldStoreOCI
 
 	workingDir, _ := c.String("working-dir")
 	workingDir, _ = filepath.Abs(workingDir)
@@ -570,6 +632,7 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 	return &PipelineOptions{
 		GlobalOptions: globalOpts,
 		AWSOptions:    awsOpts,
+		OCIOptions:    ociOpts,
 		// DockerOptions:   dockerOpts,
 		GitOptions:      gitOpts,
 		ReporterOptions: reporterOpts,
@@ -585,11 +648,13 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		ApplicationOwnerName:     applicationOwnerName,
 		ApplicationStartedByName: applicationStartedByName,
 
-		Message:       message,
-		Tag:           tag,
-		Repository:    repository,
-		ShouldCommit:  shouldCommit,
-		ShouldStoreS3: shouldStoreS3,
+		Message:        message,
+		Tag:            tag,
+		Repository:     repository,
+		ShouldCommit:   shouldCommit,
+		ShouldStoreS3:  shouldStoreS3,
+		ShouldStoreOCI: shouldStoreOCI,
+		ShouldStore:    shouldStore,
 
 		WorkingDir: workingDir,
 
