@@ -1,5 +1,7 @@
 ## unreleased
 
+- Use dep instead of govendor (#483)
+
 ## v1.0.1321 (2018-08-14)
 
 - Add OCI object store support (#465)

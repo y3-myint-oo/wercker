@@ -9,23 +9,23 @@ build:
         packages: openssh-client pkg-config libsystemd-dev
 
     - script:
-        name: install govendor
-        code: go get -u github.com/kardianos/govendor
+        name: install dep
+        code: go get -u github.com/golang/dep/cmd/dep
     
     - script:
         name: install dependencies
-        code: govendor sync
+        code: dep ensure
 
     - script:
         name: go vet
-        code: govendor vet +local
+        code: go vet ./...
 
     # - golint:
     #     exclude: vendor
 
     - script:
         name: go test
-        code: govendor test -v +local
+        code: go test -v ./...
 
     - script:
         name: clear out the build binaries
