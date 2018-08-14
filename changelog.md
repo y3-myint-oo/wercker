@@ -1,5 +1,10 @@
 ## unreleased
 
+## v1.0.1321 (2018-08-14)
+
+- Add OCI object store support (#465)
+- Add InternalBuildFlags to workflow command (#478)
+
 ## v1.0.1316 (2018-08-09)
 
 - Experimental support for running workflows in yml locally (#471)
