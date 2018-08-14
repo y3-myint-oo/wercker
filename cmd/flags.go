@@ -250,6 +250,7 @@ var (
 	}
 
 	WorkflowFlagSet = [][]cli.Flag{
+		InternalBuildFlags,
 		LocalPathFlags,
 		DockerFlags,
 		ConfigFlags,
