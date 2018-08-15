@@ -27,7 +27,7 @@ already, you can get it from the
 up your go environment by
 [using this guide](https://golang.org/doc/code.html#Organization)
 
-Next, you'll need `govendor` to install the golang dependencies. You can do
+Next, you'll need `dep` to install the golang dependencies. You can do
 this by running:
 ```
   go get -u github.com/golang/dep/cmd/dep

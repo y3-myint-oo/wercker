@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1322 (2018-08-15)
+
 - Use dep instead of govendor (#483)
 
 ## v1.0.1321 (2018-08-14)
