@@ -27,10 +27,10 @@ already, you can get it from the
 up your go environment by
 [using this guide](https://golang.org/doc/code.html#Organization)
 
-Next, you'll need `govendor` to install the golang dependencies. You can do
+Next, you'll need `dep` to install the golang dependencies. You can do
 this by running:
 ```
-  go get github.com/kardianos/govendor
+  go get -u github.com/golang/dep/cmd/dep
 ```
 
 In Go 1.5 you'll need the vendor experiment enabled, so make sure to export
@@ -38,7 +38,7 @@ In Go 1.5 you'll need the vendor experiment enabled, so make sure to export
 
 In your git checkout ($GOPATH/src/github.com/wercker/wercker), run:
 ```
-   govendor sync
+   dep ensure
 ```
 
 This command should download the appropiate dependencies.
