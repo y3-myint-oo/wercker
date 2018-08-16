@@ -1,5 +1,7 @@
 ## unreleased
 
+- Move from govendor to dep (a second time)
+
 ## v1.0.1323 (2018-08-16)
 
 - Wrap errors in runner (#487)
