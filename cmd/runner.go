@@ -25,6 +25,7 @@ import (
 
 	"github.com/monochromegane/go-gitignore"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	"github.com/termie/go-shutil"
 	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/docker"
@@ -94,7 +95,7 @@ type Runner struct {
 func NewRunner(ctx context.Context, options *core.PipelineOptions, dockerOptions *dockerlocal.Options, getPipeline pipelineGetter) (*Runner, error) {
 	e, err := core.EmitterFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not create emmiter from context")
 	}
 	logger := util.RootLogger().WithField("Logger", "Runner")
 	// h, err := NewLogHandler()
@@ -161,12 +162,12 @@ func (p *Runner) EnsureCode() (string, error) {
 	if p.options.ProjectURL != "" {
 		resp, err := util.Get(p.options.ProjectURL, "")
 		if err != nil {
-			return projectDir, err
+			return projectDir, errors.Wrapf(err, "could not read tarball %s", p.options.ProjectURL)
 		}
 		p.logger.Printf(p.formatter.Info(copyingMessage, projectDir))
 		err = util.Untargzip(projectDir, resp.Body)
 		if err != nil {
-			return projectDir, err
+			return projectDir, errors.Wrapf(err, "could not Untargzip into %s", projectDir)
 		}
 	} else {
 
@@ -200,7 +201,7 @@ func (p *Runner) EnsureCode() (string, error) {
 				abspath, err := filepath.Abs(filepath.Join(src, file.Name()))
 				if err != nil {
 					// Something went sufficiently wrong
-					panic(err)
+					panic(errors.Wrapf(err, "could not create absolute path for %s/%s", src, file.Name()))
 				}
 				if util.ContainsString(ignoreFiles, abspath) || (ignoreFile != nil && ignoreFile.Match(abspath, file.IsDir())) {
 					ignores = append(ignores, file.Name())
@@ -226,7 +227,7 @@ func (p *Runner) EnsureCode() (string, error) {
 			p.logger.Printf(p.formatter.Info(copyingMessage, projectDir))
 			err = shutil.CopyTree(p.options.ProjectPath, projectDir, copyOpts)
 			if err != nil {
-				return projectDir, err
+				return projectDir, errors.Wrapf(err, "could not copy tree from %s to %s", p.options.ProjectPath, projectDir)
 			}
 		} else {
 			for pipelineName, pipelineOutputPath := range p.options.ProjectPathsByPipeline {
@@ -235,7 +236,8 @@ func (p *Runner) EnsureCode() (string, error) {
 				p.logger.Printf(p.formatter.Info(copyingMessage, pipelineProjectDir))
 				err = shutil.CopyTree(pipelineOutputPath, pipelineProjectDir, copyOpts)
 				if err != nil {
-					return projectDir, err
+					return projectDir, errors.Wrapf(err, "could not copy pipeline path from %s to %s",
+						pipelineOutputPath, pipelineProjectDir)
 				}
 			}
 		}
@@ -253,7 +255,7 @@ func (p *Runner) CleanupOldBuilds() error {
 
 	builds, err := ioutil.ReadDir(buildPath)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not read directory %s when cleaning old builds", buildPath)
 	}
 
 	// remove files (.DS_Store etc)
@@ -280,7 +282,7 @@ func (p *Runner) CleanupOldBuilds() error {
 		}
 	}
 
-	return err
+	return nil
 }
 
 // GetConfig parses and returns the wercker.yml file.
@@ -291,19 +293,20 @@ func (p *Runner) GetConfig() (*core.Config, string, error) {
 	if p.options.WerckerYml != "" {
 		werckerYaml, err = ioutil.ReadFile(p.options.WerckerYml)
 		if err != nil {
-			return nil, "", err
+			return nil, "", errors.Wrapf(err, "could not read file %s while getting configuration",
+				p.options.WerckerYml)
 		}
 	} else {
 		werckerYaml, err = core.ReadWerckerYaml([]string{p.ProjectDir()}, false)
 		if err != nil {
-			return nil, "", err
+			return nil, "", errors.Wrap(err, "could not read wercker yml while getting config")
 		}
 	}
 
 	// Parse that bad boy.
 	rawConfig, err := core.ConfigFromYaml(werckerYaml)
 	if err != nil {
-		return nil, "", err
+		return nil, "", errors.Wrapf(err, "could not get configuration from yaml %s", werckerYaml)
 	}
 
 	// Add some options to the global config
@@ -341,7 +344,7 @@ func (p *Runner) AddServices(ctx context.Context, pipeline core.Pipeline, box co
 	for _, service := range pipeline.Services() {
 		timer.Reset()
 		if _, err := service.Fetch(ctx, pipeline.Env()); err != nil {
-			return err
+			return errors.Wrapf(err, "could not fetch service %s", service.GetName())
 		}
 
 		box.AddService(service)
@@ -362,12 +365,13 @@ func (p *Runner) CopyCache() error {
 
 	err := os.MkdirAll(p.options.CachePath(), 0755)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not mkdir %s while copying cache", p.options.CachePath())
 	}
 
 	err = os.Symlink(p.options.CachePath(), p.options.HostPath("cache"))
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not create symlink %s to %s when copying cache",
+			p.options.CachePath(), p.options.HostPath("cache"))
 	}
 	if p.options.Verbose {
 		p.logger.Printf(f.Success("Cache -> Staging Area", timer.String()))
@@ -386,12 +390,13 @@ func (p *Runner) CopySource() error {
 
 	err := os.MkdirAll(p.options.HostPath(), 0755)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not make directory %s when copying source", p.options.HostPath())
 	}
 
 	err = os.Symlink(p.ProjectDir(), p.options.HostPath("source"))
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not create symlink %s to %s when copying source",
+			p.ProjectDir(), p.options.HostPath("source"))
 	}
 	if p.options.Verbose {
 		p.logger.Printf(f.Success("Source -> Staging Area", timer.String()))
@@ -403,15 +408,15 @@ func (p *Runner) CopySource() error {
 func (p *Runner) GetSession(runnerContext context.Context, containerID string) (context.Context, *core.Session, error) {
 	dockerTransport, err := dockerlocal.NewDockerTransport(p.options, p.dockerOptions, containerID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "could not create docker transport for %s", containerID)
 	}
 	sess := core.NewSession(p.options, dockerTransport)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "could not create session for %s", containerID)
 	}
 	sessionCtx, err := sess.Attach(runnerContext)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "could not attach to session for %s", containerID)
 	}
 
 	return sessionCtx, sess, nil
@@ -534,7 +539,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	}
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrap(err, "runner error during setup of environment")
 	}
 	shared.config = rawConfig
 	sr.WerckerYamlContents = stringConfig
@@ -567,7 +572,8 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 			rddImpl, err := rdd.New(p.dockerOptions.RddServiceURI, p.dockerOptions.RddProvisionTimeout, p.options.RunID)
 			if err != nil {
 				sr.Message = err.Error()
-				return shared, err
+				return shared, errors.Wrapf(err, "error creating new rdd for %s",
+					p.dockerOptions.RddServiceURI)
 			}
 
 			rddCleanupHandler := &util.SignalHandler{
@@ -584,7 +590,8 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 			if err != nil {
 				rddImpl.Deprovision()
 				sr.Message = err.Error()
-				return shared, err
+				return shared, errors.Wrapf(err, "error provisioning rdd for %s",
+					p.dockerOptions.RddServiceURI)
 			}
 			if rddURI == "" {
 				rddImpl.Deprovision()
@@ -607,14 +614,16 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Do some sanity checks before starting
 	err = dockerlocal.RequireDockerEndpoint(runnerCtx, p.dockerOptions)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error when requiring docker endpoint for %s",
+			p.options.RunID)
 	}
 
 	// Init the pipeline
 	pipeline, err := p.GetPipeline(rawConfig)
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrapf(err, "error getting the pipeline for %s",
+			p.options.RunID)
 	}
 
 	pipeline.InitEnv(runnerCtx, p.options.HostEnv)
@@ -626,7 +635,8 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	_, err = box.Fetch(runnerCtx, pipeline.Env())
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrapf(err, "error fetching pipeline for %s",
+			p.options.RunID)
 	}
 
 	// TODO(termie): dump some logs about the image
@@ -638,7 +648,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	// Fetch the services and add them to the box
 	if err := p.AddServices(runnerCtx, pipeline, box); err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrap(err, "error adding services to box")
 	}
 
 	// Start setting up the pipeline dir
@@ -646,7 +656,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	err = p.CopySource()
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrap(err, "error copying source")
 	}
 
 	// ... and the cache dir
@@ -654,7 +664,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	err = p.CopyCache()
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrap(err, "error copying cache")
 	}
 
 	pipeline.LocalSymlink()
@@ -667,7 +677,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		timer.Reset()
 		if _, err := step.Fetch(); err != nil {
 			sr.Message = err.Error()
-			return shared, err
+			return shared, errors.Wrap(err, "error fetching step")
 		}
 		if p.options.Verbose {
 			p.logger.Printf(f.Success("Prepared step", step.Name(), timer.String()))
@@ -681,7 +691,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		timer.Reset()
 		if _, err := step.Fetch(); err != nil {
 			sr.Message = err.Error()
-			return shared, err
+			return shared, errors.Wrap(err, "error fetching pipeline step")
 		}
 
 		if p.options.Verbose {
@@ -693,7 +703,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	container, err := box.Run(runnerCtx, pipeline.Env(), rddURI)
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrap(err, "error running the box")
 	}
 	shared.containerID = container.ID
 
@@ -725,7 +735,7 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	sessionCtx, sess, err := p.GetSession(runnerCtx, container.ID)
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrap(err, "error attaching session to base box")
 	}
 	shared.sess = sess
 	shared.sessionCtx = sessionCtx
@@ -737,13 +747,13 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 	err = pipeline.SetupGuest(sessionCtx, sess)
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrap(err, "error setting up guest (base box)")
 	}
 
 	err = pipeline.ExportEnvironment(sessionCtx, sess)
 	if err != nil {
 		sr.Message = err.Error()
-		return shared, err
+		return shared, errors.Wrap(err, "error exporting environment")
 	}
 
 	sr.Message = ""
@@ -814,7 +824,8 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 	messageErr := step.CollectFile(shared.containerID, step.ReportPath(), "message.txt", &message)
 	if messageErr != nil {
 		if messageErr != util.ErrEmptyTarball {
-			return sr, messageErr
+			return sr, errors.Wrapf(messageErr, "error collecting file for container %s and path %s",
+				shared.containerID, step.ReportPath())
 		}
 	}
 	sr.Message = message.String()
@@ -823,14 +834,14 @@ func (p *Runner) RunStep(ctx context.Context, shared *RunnerShared, step core.St
 	if p.options.ShouldArtifacts {
 		artifact, err := step.CollectArtifact(ctx, shared.containerID)
 		if err != nil {
-			return sr, err
+			return sr, errors.Wrapf(err, "error collecting artifacts for %s", shared.containerID)
 		}
 
 		if artifact != nil && p.options.ShouldStore {
 			artificer := dockerlocal.NewArtificer(p.options, p.dockerOptions)
 			err = artificer.Upload(artifact)
 			if err != nil {
-				return sr, err
+				return sr, errors.Wrap(err, "error creating new artificer")
 			}
 		}
 		sr.Artifact = artifact
