@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1327 (2018-08-20)
+
 - Display message to users while pushing images built using internal/docker-build (#481)
 
 ## v1.0.1323 (2018-08-16)
