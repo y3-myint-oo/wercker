@@ -399,10 +399,12 @@ type DockerPushStep struct {
 	logger        *util.LogEntry
 	workingDir    string
 	authenticator auth.Authenticator
-	// image (if set) is the tag of an existing image, and obtained by prepending the build ID to the specified image-name property
-	// if image is set then this image is tagged and pushed (equivalent to "docker push")
-	// if image is not set then the pipeline container is committed, tagged and pushed (classic behaviour)
-	image string
+	// imageName contains the value specified in image-name option of the step.
+	// This image-name MUST be same as image-name option specified in one of the previous internal/docker-build steps.
+	// if set, the name of the existing image built by a previous internal/docker-build step is computed by prepending the build ID to the specified image-name property.
+	// if imageName is set then the existing pre-built image is tagged and pushed.
+	// if imageName is not set then the pipeline container is committed, tagged and pushed (classic behaviour)
+	imageName string
 }
 
 // NewDockerPushStep is a special step for doing docker pushes
@@ -550,8 +552,8 @@ func (s *DockerPushStep) configure(env *util.Environment) error {
 		s.user = env.Interpolate(user)
 	}
 
-	if image, ok := s.data["image-name"]; ok {
-		s.image = s.options.RunID + env.Interpolate(image)
+	if imageName, ok := s.data["image-name"]; ok {
+		s.imageName = env.Interpolate(imageName)
 	}
 
 	return nil
@@ -744,8 +746,9 @@ func (s *DockerPushStep) Fetch() (string, error) {
 	return "", nil
 }
 
-// Execute commits the current container and pushes it to the configured
-// registry
+// Execute - commits the current container, tags the image based on tags provided in step options
+// and pushes it to the configured registry when image-name property is not specified, in which case,
+// it tags and pushes an existing image built by a previous internal/docker-build step
 func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
 	client, err := NewOfficialDockerClient(s.dockerOptions)
 	if err != nil {
@@ -772,10 +775,10 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	s.repository = s.authenticator.Repository(s.repository)
 	s.logger.Debugln("Init env:", s.data)
 
-	var imageID = s.image
-	// if image is specified then it is assumed to be the name or ID of an existing image
-	// if image is not specified then create a new image by committing the pipeline container
-	if imageID == "" {
+	var imageRef = ""
+
+	// if imageName is not specified then create a new image by committing the pipeline container
+	if s.imageName == "" {
 		config := container.Config{
 			Cmd:          s.cmd,
 			Entrypoint:   s.entrypoint,
@@ -803,10 +806,16 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 		if err != nil {
 			return -1, err
 		}
-		imageID = idResponse.ID
-		s.logger.WithField("Image", imageID).Debug("Commit completed")
+		imageRef = idResponse.ID
+		s.logger.WithField("imageId", imageRef).Debug("Commit completed")
+	} else {
+		// if imageName is specified then compute image name by prepedning the runID to value of imageName
+		imageRef = s.options.RunID + s.imageName
+		msg := fmt.Sprintf("Pushing image built using internal/docker-build step, image name: %s\n", s.imageName)
+		s.logger.Debug(msg)
+		emit(e, msg)
 	}
-	return s.tagAndPush(ctx, imageID, e, client)
+	return s.tagAndPush(ctx, imageRef, e, client)
 }
 
 func (s *DockerPushStep) buildTags() []string {
@@ -819,7 +828,7 @@ func (s *DockerPushStep) buildTags() []string {
 	return s.tags
 }
 
-func (s *DockerPushStep) tagAndPush(ctx context.Context, imageID string, e *core.NormalizedEmitter, client *OfficialDockerClient) (int, error) {
+func (s *DockerPushStep) tagAndPush(ctx context.Context, imageRef string, e *core.NormalizedEmitter, client *OfficialDockerClient) (int, error) {
 	// Create a pipe since we want a io.Reader but Docker expects a io.Writer
 	r, w := io.Pipe()
 	// emitStatusses in a different go routine
@@ -829,7 +838,7 @@ func (s *DockerPushStep) tagAndPush(ctx context.Context, imageID string, e *core
 
 		target := fmt.Sprintf("%s:%s", s.repository, tag)
 		s.logger.Println("Pushing image for ", target)
-		err := client.ImageTag(ctx, imageID, target)
+		err := client.ImageTag(ctx, imageRef, target)
 		if err != nil {
 			s.logger.Errorln("Failed to push:", err)
 			return 1, err

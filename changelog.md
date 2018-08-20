@@ -1,5 +1,7 @@
 ## unreleased
 
+- Display message to users while pushing images built using internal/docker-build (#481)
+
 ## v1.0.1323 (2018-08-16)
 
 - Wrap errors in runner (#487)
