@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1328 (2018-08-21)
+
 - Retry CreateContainer to avoid intermittent no such image issue (#479)
 
 ## v1.0.1327 (2018-08-20)
