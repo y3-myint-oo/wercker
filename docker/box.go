@@ -523,7 +523,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 	}
 
 	// Make and start the container
-	container, err := client.CreateContainer(
+	container, err := client.CreateContainerWithRetries(
 		docker.CreateContainerOptions{
 			Name:       b.getContainerName(),
 			Config:     conf,

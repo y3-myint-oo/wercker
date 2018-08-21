@@ -21,13 +21,20 @@ import (
 	"os/signal"
 	"path"
 	"strings"
+	"time"
 
 	dockersignal "github.com/docker/docker/pkg/signal"
 	"github.com/docker/docker/pkg/term"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/google/shlex"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	"github.com/wercker/wercker/util"
+)
+
+var (
+	// DefaultMaxRetriesCreateContainer - Default for maximum no. of CreateContainer retries
+	DefaultMaxRetriesCreateContainer = 5
 )
 
 // DockerClient is our wrapper for docker.Client
@@ -74,7 +81,7 @@ func NewDockerClient(options *Options) (*DockerClient, error) {
 func (c *DockerClient) RunAndAttach(name string) error {
 	hostConfig := &docker.HostConfig{}
 	cmd, _ := shlex.Split(DefaultDockerCommand)
-	container, err := c.CreateContainer(
+	container, err := c.CreateContainerWithRetries(
 		docker.CreateContainerOptions{
 			Name: uuid.NewRandom().String(),
 			Config: &docker.Config{
@@ -224,4 +231,29 @@ func (c *DockerClient) ExecOne(containerID string, cmd []string, output io.Write
 	}
 
 	return nil
+}
+
+// CreateContainerWithRetries create a container - retry on "no such image" error
+func (c *DockerClient) CreateContainerWithRetries(opts docker.CreateContainerOptions) (*docker.Container, error) {
+	var numRetry int
+
+	for numRetry < DefaultMaxRetriesCreateContainer {
+		container, err := c.CreateContainer(opts)
+
+		if err == nil {
+			return container, nil
+		}
+
+		if err != docker.ErrNoSuchImage {
+			return nil, err
+		}
+
+		numRetry++
+
+		delayTime := 500 * numRetry
+		time.Sleep((time.Duration)(delayTime) * time.Millisecond)
+
+	}
+
+	return nil, errors.New("Failed trying to create container")
 }

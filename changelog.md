@@ -1,5 +1,7 @@
 ## unreleased
 
+- Retry CreateContainer to avoid intermittent no such image issue (#479)
+
 ## v1.0.1327 (2018-08-20)
 
 - Display message to users while pushing images built using internal/docker-build (#481)

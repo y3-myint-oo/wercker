@@ -283,7 +283,7 @@ func (s *DockerRunStep) Execute(ctx context.Context, sess *core.Session) (int, e
 }
 
 func (s *DockerRunStep) createContainer(client *DockerClient, conf *docker.Config, hostconfig *docker.HostConfig, networkingConfig *docker.NetworkingConfig) (*docker.Container, error) {
-	container, err := client.CreateContainer(
+	container, err := client.CreateContainerWithRetries(
 		docker.CreateContainerOptions{
 			Name:             s.ContainerName,
 			Config:           conf,

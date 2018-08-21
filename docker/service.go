@@ -222,7 +222,7 @@ func (b *InternalServiceBox) Run(ctx context.Context, env *util.Environment, env
 	endpointConfigMap := make(map[string]*docker.EndpointConfig)
 	endpointConfigMap[networkName] = endpointConfig
 
-	container, err := client.CreateContainer(
+	container, err := client.CreateContainerWithRetries(
 		docker.CreateContainerOptions{
 			Name:       b.getContainerName(),
 			Config:     conf,
