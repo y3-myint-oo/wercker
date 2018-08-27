@@ -1,5 +1,6 @@
 ## unreleased
 
+- Add support for runners to use OCI object storage (#492)
 - Fix runner configure access to OCIR caused by OCI API change. Show runnder docker image status on runner start (#493)
 
 ## v1.0.1328 (2018-08-21)

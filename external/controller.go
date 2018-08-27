@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"io"
 	"log"
-	os "os"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/wercker/wercker/core"
 	"github.com/wercker/wercker/util"
 )
 
@@ -50,7 +51,7 @@ type RunnerParams struct {
 	AppNames       string // Application names
 	OrgList        string // Organizations
 	Workflows      string // Workflows
-	StorePath      string // Local storage locatioin
+	StorePath      string // Local storage location
 	LoggerPath     string // Where to write logs
 	RunnerCount    int    // Number of runner containers
 	ShutdownFlag   bool   // Shutdown if true
@@ -59,7 +60,8 @@ type RunnerParams struct {
 	NoWait         bool   // --nowait options
 	PullRemote     bool   // --pull option
 	PollFreq       int    // Polling frequency
-	DockerEndpoint string // docker enndpoint
+	DockerEndpoint string // docker endpoint
+	OCIOptions     *core.OCIOptions
 	// following values are set during processing
 	Basename      string // base name for container creation
 	Logger        *util.LogEntry
@@ -122,7 +124,7 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 	})
 
 	// Pick out containers related to this runner instance set.
-	runners := []*docker.Container{}
+	var runners []*docker.Container
 	lName := fmt.Sprintf("/wercker-external-runner-%s", cp.Basename)
 	for _, dockerAPIContainer := range clist {
 		for _, label := range dockerAPIContainer.Labels {
@@ -257,7 +259,7 @@ func (cp *RunnerParams) startTheRunners() {
 
 // Create the command to run the external runner in a container.
 func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
-	cmd := []string{}
+	var cmd []string
 	cmd = append(cmd, "/externalRunner.sh")
 	//cmd = append(cmd, "--external-runner")
 	cmd = append(cmd, fmt.Sprintf("--runner-image=%s", cp.ImageName))
@@ -278,6 +280,14 @@ func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 	if cp.StorePath != "" {
 		cmd = append(cmd, fmt.Sprintf("--runner-store-path=%s", cp.StorePath))
 	}
+	if cp.OCIOptions != nil {
+		if cp.OCIOptions.Namespace != "" {
+			cmd = append(cmd, fmt.Sprintf("--runner-obj-store-namespace=%s", cp.OCIOptions.Namespace))
+		}
+		if cp.OCIOptions.Bucket != "" {
+			cmd = append(cmd, fmt.Sprintf("--bucket-result=%s", cp.OCIOptions.Bucket))
+		}
+	}
 	if cp.Debug == true {
 		cmd = append(cmd, "-d")
 		cmd = append(cmd, "--showlogs")
@@ -294,9 +304,9 @@ func (cp *RunnerParams) createTheRunnerCommand(name string) ([]string, error) {
 // Start the runner container(s). The command and arguments are supplied so
 // create the container, then start it.
 func (cp *RunnerParams) startTheContainer(name string, cmd []string) error {
-	args := []string{}
-	labels := []string{}
-	volumes := []string{}
+	var args []string
+	var labels []string
+	var volumes []string
 
 	labels = append(labels, fmt.Sprintf("runner=/wercker-external-runner-%s", cp.Basename))
 	if cp.GroupName != "" {
@@ -312,10 +322,25 @@ func (cp *RunnerParams) startTheContainer(name string, cmd []string) error {
 		volumes = append(volumes, fmt.Sprintf("%s:%s:rw", cp.StorePath, cp.StorePath))
 	}
 
-	myenv := []string{}
+	var myenv []string
 	myenv = append(myenv, fmt.Sprintf("WERCKER_RUNNER_TOKEN=%s", cp.BearerToken))
 
-	if cp.StorePath == "" {
+	// Using object storage?
+	if cp.OCIOptions != nil {
+		opts := cp.OCIOptions
+		if opts.TenancyOCID == "" || opts.UserOCID == "" || opts.Region == "" || opts.PrivateKeyPath == "" || opts.Fingerprint == "" {
+			cp.Logger.Fatal("Missing OCI object store access credentials")
+		}
+		myenv = append(myenv, "WERCKER_OCI_TENANCY_OCID", opts.TenancyOCID)
+		myenv = append(myenv, "WERCKER_OCI_USER_OCID", opts.UserOCID)
+		myenv = append(myenv, "WERCKER_OCI_REGION", opts.Region)
+		myenv = append(myenv, "WERCKER_OCI_PRIVATE_KEY_PATH", opts.PrivateKeyPath)
+		myenv = append(myenv, "WERCKER_OCI_FINGERPRINT", opts.Fingerprint)
+		// optional value
+		if opts.PrivateKeyPassphrase != "" {
+			myenv = append(myenv, "WERCKER_OCI_PRIVATE_KEY_PASSPHRASE", opts.PrivateKeyPassphrase)
+		}
+	} else if cp.StorePath == "" {
 		// This is deprecated and should be change to Oracle cloud eventually
 		awskey1 := os.Getenv("AWS_ACCESS_KEY_ID")
 		awskey2 := os.Getenv("AWS_SECRET_ACCESS_KEY")

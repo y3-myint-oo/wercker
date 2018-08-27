@@ -39,7 +39,7 @@ import (
 	"github.com/wercker/wercker/util"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
-	cli "gopkg.in/urfave/cli.v1"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var (
@@ -510,6 +510,9 @@ func setupExternalRunnerParams(c *cli.Context, params *external.RunnerParams) er
 	params.ProdType = opts.Production
 	params.ImageName = opts.ImageName
 
+	// OCI object store parameters
+	params.OCIOptions = opts.OCIOptions
+
 	return nil
 }
 
@@ -632,7 +635,7 @@ func cmdCheckConfig(options *core.PipelineOptions, dockerOptions *dockerlocal.Op
 		return soft.Exit(err)
 	}
 
-	for name, _ := range rawConfig.PipelinesMap {
+	for name := range rawConfig.PipelinesMap {
 		build, err := dockerlocal.NewDockerPipeline(name, rawConfig, options, dockerOptions, dockerlocal.NewNilBuilder())
 		if err != nil {
 			return soft.Exit(err)
@@ -1029,7 +1032,7 @@ func DumpOptions(options interface{}, indent ...string) {
 	indent = append(indent, "  ")
 	s := reflect.ValueOf(options).Elem()
 	typeOfT := s.Type()
-	names := []string{}
+	var names []string
 	for i := 0; i < s.NumField(); i++ {
 		// f := s.Field(i)
 		fieldName := typeOfT.Field(i).Name

@@ -109,9 +109,6 @@ var (
 			(~/.aws/config, AWS_SECRET_ACCESS_KEY, etc), or from the --aws-secret-key and
 			--aws-access-key flags. It will upload to a bucket defined by --s3-bucket in
 			the region named by --aws-region`},
-		cli.BoolFlag{Name: "store-oci",
-			Usage: `Store artifacts and containers in OCI object store.
-			This requires access to OCI credentials`},
 	}
 
 	// These flags affect our local execution environment
@@ -176,6 +173,7 @@ var (
 
 	// OCI bits
 	OCIFlags = []cli.Flag{
+		cli.BoolFlag{Name: "store-oci", Usage: "Store artifacts and containers in OCI object store. This requires access to OCI credentials"},
 		cli.StringFlag{Name: core.OCI_TENANCY_OCID, Usage: "Unique identifier for OCI tenancy.", EnvVar: "WERCKER_OCI_TENANCY_OCID"},
 		cli.StringFlag{Name: core.OCI_USER_OCID, Usage: "Unique identifier for OCI user.", EnvVar: "WERCKER_OCI_USER_OCID"},
 		cli.StringFlag{Name: core.OCI_REGION, Usage: "Name of OCI regsion.", EnvVar: "WERCKER_OCI_REGION"},
@@ -295,6 +293,7 @@ var (
 		ExternalRunnerCommonFlags,
 		ExternalRunnerStartFlags,
 		ExternalRunnerInternalFlags,
+		OCIFlags,
 	}
 
 	ExternalRunnerInternalFlags = []cli.Flag{

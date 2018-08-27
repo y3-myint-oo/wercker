@@ -30,7 +30,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/wercker/wercker/util"
 	"gopkg.in/mgo.v2/bson"
-	cli "gopkg.in/urfave/cli.v1"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var (
@@ -1026,6 +1026,7 @@ type WerckerRunnerOptions struct {
 	NoWait         bool
 	PullRemote     bool
 	Production     bool
+	OCIOptions     *OCIOptions
 }
 
 // NewExternalRunnerOptions -
@@ -1049,6 +1050,7 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 	nwait, _ := c.Bool("nowait")
 	pulls, _ := c.Bool("pull")
 	image, _ := c.String("image-name")
+	storeOCI, _ := c.Bool("store-oci")
 
 	prod := false
 	site, _ := c.String("using")
@@ -1060,8 +1062,14 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 		dhost = "unix:///var/run/docker.sock"
 	}
 
-	// Force pipelines to use local file system.
-	if spath == "" {
+	// Determine if OCI object store or the local file system will be used
+	var ociOpts *OCIOptions
+	if storeOCI {
+		ociOpts, err = NewOCIOptions(c, e, globalOpts)
+		if err != nil {
+			return nil, err
+		}
+	} else if spath == "" {
 		spath = "/tmp/wercker"
 	}
 	os.MkdirAll(spath, 0776)
@@ -1084,6 +1092,7 @@ func NewExternalRunnerOptions(c util.Settings, e *util.Environment) (*WerckerRun
 		PullRemote:     pulls,
 		Production:     prod,
 		ImageName:      image,
+		OCIOptions:     ociOpts,
 	}, nil
 }
 
