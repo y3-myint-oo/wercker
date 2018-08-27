@@ -1,5 +1,7 @@
 ## unreleased
 
+- Fix runner configure access to OCIR caused by OCI API change. Show runnder docker image status on runner start (#493)
+
 ## v1.0.1328 (2018-08-21)
 
 - Retry CreateContainer to avoid intermittent no such image issue (#479)

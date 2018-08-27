@@ -38,6 +38,7 @@ type CurrentImage struct {
 
 // RemoteImage item
 type RemoteImage struct {
+	Repo      string `json:"repo"`
 	Tag       string `json:"tag"`
 	Digest    string `json:"digest"`
 	Timestamp string `json:"timestamp"`
@@ -45,8 +46,7 @@ type RemoteImage struct {
 
 // List wrapper for remote response payload
 type listWrapper struct {
-	Current CurrentImage  `json:"current"`
-	Imgs    []RemoteImage `json:"imgs"`
+	Imgs []RemoteImage `json:"tags"`
 }
 
 // Get the list of remote images from ocir.io and return information about the
@@ -55,7 +55,11 @@ func (cp *RunnerParams) getRemoteImage() (*LatestImage, error) {
 
 	resultToken, err := cp.getBearerToken()
 
-	url := "https://iad.ocir.io/20180419/docker/images/odx-pipelines/wercker/wercker-runner"
+	if err != nil {
+		return nil, err
+	}
+
+	url := "https://iad.ocir.io/20180419/docker/images/odx-pipelines?repo=wercker%2Fwercker-runner"
 
 	var client http.Client
 
@@ -189,10 +193,11 @@ func (cp *RunnerParams) pullNewerImage(imageName string) error {
 		Username: "",
 		Password: "",
 	}
+	cp.Logger.Info("Pulling latest runner Docker image, Please wait...")
 	err := cp.client.PullImage(opts, auth)
 
 	if err != nil {
-		message := fmt.Sprintf("Failed to update runner image: %s", err)
+		message := fmt.Sprintf("Failed to update runner Docker image: %s", err)
 		cp.Logger.Error(message)
 	} else {
 		message := fmt.Sprintf("Pulled newer runner Docker image")

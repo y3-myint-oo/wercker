@@ -102,6 +102,9 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 
 	// Pickup proper image from local repository to be used for this run. WE are not checking
 	// for a newer version from the remote repository.
+	if !cp.ShutdownFlag {
+		cp.CheckRegistryImages(true)
+	}
 	image, err := cp.getLocalImage()
 	if err != nil {
 		cp.Logger.Fatal(fmt.Sprintf("unable to access runner Docker image: %s", err))

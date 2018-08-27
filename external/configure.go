@@ -118,9 +118,9 @@ func (cp *RunnerParams) getLocalImage() (*docker.Image, error) {
 // If local exists and is the same as the remote then do nothing
 // If local is older than remote then give user the option to download the remote
 // If neither exists then fail immediately
-func (cp *RunnerParams) CheckRegistryImages() error {
+func (cp *RunnerParams) CheckRegistryImages(isInternal bool) error {
 
-	cp.Logger.Debug("Running with ProdType: ", cp.ProdType)
+	cp.Logger.Debug("CheckRegisterImages Running with ProdType: ", cp.ProdType)
 
 	err := cp.getDockerClient()
 	if err != nil {
@@ -137,6 +137,9 @@ func (cp *RunnerParams) CheckRegistryImages() error {
 	// Get the latest image from the OCIR repository
 	remoteImage, err := cp.getRemoteImage()
 	if err != nil {
+		if isInternal {
+			return nil
+		}
 		cp.Logger.Fatalln("Unable to access remote repository", err)
 		return err
 	}
@@ -157,9 +160,11 @@ func (cp *RunnerParams) CheckRegistryImages() error {
 			} else {
 				message := "There is a newer runner image available from Oracle"
 				cp.Logger.Info(message)
-				cp.Logger.Info(fmt.Sprintf("Image: %s", remoteImage.ImageName))
-				cp.Logger.Info(fmt.Sprintf("Created: %s", remoteImage.Created))
-				cp.Logger.Infoln("Execute \"wercker runner configure --pull\" to update your system.")
+				if !isInternal {
+					cp.Logger.Info(fmt.Sprintf("Image: %s", remoteImage.ImageName))
+					cp.Logger.Info(fmt.Sprintf("Created: %s", remoteImage.Created))
+					cp.Logger.Infoln("Execute \"wercker runner configure --pull\" to update your system.")
+				}
 				return nil
 			}
 		}
@@ -171,8 +176,10 @@ func (cp *RunnerParams) CheckRegistryImages() error {
 	} else {
 		message := "Local Docker repository runner image is up-to-date."
 		cp.Logger.Infoln(message)
-		cp.Logger.Infoln(fmt.Sprintf("Image: %s", cp.ImageName))
-		cp.Logger.Infoln(fmt.Sprintf("Created: %s", localImage.Created))
+		if !isInternal {
+			cp.Logger.Infoln(fmt.Sprintf("Image: %s", cp.ImageName))
+			cp.Logger.Infoln(fmt.Sprintf("Created: %s", localImage.Created))
+		}
 	}
 	return nil
 }

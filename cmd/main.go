@@ -429,7 +429,7 @@ var (
 					params := external.NewDockerController()
 					err := setupExternalRunnerParams(c, params)
 					if err == nil {
-						params.CheckRegistryImages()
+						params.CheckRegistryImages(false)
 					}
 				},
 				Flags: FlagsFor(ExternalRunnerConfigureFlagSet),
