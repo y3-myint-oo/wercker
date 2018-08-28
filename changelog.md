@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1335 (2018-08-28)
+
 - Increase value of retry counter for CreateContainer call (#495)
 
 ## v1.0.1334 (2018-08-27)
