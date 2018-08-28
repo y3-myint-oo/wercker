@@ -1,5 +1,7 @@
 ## unreleased
 
+- Increase value of retry counter for CreateContainer call (#495)
+
 ## v1.0.1334 (2018-08-27)
 
 - Add support for runners to use OCI object storage (#492)

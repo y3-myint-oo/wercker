@@ -34,7 +34,7 @@ import (
 
 var (
 	// DefaultMaxRetriesCreateContainer - Default for maximum no. of CreateContainer retries
-	DefaultMaxRetriesCreateContainer = 5
+	DefaultMaxRetriesCreateContainer = 10
 )
 
 // DockerClient is our wrapper for docker.Client
