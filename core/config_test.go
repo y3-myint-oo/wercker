@@ -15,15 +15,15 @@
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/wercker/wercker/auth"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/wercker/docker-check-access"
+	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/util"
 )
 
@@ -121,5 +121,43 @@ func (s *ConfigSuite) TestIfaceToString() {
 	for _, test := range tests {
 		actual := ifaceToString(test.input)
 		s.Equal(test.expected, actual, "")
+	}
+}
+
+func (s *ConfigSuite) TestWorkflowValidation() {
+	b, err := ioutil.ReadFile("../tests/workflow_validation.yml")
+	s.Nil(err)
+	config, err := ConfigFromYaml(b)
+	s.Require().Nil(err)
+
+	tests := []struct {
+		workflowName        string
+		expectedErrorString string
+	}{
+		{"seq", ""},
+		{"fanin", ""},
+		{"fanin2", ""},
+		{"faninOne", ""},
+		{"fanout1", ""},
+		{"circular1", "contains cycle echoa -> echob -> echoa"},
+		{"circular2", "contains cycle echoa -> echoa"},
+		{"circular3", "contains cycle echob -> readfile -> echob"},
+		{"circular4", "contains cycle echob -> readfile -> readfile2 -> echob"},
+		{"nonUnique", "duplicate pipeline build"},
+		{"doNotExist", "pipeline missingbuild is not defined"},
+		{"missingRequired", "no pipeline missingbuild required by echoa"},
+		{"multipleRoots", "multiple root pipelines: build, echoa"},
+	}
+
+	for _, test := range tests {
+		workflow := config.GetWorkflow(test.workflowName)
+		s.NotNilf(workflow, fmt.Sprintf("no workflow %s in the config", test.workflowName))
+
+		actual := ""
+		err := workflow.Validate(config)
+		if err != nil {
+			actual = err.Error()
+		}
+		s.Equal(test.expectedErrorString, actual)
 	}
 }

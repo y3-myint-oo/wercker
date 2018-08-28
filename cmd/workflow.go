@@ -28,6 +28,11 @@ func cmdWorkflow(ctx context.Context, opts *core.WorkflowOptions, dockerOptions 
 		return errors.Errorf("%s does not contain workflow %s", opts.PipelineOptions.WerckerYml, opts.WorkflowName)
 	}
 
+	err = workflow.Validate(config)
+	if err != nil {
+		return errors.Wrap(err, "invalid workflow")
+	}
+
 	for {
 		pipeline, sourceRunIDs := nextPipeline(workflow, pipelineRunMap)
 		if pipeline == nil {

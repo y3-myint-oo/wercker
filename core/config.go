@@ -23,6 +23,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/pkg/errors"
 	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/util"
 )
@@ -273,6 +274,110 @@ func (wpc *WorkflowPipelineConfig) GetYAMLPipelineName() string {
 type WorkflowConfig struct {
 	Name      string                   `yaml:"name"`
 	Pipelines []WorkflowPipelineConfig `yaml:"pipelines"`
+}
+
+// Validate performs validation of the workflow
+func (workflow *WorkflowConfig) Validate(config *Config) error {
+	// check that all of the pipelines in the workflow are unique
+	workflowPipelines := map[string]bool{}
+	for _, pipeline := range workflow.Pipelines {
+		if _, ok := workflowPipelines[pipeline.Name]; ok {
+			return errors.Errorf("duplicate pipeline %s", pipeline.Name)
+		}
+		workflowPipelines[pipeline.Name] = true
+	}
+
+	// check that all of the pipelines in the workflow exist in the config
+	for _, pipeline := range workflow.Pipelines {
+		if _, ok := config.PipelinesMap[pipeline.GetYAMLPipelineName()]; !ok {
+			return errors.Errorf("pipeline %s is not defined", pipeline.GetYAMLPipelineName())
+		}
+	}
+
+	// check that all of the required pipelines are defined in the workflow
+	for _, pipeline := range workflow.Pipelines {
+		for _, requiredPipeline := range pipeline.Requires {
+			if _, ok := workflowPipelines[requiredPipeline]; !ok {
+				return errors.Errorf("no pipeline %s required by %s", requiredPipeline, pipeline.Name)
+			}
+		}
+	}
+
+	// check that there is only one root pipeline
+	rootPipelines := []string{}
+	for _, pipeline := range workflow.Pipelines {
+		if len(pipeline.Requires) == 0 {
+			rootPipelines = append(rootPipelines, pipeline.Name)
+		}
+	}
+	switch {
+	case len(rootPipelines) == 0:
+		return errors.New("no root pipeline")
+	case len(rootPipelines) > 1:
+		names := strings.Join(rootPipelines, ", ")
+		return errors.Errorf("multiple root pipelines: %s", names)
+	}
+
+	// check for cycles
+	cycle := checkForCycles(workflow, rootPipelines[0])
+	if len(cycle) != 0 {
+		cycleString := strings.Join(cycle, " -> ")
+		return errors.Errorf("contains cycle %s", cycleString)
+	}
+
+	return nil
+}
+
+// checkForCycles uses Depth-First Traversal to detect cycles.
+// Returns a list of pipeline names which form the cycle, or nil if
+// there are no cycles.
+func checkForCycles(workflow *WorkflowConfig, rootPipeline string) []string {
+	visited := []string{}
+	visitedMap := map[string][]string{}
+	traverseItems := []string{rootPipeline}
+
+	for len(traverseItems) > 0 {
+		current := traverseItems[len(traverseItems)-1]
+		traverseItems = traverseItems[:len(traverseItems)-1]
+
+		// if the current node is in the visited list then
+		// there's a cycle
+		if util.ContainsString(visited, current) {
+			return extractCycle(visited, current)
+		}
+
+		visited = append(visited, current)
+
+		for _, pipeline := range workflow.Pipelines {
+			if util.ContainsString(pipeline.Requires, current) {
+				traverseItems = append(traverseItems, pipeline.Name)
+				currentVisited := make([]string, len(visited))
+				copy(currentVisited, visited)
+				visitedMap[pipeline.Name] = currentVisited
+			}
+		}
+
+		if len(traverseItems) > 0 {
+			topStack := traverseItems[len(traverseItems)-1]
+			v := visitedMap[topStack]
+			visited = make([]string, len(v))
+			copy(visited, v)
+		}
+	}
+
+	return nil
+}
+
+func extractCycle(visited []string, current string) []string {
+	visited = append(visited, current)
+	i := 0
+	for i < len(visited) {
+		if visited[i] == current {
+			break
+		}
+		i++
+	}
+	return visited[i:]
 }
 
 // Config is the data type for wercker.yml
