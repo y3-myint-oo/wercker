@@ -1,9 +1,12 @@
 ## unreleased
 
+## v1.0.1336 (2018-08-29)
+
+- Workflow validation (#497)
+
 ## v1.0.1335 (2018-08-28)
 
 - Increase value of retry counter for CreateContainer call (#495)
-- Workflow validation (#497)
 
 ## v1.0.1334 (2018-08-27)
 
