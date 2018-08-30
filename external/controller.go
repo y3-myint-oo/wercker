@@ -181,7 +181,7 @@ func (cp *RunnerParams) RunDockerController(statusOnly bool) {
 			cp.Logger.Fatal("--all is not valid with --orgs, --apps, or --workflows")
 		}
 	} else {
-		if cp.OrgList == "" && cp.Workflows == "" && cp.AppNames == "" {
+		if strings.IndexByte(cp.GroupName, '@') == -1 && cp.OrgList == "" && cp.Workflows == "" && cp.AppNames == "" {
 			cp.Logger.Fatal("--all must be specified when no other selection criteria")
 		}
 	}

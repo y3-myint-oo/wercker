@@ -1,5 +1,7 @@
 ## unreleased
 
+- Fix option check for runner start to allow a server-side group name. 
+
 ## v1.0.1337 (2018-08-30)
 
 - Display on screen repository:tag being pushed with internal/docker-push (#500)
