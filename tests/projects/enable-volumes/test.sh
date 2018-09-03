@@ -109,4 +109,4 @@ testEnableVolumesAll () {
   testEnableVolumesRDD || return 1 
 }
 
-testEnableVolumesAll 
+testEnableVolumesAll || exit 1 

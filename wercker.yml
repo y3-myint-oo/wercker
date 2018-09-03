@@ -1,5 +1,14 @@
 box: golang:1.10
+command-timeout: 30
 no-response-timeout: 15
+
+workflows:
+  - name: build-and-test
+    pipelines:
+      - name: build
+      - name: integration-tests
+        requires:
+          - build
 
 build:
   base-path: /go/src/github.com/wercker/wercker
@@ -82,6 +91,58 @@ build:
     - script:
         name: prepare
         code: cp -r scripts $WERCKER_OUTPUT_DIR
+
+    - script:
+        name: Copy source code for use by integration-tests pipeline
+        code: |
+            cp -r /go $WERCKER_OUTPUT_DIR
+
+# This pipeline runs the Wercker integration tests in test-all.sh
+integration-tests:
+  box: docker:dind
+  docker: true
+  steps:
+    - script:
+        name: Copy and test the wercker executable
+        code: |
+            export GOPATH=$WERCKER_SOURCE_DIR/go
+            cp -p $WERCKER_SOURCE_DIR/artifacts/latest/linux_amd64/sentcli $GOPATH/src/github.com/wercker/wercker/wercker
+            $GOPATH/src/github.com/wercker/wercker/wercker --version            
+
+    - script:
+        name: Start the docker daemon
+        code: |
+            # use a different socket than /var/run/docker.sock in case the outer daemon is already using it 
+            dockerd -H unix:///var/run/docker2.sock --storage-driver=overlay &
+            echo Information about the main daemon
+            echo DOCKER_HOST=$DOCKER_HOST
+            docker version
+            docker ps
+            docker info
+            echo Information about the new daemon
+            export DOCKER_HOST=unix:///var/run/docker2.sock
+            echo DOCKER_HOST=$DOCKER_HOST
+            docker version
+            docker ps    
+            docker info   
+    - script:
+        name: install curl (needed by integration tests)
+        code: apk add curl
+
+    - script:
+        name: Integration tests
+        code: |
+            # Unset WERCKER_DEPLOY_ID (which is set when these tests are run in wercker)
+            # since this would override the RunID used by pipelines started by these tests
+            export WERCKER_DEPLOY_ID=
+
+            cd $GOPATH/src/github.com/wercker/wercker
+            sh ./test-all.sh
+        
+    - script:
+        name: Create dummy file in WERCKER_OUTPUT_DIR to prevent it storing the source directory at the end of the pipeline
+        code: |
+            touch $WERCKER_OUTPUT_DIR/dummy                      
 
 deploy:
   box: ubuntu
