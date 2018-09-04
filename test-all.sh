@@ -145,8 +145,6 @@ runTests() {
 
   export X_BACKSLASH='back\slash'
   export X_BACKTICK='back`tick'
-  export X_BANG='ban!g'
-  export X_BANG_ESCAPED='ban\!g'
   basicTest "special char in envvar escaped" build "$testsDir/envvars" --docker-local --pipeline test-special || return 1
 
   #return 1

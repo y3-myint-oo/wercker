@@ -153,13 +153,6 @@ func (s *EnvironmentSuite) TestExportBackslash() {
 	s.Equal(expected, env.Export())
 }
 
-func (s *EnvironmentSuite) TestExportBang() {
-	env := NewEnvironment(`B1=!bang`, `B2=ban!g`, `B3=bang!`)
-	expected := []string{`export B1="\!bang"`, `export B2="ban\!g"`, `export B3="bang\!"`}
-	s.Equal(expected, env.Export())
-}
-
-
 func (s *EnvironmentSuite) TestLoadFile() {
 	env := NewEnvironment("PUBLIC=foo")
 	expected := [][]string{
