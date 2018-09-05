@@ -80,8 +80,12 @@ var (
 		cli.StringFlag{Name: "application-name", Value: "", EnvVar: "WERCKER_APPLICATION_NAME", Hidden: true, Usage: "The application name."},
 		cli.StringFlag{Name: "application-owner-name", Value: "", EnvVar: "WERCKER_APPLICATION_OWNER_NAME", Hidden: true, Usage: "The application owner name."},
 		cli.StringFlag{Name: "application-started-by-name", Value: "", EnvVar: "WERCKER_APPLICATION_STARTED_BY_NAME", Hidden: true, Usage: "The name of the user who started the application."},
-		cli.StringFlag{Name: "wercker-container-registry", Value: "https://wcr.io/v2/", Usage: "Wercker Registry Domain.", EnvVar: "WERCKER_CONTAINER_REGISTRY", Hidden: true},
 		cli.StringFlag{Name: "pipeline", Value: "", EnvVar: "WERCKER_PIPELINE", Usage: "Alternate pipeline name to execute."},
+	}
+
+	// These flags are usually pulled from the env
+	WerckerRegistryFlags = []cli.Flag{
+		cli.StringFlag{Name: "wercker-container-registry", Value: "https://wcr.io/v2/", Usage: "Wercker Registry Domain.", EnvVar: "WERCKER_CONTAINER_REGISTRY", Hidden: true},
 	}
 
 	GitFlags = []cli.Flag{
@@ -229,6 +233,7 @@ var (
 	PipelineFlagSet = [][]cli.Flag{
 		LocalPathFlags,
 		WerckerFlags,
+		WerckerRegistryFlags,
 		DockerFlags,
 		InternalBuildFlags,
 		GitFlags,
@@ -242,6 +247,7 @@ var (
 	DeployPipelineFlagSet = [][]cli.Flag{
 		LocalPathFlags,
 		WerckerFlags,
+		WerckerRegistryFlags,
 		DockerFlags,
 		InternalDeployFlags,
 		GitFlags,
@@ -255,6 +261,7 @@ var (
 	DevPipelineFlagSet = [][]cli.Flag{
 		LocalPathFlags,
 		WerckerFlags,
+		WerckerRegistryFlags,
 		DockerFlags,
 		InternalDevFlags,
 		GitFlags,
@@ -270,6 +277,7 @@ var (
 		LocalPathFlags,
 		DockerFlags,
 		ConfigFlags,
+		WerckerRegistryFlags,
 	}
 
 	WerckerInternalFlagSet = [][]cli.Flag{
@@ -280,6 +288,7 @@ var (
 	WerckerDockerFlagSet = [][]cli.Flag{
 		AuthFlags,
 		WerckerFlags,
+		WerckerRegistryFlags,
 	}
 
 	ExternalRunnerCommonFlagSet = [][]cli.Flag{
