@@ -64,7 +64,7 @@ func (b *DockerBuild) InitEnv(ctx context.Context, hostEnv *util.Environment) {
 	env.Update(b.CommonEnv())
 	env.Update(a)
 	env.Update(hostEnv.GetMirror())
-	env.Update(hostEnv.GetPassthru().Ordered())
+	env.Public.Update(hostEnv.GetPassthru().Ordered())
 	env.Hidden.Update(hostEnv.GetHiddenPassthru().Ordered())
 }
 

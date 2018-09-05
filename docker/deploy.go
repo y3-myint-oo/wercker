@@ -70,7 +70,7 @@ func (d *DockerDeploy) InitEnv(ctx context.Context, hostEnv *util.Environment) {
 	env.Update(d.CommonEnv())
 	env.Update(a)
 	env.Update(hostEnv.GetMirror())
-	env.Update(hostEnv.GetPassthru().Ordered())
+	env.Public.Update(hostEnv.GetPassthru().Ordered())
 	env.Hidden.Update(hostEnv.GetHiddenPassthru().Ordered())
 }
 

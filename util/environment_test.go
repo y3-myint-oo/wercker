@@ -141,6 +141,28 @@ func (s *EnvironmentSuite) TestExport() {
 	s.Equal(env.Export(), expected)
 }
 
+func (s *EnvironmentSuite) TestExportNoInterpolation() {
+	env := NewEnvironment("PUBLIC=foo$12", "PRIVATE=zed#23$67^ac_M.c-k>yx")
+	expected := []string{`export PUBLIC='foo$12'`, `export PRIVATE='zed#23$67^ac_M.c-k>yx'`}
+	s.Equal(expected, env.ExportNoInterpolation())
+
+	env = NewEnvironment(`B1=$dollar`, `B2=dol$lar`, `B3=dollar$`)
+	expected = []string{`export B1='!bang'`, `export B2='ban!g'`, `export B3='bang!'`}
+	s.Equal(expected, env.ExportNoInterpolation())
+
+	env = NewEnvironment(`B1=!bang`, `B2=ban!g`, `B3=bang!`)
+	expected = []string{`export B1='!bang'`, `export B2='ban!g'`, `export B3='bang!'`}
+	s.Equal(expected, env.ExportNoInterpolation())
+
+	env = NewEnvironment(`BS1=\backslash`, `BS2=back\slash`, `BS3=backslash\`)
+	expected = []string{`export BS1='\backslash'`, `export BS2='back\slash'`, `export BS3='backslash\'`}
+	s.Equal(expected, env.ExportNoInterpolation())
+
+	env = NewEnvironment("BT1=`backtick", "BT2=back`tick", "BT3=backtick`")
+	expected = []string{`export BT1='` + "`" + `backtick'`, `export BT2='back` + "`" + `tick'`, `export BT3='backtick` + "`" + `'`}
+	s.Equal(expected, env.ExportNoInterpolation())
+}
+
 func (s *EnvironmentSuite) TestLoadFile() {
 	env := NewEnvironment("PUBLIC=foo")
 	expected := [][]string{

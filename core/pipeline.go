@@ -234,7 +234,10 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 
 // ExportEnvironment to the session
 func (p *BasePipeline) ExportEnvironment(sessionCtx context.Context, sess *Session) error {
-	exit, _, err := sess.SendChecked(sessionCtx, p.Env().Export()...)
+	envVars := []string{}
+	envVars = append(envVars, p.Env().Export()...)
+	envVars = append(envVars, p.Env().Public.ExportNoInterpolation()...)
+	exit, _, err := sess.SendChecked(sessionCtx, envVars...)
 	if err != nil {
 		return err
 	}

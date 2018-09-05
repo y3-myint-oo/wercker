@@ -30,6 +30,7 @@ var (
 // like an OrderedMap
 type Environment struct {
 	Hidden *Environment
+	Public *Environment
 	Map    map[string]string
 	Order  []string
 }
@@ -39,6 +40,7 @@ type Environment struct {
 func NewEnvironment(env ...string) *Environment {
 	e := Environment{
 		Hidden: &Environment{},
+		Public: &Environment{},
 	}
 	for _, keyvalue := range env {
 		pair := strings.SplitN(keyvalue, "=", 2)
@@ -84,7 +86,7 @@ func (e *Environment) PassThruProxyConfig() {
 	for _, key := range proxyEnv {
 		value, ok := e.Map[key]
 		if ok {
-		    e.AddIfMissing(fmt.Sprintf("%s%s", public, key), value)
+			e.AddIfMissing(fmt.Sprintf("%s%s", public, key), value)
 		}
 	}
 }
@@ -104,6 +106,15 @@ func (e *Environment) Export() []string {
 	s := []string{}
 	for _, key := range e.Order {
 		s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
+	}
+	return s
+}
+
+// ExportNoInterpolation exports the environment as shell commands for use with Session.Send*
+func (e *Environment) ExportNoInterpolation() []string {
+	s := []string{}
+	for _, key := range e.Order {
+		s = append(s, fmt.Sprintf(`export %s='%s'`, key, e.Map[key]))
 	}
 	return s
 }

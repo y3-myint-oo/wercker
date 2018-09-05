@@ -390,6 +390,7 @@ func (b *DockerBox) RecoverInteractive(cwd string, pipeline core.Pipeline, step 
 	env := []string{}
 	env = append(env, pipeline.Env().Export()...)
 	env = append(env, pipeline.Env().Hidden.Export()...)
+	env = append(env, pipeline.Env().Public.ExportNoInterpolation()...)
 	env = append(env, step.Env().Export()...)
 	env = append(env, fmt.Sprintf("cd %s", cwd))
 	cmd, err := shlex.Split(b.cmd)
