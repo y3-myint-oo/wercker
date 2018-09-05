@@ -1,6 +1,10 @@
 ## unreleased
 
-- Fix option check for runner start to allow a server-side group name. 
+## v1.0.1343 (2018-09-05)
+
+- Fix for workflows in yml (#507)
+- Escape special characters in bash exports (#499)
+- Fix option check for runner start to allow a server-side group name (#504)
 
 ## v1.0.1337 (2018-08-30)
 
