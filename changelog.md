@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1345 (2018-09-07)
+
 - Add workflows validation to check-config (#511)
 
 ## v1.0.1343 (2018-09-05)
