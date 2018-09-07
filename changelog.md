@@ -1,5 +1,7 @@
 ## unreleased
 
+- Add workflows validation to check-config (#511)
+
 ## v1.0.1343 (2018-09-05)
 
 - Fix for workflows in yml (#507)
