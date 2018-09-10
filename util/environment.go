@@ -86,7 +86,7 @@ func (e *Environment) PassThruProxyConfig() {
 	for _, key := range proxyEnv {
 		value, ok := e.Map[key]
 		if ok {
-			e.AddIfMissing(fmt.Sprintf("%s%s", public, key), value)
+		    e.AddIfMissing(fmt.Sprintf("%s%s", public, key), value)
 		}
 	}
 }
@@ -108,6 +108,8 @@ func (e *Environment) Export(noInterpolation bool) []string {
 		if noInterpolation || e.contains(key) {
 			s = append(s, fmt.Sprintf(`export %s='%s'`, key, e.Map[key]))
 		} else {
+				export := fmt.Sprintf(`export %s=%q`, key, e.Map[key])
+        		export = strings.Replace(export, "`", "\\`", -1)
 			s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
 		}
 	}
@@ -129,15 +131,6 @@ func (e *Environment) contains(str string) bool {
 		}
 	}
 	return false
-}
-
-// ExportNoInterpolation exports the environment as shell commands for use with Session.Send*
-func (e *Environment) ExportNoInterpolation() []string {
-	s := []string{}
-	for _, key := range e.Order {
-		s = append(s, fmt.Sprintf(`export %s='%s'`, key, e.Map[key]))
-	}
-	return s
 }
 
 // Ordered returns a [][]string of the items in the env.

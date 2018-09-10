@@ -872,6 +872,7 @@ func (s *DockerPushStep) tagAndPush(ctx context.Context, imageRef string, e *cor
 			if err != nil {
 				return 1, err
 			}
+			emit(e, fmt.Sprintf("\nPushed %s:%s\n", s.repository, tag))
 		}
 	}
 	return 0, nil

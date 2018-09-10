@@ -636,6 +636,7 @@ func cmdCheckConfig(options *core.PipelineOptions, dockerOptions *dockerlocal.Op
 	}
 
 	for name := range rawConfig.PipelinesMap {
+		options.Pipeline = name
 		build, err := dockerlocal.NewDockerPipeline(name, rawConfig, options, dockerOptions, dockerlocal.NewNilBuilder())
 		if err != nil {
 			return soft.Exit(err)
@@ -643,6 +644,15 @@ func cmdCheckConfig(options *core.PipelineOptions, dockerOptions *dockerlocal.Op
 		logger.Println("Found pipeline section:", name)
 		if build.Box() != nil {
 			logger.Println("  with box:", build.Box().GetName())
+		}
+	}
+
+	for _, workflow := range rawConfig.Workflows {
+		logger.Println("Found workflow:", workflow.Name)
+		err = workflow.Validate(rawConfig)
+		if err != nil {
+			exitErr := fmt.Errorf("invalid workflow %s: %s", workflow.Name, err.Error())
+			return soft.Exit(exitErr)
 		}
 	}
 

@@ -1,9 +1,27 @@
 ## unreleased
 
+## v1.0.1345 (2018-09-07)
+
+- Add workflows validation to check-config (#511)
+
+## v1.0.1343 (2018-09-05)
+
+- Fix for workflows in yml (#507)
+- Escape special characters in bash exports (#499)
+- Fix option check for runner start to allow a server-side group name (#504)
+
+## v1.0.1337 (2018-08-30)
+
+- Display on screen repository:tag being pushed with internal/docker-push (#500)
+- When docker:true is set, run the pipeline container in privileged mode (#480)
+
+## v1.0.1336 (2018-08-29)
+
+- Workflow validation (#497)
+
 ## v1.0.1335 (2018-08-28)
 
 - Increase value of retry counter for CreateContainer call (#495)
-- Workflow validation (#497)
 
 ## v1.0.1334 (2018-08-27)
 
