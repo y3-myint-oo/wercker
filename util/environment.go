@@ -86,7 +86,7 @@ func (e *Environment) PassThruProxyConfig() {
 	for _, key := range proxyEnv {
 		value, ok := e.Map[key]
 		if ok {
-		    e.AddIfMissing(fmt.Sprintf("%s%s", public, key), value)
+			e.AddIfMissing(fmt.Sprintf("%s%s", public, key), value)
 		}
 	}
 }
@@ -108,8 +108,8 @@ func (e *Environment) Export(noInterpolation bool) []string {
 		if noInterpolation || e.contains(key) {
 			s = append(s, fmt.Sprintf(`export %s='%s'`, key, e.Map[key]))
 		} else {
-				export := fmt.Sprintf(`export %s=%q`, key, e.Map[key])
-        		export = strings.Replace(export, "`", "\\`", -1)
+			export := fmt.Sprintf(`export %s=%q`, key, e.Map[key])
+			export = strings.Replace(export, "`", "\\`", -1)
 			s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
 		}
 	}
@@ -118,7 +118,6 @@ func (e *Environment) Export(noInterpolation bool) []string {
 
 // contains function checks if there exist a varible in envVar list that exist in Public or Hidden list as well.
 // In case same exit it retuns true.
-// Its required while syncing environment variables.
 func (e *Environment) contains(str string) bool {
 	for _, key := range e.Public.Order {
 		if key == str {

@@ -164,13 +164,13 @@ func (s *EnvironmentSuite) TestExport() {
 func (s *EnvironmentSuite) TestExportBacktick() {
 	env := NewEnvironment("BT1=`backtick", "BT2=back`tick", "BT3=backtick`")
 	expected := []string{`export BT1="\` + "`" + `backtick"`, `export BT2="back\` + "`" + `tick"`, `export BT3="backtick\` + "`" + `"`}
-	s.Equal(expected, env.Export())
+	s.Equal(expected, env.Export(false))
 }
 
 func (s *EnvironmentSuite) TestExportBackslash() {
 	env := NewEnvironment(`BS1=\backslash`, `BS2=back\slash`, `BS3=backslash\`)
 	expected := []string{`export BS1="\\backslash"`, `export BS2="back\\slash"`, `export BS3="backslash\\"`}
-	s.Equal(expected, env.Export())
+	s.Equal(expected, env.Export(false))
 }
 
 func (s *EnvironmentSuite) TestLoadFile() {
