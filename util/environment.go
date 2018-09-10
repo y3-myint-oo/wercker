@@ -110,7 +110,7 @@ func (e *Environment) Export(noInterpolation bool) []string {
 		} else {
 			export := fmt.Sprintf(`export %s=%q`, key, e.Map[key])
 			export = strings.Replace(export, "`", "\\`", -1)
-			s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
+			s = append(s, export)
 		}
 	}
 	return s
