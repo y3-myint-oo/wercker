@@ -93,7 +93,7 @@ func (pr *PipelineResult) ExportEnvironment(sessionCtx context.Context, sess *Se
 		e.Add("WERCKER_FAILED_STEP_MESSAGE", pr.FailedStepMessage)
 	}
 
-	exit, _, err := sess.SendChecked(sessionCtx, e.Export()...)
+	exit, _, err := sess.SendChecked(sessionCtx, e.Export(false)...)
 	if err != nil {
 		return err
 	}
@@ -235,8 +235,8 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 // ExportEnvironment to the session
 func (p *BasePipeline) ExportEnvironment(sessionCtx context.Context, sess *Session) error {
 	envVars := []string{}
-	envVars = append(envVars, p.Env().Export()...)
-	envVars = append(envVars, p.Env().Public.ExportNoInterpolation()...)
+	envVars = append(envVars, p.Env().Export(false)...)
+	envVars = append(envVars, p.Env().Public.Export(true)...)
 	exit, _, err := sess.SendChecked(sessionCtx, envVars...)
 	if err != nil {
 		return err
@@ -247,7 +247,7 @@ func (p *BasePipeline) ExportEnvironment(sessionCtx context.Context, sess *Sessi
 	// Export the hidden variables separately
 	sess.HideLogs()
 	defer sess.ShowLogs()
-	exit, _, err = sess.SendChecked(sessionCtx, p.Env().Hidden.Export()...)
+	exit, _, err = sess.SendChecked(sessionCtx, p.Env().Hidden.Export(true)...)
 	if err != nil {
 		return err
 	}

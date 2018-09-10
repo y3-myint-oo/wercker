@@ -105,7 +105,7 @@ func (s *ShellStep) Execute(ctx context.Context, sess *core.Session) (int, error
 		return -1, err
 	}
 
-	code := s.env.Export()
+	code := s.env.Export(false)
 	code = append(code, "cd $WERCKER_SOURCE_DIR")
 	code = append(code, s.Code)
 

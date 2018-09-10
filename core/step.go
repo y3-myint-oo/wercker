@@ -455,7 +455,7 @@ func (s *ExternalStep) Execute(sessionCtx context.Context, sess *Session) (int, 
 	if err != nil {
 		return 1, err
 	}
-	_, _, err = sess.SendChecked(sessionCtx, s.env.Export()...)
+	_, _, err = sess.SendChecked(sessionCtx, s.env.Export(false)...)
 	if err != nil {
 		return 1, err
 	}

@@ -102,12 +102,33 @@ func (e *Environment) Get(key string) string {
 }
 
 // Export the environment as shell commands for use with Session.Send*
-func (e *Environment) Export() []string {
+func (e *Environment) Export(noInterpolation bool) []string {
 	s := []string{}
 	for _, key := range e.Order {
-		s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
+		if noInterpolation || e.contains(key) {
+			s = append(s, fmt.Sprintf(`export %s='%s'`, key, e.Map[key]))
+		} else {
+			s = append(s, fmt.Sprintf(`export %s=%q`, key, e.Map[key]))
+		}
 	}
 	return s
+}
+
+// contains function checks if there exist a varible in envVar list that exist in Public or Hidden list as well.
+// In case same exit it retuns true.
+// Its required while syncing environment variables.
+func (e *Environment) contains(str string) bool {
+	for _, key := range e.Public.Order {
+		if key == str {
+			return true
+		}
+	}
+	for _, key := range e.Hidden.Order {
+		if key == str {
+			return true
+		}
+	}
+	return false
 }
 
 // ExportNoInterpolation exports the environment as shell commands for use with Session.Send*
