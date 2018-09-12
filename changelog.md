@@ -1,6 +1,8 @@
 ## unreleased
 
-- Validate tag format in internal/docker-push (#513)
+## v1.0.1350 (2018-09-12)
+
+- Validate tag format in internal/docker-push and internal/docker-scratch-push (#513)
 
 ## v1.0.1345 (2018-09-07)
 
