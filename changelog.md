@@ -1,5 +1,7 @@
 ## unreleased
 
+- Validate tag format in internal/docker-push (#513)
+
 ## v1.0.1345 (2018-09-07)
 
 - Add workflows validation to check-config (#511)
