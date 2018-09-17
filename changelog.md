@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1355 (2018-09-17)
+
 - Inject checkout pipeline for workflows in yml (#517)
 
 ## v1.0.1351 (2018-09-13)
