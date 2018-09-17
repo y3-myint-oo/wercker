@@ -541,6 +541,27 @@ func (p *Runner) SetupEnvironment(runnerCtx context.Context) (*RunnerShared, err
 		sr.Message = err.Error()
 		return shared, errors.Wrap(err, "runner error during setup of environment")
 	}
+
+	// This flag should be set when running checkout/get code pipeline at the beginning
+	// of a workflow defined in YML file. This pipeline is not defined in the file,
+	// and hence should be injected in the config structure. Apart from checking out
+	// the source code, the purpose of the pipeline is to validate the workflows.
+	if p.options.WorkflowsInYml {
+		err := rawConfig.ValidateWorkflows()
+		if err != nil {
+			p.emitter.Emit(core.Logs, &core.LogsArgs{
+				Logs: err.Error(),
+			})
+			sr.Message = err.Error()
+			return shared, err
+		}
+
+		// Inject pipeline.
+		rawConfig.PipelinesMap[p.options.Pipeline] = &core.RawPipelineConfig{
+			PipelineConfig: &core.PipelineConfig{},
+		}
+	}
+
 	shared.config = rawConfig
 	sr.WerckerYamlContents = stringConfig
 

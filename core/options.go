@@ -412,6 +412,8 @@ type PipelineOptions struct {
 	Checkpoint     string
 
 	DefaultsUsed PipelineDefaultsUsed
+
+	WorkflowsInYml bool
 }
 
 type PipelineDefaultsUsed struct {
@@ -629,6 +631,8 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		IgnoreFile: !ignoreFileSet,
 	}
 
+	workflowsInYml, _ := c.Bool("workflows-in-yml")
+
 	return &PipelineOptions{
 		GlobalOptions: globalOpts,
 		AWSOptions:    awsOpts,
@@ -686,6 +690,8 @@ func NewPipelineOptions(c util.Settings, e *util.Environment) (*PipelineOptions,
 		Checkpoint:    checkpoint,
 
 		DefaultsUsed: defaultsUsed,
+
+		WorkflowsInYml: workflowsInYml,
 	}, nil
 }
 

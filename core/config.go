@@ -403,6 +403,17 @@ func (c *Config) GetWorkflow(name string) *WorkflowConfig {
 	return nil
 }
 
+// ValidateWorkflows validates every workflow in the config.
+func (c *Config) ValidateWorkflows() error {
+	for _, workflow := range c.Workflows {
+		err := workflow.Validate(c)
+		if err != nil {
+			return fmt.Errorf("invalid workflow %s: %s", workflow.Name, err.Error())
+		}
+	}
+	return nil
+}
+
 // RawConfig is the unwrapper for Config
 type RawConfig struct {
 	*Config

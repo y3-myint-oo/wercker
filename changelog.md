@@ -1,5 +1,7 @@
 ## unreleased
 
+- Inject checkout pipeline for workflows in yml (#517)
+
 ## v1.0.1351 (2018-09-13)
 
 - Show error when publishing a step fails (#515)
