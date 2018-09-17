@@ -286,6 +286,9 @@ func (p *BasePipeline) SyncEnvironment(sessionCtx context.Context, sess *Session
 	full := strings.Join(output, "")
 	lines := strings.Split(full, "\x00")
 
+	// Regexp for a valid environment variable name
+	r := regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
+
 	for _, line := range lines {
 		if line == "" {
 			continue
@@ -300,6 +303,13 @@ func (p *BasePipeline) SyncEnvironment(sessionCtx context.Context, sess *Session
 
 		key := s[0]
 		value := s[1]
+
+		if !r.MatchString(key) {
+			// The key is not a valid environment variable name.
+			// This can happen in boxes where env --null does not work and returns an error message
+			p.logger.Warnf("Not a valid environment variable name: \"%s\"", key)
+			continue
+		}
 
 		p.env.Add(key, value)
 	}
