@@ -151,7 +151,13 @@ func (b *DockerBox) GetID() string {
 
 // mounts returns the binds necessary to mount the directories under HostPath (which is a pipeline option).
 // This is only valid when the CLI is running on the same machine as the daemon.
-func (b *DockerBox) mounts(env *util.Environment) ([]string, error) {
+func (b *DockerBox) mounts(ctx context.Context, env *util.Environment) ([]string, error) {
+
+	e, err := core.EmitterFromContext(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create emiter from context")
+	}
+
 	binds := []string{}
 	// Make our list of binds for the Docker attach
 	// NOTE(termie): we don't appear to need the "volumes" stuff, leaving
@@ -170,8 +176,12 @@ func (b *DockerBox) mounts(env *util.Environment) ([]string, error) {
 				binds = append(binds, fmt.Sprintf("%s:%s:rw", b.options.HostPath(entry.Name()), b.options.GuestPath(entry.Name())))
 			} else {
 				binds = append(binds, fmt.Sprintf("%s:%s:ro", b.options.HostPath(entry.Name()), b.options.MntPath(entry.Name())))
+				e.Emit(core.Logs, &core.LogsArgs{
+					Logs: "*** docker.Box#mounts(): mounting " + b.options.HostPath(entry.Name()) + "\n",
+				})
 			}
 			// volumes[b.options.MntPath(entry.Name())] = struct{}{}
+
 		}
 	}
 	return binds, nil
@@ -203,6 +213,12 @@ func (b *DockerBox) vols(env *util.Environment) ([]string, error) {
 // copyStepsToContainer copies the directories under HostPath (which is a pipeline option) to the pipeline container.
 // This is equivalent to calling mounts() to mount the same directories, and must be used when the daemon is remote and binds are not possible.
 func (b *DockerBox) copyStepsToContainer(ctx context.Context, env *util.Environment, containerID string) error {
+
+	e, err := core.EmitterFromContext(ctx)
+	if err != nil {
+		return errors.Wrap(err, "could not create emiter from context")
+	}
+
 	client, err := NewOfficialDockerClient(b.dockerOptions)
 	if err != nil {
 		return errors.Wrapf(err, "NewDockerClient failed for %s", b.Name)
@@ -254,6 +270,10 @@ func (b *DockerBox) copyStepsToContainer(ctx context.Context, env *util.Environm
 				return errors.Wrapf(err, "copy to container failed for %s to directory %s",
 					containerID, destDirName)
 			}
+
+			e.Emit(core.Logs, &core.LogsArgs{
+				Logs: "*** docker.Box#copyStepsToContainer(): copying " + sourceDirName + "\n",
+			})
 		}
 	}
 
@@ -406,6 +426,16 @@ func (b *DockerBox) getContainerName() string {
 // Run creates the container and runs it.
 // If the pipeline has requested direct docker daemon access then rddURI will be set to the daemon URI that we will give the pipeline access to.
 func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI string) (*docker.Container, error) {
+
+	e, err := core.EmitterFromContext(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get emitter from context")
+	}
+
+	e.Emit(core.Logs, &core.LogsArgs{
+		Logs: "*** docker.Box#Run()\n",
+	})
+
 	dockerNetworkName, err := b.GetDockerNetworkName()
 	if err != nil {
 		return nil, errors.Wrap(err, "get of docker network name failed")
@@ -460,7 +490,7 @@ func (b *DockerBox) Run(ctx context.Context, env *util.Environment, rddURI strin
 	if rddURI == "" || b.dockerOptions.RddServiceURI == "" {
 		// We haven't specified direct docker access or we're running CLI locally, so CLI is running on same host as daemon
 		// Obtain the binds necessary to mount the step directories under HostPath (which is a pipeline option).
-		extraBinds, err := b.mounts(env)
+		extraBinds, err := b.mounts(ctx, env)
 		if err != nil {
 			return nil, errors.Wrap(err, "docker run mounts failed")
 		}
