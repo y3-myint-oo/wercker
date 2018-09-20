@@ -187,8 +187,23 @@ func (p *BasePipeline) CommonEnv() [][]string {
 	return a
 }
 
+// EmitterFromContext gives us the emitter attached to the context
+func emitterFromContext(ctx context.Context) (e *NormalizedEmitter, err error) {
+	e, ok := ctx.Value("Emitter").(*NormalizedEmitter)
+	if !ok {
+		err = fmt.Errorf("Cannot get emitter from context.")
+	}
+	return e, err
+}
+
 // SetupGuest ensures that the guest is prepared to run the pipeline.
 func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) error {
+
+	e, err := emitterFromContext(sessionCtx)
+	if err != nil {
+		return err
+	}
+
 	sess.HideLogs()
 	defer sess.ShowLogs()
 
@@ -209,6 +224,9 @@ func (p *BasePipeline) SetupGuest(sessionCtx context.Context, sess *Session) err
 			// Copy the cache from the mounted directory to the pipeline dir
 			fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("cache"), p.options.GuestPath("cache")),
 		)
+		e.Emit(Logs, &LogsArgs{
+			Logs: "*** core.BasePipeline#SetupGuest(): " + fmt.Sprintf(`cp -r "%s" "%s"`, p.options.MntPath("source"), p.options.BasePath()) + "\n",
+		})
 	}
 
 	// Make sure the output path exists
