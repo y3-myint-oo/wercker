@@ -124,6 +124,11 @@ func (e *Environment) contains(str string) bool {
 			return true
 		}
 	}
+	for _, key := range e.Public.Order {
+		if key == str {
+			return true
+		}
+	}
 	for _, key := range e.Hidden.Order {
 		if key == str {
 			return true
