@@ -723,7 +723,7 @@ func (o *PipelineOptions) SourcePath() string {
 }
 
 func (o *PipelineOptions) WorkflowURL() string {
-	return fmt.Sprintf("%s/#%s/%s/%s/%s", o.BaseURL, o.ApplicationOwnerName, o.ApplicationName, o.Pipeline, o.RunID)
+	return fmt.Sprintf("%s/%s/%s/runs/%s/%s", o.BaseURL, o.ApplicationOwnerName, o.ApplicationName, o.Pipeline, o.RunID)
 }
 
 // MntPath returns a path relative to the read-only mount root on the guest.

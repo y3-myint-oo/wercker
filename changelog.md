@@ -1,5 +1,7 @@
 ## unreleased
 
+- Fix env vars WERCKER_DEPLOY_URL, WERCKER_BUILD_URL and WERCKER_RUN_URL (#519)
+
 ## v1.0.1355 (2018-09-17)
 
 - Inject checkout pipeline for workflows in yml (#517)
