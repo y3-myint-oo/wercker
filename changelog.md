@@ -1,5 +1,7 @@
 ## unreleased
 
+## v1.0.1359 (2018-09-21)
+
 - Fix env vars WERCKER_DEPLOY_URL, WERCKER_BUILD_URL and WERCKER_RUN_URL (#519)
 
 ## v1.0.1355 (2018-09-17)
