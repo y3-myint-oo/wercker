@@ -106,7 +106,7 @@ func (s *PushSuite) TestTagAndPushStatusReportingForErrorInPush() {
 	stepData["registry"] = "https://quay.io"
 	stepData["tag"] = "test"
 
-	exitCode, error := executePushStep(stepData)
+	exitCode, error := executeTagAndPush(stepData)
 	s.NotEqual(exitCode, 0)
 	s.NotNil(error)
 	if error != nil {
@@ -125,29 +125,14 @@ func (s *PushSuite) TestTagAndPushStatusReportingForSuccessfulPush() {
 	stepData["registry"] = "https://quay.io"
 	stepData["tag"] = repoSuccessfulImageTag
 
-	exitCode, error := executePushStep(stepData)
+	exitCode, error := executeTagAndPush(stepData)
 	s.Equal(exitCode, 0)
 	s.Nil(error)
 }
 
-//executePushStep - Prepares stepConfig for docker-push step from input stepData
-// and invokes tagAndPush
-func executePushStep(stepData map[string]string) (int, error) {
-	ctx := context.Background()
-	config := &core.StepConfig{
-		ID:   "internal/docker-push",
-		Data: stepData,
-	}
-	options := &core.PipelineOptions{}
-	step, _ := NewDockerPushStep(config, options, nil)
-	step.configure(&util.Environment{})
-	step.dockerOptions = &Options{}
-	step.authenticator = &auth.DockerAuth{}
-	step.logger = util.NewLogger().WithFields(util.LogFields{
-		"Logger": "Test",
-	})
-	mockEmittor := core.NewNormalizedEmitter()
-	mockDockerClient := &OfficialDockerClient{}
+// executeTagAndPush - Invokes tagAndPush
+func executeTagAndPush(stepData map[string]string) (int, error) {
+	step, ctx, mockEmittor, mockDockerClient := prepareDockerPush(stepData)
 	return step.tagAndPush(ctx, "test", mockEmittor, mockDockerClient)
 }
 
@@ -229,4 +214,187 @@ func (s *PushSuite) TestInferRegistryAndRepositoryInvalidInputs() {
 		s.Equal(tt.expectedRepository, repo, "%q, wants %q", repo, tt.expectedRepository)
 	}
 
+}
+
+// TestDockerPushExecute_AllInvalidTags - Tests that error is
+// returned by step.Execute  on internal/docker-push when all input tags are invalid
+func (s *PushSuite) TestDockerPushExecute_AllInvalidTags() {
+	stepData := make(map[string]string)
+	stepData["username"] = "user"
+	stepData["password"] = "pass"
+	stepData["repository"] = "docker.io/valid"
+	stepData["registry"] = "https://quay.io"
+	stepData["tag"] = "invalid/invalid,not-valid:not-valid"
+	exitCode, err := executeDockerPushStep(stepData)
+	s.NotEqual(0, exitCode)
+	s.NotNil(err)
+	s.Contains(err.Error(), "Invalid tag")
+}
+
+// TestDockerPushExecute_OneInvalidTag - Tests that error is
+// returned by step.Execute  on internal/docker-push when even one input tag is invalid
+func (s *PushSuite) TestDockerPushExecute_OneInvalidTag() {
+	stepData := make(map[string]string)
+	stepData["username"] = "user"
+	stepData["password"] = "pass"
+	stepData["repository"] = "docker.io/valid"
+	stepData["registry"] = "https://quay.io"
+	stepData["tag"] = "valid,not-valid:not-valid"
+	exitCode, err := executeDockerPushStep(stepData)
+	s.NotEqual(0, exitCode)
+	s.NotNil(err)
+	s.Contains(err.Error(), "Invalid tag")
+}
+
+// TestDockerPushExecute_InvalidRepo - Tests that error is
+// returned by step.Execute  on internal/docker-push when input repository is invalid
+func (s *PushSuite) TestDockerPushExecute_InvalidRepo() {
+	stepData := make(map[string]string)
+	stepData["username"] = "user"
+	stepData["password"] = "pass"
+	stepData["repository"] = "INVALID:INVALID"
+	stepData["registry"] = "https://quay.io"
+	stepData["tag"] = "valid"
+	exitCode, err := executeDockerPushStep(stepData)
+	s.NotEqual(0, exitCode)
+	s.NotNil(err)
+	s.Contains(err.Error(), "Invalid repository")
+}
+
+// TestDockerPushExecute_InvalidTagDockerBuild - Tests that error is
+// returned by step.Execute  on internal/docker-push when even the input tag is invalid
+// and image to be pushed was built using internal/docker-build
+func (s *PushSuite) TestDockerPushExecute_InvalidTagDockerBuild() {
+	stepData := make(map[string]string)
+	stepData["username"] = "user"
+	stepData["password"] = "pass"
+	stepData["repository"] = "docker.io/valid"
+	stepData["registry"] = "https://quay.io"
+	stepData["tag"] = "not-valid:not-valid"
+	stepData["image-name"] = "imageName"
+	exitCode, err := executeDockerPushStep(stepData)
+	s.NotEqual(0, exitCode)
+	s.NotNil(err)
+	s.Contains(err.Error(), "Invalid tag")
+}
+
+// TestDockerScratchPushExecute_AllInvalidTags - Tests that error is
+// returned by step.Execute on internal/docker-scratch-push when all input tags are invalid
+func (s *PushSuite) TestDockerScratchPushExecute_AllInvalidTags() {
+	stepData := make(map[string]string)
+	stepData["username"] = "user"
+	stepData["password"] = "pass"
+	stepData["repository"] = "docker.io/valid"
+	stepData["registry"] = "https://quay.io"
+	stepData["tag"] = "invalid/invalid,not-valid:not-valid"
+	exitCode, err := executeDockerScratchPushStep(stepData)
+	s.NotEqual(0, exitCode)
+	s.NotNil(err)
+	s.Contains(err.Error(), "Invalid tag")
+}
+
+// TestDockerScratchPushExecute_OneInvalidTag - Tests that error is
+// returned by step.Execute  on internal/docker-scratch-push  when even one input tag is invalid
+func (s *PushSuite) TestDockerScratchPushExecute_OneInvalidTag() {
+	stepData := make(map[string]string)
+	stepData["username"] = "user"
+	stepData["password"] = "pass"
+	stepData["repository"] = "docker.io/valid"
+	stepData["registry"] = "https://quay.io"
+	stepData["tag"] = "valid,not-valid:not-valid"
+	exitCode, err := executeDockerScratchPushStep(stepData)
+	s.NotEqual(0, exitCode)
+	s.NotNil(err)
+	s.Contains(err.Error(), "Invalid tag")
+}
+
+// TestDockerScratchPushExecute_InvalidRepo - Tests that error is
+// returned by step.Execute  on internal/docker-scratch-push when input repository is invalid
+func (s *PushSuite) TestDockerScratchPushExecute_InvalidRepo() {
+	stepData := make(map[string]string)
+	stepData["username"] = "user"
+	stepData["password"] = "pass"
+	stepData["repository"] = "INVALID:INVALID"
+	stepData["registry"] = "https://quay.io"
+	stepData["tag"] = "valid"
+	exitCode, err := executeDockerScratchPushStep(stepData)
+	s.NotEqual(0, exitCode)
+	s.NotNil(err)
+	s.Contains(err.Error(), "Invalid repository")
+}
+
+// executeDockerPushStep - Invokes Execute on DockerPushStep
+func executeDockerPushStep(stepData map[string]string) (int, error) {
+	step, ctx, _, _ := prepareDockerPush(stepData)
+	step.authenticator = &MockAuth{}
+	exitCode, err := step.Execute(ctx, core.NewSession(nil, &DockerTransport{}))
+	return exitCode, err
+}
+
+// executeDockerScratchPushStep - Invokes Execute on DockerScratchPushStep
+func executeDockerScratchPushStep(stepData map[string]string) (int, error) {
+	step, ctx, _, _ := prepareDockerScratchPush(stepData)
+	step.authenticator = &MockAuth{}
+	exitCode, err := step.Execute(ctx, core.NewSession(nil, &DockerTransport{}))
+	return exitCode, err
+}
+
+// MockAuth - Mock implementation of auth.Authenticator
+type MockAuth struct {
+}
+
+func (m *MockAuth) CheckAccess(repository string, scope auth.Scope) (bool, error) {
+	return true, nil
+}
+
+func (m *MockAuth) Username() string {
+	return ""
+}
+
+func (m *MockAuth) Password() string {
+	return ""
+}
+
+func (m *MockAuth) Repository(repo string) string {
+	return repo
+}
+
+// prepareDockerPush - Prepares stepConfig for docker-push step from input stepData
+func prepareDockerPush(stepData map[string]string) (*DockerPushStep, context.Context, *core.NormalizedEmitter, *OfficialDockerClient) {
+	config := &core.StepConfig{
+		ID:   "internal/docker-push",
+		Data: stepData,
+	}
+	options := &core.PipelineOptions{}
+	step, _ := NewDockerPushStep(config, options, nil)
+	step.configure(&util.Environment{})
+	step.dockerOptions = &Options{}
+	step.authenticator = &auth.DockerAuth{}
+	step.logger = util.NewLogger().WithFields(util.LogFields{
+		"Logger": "Test",
+	})
+	mockEmittor := core.NewNormalizedEmitter()
+	mockDockerClient := &OfficialDockerClient{}
+	ctx := context.WithValue(context.Background(), "Emitter", mockEmittor)
+	return step, ctx, mockEmittor, mockDockerClient
+}
+
+// prepareDockerScratchPush - Prepares stepConfig for docker-scratch-push step from input stepData
+func prepareDockerScratchPush(stepData map[string]string) (*DockerScratchPushStep, context.Context, *core.NormalizedEmitter, *OfficialDockerClient) {
+	config := &core.StepConfig{
+		ID:   "internal/docker-scratch-push",
+		Data: stepData,
+	}
+	options := &core.PipelineOptions{}
+	step, _ := NewDockerScratchPushStep(config, options, nil)
+	step.configure(&util.Environment{})
+	step.dockerOptions = &Options{}
+	step.authenticator = &auth.DockerAuth{}
+	step.logger = util.NewLogger().WithFields(util.LogFields{
+		"Logger": "Test",
+	})
+	mockEmittor := core.NewNormalizedEmitter()
+	mockDockerClient := &OfficialDockerClient{}
+	ctx := context.WithValue(context.Background(), "Emitter", mockEmittor)
+	return step, ctx, mockEmittor, mockDockerClient
 }

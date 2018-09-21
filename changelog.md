@@ -1,5 +1,17 @@
 ## unreleased
 
+## v1.0.1355 (2018-09-17)
+
+- Inject checkout pipeline for workflows in yml (#517)
+
+## v1.0.1351 (2018-09-13)
+
+- Show error when publishing a step fails (#515)
+
+## v1.0.1350 (2018-09-12)
+
+- Validate tag format in internal/docker-push and internal/docker-scratch-push (#513)
+
 ## v1.0.1345 (2018-09-07)
 
 - Add workflows validation to check-config (#511)

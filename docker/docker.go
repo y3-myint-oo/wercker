@@ -39,6 +39,7 @@ import (
 	"github.com/google/shlex"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	"github.com/wercker/docker-check-access"
 	"github.com/wercker/wercker/auth"
 	"github.com/wercker/wercker/core"
@@ -101,12 +102,25 @@ func NewDockerScratchPushStep(stepConfig *core.StepConfig, options *core.Pipelin
 
 // Execute the scratch-n-push
 func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
+	s.tags = s.buildTags()
+	s.repository = s.authenticator.Repository(s.repository)
+
+	named, err := reference.WithName(s.repository)
+	if err != nil {
+		return -1, errors.Wrapf(err, "Invalid repository: %s", s.repository)
+	}
+
+	err = validateTags(named, s.tags)
+	if err != nil {
+		return -1, err
+	}
+
 	// This is clearly only relevant to docker so we're going to dig into the
 	// transport internals a little bit to get the container ID
 	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
 
-	_, err := s.CollectArtifact(ctx, containerID)
+	_, err = s.CollectArtifact(ctx, containerID)
 	if err != nil {
 		return -1, err
 	}
@@ -264,8 +278,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return -1, err
 	}
 
-	s.tags = s.buildTags()
-
 	for i, tag := range s.tags {
 		_, err = repositoriesFile.Write([]byte(fmt.Sprintf(`"%s":"%s"`, tag, layerID)))
 		if err != nil {
@@ -303,7 +315,6 @@ func (s *DockerScratchPushStep) Execute(ctx context.Context, sess *core.Session)
 		return 1, err
 	}
 
-	s.repository = s.authenticator.Repository(s.repository)
 	s.logger.WithFields(util.LogFields{
 		"Repository": s.repository,
 		"Tags":       s.tags,
@@ -750,6 +761,21 @@ func (s *DockerPushStep) Fetch() (string, error) {
 // and pushes it to the configured registry when image-name property is not specified, in which case,
 // it tags and pushes an existing image built by a previous internal/docker-build step
 func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, error) {
+	s.tags = s.buildTags()
+	s.repository = s.authenticator.Repository(s.repository)
+
+	named, err := reference.WithName(s.repository)
+	if err != nil {
+		return -1, errors.Wrapf(err, "Invalid repository: %s", s.repository)
+	}
+
+	err = validateTags(named, s.tags)
+	if err != nil {
+		return -1, err
+	}
+
+	ref, _ := reference.WithTag(named, s.tags[0])
+
 	client, err := NewOfficialDockerClient(s.dockerOptions)
 	if err != nil {
 		return 1, err
@@ -770,13 +796,7 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 	dt := sess.Transport().(*DockerTransport)
 	containerID := dt.containerID
 
-	s.tags = s.buildTags()
-
-	s.repository = s.authenticator.Repository(s.repository)
-	s.logger.Debugln("Init env:", s.data)
-
 	var imageRef = ""
-
 	// if imageName is not specified then create a new image by committing the pipeline container
 	if s.imageName == "" {
 		config := container.Config{
@@ -790,9 +810,6 @@ func (s *DockerPushStep) Execute(ctx context.Context, sess *core.Session) (int, 
 			ExposedPorts: s.ports,
 			Volumes:      s.volumes,
 		}
-
-		named, err := reference.WithName(s.repository)
-		ref, err := reference.WithTag(named, s.tags[0])
 
 		containerCommitOptions := types.ContainerCommitOptions{
 			Reference: ref.String(),
@@ -916,4 +933,16 @@ func (s *DockerPushStep) ShouldSyncEnv() bool {
 		return disableSync != "true"
 	}
 	return true
+}
+
+// validateTags verifies that all of the `tags` are in valid format
+// and returns an error if not.
+func validateTags(repository reference.Named, tags []string) error {
+	for _, tag := range tags {
+		_, err := reference.WithTag(repository, tag)
+		if err != nil {
+			return errors.Wrapf(err, "Invalid tag: %s", tag)
+		}
+	}
+	return nil
 }

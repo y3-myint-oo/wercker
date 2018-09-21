@@ -152,6 +152,7 @@ var (
 		This enables:
 		- internal/watch
 		`},
+		cli.BoolFlag{Name: "workflows-in-yml", Usage: "Use ephemeral checkout pipeline", Hidden: true},
 	}
 
 	// Flags for advanced deploy settings

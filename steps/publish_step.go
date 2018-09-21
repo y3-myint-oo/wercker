@@ -147,8 +147,9 @@ func (s *RESTPublisher) CreateDraft(createDraftRequest *PublishStepRequest) (*Pu
 		}
 		defer resp.Body.Close()
 
-		log.Errorf("Received error: %d: %s", resp.StatusCode, string(respBody))
-		return nil, errors.New("Did not receive status code OK")
+		e := fmt.Sprintf("Received error: %d: %s", resp.StatusCode, string(respBody))
+		log.Errorf(e)
+		return nil, errors.New(e)
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
