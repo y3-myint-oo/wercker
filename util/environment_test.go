@@ -1,4 +1,4 @@
-//   Copyright 2016 Wercker Holding BV
+// Copyright © 2016, 2018, Oracle and/or its affiliates. All rights reserved. */
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -137,19 +137,39 @@ func (s *EnvironmentSuite) TestOrdered() {
 
 func (s *EnvironmentSuite) TestExport() {
 	env := NewEnvironment("PUBLIC=foo", "X_PRIVATE=zed")
-	expected := []string{`export PUBLIC="foo"`, `export X_PRIVATE="zed"`}
+	expected := []string{`export PUBLIC='foo'`, `export X_PRIVATE='zed'`}
+	s.Equal(expected, env.Export())
+
+	env = NewEnvironment("PUBLIC=foo$12", "PRIVATE=zed#23$67^ac_M.c-k>yx")
+	expected = []string{`export PUBLIC='foo$12'`, `export PRIVATE='zed#23$67^ac_M.c-k>yx'`}
+	s.Equal(expected, env.Export())
+
+	env = NewEnvironment(`B1=$dollar`, `B2=dol$lar`, `B3=dollar$`)
+	expected = []string{`export B1='$dollar'`, `export B2='dol$lar'`, `export B3='dollar$'`}
+	s.Equal(expected, env.Export())
+
+	env = NewEnvironment(`B1=!bang`, `B2=ban!g`, `B3=bang!`)
+	expected = []string{`export B1='!bang'`, `export B2='ban!g'`, `export B3='bang!'`}
+	s.Equal(expected, env.Export())
+
+	env = NewEnvironment(`BS1=\backslash`, `BS2=back\slash`, `BS3=backslash\`)
+	expected = []string{`export BS1='\backslash'`, `export BS2='back\slash'`, `export BS3='backslash\'`}
+	s.Equal(expected, env.Export())
+
+	env = NewEnvironment("BT1=`backtick", "BT2=back`tick", "BT3=backtick`")
+	expected = []string{`export BT1='` + "`" + `backtick'`, `export BT2='back` + "`" + `tick'`, `export BT3='backtick` + "`" + `'`}
 	s.Equal(expected, env.Export())
 }
 
 func (s *EnvironmentSuite) TestExportBacktick() {
 	env := NewEnvironment("BT1=`backtick", "BT2=back`tick", "BT3=backtick`")
-	expected := []string{`export BT1="\` + "`" + `backtick"`, `export BT2="back\` + "`" + `tick"`, `export BT3="backtick\` + "`" + `"`}
+	expected := []string{`export BT1='` + "`" + `backtick'`, `export BT2='back` + "`" + `tick'`, `export BT3='backtick` + "`" + `'`}
 	s.Equal(expected, env.Export())
 }
 
 func (s *EnvironmentSuite) TestExportBackslash() {
 	env := NewEnvironment(`BS1=\backslash`, `BS2=back\slash`, `BS3=backslash\`)
-	expected := []string{`export BS1="\\backslash"`, `export BS2="back\\slash"`, `export BS3="backslash\\"`}
+	expected := []string{`export BS1='\backslash'`, `export BS2='back\slash'`, `export BS3='backslash\'`}
 	s.Equal(expected, env.Export())
 }
 
