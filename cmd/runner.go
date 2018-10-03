@@ -112,7 +112,7 @@ func NewRunner(ctx context.Context, options *core.PipelineOptions, dockerOptions
 	if !options.SuppressBuildLogs {
 		l, err = event.NewLiteralLogHandler(options)
 		if err != nil {
-			logger.WithField("Error", err).Panic("Unable to event.LiteralLogHandler")
+			logger.WithError(err).Panic("Unable to event.LiteralLogHandler")
 		}
 		l.ListenTo(e)
 	}
