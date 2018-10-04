@@ -227,7 +227,12 @@ func guessGitBranch(c util.Settings, e *util.Environment) string {
 	if err != nil {
 		return ""
 	}
-	return strings.Trim(out.String(), "\n")
+	branch = strings.Trim(out.String(), "\n")
+	// In case of tag, branch output is HEAD.
+	if branch == "HEAD" {
+		return ""
+	}
+	return branch
 }
 
 func guessGitTag(c util.Settings, e *util.Environment) string {
@@ -252,9 +257,26 @@ func guessGitTag(c util.Settings, e *util.Environment) string {
 	}
 
 	var out bytes.Buffer
-	cmd := exec.Command(git, "tag", "--points-at", "HEAD", "|", "tail", "-n", "1")
-	cmd.Stdout = &out
+	cmd := exec.Command(git, "tag", "--points-at", "HEAD")
+	pipeCmd := exec.Command("tail", "-n", "1")
+	pipeCmd.Stdout = &out
+
+	pipeCmd.Stdin, err = cmd.StdoutPipe()
+	if err != nil {
+		return ""
+	}
+
+	err = pipeCmd.Start()
+	if err != nil {
+		return ""
+	}
+
 	err = cmd.Run()
+	if err != nil {
+		return ""
+	}
+
+	err = pipeCmd.Wait()
 	if err != nil {
 		return ""
 	}
