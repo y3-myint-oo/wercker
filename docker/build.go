@@ -54,6 +54,7 @@ func (b *DockerBuild) InitEnv(ctx context.Context, hostEnv *util.Environment) {
 		[]string{"WERCKER_GIT_OWNER", b.options.GitOwner},
 		[]string{"WERCKER_GIT_REPOSITORY", b.options.GitRepository},
 		[]string{"WERCKER_GIT_BRANCH", b.options.GitBranch},
+		[]string{"WERCKER_GIT_TAG", b.options.GitTag},
 		[]string{"WERCKER_GIT_COMMIT", b.options.GitCommit},
 
 		// Legacy env vars

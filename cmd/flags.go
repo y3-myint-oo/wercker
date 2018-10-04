@@ -93,6 +93,7 @@ var (
 		cli.StringFlag{Name: "git-owner", Value: "", Usage: "Git owner.", EnvVar: "WERCKER_GIT_OWNER", Hidden: true},
 		cli.StringFlag{Name: "git-repository", Value: "", Usage: "Git repository.", EnvVar: "WERCKER_GIT_REPOSITORY", Hidden: true},
 		cli.StringFlag{Name: "git-branch", Value: "", Usage: "Git branch.", EnvVar: "WERCKER_GIT_BRANCH", Hidden: true},
+		cli.StringFlag{Name: "git-tag", Value: "", Usage: "Git tag.", EnvVar: "WERCKER_GIT_TAG", Hidden: true},
 		cli.StringFlag{Name: "git-commit", Value: "", Usage: "Git commit.", EnvVar: "WERCKER_GIT_COMMIT", Hidden: true},
 	}
 

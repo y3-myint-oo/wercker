@@ -191,6 +191,7 @@ func NewOCIOptions(c util.Settings, e *util.Environment, globalOpts *GlobalOptio
 type GitOptions struct {
 	*GlobalOptions
 	GitBranch     string
+	GitTag        string
 	GitCommit     string
 	GitDomain     string
 	GitOwner      string
@@ -221,6 +222,37 @@ func guessGitBranch(c util.Settings, e *util.Environment) string {
 
 	var out bytes.Buffer
 	cmd := exec.Command(git, "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return ""
+	}
+	return strings.Trim(out.String(), "\n")
+}
+
+func guessGitTag(c util.Settings, e *util.Environment) string {
+	tag, _ := c.String("git-tag")
+	if tag != "" {
+		return tag
+	}
+	projectPath := guessProjectPath(c, e)
+	if projectPath == "" {
+		return ""
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	defer os.Chdir(cwd)
+	os.Chdir(projectPath)
+
+	git, err := exec.LookPath("git")
+	if err != nil {
+		return ""
+	}
+
+	var out bytes.Buffer
+	cmd := exec.Command(git, "tag", "--points-at", "HEAD", "|", "tail", "-n", "1")
 	cmd.Stdout = &out
 	err = cmd.Run()
 	if err != nil {
@@ -289,6 +321,7 @@ func guessGitRepository(c util.Settings, e *util.Environment) string {
 // NewGitOptions constructor
 func NewGitOptions(c util.Settings, e *util.Environment, globalOpts *GlobalOptions) (*GitOptions, error) {
 	gitBranch := guessGitBranch(c, e)
+	gitTag := guessGitTag(c, e)
 	gitCommit := guessGitCommit(c, e)
 	gitDomain, _ := c.String("git-domain")
 	gitOwner := guessGitOwner(c, e)
@@ -297,6 +330,7 @@ func NewGitOptions(c util.Settings, e *util.Environment, globalOpts *GlobalOptio
 	return &GitOptions{
 		GlobalOptions: globalOpts,
 		GitBranch:     gitBranch,
+		GitTag:        gitTag,
 		GitCommit:     gitCommit,
 		GitDomain:     gitDomain,
 		GitOwner:      gitOwner,
