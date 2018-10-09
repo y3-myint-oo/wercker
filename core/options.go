@@ -258,29 +258,16 @@ func guessGitTag(c util.Settings, e *util.Environment) string {
 
 	var out bytes.Buffer
 	cmd := exec.Command(git, "tag", "--points-at", "HEAD")
-	pipeCmd := exec.Command("tail", "-n", "1")
-	pipeCmd.Stdout = &out
-
-	pipeCmd.Stdin, err = cmd.StdoutPipe()
-	if err != nil {
-		return ""
-	}
-
-	err = pipeCmd.Start()
-	if err != nil {
-		return ""
-	}
-
+	cmd.Stdout = &out
 	err = cmd.Run()
 	if err != nil {
 		return ""
 	}
 
-	err = pipeCmd.Wait()
-	if err != nil {
-		return ""
-	}
-	return strings.Trim(out.String(), "\n")
+	cmdOut := strings.TrimSuffix(out.String(), "\n")
+	arr := strings.Split(cmdOut, "\n")
+
+	return arr[len(arr)-1]
 }
 
 func guessGitCommit(c util.Settings, e *util.Environment) string {
