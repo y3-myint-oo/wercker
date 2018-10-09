@@ -55,7 +55,7 @@ pullImages () {
   pullIfNeeded "ubuntu"
   pullIfNeeded "golang"
   pullIfNeeded "postgres:9.6"
-  pullIfNeeded "elasticsearch"
+  pullIfNeeded "nginx"
   pullIfNeeded "interactivesolutions/eatmydata-mysql-server"
 }
 

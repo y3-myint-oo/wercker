@@ -2,7 +2,7 @@ build:
   box: golang
   steps:
     - internal/docker-run:
-        image: elasticsearch
+        image: nginx
         name: myTestContainer 
     - internal/docker-kill:
         name: myTestContainer
