@@ -112,7 +112,7 @@ func NewRunner(ctx context.Context, options *core.PipelineOptions, dockerOptions
 	if !options.SuppressBuildLogs {
 		l, err = event.NewLiteralLogHandler(options)
 		if err != nil {
-			logger.WithError(err).Panic("Unable to event.LiteralLogHandler")
+			logger.WithError(err).Panic("Unable to create event.LiteralLogHandler")
 		}
 		l.ListenTo(e)
 	}
@@ -121,7 +121,7 @@ func NewRunner(ctx context.Context, options *core.PipelineOptions, dockerOptions
 	if options.ShouldReport {
 		r, err := event.NewReportHandler(options.ReporterHost, options.ReporterKey)
 		if err != nil {
-			logger.WithError(err).Panic("Unable to event.ReportHandler")
+			logger.WithError(err).Panic("Unable to create event.ReportHandler")
 		}
 		r.ListenTo(e)
 	}
